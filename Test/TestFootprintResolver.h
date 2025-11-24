@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Camera.h"
 #include "Engine.h"
 #include "Input.h"
@@ -101,7 +101,7 @@ namespace test
 				if (tileCoord.row >= 0 && tileCoord.row < m_tilemap.GetHeight() && tileCoord.col >= 0 && tileCoord.col < m_tilemap.GetWidth())
 				{
 					component::tile::TileInstance tileInst;
-					tileInst.typeId = 1;
+					tileInst.index = 1;
 					m_tilemap.SetTileInstance(tileCoord.row, tileCoord.col, tileInst);
 				}
 			}
@@ -117,7 +117,7 @@ namespace test
 				if (tileCoord.row >= 0 && tileCoord.row < m_tilemap.GetHeight() && tileCoord.col >= 0 && tileCoord.col < m_tilemap.GetWidth())
 				{
 					component::tile::TileInstance tileInst;
-					tileInst.typeId = 0;
+					tileInst.index = 0;
 					m_tilemap.SetTileInstance(tileCoord.row, tileCoord.col, tileInst);
 				}
 			}
@@ -128,10 +128,10 @@ namespace test
 				{
 					for (int col = 0; col < m_tilemap.GetWidth(); col++)
 					{
-						if (!m_tileset.GetTile(m_tilemap.GetTileInstance(row, col).typeId).IsWalkable())
+						if (!m_tileset.GetTile(m_tilemap.GetTileInstance(row, col).index).IsWalkable())
 						{
 							component::tile::TileInstance tileInst;
-							tileInst.typeId = 0;
+							tileInst.index = 0;
 							m_tilemap.SetTileInstance(row, col, tileInst);
 						}
 					}
@@ -161,9 +161,9 @@ namespace test
 
 		void OnStart()
 		{
-			m_tileset.Register(0, std::make_unique<component::tile::WalkableTile>());   // ID 0 ? Walkable
-			m_tileset.Register(1, std::make_unique<component::tile::ObstacleTile>());   // ID 1 ? Obstacle
-			SetTileLayer(m_tilemap, 16, 16, component::tile::TileInstance{ 0,0 });
+			m_tileset.Register(0, std::make_unique<component::tile::WalkableTile>());   // ID 0 → Walkable
+			m_tileset.Register(1, std::make_unique<component::tile::ObstacleTile>());   // ID 1 → Obstacle
+			SetTileLayer(m_tilemap, 16, 16, component::tile::TileInstance{ 0 });
 
 			m_camera.SetViewport(
 				{
@@ -201,7 +201,7 @@ namespace test
 
 			RenderTileMap(m_tilemap);
 
-			navigation::tile::Footprint<float> footprint;
+			navigation::tile::Footprint footprint;
 			footprint.position = m_camera.ScreenToWorld(m_lastMousePos);
 			footprint.size = m_footPrintSize;
 
@@ -220,7 +220,7 @@ namespace test
 			);
 
 			bool isNudged = false;
-			navigation::tile::Footprint<float> nudgedFootprint = footprint;
+			navigation::tile::Footprint nudgedFootprint = footprint;
 			if (!IsWalkable)
 			{
 				isNudged = footprintResolver.TryResolve(
@@ -282,7 +282,7 @@ namespace test
 					component::tile::TileInstance tileInst = tilemap.GetTileInstance(row, col);
 
 					graphics::ColorF color;
-					switch (tileInst.typeId)
+					switch (tileInst.index)
 					{
 					case 0:
 						color = { 0.5f, 0.5f, 0.5f, 1 };

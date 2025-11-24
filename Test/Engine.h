@@ -106,7 +106,7 @@ namespace engine
 				[](int row, int col, const U& cell) -> component::tile::TileInstance
 				{
 					// assumes T has a constructor like T{int}
-					return component::tile::TileInstance{ cell, 0 };
+					return component::tile::TileInstance{ cell };
 				}
 			)
 			{

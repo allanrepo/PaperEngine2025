@@ -44,8 +44,8 @@ namespace test
 		spatial::PosF m_lastMousePos;
 		spatial::SizeF m_footPrintSize;
 
-		navigation::tile::Footprint<float> m_startFP;
-		navigation::tile::Footprint<float> m_goalFP;
+		navigation::tile::Footprint m_startFP;
+		navigation::tile::Footprint m_goalFP;
 		navigation::tile::PathFinder m_pathFinder;
 		std::vector<component::tile::TileCoord> m_path;
 		std::vector<spatial::PosF> m_wayPoints;
@@ -63,7 +63,7 @@ namespace test
 				{
 					if (m_tilemap.IsValidTile(row, col))
 					{
-						int id = m_tilemap.GetTileInstance(row, col).typeId;
+						int id = m_tilemap.GetTileInstance(row, col).index;
 						if (m_tileset.IsValid(id))
 						{
 							return m_tileset.GetTile(id).IsWalkable();
@@ -80,7 +80,7 @@ namespace test
 						{
 							if (m_tilemap.IsValidTile(row, col))
 							{
-								int id = m_tilemap.GetTileInstance(row, col).typeId;
+								int id = m_tilemap.GetTileInstance(row, col).index;
 								if (m_tileset.IsValid(id))
 								{
 									return m_tileset.GetTile(id).IsWalkable();
@@ -108,7 +108,7 @@ namespace test
 					// create a footprint where it is located at the center of this tile coordinate. let's set this as default position of the footprint
 					// if this position is safe (no collision with any obstacle) then this tile is walkable. 
 					// if not safe (collides with an obstacle), we'll try to nudge
-					navigation::tile::Footprint<float> fp;
+					navigation::tile::Footprint fp;
 					fp.anchor = navigation::tile::Anchor::Center;
 					fp.position.x = NextCol * m_tileSize.width + m_tileSize.width / 2;
 					fp.position.y = NextRow * m_tileSize.height + m_tileSize.height / 2;
@@ -194,7 +194,7 @@ namespace test
 				if (tileCoord.row >= 0 && tileCoord.row < m_tilemap.GetHeight() && tileCoord.col >= 0 && tileCoord.col < m_tilemap.GetWidth())
 				{
 					component::tile::TileInstance tileInst;
-					tileInst.typeId = 1;
+					tileInst.index = 1;
 					m_tilemap.SetTileInstance(tileCoord.row, tileCoord.col, tileInst);
 				}
 			}
@@ -210,7 +210,7 @@ namespace test
 				if (tileCoord.row >= 0 && tileCoord.row < m_tilemap.GetHeight() && tileCoord.col >= 0 && tileCoord.col < m_tilemap.GetWidth())
 				{
 					component::tile::TileInstance tileInst;
-					tileInst.typeId = 0;
+					tileInst.index = 0;
 					m_tilemap.SetTileInstance(tileCoord.row, tileCoord.col, tileInst);
 				}
 			}
@@ -221,10 +221,10 @@ namespace test
 				{
 					for (int col = 0; col < m_tilemap.GetWidth(); col++)
 					{
-						if (!m_tileset.GetTile(m_tilemap.GetTileInstance(row, col).typeId).IsWalkable())
+						if (!m_tileset.GetTile(m_tilemap.GetTileInstance(row, col).index).IsWalkable())
 						{
 							component::tile::TileInstance tileInst;
-							tileInst.typeId = 0;
+							tileInst.index = 0;
 							m_tilemap.SetTileInstance(row, col, tileInst);
 						}
 					}
@@ -262,7 +262,7 @@ namespace test
 			m_tileset.Register(0, std::make_unique<component::tile::WalkableTile>());   // ID 0 → Walkable
 			m_tileset.Register(1, std::make_unique<component::tile::ObstacleTile>());   // ID 1 → Obstacle
 
-			SetTileLayer(m_tilemap, 16, 16, component::tile::TileInstance{0,0});
+			SetTileLayer(m_tilemap, 16, 16, component::tile::TileInstance{ 0 });
 
 			m_camera.SetViewport(
 				{
@@ -321,7 +321,7 @@ namespace test
 
 			// calculate waypoints
 			{
-				navigation::tile::Footprint<float> fp;
+				navigation::tile::Footprint fp;
 				fp.anchor = navigation::tile::Anchor::Center;
 				fp.size = m_startFP.size;
 
@@ -432,7 +432,7 @@ namespace test
 					component::tile::TileInstance tileInst = tilemap.GetTileInstance(row, col);
 
 					graphics::ColorF color;
-					switch (tileInst.typeId)
+					switch (tileInst.index)
 					{
 					case 0:
 						color = { 0.5f, 0.5f, 0.5f, 1 };

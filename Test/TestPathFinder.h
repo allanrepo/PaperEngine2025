@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Camera.h"
 #include "Engine.h"
 #include "Input.h"
@@ -120,7 +120,7 @@ namespace testPathFinder
 				false
 			),
 			m_tileSize{ 64.0f, 64.0f },
-			m_footPrintSize{ 96.0f, 96.0f },
+			m_footPrintSize{ 48.0f, 48.0f },
 			m_startTile{ -1, -1 },
 			m_goalTile{ -1, -1 }
 		{
@@ -215,7 +215,7 @@ namespace testPathFinder
 				if (tileCoord.row >= 0 && tileCoord.row < m_tilemap.GetHeight() && tileCoord.col >= 0 && tileCoord.col < m_tilemap.GetWidth())
 				{
 					component::tile::TileInstance tileInst;
-					tileInst.typeId = 1;
+					tileInst.index = 1;
 					m_tilemap.SetTileInstance(tileCoord.row, tileCoord.col, tileInst);
 				}
 			}
@@ -231,7 +231,7 @@ namespace testPathFinder
 				if (tileCoord.row >= 0 && tileCoord.row < m_tilemap.GetHeight() && tileCoord.col >= 0 && tileCoord.col < m_tilemap.GetWidth())
 				{
 					component::tile::TileInstance tileInst;
-					tileInst.typeId = 0;
+					tileInst.index = 0;
 					m_tilemap.SetTileInstance(tileCoord.row, tileCoord.col, tileInst);
 				}
 			}
@@ -242,10 +242,10 @@ namespace testPathFinder
 				{
 					for (int col = 0; col < m_tilemap.GetWidth(); col++)
 					{
-						if (!m_tileset.GetTile(m_tilemap.GetTileInstance(row, col).typeId).IsWalkable())
+						if (!m_tileset.GetTile(m_tilemap.GetTileInstance(row, col).index).IsWalkable())
 						{
 							component::tile::TileInstance tileInst;
-							tileInst.typeId = 0;
+							tileInst.index = 0;
 							m_tilemap.SetTileInstance(row, col, tileInst);
 						}
 					}
@@ -257,8 +257,8 @@ namespace testPathFinder
 
 		void OnStart()
 		{
-			m_tileset.Register(0, std::make_unique<component::tile::WalkableTile>());   // ID 0 ? Walkable
-			m_tileset.Register(1, std::make_unique<component::tile::ObstacleTile>());   // ID 1 ? Obstacle
+			m_tileset.Register(0, std::make_unique<component::tile::WalkableTile>());   // ID 0 → Walkable
+			m_tileset.Register(1, std::make_unique<component::tile::ObstacleTile>());   // ID 1 → Obstacle
 
 			m_tilemap = engine::io::TileLayerLoader<int>::LoadFromCSV("PathfindingTileMap.csv", ',');
 
@@ -349,7 +349,7 @@ namespace testPathFinder
 
 
 					graphics::ColorF color;
-					switch (tileInst.typeId)
+					switch (tileInst.index)
 					{
 					case 0:
 						color = { 0.5f, 0.5f, 0.5f, 1 };

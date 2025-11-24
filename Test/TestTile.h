@@ -71,7 +71,7 @@ public:
 				component::tile::TileInstance tile = tilemap.GetTileInstance(row, col);
 
 				graphics::ColorF color;
-				switch (tile.typeId)
+				switch (tile.index)
 				{
 				case 0:
 					color = { 0.5f, 0.5f, 0.5f, 1 };
