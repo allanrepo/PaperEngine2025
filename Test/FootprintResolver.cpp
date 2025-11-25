@@ -84,8 +84,10 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 		// 0C0
 		// 100
 		//  ^
+		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+		bool isNextRightAdjTileValid = tilemap.IsValidTile(next.row, next.col + 1);
 		bool isCurrBottomLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row + 1, curr.col - 1);
-		if (!isCurrBottomLeftAdjTileWalkable && !isNextRightAdjTileWalkable)
+		if (!isCurrBottomLeftAdjTileWalkable && !isNextRightAdjTileWalkable && isNextRightAdjTileValid)
 		{
 			return true;
 		}
@@ -95,8 +97,10 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 		// 0C0
 		// 001
 		//  ^
+		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+		bool isNextLeftAdjTileValid = tilemap.IsValidTile(next.row, next.col - 1);
 		bool isCurrBottomRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row + 1, curr.col + 1);
-		if (!isCurrBottomRightAdjTileWalkable && !isNextLeftAdjTileWalkable)
+		if (!isCurrBottomRightAdjTileWalkable && !isNextLeftAdjTileWalkable && isNextLeftAdjTileValid)
 		{
 			return true;
 		}
@@ -131,8 +135,10 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 		// 001
 		// 0C0
 		// 1N0
+		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+		bool isNextLeftAdjTileValid = tilemap.IsValidTile(next.row, next.col - 1);
 		bool isCurrTopRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col + 1);
-		if (!isCurrTopRightAdjTileWalkable && !isNextLeftAdjTileWalkable)
+		if (!isCurrTopRightAdjTileWalkable && !isNextLeftAdjTileWalkable && isNextLeftAdjTileValid)
 		{
 			return true;
 		}
@@ -142,8 +148,10 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 		// 100
 		// 0C0
 		// 0N1
+		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+		bool isNextRightAdjTileValid = tilemap.IsValidTile(next.row, next.col + 1);
 		bool isCurrTopLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col - 1);
-		if (!isCurrTopLeftAdjTileWalkable && !isNextRightAdjTileWalkable)
+		if (!isCurrTopLeftAdjTileWalkable && !isNextRightAdjTileWalkable && isNextRightAdjTileValid)
 		{
 			return true;
 		}
@@ -177,8 +185,10 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 		//  100
 		// >0CN
 		//  001							
+		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+		bool isNextBottomAdjTileValid = tilemap.IsValidTile(next.row + 1, next.col);
 		bool isCurrTopLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col - 1);
-		if (!isCurrTopLeftAdjTileWalkable && !isNextBottomAdjTileWalkable)
+		if (!isCurrTopLeftAdjTileWalkable && !isNextBottomAdjTileWalkable && isNextBottomAdjTileValid)
 		{
 			return true;
 		}
@@ -187,8 +197,10 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 		//  001
 		// >0CN
 		//  100							
+		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+		bool isNextTopAdjTileValid = tilemap.IsValidTile(next.row - 1, next.col);
 		bool isCurrBottomLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col + 1);
-		if (!isCurrBottomLeftAdjTileWalkable && !isNextTopAdjTileWalkable)
+		if (!isCurrBottomLeftAdjTileWalkable && !isNextTopAdjTileWalkable && isNextTopAdjTileValid)
 		{
 			return true;
 		}
@@ -222,8 +234,10 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 		// 001
 		// NC0<
 		// 100							
+		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+		bool isNextBottomAdjTileValid = tilemap.IsValidTile(next.row + 1, next.col);
 		bool isCurrTopRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col + 1);
-		if (!isCurrTopRightAdjTileWalkable && !isNextBottomAdjTileWalkable)
+		if (!isCurrTopRightAdjTileWalkable && !isNextBottomAdjTileWalkable && isNextBottomAdjTileValid)
 		{
 			return true;
 		}
@@ -231,9 +245,11 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 		// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
 		// 100
 		// NC0<
-		// 001							
+		// 001		
+		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+		bool isNextTopAdjTileValid = tilemap.IsValidTile(next.row - 1, next.col);
 		bool isCurrBottomRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row + 1, curr.col + 1);
-		if (!isCurrBottomRightAdjTileWalkable && !isNextTopAdjTileWalkable)
+		if (!isCurrBottomRightAdjTileWalkable && !isNextTopAdjTileWalkable && isNextTopAdjTileValid)
 		{
 			return true;
 		}
