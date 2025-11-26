@@ -7,9 +7,17 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 	const component::tile::Tileset& tileset,
 	const component::tile::TileCoord& curr,
 	const component::tile::TileCoord& next,
-	const spatial::SizeF& footprintSize,
-	const spatial::SizeF& tileSize)
+	const spatial::SizeF& tileSize,
+	const navigation::tile::Footprint& startFP,
+	const navigation::tile::Footprint& goalFP,
+	const component::tile::TileCoord& startTC,
+	const component::tile::TileCoord& goalTC
+)
 {
+	// check if start is curr tile, goal is next tile
+	bool currIsStartTile = (curr == startTC);
+	bool nextIsGoalTile = (next == goalTC);
+
 	// compute movement direction
 	int dRow = next.row - curr.row;
 	int dCol = next.col - curr.col;
@@ -29,8 +37,8 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 
 	// check if footprint is wider or taller than tile. 
 	// if footprint is smaller than tile on both width and height, bail out now as it's guaranteed that movement from current to next will be successful
-	bool isFootprintWiderThanTile = footprintSize.width > tileSize.width;
-	bool isFootprintTallerThanTile = footprintSize.height > tileSize.height;
+	bool isFootprintWiderThanTile = startFP.size.width > tileSize.width;
+	bool isFootprintTallerThanTile = startFP.size.height > tileSize.height;
 	if (!isFootprintWiderThanTile && !isFootprintTallerThanTile)
 	{
 		return true;
@@ -73,37 +81,89 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 		// 1N0
 		// 0C1
 		//  ^
+		// is current tile start tile?
 		bool isCurrRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row, curr.col + 1);
 		if (!isCurrRightAdjTileWalkable && !isNextLeftAdjTileWalkable)
 		{
 			return true;
 		}
 
-		// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
-		// 0N1
-		// 0C0
-		// 100
-		//  ^
-		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
-		bool isNextRightAdjTileValid = tilemap.IsValidTile(next.row, next.col + 1);
-		bool isCurrBottomLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row + 1, curr.col - 1);
-		if (!isCurrBottomLeftAdjTileWalkable && !isNextRightAdjTileWalkable && isNextRightAdjTileValid)
+		// if current tile is start tile, get the position of start footprint's bottom edge in tile space
+		// if it's bottom position lies in current tile or tile above it, start/current tile is on side of the next position so it will not cross the pinch
+		int startFootprintBottomTileRow;
+		if (currIsStartTile)
 		{
-			return true;
+			math::geometry::RectF startBounds = startFP.GetRect();
+			startFootprintBottomTileRow = static_cast<int>(std::floor((startBounds.bottom) / tileSize.height));
 		}
 
-		// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
-		// 1N0
-		// 0C0
-		// 001
-		//  ^
-		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
-		bool isNextLeftAdjTileValid = tilemap.IsValidTile(next.row, next.col - 1);
-		bool isCurrBottomRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row + 1, curr.col + 1);
-		if (!isCurrBottomRightAdjTileWalkable && !isNextLeftAdjTileWalkable && isNextLeftAdjTileValid)
+		// if current tile IS NOT start tile, perform this check
+		// if current tile IS start tile, and it lies on the side where it has to cross the pinch to get to next, perform this check
+		if (!currIsStartTile || startFootprintBottomTileRow > curr.row)
 		{
-			return true;
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			// 0N1
+			// 0C0
+			// 100
+			//  ^
+			// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+			bool isNextRightAdjTileValid = tilemap.IsValidTile(next.row, next.col + 1);
+			bool isCurrBottomLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row + 1, curr.col - 1);
+			if (!isCurrBottomLeftAdjTileWalkable && !isNextRightAdjTileWalkable && isNextRightAdjTileValid)
+			{
+				return true;
+			}
+
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			// 1N0
+			// 0C0
+			// 001
+			//  ^
+			// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+			bool isNextLeftAdjTileValid = tilemap.IsValidTile(next.row, next.col - 1);
+			bool isCurrBottomRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row + 1, curr.col + 1);
+			if (!isCurrBottomRightAdjTileWalkable && !isNextLeftAdjTileWalkable && isNextLeftAdjTileValid)
+			{
+				return true;
+			}
 		}
+
+		// if next tile is goal tile, get the position of goal footprint's bottom edge in tile space
+		// if it's bottom position lies in current tile or tile above it, current tile is on side of the goal/next position so it will not cross the pinch
+		int goalFootprintBottomTileRow;
+		if (nextIsGoalTile)
+		{
+			math::geometry::RectF goalBounds = goalFP.GetRect();
+			goalFootprintBottomTileRow = static_cast<int>(std::floor((goalBounds.bottom) / tileSize.height));
+		}
+
+		// if next tile IS NOT goal tile, perform this check
+		// if next tile IS goal tile, and it lies on the side where current tile has to cross the pinch to get to goal, perform this check
+		if (!nextIsGoalTile || goalFootprintBottomTileRow <= next.row)
+		{
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			// 001
+			// 0N0
+			// 1C0
+			//  ^
+			bool isNextTopRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, next.row - 1, next.col + 1);
+			if (!isCurrLeftAdjTileWalkable && !isNextTopRightAdjTileWalkable)
+			{
+				return true;
+			}
+
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			// 100
+			// 0N0
+			// 0C1
+			//  ^
+			bool isNextTopLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, next.row - 1, next.col - 1);
+			if (!isCurrRightAdjTileWalkable && !isNextTopLeftAdjTileWalkable)
+			{
+				return true;
+			}
+		}
+
 		break;
 	}
 	case navigation::tile::Direction::Down:
@@ -130,31 +190,82 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 			return true;
 		}
 
-		// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
-		//  v
-		// 001
-		// 0C0
-		// 1N0
-		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
-		bool isNextLeftAdjTileValid = tilemap.IsValidTile(next.row, next.col - 1);
-		bool isCurrTopRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col + 1);
-		if (!isCurrTopRightAdjTileWalkable && !isNextLeftAdjTileWalkable && isNextLeftAdjTileValid)
+		// if current tile is start tile, get the position of start footprint's top edge in tile space
+		// if it's top position lies in current tile or tile below it, start/current tile is on side of the next position so it will not cross the pinch
+		int startFootprintTopTileRow;
+		if (currIsStartTile)
 		{
-			return true;
+			math::geometry::RectF startBounds = startFP.GetRect();
+			startFootprintTopTileRow = static_cast<int>(std::floor((startBounds.top) / tileSize.height));
 		}
 
-		// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
-		//  v
-		// 100
-		// 0C0
-		// 0N1
-		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
-		bool isNextRightAdjTileValid = tilemap.IsValidTile(next.row, next.col + 1);
-		bool isCurrTopLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col - 1);
-		if (!isCurrTopLeftAdjTileWalkable && !isNextRightAdjTileWalkable && isNextRightAdjTileValid)
+		// if current tile IS NOT start tile, perform this check
+		// if current tile IS start tile, and it lies on the side where it has to cross the pinch to get to next, perform this check
+		if (!currIsStartTile || startFootprintTopTileRow < curr.row)
 		{
-			return true;
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			//  v
+			// 001
+			// 0C0
+			// 1N0
+			// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+			bool isNextLeftAdjTileValid = tilemap.IsValidTile(next.row, next.col - 1);
+			bool isCurrTopRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col + 1);
+			if (!isCurrTopRightAdjTileWalkable && !isNextLeftAdjTileWalkable && isNextLeftAdjTileValid)
+			{
+				return true;
+			}
+
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			//  v
+			// 100
+			// 0C0
+			// 0N1
+			// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+			bool isNextRightAdjTileValid = tilemap.IsValidTile(next.row, next.col + 1);
+			bool isCurrTopLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col - 1);
+			if (!isCurrTopLeftAdjTileWalkable && !isNextRightAdjTileWalkable && isNextRightAdjTileValid)
+			{
+				return true;
+			}
 		}
+
+		// if next tile is goal tile, get the position of goal footprint's bottom edge in tile space
+		// if it's bottom position lies in current tile or tile above it, current tile is on side of the goal/next position so it will not cross the pinch
+		int goalFootprintTopTileRow;
+		if (nextIsGoalTile)
+		{
+			math::geometry::RectF goalBounds = goalFP.GetRect();
+			goalFootprintTopTileRow = static_cast<int>(std::floor((goalBounds.top) / tileSize.height));
+		}
+
+		// if next tile IS NOT goal tile, perform this check
+		// if next tile IS goal tile, and it lies on the side where current tile has to cross the pinch to get to goal, perform this check
+		if (!nextIsGoalTile || goalFootprintTopTileRow >= next.row)
+		{
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			//  v
+			// 0C1
+			// 0N0
+			// 100
+			bool isNextBottomLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, next.row + 1, next.col - 1);
+			if (!isCurrRightAdjTileWalkable && !isNextBottomLeftAdjTileWalkable)
+			{
+				return true;
+			}
+
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			//  v
+			// 1C0
+			// 0N0
+			// 001
+			bool isNextBottomRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, next.row + 1, next.col + 1);
+			if (!isCurrLeftAdjTileWalkable && !isNextBottomRightAdjTileWalkable)
+			{
+				return true;
+			}
+		}
+
 		break;
 	}
 	case navigation::tile::Direction::Right:
@@ -181,29 +292,81 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 			return true;
 		}
 
-		// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
-		//  100
-		// >0CN
-		//  001							
-		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
-		bool isNextBottomAdjTileValid = tilemap.IsValidTile(next.row + 1, next.col);
-		bool isCurrTopLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col - 1);
-		if (!isCurrTopLeftAdjTileWalkable && !isNextBottomAdjTileWalkable && isNextBottomAdjTileValid)
+		// if current tile is start tile, get the position of start footprint's left edge in tile space
+		// if it's left position lies in current tile or tile right of it, start/current tile is on side of the next position so it will not cross the pinch
+		int startFootprintLeftTileCol;
+		if (currIsStartTile)
 		{
-			return true;
+			math::geometry::RectF startBounds = startFP.GetRect();
+			startFootprintLeftTileCol = static_cast<int>(std::floor((startBounds.left) / tileSize.width));
 		}
 
-		// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
-		//  001
-		// >0CN
-		//  100							
-		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
-		bool isNextTopAdjTileValid = tilemap.IsValidTile(next.row - 1, next.col);
-		bool isCurrBottomLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col + 1);
-		if (!isCurrBottomLeftAdjTileWalkable && !isNextTopAdjTileWalkable && isNextTopAdjTileValid)
+		// if current tile IS NOT start tile, perform this check
+		// if current tile IS start tile, and it lies on the side where it has to cross the pinch to get to next, perform this check
+		if (!currIsStartTile || startFootprintLeftTileCol < curr.col)
 		{
-			return true;
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			//  100
+			// >0CN
+			//  001							
+			// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+			bool isNextBottomAdjTileValid = tilemap.IsValidTile(next.row + 1, next.col);
+			bool isCurrTopLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col - 1);
+			if (!isCurrTopLeftAdjTileWalkable && !isNextBottomAdjTileWalkable && isNextBottomAdjTileValid)
+			{
+				return true;
+			}
+
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			//  001
+			// >0CN
+			//  100							
+			// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+			bool isNextTopAdjTileValid = tilemap.IsValidTile(next.row - 1, next.col);
+			bool isCurrBottomLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col + 1);
+			if (!isCurrBottomLeftAdjTileWalkable && !isNextTopAdjTileWalkable && isNextTopAdjTileValid)
+			{
+				return true;
+			}
 		}
+
+		// if next tile is goal tile, get the position of goal footprint's left edge in tile space
+		// if it's left position lies on any tile to the left of current tile, current tile is on side of the goal/next position so it will not cross the pinch
+		int goalFootprintLefTileCol;
+		if (nextIsGoalTile)
+		{
+			math::geometry::RectF goalBounds = goalFP.GetRect();
+			goalFootprintLefTileCol = static_cast<int>(std::floor((goalBounds.left) / tileSize.width));
+		}
+
+		// if next tile IS NOT goal tile, perform this check
+		// if next tile IS goal tile, and it lies on the side where current tile has to cross the pinch to get to goal, perform this check
+		if (!nextIsGoalTile || goalFootprintLefTileCol >= next.col)
+		{
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			//  100
+			// >CN0
+			//  001							
+			// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+			bool isNextBottomRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, next.row + 1, next.col + 1);
+			if (!isCurrTopAdjTileWalkable && !isNextBottomRightAdjTileWalkable)
+			{
+				return true;
+			}
+
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			//  001
+			// >CN0
+			//  100							
+			// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+			bool isNextTopRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, next.row - 1, next.col + 1);
+			if (!isCurrBottomAdjTileWalkable && !isNextTopRightAdjTileWalkable)
+			{
+				return true;
+			}
+		}
+
+
 		break;
 	}
 	case navigation::tile::Direction::Left:
@@ -230,29 +393,80 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 			return true;
 		}
 
-		// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
-		// 001
-		// NC0<
-		// 100							
-		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
-		bool isNextBottomAdjTileValid = tilemap.IsValidTile(next.row + 1, next.col);
-		bool isCurrTopRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col + 1);
-		if (!isCurrTopRightAdjTileWalkable && !isNextBottomAdjTileWalkable && isNextBottomAdjTileValid)
+		// if current tile is start tile, get the position of start footprint's right edge in tile space
+		// if it's right position lies in current tile or tile left of it, start/current tile is on side of the next position so it will not cross the pinch
+		int startFootprintRightTileCol;
+		if (currIsStartTile)
 		{
-			return true;
+			math::geometry::RectF startBounds = startFP.GetRect();
+			startFootprintRightTileCol = static_cast<int>(std::floor((startBounds.right) / tileSize.width));
 		}
 
-		// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
-		// 100
-		// NC0<
-		// 001		
-		// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
-		bool isNextTopAdjTileValid = tilemap.IsValidTile(next.row - 1, next.col);
-		bool isCurrBottomRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row + 1, curr.col + 1);
-		if (!isCurrBottomRightAdjTileWalkable && !isNextTopAdjTileWalkable && isNextTopAdjTileValid)
+		// if current tile IS NOT start tile, perform this check
+		// if current tile IS start tile, and it lies on the side where it has to cross the pinch to get to next, perform this check
+		if (!currIsStartTile || startFootprintRightTileCol > curr.col)
 		{
-			return true;
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			// 001
+			// NC0<
+			// 100							
+			// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+			bool isNextBottomAdjTileValid = tilemap.IsValidTile(next.row + 1, next.col);
+			bool isCurrTopRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row - 1, curr.col + 1);
+			if (!isCurrTopRightAdjTileWalkable && !isNextBottomAdjTileWalkable && isNextBottomAdjTileValid)
+			{
+				return true;
+			}
+
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			// 100
+			// NC0<
+			// 001		
+			// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+			bool isNextTopAdjTileValid = tilemap.IsValidTile(next.row - 1, next.col);
+			bool isCurrBottomRightAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, curr.row + 1, curr.col + 1);
+			if (!isCurrBottomRightAdjTileWalkable && !isNextTopAdjTileWalkable && isNextTopAdjTileValid)
+			{
+				return true;
+			}
 		}
+
+		// if next tile is goal tile, get the position of goal footprint's right edge in tile space
+		// if it's right position lies on any tile from current tile or to the right of it, current tile is on side of the goal/next position so it will not cross the pinch
+		int goalFootprintRightTileCol;
+		if (nextIsGoalTile)
+		{
+			math::geometry::RectF goalBounds = goalFP.GetRect();
+			goalFootprintRightTileCol = static_cast<int>(std::floor((goalBounds.right) / tileSize.width));
+		}
+
+		// if next tile IS NOT goal tile, perform this check
+		// if next tile IS goal tile, and it lies on the side where current tile has to cross the pinch to get to goal, perform this check
+		if (!nextIsGoalTile || goalFootprintRightTileCol <= next.col)
+		{
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			// 001
+			// 0NC<
+			// 100							
+			// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+			bool isNextBottomLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, next.row + 1, next.col - 1);
+			if (!isCurrTopAdjTileWalkable && !isNextBottomLeftAdjTileWalkable)
+			{
+				return true;
+			}
+
+			// if tile pattern is like below, direction going up, and footprint size > tile size, we can't pass
+			// 100
+			// 0NC<
+			// 001		
+			// NOTE: handle edge case where curr and next tiles are at edge of map. in this case, it is not pinched.
+			bool isNextTopLeftAdjTileWalkable = component::tile::IsWalkable(tilemap, tileset, next.row - 1, next.col - 1);
+			if (!isCurrBottomAdjTileWalkable && !isNextTopLeftAdjTileWalkable)
+			{
+				return true;
+			}
+		}
+
 		break;
 	}
 	default:
@@ -261,6 +475,8 @@ bool navigation::tile::Constraints::IsPinchBlocked(
 
 	return false;
 }
+
+
 
 
 // Construct a resolver with explicit parameters.

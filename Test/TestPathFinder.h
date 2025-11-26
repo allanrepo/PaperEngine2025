@@ -58,7 +58,7 @@ namespace testPathFinder
 			m_camera({ 50, 50, 1024, 768 }),
 			m_pathFinder(
 #if FOOTPRINT_AWARE_BUT_SNAP_TILE_CENTER == 1
-				[this](int curRow, int currCol, int row, int col) -> bool
+				[this](int currRow, int currCol, int row, int col) -> bool
 				{
 					// quick check if the tile itself is walkable
 					if (!component::tile::IsWalkable(m_tilemap, m_tileset, row, col)) return false;

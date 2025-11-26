@@ -7,37 +7,6 @@ namespace navigation
 {
 	namespace tile
 	{
-		enum class Direction
-		{
-			Up,
-			Down,
-			Left,
-			Right,
-			UpLeft,
-			UpRight,
-			DownLeft,
-			DownRight
-		};
-
-		struct Constraints
-		{
-			// helper method to check if moving between tile, current and next is possible by checking if their path is blocked by a pinch
-			// this assumes current and next tile are adjacent to each other. if not, it will fail to determine direction and will return false
-			static bool IsPinchBlocked(
-				const component::tile::TileLayer& tilemap,
-				const component::tile::Tileset& tileset,
-				const component::tile::TileCoord& curr,
-				const component::tile::TileCoord& next,
-				const spatial::SizeF& footprintSize,
-				const spatial::SizeF& tileSize);
-		};
-	};
-};
-
-namespace navigation
-{
-	namespace tile
-	{
 		// Defines the reference point for a footprint's position.
 		// Used to interpret the footprint's RectF relative to its position.
 		enum class Anchor
@@ -148,3 +117,37 @@ namespace navigation
 	}
 }
 
+namespace navigation
+{
+	namespace tile
+	{
+		enum class Direction
+		{
+			Up,
+			Down,
+			Left,
+			Right,
+			UpLeft,
+			UpRight,
+			DownLeft,
+			DownRight
+		};
+
+		struct Constraints
+		{
+			// helper method to check if moving between tile, current and next is possible by checking if their path is blocked by a pinch
+			// this assumes current and next tile are adjacent to each other. if not, it will fail to determine direction and will return false
+			static bool IsPinchBlocked(
+				const component::tile::TileLayer& tilemap,
+				const component::tile::Tileset& tileset,
+				const component::tile::TileCoord& curr,
+				const component::tile::TileCoord& next,
+				const spatial::SizeF& tileSize,
+				const navigation::tile::Footprint& startFP,
+				const navigation::tile::Footprint& goalFP,
+				const component::tile::TileCoord& startTC,
+				const component::tile::TileCoord& goalTC
+			);
+		};
+	};
+};

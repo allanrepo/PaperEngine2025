@@ -44,12 +44,16 @@ namespace test
 		spatial::PosF m_lastMousePos;
 		spatial::SizeF m_footPrintSize;
 
-		navigation::tile::Footprint m_startFP;
-		navigation::tile::Footprint m_goalFP;
 		navigation::tile::PathFinder m_pathFinder;
 		std::vector<component::tile::TileCoord> m_path;
 		std::vector<spatial::PosF> m_wayPoints;
 		navigation::tile::FootprintResolver m_footprintResolver;
+
+		// cache start and goal positions 
+		navigation::tile::Footprint m_startFP;
+		component::tile::TileCoord m_startTC;
+		navigation::tile::Footprint m_goalFP;
+		component::tile::TileCoord m_goalTC;
 
 	public:
 		TestBed() :
@@ -61,45 +65,26 @@ namespace test
 			(
 				[this](int row, int col) -> bool
 				{
-					if (m_tilemap.IsValidTile(row, col))
-					{
-						int id = m_tilemap.GetTileInstance(row, col).index;
-						if (m_tileset.IsValid(id))
-						{
-							return m_tileset.GetTile(id).IsWalkable();
-						}
-					}
-					return false;
+					return component::tile::IsWalkable(m_tilemap, m_tileset, row, col);
 				},
 				0.1f, m_tileSize.width / 0.1f, m_tileSize.height / 0.1f, true
 			),
 			m_pathFinder(
 				[this](int currRow, int currCol, int NextRow, int NextCol) -> bool
 				{
-					auto isWalkable = [&](int row, int col) -> bool
-						{
-							if (m_tilemap.IsValidTile(row, col))
-							{
-								int id = m_tilemap.GetTileInstance(row, col).index;
-								if (m_tileset.IsValid(id))
-								{
-									return m_tileset.GetTile(id).IsWalkable();
-								}
-							}
-							return false;
-						};
-
 					// quick check if the tile itself is walkable
-					if (!isWalkable(NextRow, NextCol)) return false;
-
+					if (!component::tile::IsWalkable(m_tilemap, m_tileset, NextRow, NextCol)) return false;
 
 					if (navigation::tile::Constraints::IsPinchBlocked(
 						m_tilemap,
 						m_tileset,
 						{ currRow, currCol },
 						{ NextRow, NextCol },
-						m_startFP.size,
-						m_tileSize
+						m_tileSize,
+						m_startFP,
+						m_goalFP,
+						m_startTC,
+						m_goalTC
 					))
 					{
 						return false;
@@ -123,6 +108,9 @@ namespace test
 					navigation::tile::Footprint outFP;
 					if (m_footprintResolver.TryResolve(m_tilemap, m_tileSize, fp, outFP))
 					{
+						// NOTE: 
+						// we only return true (next tile is walkable) if after nudging, the nudged position is still in the same next tile
+						// this is important as it prevents footprint sizes 2x bigger than tile sizes
 						component::tile::TileCoord outTC = GetTileCoordFromMapPosition(m_tileSize, outFP.position);
 						return (outTC.row == NextRow && outTC.col == NextCol);
 					}
@@ -161,15 +149,23 @@ namespace test
 			if (btn == 1) // left button
 			{
 				m_startFP.position = m_camera.ScreenToWorld({ (float)x, (float)y });
+
+				// resolve positions of start and goal footprints in case they collide with obstacles
+				m_footprintResolver.TryResolve(m_tilemap, m_tileSize, m_startFP, m_startFP);
+
+				// store the tile where the start position is placed
+				m_startTC = GetTileCoordFromMapPosition(m_tileSize, m_startFP.position);
 			}
 			else if (btn == 2) // right button
 			{
 				m_goalFP.position = m_camera.ScreenToWorld({ (float)x, (float)y });
-			}
 
-			component::tile::TileCoord tileStartFP = GetTileCoordFromMapPosition(m_tileSize, m_startFP.position); // debug only, useless
-			component::tile::TileCoord tileGoalFP = GetTileCoordFromMapPosition(m_tileSize, m_goalFP.position); // debug only, useless
-			tileGoalFP;
+				// resolve positions of start and goal footprints in case they collide with obstacles
+				m_footprintResolver.TryResolve(m_tilemap, m_tileSize, m_goalFP, m_goalFP);
+
+				// store the tile where the goal position is placed
+				m_goalTC = GetTileCoordFromMapPosition(m_tileSize, m_goalFP.position);
+			}
 		}
 
 		void OnMouseUp(int btn, int x, int y)
@@ -262,7 +258,8 @@ namespace test
 			m_tileset.Register(0, std::make_unique<component::tile::WalkableTile>());   // ID 0 → Walkable
 			m_tileset.Register(1, std::make_unique<component::tile::ObstacleTile>());   // ID 1 → Obstacle
 
-			SetTileLayer(m_tilemap, 16, 16, component::tile::TileInstance{ 0 });
+			//SetTileLayer(m_tilemap, 16, 16, component::tile::TileInstance{ 0 });
+			m_tilemap = engine::io::TileLayerLoader<int>::LoadFromCSV("PathfindingTileMap.csv", ',');
 
 			m_camera.SetViewport(
 				{
@@ -295,24 +292,14 @@ namespace test
 
 		void OnUpdate(float delta)
 		{
-			// resolve positions of start and goal footprints in case they collide with obstacles
-			{
-				// DEBUG:: we just set random value here. fix this so that we set appropriate value
-				m_footprintResolver.TryResolve(m_tilemap, m_tileSize, m_startFP, m_startFP);
-				m_footprintResolver.TryResolve(m_tilemap, m_tileSize, m_goalFP, m_goalFP);
-			}
-
 			// get the path
 			{
-				component::tile::TileCoord tileStartFP = GetTileCoordFromMapPosition(m_tileSize, m_startFP.position);
-				component::tile::TileCoord tileGoalFP = GetTileCoordFromMapPosition(m_tileSize, m_goalFP.position);
-
-				if (m_tilemap.IsValidTile(tileStartFP) && m_tilemap.IsValidTile(tileGoalFP))
+				if (m_tilemap.IsValidTile(m_startTC) && m_tilemap.IsValidTile(m_goalTC))
 				{
 					m_pathFinder.FindPath(
 						math::geometry::Rect<int>{ 0, 0, m_tilemap.GetWidth(), m_tilemap.GetHeight() },
-						GetTileCoordFromMapPosition(m_tileSize, m_startFP.position),
-						GetTileCoordFromMapPosition(m_tileSize, m_goalFP.position),
+						m_startTC,
+						m_goalTC,
 						m_path,
 						1000
 					);
@@ -325,9 +312,8 @@ namespace test
 				fp.anchor = navigation::tile::Anchor::Center;
 				fp.size = m_startFP.size;
 
-				// let's ignore the first and last tile. they are start and goal positions
 				m_wayPoints.clear();
-				for (int i = 1; i + 1 < m_path.size(); i++)
+				for (int i = 0; i < m_path.size(); i++)
 				{
 					// preferred position in tile is at center so we calculate center (at world/tile space)
 					fp.position.x = m_path[i].col * m_tileSize.width + m_tileSize.width / 2;
@@ -341,8 +327,6 @@ namespace test
 					m_wayPoints.push_back(fp.position);
 				}
 			}
-
-
 		}
 
 		void OnRender()
@@ -375,10 +359,24 @@ namespace test
 
 			// render waypoints
 			{
-				for (const spatial::PosF& pos : m_wayPoints)
+				math::VecF translate = { m_startFP.size.width / 2, m_startFP.size.height / 2 };
+				for (size_t i = 0; i < m_wayPoints.size(); i++)
 				{
-					math::VecF translate = { m_startFP.size.width / 2, m_startFP.size.height / 2 };
-					m_engine.GetRenderer().Draw(m_camera.WorldToScreen(pos - translate), m_startFP.size, graphics::ColorF{ 0,1,0,0.2f }, 0);
+					// ignore start (first) and goal (last) tile. it is drawn along with tilemap
+					if (i > 0 && i < m_wayPoints.size())
+					{
+						m_engine.GetRenderer().Draw(m_camera.WorldToScreen(m_wayPoints[i] - translate), m_startFP.size, graphics::ColorF{ 1,1,0,0.2f }, 0);
+					}
+
+					if (i > 0)
+					{
+						m_engine.DrawLineSegment(
+							m_camera.WorldToScreen(m_wayPoints[i - 1]),
+							m_camera.WorldToScreen(m_wayPoints[i]),
+							{ 1, 0, 1, 1 },
+							4.0f
+						);
+					}
 				}
 			}
 
@@ -411,6 +409,21 @@ namespace test
 					str,
 					900,
 					100,
+					1, 1, 1, 1
+				);
+
+				component::tile::TileCoord tc = this->GetTileCoordFromMapPosition(m_tileSize, m_camera.ScreenToWorld(m_lastMousePos));
+
+				str.clear();
+				str.append("tile coord [row,col]: ");
+				str.append(std::to_string((int)std::round(tc.row)));
+				str.append(",");
+				str.append(std::to_string((int)std::round(tc.col)));
+				m_engine.GetRenderer().DrawText(
+					m_fontLarge,
+					str,
+					900,
+					150,
 					1, 1, 1, 1
 				);
 			}
