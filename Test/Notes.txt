@@ -144,21 +144,12 @@ so behavior i can describe as follows:
 
 
 
-
-
-001
-000
-100
-
-001
-100
-
-
-00000
-10000
-00000
-00000
-00010
+1. if given a tilemap of 16x16
+2. generate tilelayer object with 16x16 for 1x1 or less footprint
+3. generate tilelayer object with 8x8 for 2x2 or less footprint
+4. generate tilelayer object with 4x4 for 4x4 or less footprint
+5. now we can cover 1x1 to 4x4 footprint
+6. fill all tilelayers with map data. extrapolate obstacles for other maps.
 
 
 
@@ -168,4 +159,53 @@ so behavior i can describe as follows:
 
 
 
+				[this](int currRow, int currCol, int row, int col) -> bool
+				{
+					// quick check if the tile itself is walkable
+					if (!component::tile::IsWalkable(m_tileLayer, m_tileset, row, col)) return false;
 
+					// define corners of the footprint as positions. we want it as positions so we can iterate through it easier
+					std::vector<spatial::PosF> corners;
+					corners.push_back({ 0, 0 }); // top-left
+					corners.push_back({ 0, m_footPrintSize.height }); // bottom-left
+					corners.push_back({ m_footPrintSize.width, 0 }); // top-right
+					corners.push_back({ m_footPrintSize.width, m_footPrintSize.height }); // bottom-right
+
+
+					for (spatial::PosF pos : corners)
+					{
+						// translate corners so that it is center at footprint's origin (0,0)
+						pos -= {m_footPrintSize.width / 2, m_footPrintSize.height / 2};
+
+						// translate corners to world space based on tile coordinate
+						pos += {
+							col* m_tileSize.width,
+								row* m_tileSize.height
+						};
+
+						// translate corners so that it's center is at center of the tile
+						pos += {
+							m_tileSize.width / 2,
+								m_tileSize.height / 2
+						};
+
+						// get the tile coord that the corner intersects with
+						component::tile::TileCoord tc =
+						{
+							(int)std::floor(pos.y / m_tileSize.height),
+							(int)std::floor(pos.x / m_tileSize.width)
+						};
+
+						// is the tile coordinate valid? if not, then out of bounds is unwalkable
+						if (m_tileLayer.IsValidTile(tc.row, tc.col) == false)
+						{
+							return false; // out of bounds is unwalkable
+						}
+
+						// check if this tile coordinate is unwalkable
+						if (!component::tile::IsWalkable(m_tileLayer, m_tileset, tc.row, tc.col)) return false;
+					}
+
+					// if we reach this point
+					return true;
+				},  

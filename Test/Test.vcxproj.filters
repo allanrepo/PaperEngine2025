@@ -253,7 +253,7 @@
     <ClInclude Include="TestRendererVisualComparison.h">
       <Filter>Tests</Filter>
     </ClInclude>
-    <ClInclude Include="TestBed.h">
+    <ClInclude Include="TestPinchBlock.h">
       <Filter>Tests</Filter>
     </ClInclude>
     <ClInclude Include="StressTestRendererWithEngine.h">
@@ -457,6 +457,9 @@
     <ClInclude Include="TestFootprintResolver.h">
       <Filter>Tests</Filter>
     </ClInclude>
+    <ClInclude Include="TestGridScaling.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes.txt" />
@@ -508,6 +511,9 @@
       <Filter>Assets</Filter>
     </None>
     <None Include="PathfindingTileMap.csv">
+      <Filter>Assets</Filter>
+    </None>
+    <None Include="PathFindingMap_24x16.csv">
       <Filter>Assets</Filter>
     </None>
   </ItemGroup>

@@ -1,5 +1,5 @@
+#if 1
 #include "TestRendererVisualComparison.h"
-#include "TestBed.h"
 #include "TestInput.h"
 #include "TestTimer.h"
 #include <Windows.h>
@@ -12,27 +12,27 @@
 #include "TestSaveTextureToFile.h"
 #include "TestPathFinder.h"
 #include "TestFootprintResolver.h"
-
+#include "TestPinchBlock.h"
+#include "TestGridScaling.h"
 
 int main()
 {
-#if 1
+
 	//graphics::animation::Test::Test();
 
 	//TestTimer testTimer;
 	//TestInput testInput;
 	//TestActorStateBehavior testActorStateBehavior;
 	//TestSaveTextureToFile testSaveTextureToFile;
-	//testPathFinder::TestPathFinder testPathFinder;
+	testPathFinder::TestPathFinder testPathFinder;
 	//test::TestFootprintResolver testFootprintResolver;
-	test::TestBed testBed;
+	//test::TestPinchBlock testPinchBlock;
+	//test::TestGridScaling testGridScaling;
 	//TestTile testTile;
 	//TestSprite testSprite;
 	//TestRendererVisualComparison test;
 	//StressTestRenderer str;
 	//StressTestRendererWithEngine strwe;
+}
 #endif
 
-
-
-}

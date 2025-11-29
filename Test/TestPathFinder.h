@@ -20,107 +20,54 @@
 #include "Pos.h"
 #include "PathFinder.h"
 
-#define FOOTPRINT_AWARE_BUT_SNAP_TILE_CENTER 1
-
 namespace testPathFinder
 {
 	class TestPathFinder
 	{
 	private:
-		struct Tile
-		{
-			int index;
-		};
 		engine::Engine m_engine;
-		component::tile::TileLayer m_tilemap;
+		component::tile::TileLayer m_tileLayer;
 		component::tile::Tileset m_tileset;
 		spatial::Camera m_camera;
 		std::shared_ptr<graphics::resource::IFontAtlas> m_fontSmall;
 		std::shared_ptr<graphics::resource::IFontAtlas> m_fontLarge;
-
-		std::vector<component::tile::TileCoord> m_path;
-
-		int m_step = 0;
-		bool m_searchDone = false;
-
-		spatial::SizeF m_tileSize;
-		navigation::tile::PathFinder m_pathFinder;
 		component::tile::TileCoord m_startTile;
 		component::tile::TileCoord m_goalTile;
-
+		navigation::tile::PathFinder m_pathFinderVector;
+		navigation::tile::PathFinderUsingPriorityQueue m_pathFinderPriorityQueue;
+		std::vector<component::tile::TileCoord> m_path;
+		spatial::SizeF m_tileSize;
+		bool m_drawText = true;
+		bool m_drawPathFindingTiles = true;
+		bool m_drawWaypoint = true;
 		spatial::PosF m_lastMousePos;
-
-		spatial::SizeF m_footPrintSize;
+		int m_step = 0;
+		navigation::tile::PathFinder* m_pathFinder;
 
 	public:
 		TestPathFinder() :
 			m_engine("DirectX11", "Batch"),
 			m_camera({ 50, 50, 1024, 768 }),
-			m_pathFinder(
-#if FOOTPRINT_AWARE_BUT_SNAP_TILE_CENTER == 1
+			m_pathFinderVector(
 				[this](int currRow, int currCol, int row, int col) -> bool
 				{
-					// quick check if the tile itself is walkable
-					if (!component::tile::IsWalkable(m_tilemap, m_tileset, row, col)) return false;
-
-					// define corners of the footprint as positions. we want it as positions so we can iterate through it easier
-					std::vector<spatial::PosF> corners;
-					corners.push_back({ 0, 0 }); // top-left
-					corners.push_back({ 0, m_footPrintSize.height }); // bottom-left
-					corners.push_back({ m_footPrintSize.width, 0 }); // top-right
-					corners.push_back({ m_footPrintSize.width, m_footPrintSize.height }); // bottom-right
-
-
-					for (spatial::PosF pos : corners)
-					{
-						// translate corners so that it is center at footprint's origin (0,0)
-						pos -= {m_footPrintSize.width / 2, m_footPrintSize.height / 2};
-
-						// translate corners to world space based on tile coordinate
-						pos += {
-							col* m_tileSize.width,
-								row* m_tileSize.height
-						};
-
-						// translate corners so that it's center is at center of the tile
-						pos += {
-							m_tileSize.width / 2,
-								m_tileSize.height / 2
-						};
-
-						// get the tile coord that the corner intersects with
-						component::tile::TileCoord tc =
-						{
-							(int)std::floor(pos.y / m_tileSize.height),
-							(int)std::floor(pos.x / m_tileSize.width)
-						};
-
-						// is the tile coordinate valid? if not, then out of bounds is unwalkable
-						if (m_tilemap.IsValidTile(tc.row, tc.col) == false)
-						{
-							return false; // out of bounds is unwalkable
-						}
-
-						// check if this tile coordinate is unwalkable
-						if (!component::tile::IsWalkable(m_tilemap, m_tileset, tc.row, tc.col)) return false;
-					}
-
-					// if we reach this point
-					return true;
+					return component::tile::IsWalkable(m_tileLayer, m_tileset, row, col);
 				},
-#else
-				[this](int row, int col) -> bool
-				{
-					Tile tile = m_tilemap.GetTile(row, col);
-					return tile.index != 1; // walkable if index is not 1
-				},
-#endif				
-				1000,
+				0,
 				true,
 				false
 			),
-			m_tileSize{ 64.0f, 64.0f },
-			m_footPrintSize{ 48.0f, 48.0f },
+			m_pathFinderPriorityQueue(
+				[this](int currRow, int currCol, int row, int col) -> bool
+				{
+					return component::tile::IsWalkable(m_tileLayer, m_tileset, row, col);
+				},
+				0,
+				true,
+				false
+			),
+			m_pathFinder(&m_pathFinderVector),
+			m_tileSize{ 48, 48 },
 			m_startTile{ -1, -1 },
 			m_goalTile{ -1, -1 }
 		{
@@ -133,6 +80,8 @@ namespace testPathFinder
 			input::Input::Instance().OnMouseDown += event::Handler(this, &TestPathFinder::OnMouseDown);
 			input::Input::Instance().OnMouseMove += event::Handler(this, &TestPathFinder::OnMouseMove);
 			input::Input::Instance().OnMouseUp += event::Handler(this, &TestPathFinder::OnMouseUp);
+
+
 
 			m_engine.Run();
 		}
@@ -150,42 +99,19 @@ namespace testPathFinder
 		{
 			if (btn == 1) // left button
 			{
-				// set start tile
-
-				// this is screen coordinate. convert to world coordinate (tilemap coordinate)
-				spatial::PosF worldPos = m_camera.ScreenToWorld({ static_cast<float>(x), static_cast<float>(y) });
-
-				component::tile::TileCoord tileCoord
-				{
-					static_cast<int>(worldPos.y / m_tileSize.height),
-					static_cast<int>(worldPos.x / m_tileSize.width)
-				};
-				if (tileCoord.row >= 0 && tileCoord.row < m_tilemap.GetHeight() && tileCoord.col >= 0 && tileCoord.col < m_tilemap.GetWidth())
-				{
-					m_startTile = tileCoord;
-				}
-
-				m_step = 0; // reset step
+				// store the tile where the goal position is placed
+				component::tile::TileCoord tc = GetTileCoordFromMapPosition(m_tileSize, m_camera.ScreenToWorld({ (float)x, (float)y }));
+				if (m_tileLayer.IsValidTile(tc)) m_startTile = tc;
 			}
 			else if (btn == 2) // right button
 			{
-				// set goal tile
-
-				// this is screen coordinate. convert to world coordinate (tilemap coordinate)
-				spatial::PosF worldPos = m_camera.ScreenToWorld({ static_cast<float>(x), static_cast<float>(y) });
-
-				component::tile::TileCoord tileCoord
-				{
-					static_cast<int>(worldPos.y / m_tileSize.height),
-					static_cast<int>(worldPos.x / m_tileSize.width)
-				};
-				if (tileCoord.row >= 0 && tileCoord.row < m_tilemap.GetHeight() && tileCoord.col >= 0 && tileCoord.col < m_tilemap.GetWidth())
-				{
-					m_goalTile = tileCoord;
-				}
-
-				m_step = 0; // reset step
+				// store the tile where the goal position is placed
+				component::tile::TileCoord tc = GetTileCoordFromMapPosition(m_tileSize, m_camera.ScreenToWorld({ (float)x, (float)y }));
+				if (m_tileLayer.IsValidTile(tc)) m_goalTile = tc;
 			}
+
+			// reset step when start or goal tile changes
+			m_pathFinder->SetMaxSteps(m_step = 0);
 		}
 
 		void OnMouseUp(int btn, int x, int y)
@@ -194,90 +120,103 @@ namespace testPathFinder
 
 		void OnKeyDown(int key)
 		{
-
-			if (key == 32) // space key
+			switch (key)
 			{
-				m_step++;
-			}
-			if (key == 49) // 1
+			case 27: // escape
+				m_pathFinder->SetMaxSteps(m_step = 0);
+				break;
+			case 32: // space
+				m_pathFinder->SetMaxSteps(m_step++);
+				break;
+			case 49: // 1
 			{
-				m_step = 0;
-			}
-			if (key == 50) // 1
-			{
-				// set selected tile as obstacle
+				// toggle selected tile 
 				spatial::PosF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
 				component::tile::TileCoord tileCoord
 				{
 					static_cast<int>(worldPos.y / m_tileSize.height),
 					static_cast<int>(worldPos.x / m_tileSize.width)
 				};
-				if (tileCoord.row >= 0 && tileCoord.row < m_tilemap.GetHeight() && tileCoord.col >= 0 && tileCoord.col < m_tilemap.GetWidth())
+				if (tileCoord.row >= 0 && tileCoord.row < m_tileLayer.GetHeight() && tileCoord.col >= 0 && tileCoord.col < m_tileLayer.GetWidth())
 				{
-					component::tile::TileInstance tileInst;
-					tileInst.index = 1;
-					m_tilemap.SetTileInstance(tileCoord.row, tileCoord.col, tileInst);
+					m_tileLayer.SetTileInstance(tileCoord.row, tileCoord.col, component::tile::TileInstance{ component::tile::IsWalkable(m_tileLayer, m_tileset, tileCoord.row, tileCoord.col) ? 1 : 0 });
 				}
+				m_pathFinder->SetMaxSteps(m_step = 0);
+				break;
 			}
-			if (key == 51) // 2
-			{
-				// set selected tile as obstacle
-				spatial::PosF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
-				component::tile::TileCoord tileCoord
-				{
-					static_cast<int>(worldPos.y / m_tileSize.height),
-					static_cast<int>(worldPos.x / m_tileSize.width)
-				};
-				if (tileCoord.row >= 0 && tileCoord.row < m_tilemap.GetHeight() && tileCoord.col >= 0 && tileCoord.col < m_tilemap.GetWidth())
-				{
-					component::tile::TileInstance tileInst;
-					tileInst.index = 0;
-					m_tilemap.SetTileInstance(tileCoord.row, tileCoord.col, tileInst);
-				}
-			}
-			if (key == 52) // 3
-			{
+			case 50: // 2
 				// remove all obstacles
-				for (int row = 0; row < m_tilemap.GetHeight(); row++)
+				for (int row = 0; row < m_tileLayer.GetHeight(); row++)
 				{
-					for (int col = 0; col < m_tilemap.GetWidth(); col++)
+					for (int col = 0; col < m_tileLayer.GetWidth(); col++)
 					{
-						if (!m_tileset.GetTile(m_tilemap.GetTileInstance(row, col).index).IsWalkable())
+						if (!m_tileset.GetTile(m_tileLayer.GetTileInstance(row, col).index).IsWalkable())
 						{
 							component::tile::TileInstance tileInst;
 							tileInst.index = 0;
-							m_tilemap.SetTileInstance(row, col, tileInst);
+							m_tileLayer.SetTileInstance(row, col, tileInst);
 						}
 					}
 				}
+				m_pathFinder->SetMaxSteps(m_step = 0);
+				break;
+			case 51: // 3
+				m_drawText = !m_drawText;
+				break;
+			case 52: // 4
+				m_drawPathFindingTiles = !m_drawPathFindingTiles;
+				break;
+			case 53: // 5
+				m_drawWaypoint = !m_drawWaypoint;
+				break;
+			case 54: // 6
+				m_pathFinder->EnableDiagonal(!m_pathFinder->IsDiagonalEnabled());
+				break;
+			case 55: // 7
+				m_pathFinder->EnableCutCorners(!m_pathFinder->IsCutCornersEnabled());
+				break;
+			case 56: // 8
+				m_pathFinder = (m_pathFinder == &m_pathFinderVector) ? &m_pathFinderPriorityQueue : &m_pathFinderVector;
+				//m_pathFinder->SetMaxSteps(m_step = 0);
+				break;
+			case 81: // q
+				SetTileLayer(m_tileLayer, 24, 16, component::tile::TileInstance{ 0 });
+				m_pathFinder->SetMaxSteps(m_step = 0);
+				break;
+			case 87: // w
+				m_tileLayer = engine::io::TileLayerLoader<int>::LoadFromCSV("PathFindingMap_24x16.csv", ',');
+				m_pathFinder->SetMaxSteps(m_step = 0);
+				break;
+			default:
+				break;
 			}
-			LOG("step: " << m_step);
 		}
-
+		
 
 		void OnStart()
 		{
 			m_tileset.Register(0, std::make_unique<component::tile::WalkableTile>());   // ID 0 → Walkable
 			m_tileset.Register(1, std::make_unique<component::tile::ObstacleTile>());   // ID 1 → Obstacle
 
-			m_tilemap = engine::io::TileLayerLoader<int>::LoadFromCSV("PathfindingTileMap.csv", ',');
+			SetTileLayer(m_tileLayer, 24, 16, component::tile::TileInstance{ 0 });
+
 
 			m_camera.SetViewport(
 				{
 					50,
 					50,
-					50 + m_tilemap.GetWidth() * m_tileSize.width,
-					50 + m_tilemap.GetHeight() * m_tileSize.height
+					50 + m_tileLayer.GetWidth() * m_tileSize.width,
+					50 + m_tileLayer.GetHeight() * m_tileSize.height
 				}
 			);
 
 			m_camera.SetWorldSize(
-				m_tilemap.GetWidth() * m_tileSize.width,
-				m_tilemap.GetHeight() * m_tileSize.height
+				m_tileLayer.GetWidth() * m_tileSize.width,
+				m_tileLayer.GetHeight() * m_tileSize.height
 			);
 
-			m_startTile = component::tile::TileCoord{ m_tilemap.GetHeight() - 1, 2 };
-			m_goalTile = component::tile::TileCoord{ 0, m_tilemap.GetWidth() - 3 };
+			m_startTile = component::tile::TileCoord{ m_tileLayer.GetHeight() - 1, 2 };
+			m_goalTile = component::tile::TileCoord{ 0, m_tileLayer.GetWidth() - 3 };
 
 			m_engine.GetRenderer().SetClipRegion(m_camera.GetViewport());
 			m_engine.GetRenderer().EnableClipping(true);
@@ -287,31 +226,50 @@ namespace testPathFinder
 			m_fontSmall->Initialize("Arial", 12);
 
 			m_fontLarge = std::make_shared<graphics::resource::FontAtlas>(graphics::factory::TextureFactory::Create());
-			m_fontLarge->Initialize("Arial", 24);
+			m_fontLarge->Initialize("Arial", 16);
 
 		}
 
 		void OnUpdate(float delta)
 		{
+			m_pathFinder->FindPath(
+				math::geometry::Rect<int>{ 0, 0, m_tileLayer.GetWidth(), m_tileLayer.GetHeight() },
+				m_startTile,
+				m_goalTile,
+				m_path
+			);
+
+
 		}
 
 		void OnRender()
 		{
-			m_engine.GetRenderer().EnableClipping(true);
+			m_engine.GetRenderer().EnableClipping(false);
 
-			//if (!m_searchDone)
+			// render tilelayer
+			RenderTileLayer(m_tileLayer);
+
+			// render open tiles
+			if (m_drawPathFindingTiles)
 			{
-				m_searchDone = m_pathFinder.FindPath(
-					math::geometry::Rect<int>{ 0, 0, m_tilemap.GetWidth(), m_tilemap.GetHeight() },
-					m_startTile,
-					m_goalTile,
-					m_path,
-					m_step
-				);
+				RenderTileCoords(m_pathFinder->GetOpenTiles(), { 0, 0.5f, 0, 0.5f });
+				RenderTileCoords(m_pathFinder->GetClosedTiles(), { 0.5f, 0, 0, 0.5f });
+				RenderTileCoords(m_path, { 0.5f, 0.5f, 0, 1 });
 			}
 
-			RenderTileMap(m_tilemap);
+			// render start and goal tile
+			RenderTileCoord(m_startTile, { 0,1,0,1 });
+			RenderTileCoord(m_goalTile, { 0,0,1,1 });
 
+			// draw costs
+			if (m_drawText) DrawCosts();
+
+			// render waypoints
+			if (m_drawWaypoint){ RenderWaypoints(); }
+		}
+
+		void RenderWaypoints()
+		{
 			std::vector<spatial::PosF> wp = navigation::tile::GetWayPoints(m_path);
 
 			for (size_t i = 1; i < wp.size(); i++)
@@ -335,18 +293,35 @@ namespace testPathFinder
 			}
 		}
 
-		void RenderTileMap(component::tile::TileLayer& tilemap)
+		void RenderTileCoords(const std::vector<component::tile::TileCoord>& tileCoords, graphics::ColorF color)
 		{
-			float thickness = 2.0f;
-			spatial::SizeF inner{ m_tileSize.width - thickness * 2, m_tileSize.height - thickness * 2 };
+			for (const component::tile::TileCoord& tile : tileCoords)
+			{
+				RenderTileCoord(tile, color);
+			}
+		}
 
+		void RenderTileCoord(const component::tile::TileCoord tileCoord, graphics::ColorF color)
+		{
+			float thickness = 0.5f;
+			spatial::SizeF size{ m_tileSize.width - thickness * 2, m_tileSize.height - thickness * 2 };
+			spatial::PosF pos
+			{
+					m_tileSize.width* tileCoord.col + thickness,
+					m_tileSize.height* tileCoord.row + thickness
+			};
+
+			m_engine.GetRenderer().Draw(m_camera.WorldToScreen(pos), size, color, 0);
+		}
+
+		void RenderTileLayer(const component::tile::TileLayer& tilemap)
+		{
 			// draw the tile map
 			for (int row = 0; row < tilemap.GetHeight(); row++)
 			{
 				for (int col = 0; col < tilemap.GetWidth(); col++)
 				{
 					component::tile::TileInstance tileInst = tilemap.GetTileInstance(row, col);
-
 
 					graphics::ColorF color;
 					switch (tileInst.index)
@@ -361,102 +336,29 @@ namespace testPathFinder
 						color = { 0, 0, 0, 1 };
 						break;
 					}
-
-					for (const component::tile::TileCoord& tile : m_pathFinder.GetOpenTiles())
-					{
-						if (tile.row == row && tile.col == col)
-						{
-							color = { 0, 0.5f, 0, 1 };
-						}
-					}
-
-					for (const component::tile::TileCoord& tile : m_pathFinder.GetClosedTiles())
-					{
-						if (tile.row == row && tile.col == col)
-						{
-							color = { 0.5f, 0, 0, 1 };
-						}
-					}
-
-					if (m_startTile.row == row && m_startTile.col == col)
-					{
-						color = { 0.3f, 0.3f, 0, 1 };
-					}
-
-					if (m_goalTile.row == row && m_goalTile.col == col)
-					{
-						color = { 0, 0.3f, 0.3f, 1 };
-					}
-
-					for (const component::tile::TileCoord& tile : m_path)
-					{
-						if (tile.row == row && tile.col == col)
-						{
-							color = { 0, 0, 0.5f, 1 };
-						}
-					}
-
 					spatial::PosF pos
 					{
 						m_tileSize.width * col,
 						m_tileSize.height * row
 					};
 
-					spatial::PosF posInner
-					{
-						m_tileSize.width * col + thickness,
-						m_tileSize.height * row + thickness
-					};
-
 					// draw stuff
 					m_engine.GetRenderer().Draw(m_camera.WorldToScreen(pos), m_tileSize, { 0,0,0,1 }, 0);
-					m_engine.GetRenderer().Draw(m_camera.WorldToScreen(posInner), inner, color, 0);
+
+					RenderTileCoord(component::tile::TileCoord{row, col}, color);
 				}
 			}
+		}
 
-			for (const component::tile::TileCoord& tile : m_path)
-			{
-				spatial::PosF pos
-				{
-					m_tileSize.width * tile.col + (m_tileSize.width - m_footPrintSize.width) / 2.0f,
-					m_tileSize.height * tile.row + (m_tileSize.height - m_footPrintSize.height) / 2.0f
-				};
-
-				m_engine.GetRenderer().Draw(m_camera.WorldToScreen(pos), m_footPrintSize, { 1, 1, 0, 0.3f }, 0);
-			}
-
+		void DrawCosts()
+		{
 			std::string str;
 			str.reserve(128);
-			// draw tile coordinates
-			for (int row = 0; row < tilemap.GetHeight(); row++)
-			{
-				for (int col = 0; col < tilemap.GetWidth(); col++)
-				{
-					spatial::PosF pos
-					{
-						m_tileSize.width * col + thickness,
-						m_tileSize.height * row + thickness
-					};
-
-					str.clear();
-					str.append(std::to_string(row));
-					str.append(",");
-					str.append(std::to_string(col));
-
-					m_engine.GetRenderer().DrawText(
-						m_fontSmall,
-						str,
-						m_camera.WorldToScreen(pos).x,
-						m_camera.WorldToScreen(pos).y,
-						1, 1, 1, 1
-					);
-				}
-			}
 
 			// draw costs for open tiles
-			for (const component::tile::TileCoord& tile : m_pathFinder.GetOpenTiles())
+			for (const component::tile::TileCoord& tile : m_pathFinder->GetOpenTiles())
 			{
-				navigation::tile::Node node = m_pathFinder.GetNodes()[tile.row][tile.col];
+				navigation::tile::Node node = m_pathFinder->GetNodes()[tile.row][tile.col];
 
 				str.clear();
 				str.append(std::to_string(node.g));
@@ -465,8 +367,8 @@ namespace testPathFinder
 
 				spatial::PosF pos
 				{
-					m_tileSize.width * tile.col + thickness,
-					m_tileSize.height * tile.row + thickness + 16
+					m_tileSize.width * tile.col + 0,
+					m_tileSize.height * tile.row + 0// + 16
 				};
 
 				m_engine.GetRenderer().DrawText(
@@ -479,9 +381,9 @@ namespace testPathFinder
 			}
 
 			// draw costs for close tiles
-			for (const component::tile::TileCoord& tile : m_pathFinder.GetClosedTiles())
+			for (const component::tile::TileCoord& tile : m_pathFinder->GetClosedTiles())
 			{
-				navigation::tile::Node node = m_pathFinder.GetNodes()[tile.row][tile.col];
+				navigation::tile::Node node = m_pathFinder->GetNodes()[tile.row][tile.col];
 
 				str.clear();
 				str.append(std::to_string(node.g));
@@ -490,8 +392,8 @@ namespace testPathFinder
 
 				spatial::PosF pos
 				{
-					m_tileSize.width * tile.col + thickness,
-					m_tileSize.height * tile.row + thickness + 16
+					m_tileSize.width * tile.col + 0,
+					m_tileSize.height * tile.row + 0// + 16
 				};
 
 				m_engine.GetRenderer().DrawText(
@@ -504,17 +406,17 @@ namespace testPathFinder
 			}
 
 			// draw total cost for open tiles
-			for (const component::tile::TileCoord& tile : m_pathFinder.GetOpenTiles())
+			for (const component::tile::TileCoord& tile : m_pathFinder->GetOpenTiles())
 			{
-				navigation::tile::Node node = m_pathFinder.GetNodes()[tile.row][tile.col];
+				navigation::tile::Node node = m_pathFinder->GetNodes()[tile.row][tile.col];
 
 				str.clear();
 				str.append(std::to_string(node.f()));
 
 				spatial::PosF pos
 				{
-					m_tileSize.width * tile.col + thickness,
-					m_tileSize.height * tile.row + thickness + 32
+					m_tileSize.width * tile.col + 0,
+					m_tileSize.height * tile.row + 0 + 16// + 32
 				};
 
 				m_engine.GetRenderer().DrawText(
@@ -527,17 +429,17 @@ namespace testPathFinder
 			}
 
 			// draw total cost for close tiles
-			for (const component::tile::TileCoord& tile : m_pathFinder.GetClosedTiles())
+			for (const component::tile::TileCoord& tile : m_pathFinder->GetClosedTiles())
 			{
-				navigation::tile::Node node = m_pathFinder.GetNodes()[tile.row][tile.col];
+				navigation::tile::Node node = m_pathFinder->GetNodes()[tile.row][tile.col];
 
 				str.clear();
 				str.append(std::to_string(node.f()));
 
 				spatial::PosF pos
 				{
-					m_tileSize.width * tile.col + thickness,
-					m_tileSize.height * tile.row + thickness + 32
+					m_tileSize.width * tile.col + 0,
+					m_tileSize.height * tile.row + 0 + 16// + 32
 				};
 
 				m_engine.GetRenderer().DrawText(
@@ -548,8 +450,58 @@ namespace testPathFinder
 					1, 1, 1, 1
 				);
 			}
+
+			// draw step count
+			{
+				str.clear();
+				str.append("Step: ");
+				str.append(std::to_string(m_step));
+
+				m_engine.GetRenderer().DrawText(
+					m_fontLarge,
+					str,
+					1210,
+					50,
+					1, 1, 1, 1
+				);
+			}
+
+			{
+				str.clear();
+				str.append("Path: ");
+				str.append((m_pathFinder == & m_pathFinderPriorityQueue)? "Priority Queue": "Vector");
+
+				m_engine.GetRenderer().DrawText(
+					m_fontLarge,
+					str,
+					1210,
+					100,
+					1, 1, 1, 1
+				);
+			}
+
 		}
 
+		void SetTileLayer(component::tile::TileLayer& tileLayer, int width, int height, component::tile::TileInstance tileInst)
+		{
+			tileLayer.SetSize({ width, height });
+			for (int row = 0; row < height; row++)
+			{
+				for (int col = 0; col < width; col++)
+				{
+					tileLayer.SetTileInstance(row, col, tileInst);
+				}
+			}
+		}
+
+		component::tile::TileCoord GetTileCoordFromMapPosition(const spatial::SizeF& tileSize, const spatial::PosF pos)
+		{
+			return component::tile::TileCoord
+			{
+				static_cast<int>(std::floor(pos.y / tileSize.height)),
+				static_cast<int>(std::floor(pos.x / tileSize.width))
+			};
+		}
 	};
 }
 

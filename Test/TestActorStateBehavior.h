@@ -14,6 +14,7 @@
 #include "Logger.h"
 #include "IFontAtlas.h"
 #include "TextureFactory.h"
+#include "Math.h"
 
 namespace debug
 {

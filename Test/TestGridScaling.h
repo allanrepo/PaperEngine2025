@@ -23,21 +23,18 @@
 
 namespace test
 {
-	class TestBed
+	class TestGridScaling
 	{
 	private:
-		struct Tile
-		{
-			int index;
-		};
 		engine::Engine m_engine;
-		component::tile::TileLayer m_tilemap;
 		component::tile::Tileset m_tileset;
 		spatial::Camera m_camera;
 		std::shared_ptr<graphics::resource::IFontAtlas> m_fontSmall;
 		std::shared_ptr<graphics::resource::IFontAtlas> m_fontLarge;
 
-		bool m_searchDone = false;
+		component::tile::TileLayer m_tileLayer;
+		component::tile::TileLayer m_tileLayerPruned;
+		bool m_drawPruned = false;
 
 		spatial::SizeF m_tileSize;
 
@@ -56,7 +53,7 @@ namespace test
 		component::tile::TileCoord m_goalTC;
 
 	public:
-		TestBed() :
+		TestGridScaling() :
 			m_engine("DirectX11", "Batch"),
 			m_camera({ 50, 50, 1024, 768 }),
 			m_tileSize{ 50, 50 },
@@ -65,72 +62,26 @@ namespace test
 			(
 				[this](int row, int col) -> bool
 				{
-					return component::tile::IsWalkable(m_tilemap, m_tileset, row, col);
+					return component::tile::IsWalkable(m_tileLayer, m_tileset, row, col);
 				},
 				0.1f, m_tileSize.width / 0.1f, m_tileSize.height / 0.1f, true
 			),
 			m_pathFinder(
-				[this](int currRow, int currCol, int NextRow, int NextCol) -> bool
-				{
-					// quick check if the tile itself is walkable
-					if (!component::tile::IsWalkable(m_tilemap, m_tileset, NextRow, NextCol)) return false;
-
-					if (navigation::tile::Constraints::IsPinchBlocked(
-						m_tilemap,
-						m_tileset,
-						{ currRow, currCol },
-						{ NextRow, NextCol },
-						m_tileSize,
-						m_startFP,
-						m_goalFP,
-						m_startTC,
-						m_goalTC
-					))
-					{
-						return false;
-					}
-
-					// create a footprint where it is located at the center of this tile coordinate. let's set this as default position of the footprint
-					// if this position is safe (no collision with any obstacle) then this tile is walkable. 
-					// if not safe (collides with an obstacle), we'll try to nudge
-					navigation::tile::Footprint fp;
-					fp.anchor = navigation::tile::Anchor::Center;
-					fp.position.x = NextCol * m_tileSize.width + m_tileSize.width / 2;
-					fp.position.y = NextRow * m_tileSize.height + m_tileSize.height / 2;
-					fp.size = m_startFP.size;
-
-					if (m_footprintResolver.IsValid(m_tilemap, m_tileSize, fp))
-					{
-						return true;
-					}
-
-					// try to nudge if possible
-					navigation::tile::Footprint outFP;
-					if (m_footprintResolver.TryResolve(m_tilemap, m_tileSize, fp, outFP))
-					{
-						// NOTE: 
-						// we only return true (next tile is walkable) if after nudging, the nudged position is still in the same next tile
-						// this is important as it prevents footprint sizes 2x bigger than tile sizes
-						component::tile::TileCoord outTC = GetTileCoordFromMapPosition(m_tileSize, outFP.position);
-						return (outTC.row == NextRow && outTC.col == NextCol);
-					}
-
-					return false;
-				},
+				nullptr,
 				1000,
 				false,
 				false
 			)
 		{
-			m_engine.OnStart += event::Handler(this, &TestBed::OnStart);
-			m_engine.OnUpdate += event::Handler(this, &TestBed::OnUpdate);
-			m_engine.OnRender += event::Handler(this, &TestBed::OnRender);
-			m_engine.OnResize += event::Handler(this, &TestBed::OnResize);
+			m_engine.OnStart += event::Handler(this, &TestGridScaling::OnStart);
+			m_engine.OnUpdate += event::Handler(this, &TestGridScaling::OnUpdate);
+			m_engine.OnRender += event::Handler(this, &TestGridScaling::OnRender);
+			m_engine.OnResize += event::Handler(this, &TestGridScaling::OnResize);
 
-			input::Input::Instance().OnKeyDown += event::Handler(this, &TestBed::OnKeyDown);
-			input::Input::Instance().OnMouseDown += event::Handler(this, &TestBed::OnMouseDown);
-			input::Input::Instance().OnMouseMove += event::Handler(this, &TestBed::OnMouseMove);
-			input::Input::Instance().OnMouseUp += event::Handler(this, &TestBed::OnMouseUp);
+			input::Input::Instance().OnKeyDown += event::Handler(this, &TestGridScaling::OnKeyDown);
+			input::Input::Instance().OnMouseDown += event::Handler(this, &TestGridScaling::OnMouseDown);
+			input::Input::Instance().OnMouseMove += event::Handler(this, &TestGridScaling::OnMouseMove);
+			input::Input::Instance().OnMouseUp += event::Handler(this, &TestGridScaling::OnMouseUp);
 
 			m_engine.Run();
 		}
@@ -151,7 +102,7 @@ namespace test
 				m_startFP.position = m_camera.ScreenToWorld({ (float)x, (float)y });
 
 				// resolve positions of start and goal footprints in case they collide with obstacles
-				m_footprintResolver.TryResolve(m_tilemap, m_tileSize, m_startFP, m_startFP);
+				m_footprintResolver.TryResolve(m_tileLayer, m_tileSize, m_startFP, m_startFP);
 
 				// store the tile where the start position is placed
 				m_startTC = GetTileCoordFromMapPosition(m_tileSize, m_startFP.position);
@@ -161,7 +112,7 @@ namespace test
 				m_goalFP.position = m_camera.ScreenToWorld({ (float)x, (float)y });
 
 				// resolve positions of start and goal footprints in case they collide with obstacles
-				m_footprintResolver.TryResolve(m_tilemap, m_tileSize, m_goalFP, m_goalFP);
+				m_footprintResolver.TryResolve(m_tileLayer, m_tileSize, m_goalFP, m_goalFP);
 
 				// store the tile where the goal position is placed
 				m_goalTC = GetTileCoordFromMapPosition(m_tileSize, m_goalFP.position);
@@ -177,54 +128,37 @@ namespace test
 
 			if (key == 32) // space key
 			{
+				m_drawPruned = !m_drawPruned;
 			}
 			if (key == 49) // 1
 			{
-				// set selected tile as obstacle
-				spatial::PosF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
-				component::tile::TileCoord tileCoord
-				{
-					static_cast<int>(worldPos.y / m_tileSize.height),
-					static_cast<int>(worldPos.x / m_tileSize.width)
-				};
-				if (tileCoord.row >= 0 && tileCoord.row < m_tilemap.GetHeight() && tileCoord.col >= 0 && tileCoord.col < m_tilemap.GetWidth())
-				{
-					component::tile::TileInstance tileInst;
-					tileInst.index = 1;
-					m_tilemap.SetTileInstance(tileCoord.row, tileCoord.col, tileInst);
-				}
+				// toggle tile walkable/obstacle
+				component::tile::TileCoord tc = GetTileCoordFromMapPosition(m_tileSize, m_camera.ScreenToWorld(m_lastMousePos));
+				component::tile::TileInstance ti = { component::tile::IsWalkable(m_tileLayer, m_tileset, tc.row, tc.col) ? 1 : 0};
+				m_tileLayer.SetTileInstance(tc.row, tc.col, ti);
+
+				m_tileLayerPruned = GeneratePrunedLayer(m_tileLayer, m_tileset, m_tileSize, m_startFP);
 			}
 			if (key == 50) // 2
 			{
-				// set selected tile as obstacle
-				spatial::PosF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
-				component::tile::TileCoord tileCoord
-				{
-					static_cast<int>(worldPos.y / m_tileSize.height),
-					static_cast<int>(worldPos.x / m_tileSize.width)
-				};
-				if (tileCoord.row >= 0 && tileCoord.row < m_tilemap.GetHeight() && tileCoord.col >= 0 && tileCoord.col < m_tilemap.GetWidth())
-				{
-					component::tile::TileInstance tileInst;
-					tileInst.index = 0;
-					m_tilemap.SetTileInstance(tileCoord.row, tileCoord.col, tileInst);
-				}
-			}
-			if (key == 51) // 3
-			{
 				// remove all obstacles
-				for (int row = 0; row < m_tilemap.GetHeight(); row++)
+				for (int row = 0; row < m_tileLayer.GetHeight(); row++)
 				{
-					for (int col = 0; col < m_tilemap.GetWidth(); col++)
+					for (int col = 0; col < m_tileLayer.GetWidth(); col++)
 					{
-						if (!m_tileset.GetTile(m_tilemap.GetTileInstance(row, col).index).IsWalkable())
+						if (!m_tileset.GetTile(m_tileLayer.GetTileInstance(row, col).index).IsWalkable())
 						{
 							component::tile::TileInstance tileInst;
 							tileInst.index = 0;
-							m_tilemap.SetTileInstance(row, col, tileInst);
+							m_tileLayer.SetTileInstance(row, col, tileInst);
 						}
 					}
 				}
+
+				m_tileLayerPruned = GeneratePrunedLayer(m_tileLayer, m_tileset, m_tileSize, m_startFP);
+			}
+			if (key == 51) // 3
+			{
 			}
 			if (key == 52) // 4
 			{
@@ -255,26 +189,31 @@ namespace test
 
 		void OnStart()
 		{
+			// create tileset
 			m_tileset.Register(0, std::make_unique<component::tile::WalkableTile>());   // ID 0 → Walkable
 			m_tileset.Register(1, std::make_unique<component::tile::ObstacleTile>());   // ID 1 → Obstacle
 
-			//SetTileLayer(m_tilemap, 16, 16, component::tile::TileInstance{ 0 });
-			m_tilemap = engine::io::TileLayerLoader<int>::LoadFromCSV("PathfindingTileMap.csv", ',');
+			// create tilelayer
+			SetTileLayer(m_tileLayer, 16, 16, component::tile::TileInstance{ 0 });
+			//m_tileLayer = engine::io::TileLayerLoader<int>::LoadFromCSV("PathfindingTileMap.csv", ',');
 
+			// set viewport
 			m_camera.SetViewport(
 				{
 					50,
 					50,
-					50 + m_tilemap.GetWidth() * m_tileSize.width,
-					50 + m_tilemap.GetHeight() * m_tileSize.height
+					50 + m_tileLayer.GetWidth() * m_tileSize.width,
+					50 + m_tileLayer.GetHeight() * m_tileSize.height
 				}
 			);
 
+			// set world size
 			m_camera.SetWorldSize(
-				m_tilemap.GetWidth() * m_tileSize.width,
-				m_tilemap.GetHeight() * m_tileSize.height
+				m_tileLayer.GetWidth() * m_tileSize.width,
+				m_tileLayer.GetHeight() * m_tileSize.height
 			);
 
+			// set clipping region
 			m_engine.GetRenderer().SetClipRegion(m_camera.GetViewport());
 			m_engine.GetRenderer().EnableClipping(true);
 
@@ -285,23 +224,19 @@ namespace test
 			m_fontLarge = std::make_shared<graphics::resource::FontAtlas>(graphics::factory::TextureFactory::Create());
 			m_fontLarge->Initialize("Arial", 24);
 
-			m_goalFP.size = m_startFP.size = { 75, 75 };
-			m_goalFP.anchor = m_startFP.anchor = navigation::tile::Anchor::Center;
-			m_goalFP.position = m_startFP.position = { -10000, -10000 };
 		}
 
 		void OnUpdate(float delta)
 		{
 			// get the path
 			{
-				if (m_tilemap.IsValidTile(m_startTC) && m_tilemap.IsValidTile(m_goalTC))
+				if (m_tileLayer.IsValidTile(m_startTC) && m_tileLayer.IsValidTile(m_goalTC))
 				{
 					m_pathFinder.FindPath(
-						math::geometry::Rect<int>{ 0, 0, m_tilemap.GetWidth(), m_tilemap.GetHeight() },
+						math::geometry::Rect<int>{ 0, 0, m_tileLayer.GetWidth(), m_tileLayer.GetHeight() },
 						m_startTC,
 						m_goalTC,
-						m_path,
-						1000
+						m_path
 					);
 				}
 			}
@@ -319,10 +254,10 @@ namespace test
 					fp.position.x = m_path[i].col * m_tileSize.width + m_tileSize.width / 2;
 					fp.position.y = m_path[i].row * m_tileSize.height + m_tileSize.height / 2;
 
-					if (!m_footprintResolver.IsValid(m_tilemap, m_tileSize, fp))
+					if (!m_footprintResolver.IsValid(m_tileLayer, m_tileSize, fp))
 					{
 						// DEBUG:: we just set random value here. fix this so that we set appropriate value
-						m_footprintResolver.TryResolve(m_tilemap, m_tileSize, fp, fp);
+						m_footprintResolver.TryResolve(m_tileLayer, m_tileSize, fp, fp);
 					}
 					m_wayPoints.push_back(fp.position);
 				}
@@ -331,17 +266,18 @@ namespace test
 
 		void OnRender()
 		{
-			m_engine.GetRenderer().EnableClipping(true);
+			m_engine.GetRenderer().EnableClipping(false);
 
 			// draw the map
-			RenderTileMap(m_tilemap);
+			RenderTileMap(m_tileLayer);
 
 			// draw the footprint at the start position
-			m_engine.GetRenderer().Draw(m_camera.WorldToScreen(m_startFP.GetRect().GetTopLeft()), m_startFP.size, graphics::ColorF{ 0,1,0,0.5f }, 0);
+			//m_engine.GetRenderer().Draw(m_camera.WorldToScreen(m_startFP.GetRect().GetTopLeft()), m_startFP.size, graphics::ColorF{ 0,1,0,0.5f }, 0);
 
 			// draw the footprint at the goal position
-			m_engine.GetRenderer().Draw(m_camera.WorldToScreen(m_goalFP.GetRect().GetTopLeft()), m_goalFP.size, graphics::ColorF{ 1,0,0,0.5f }, 0);
+			//m_engine.GetRenderer().Draw(m_camera.WorldToScreen(m_goalFP.GetRect().GetTopLeft()), m_goalFP.size, graphics::ColorF{ 1,0,0,0.5f }, 0);
 
+#if 0
 			// render path
 			{
 				for (const component::tile::TileCoord& tile : m_path)
@@ -356,7 +292,9 @@ namespace test
 					m_engine.GetRenderer().Draw(m_camera.WorldToScreen(pos), m_tileSize, graphics::ColorF{ 0,0,0.5,0.5f }, 0);
 				}
 			}
+#endif
 
+#if 0
 			// render waypoints
 			{
 				math::VecF translate = { m_startFP.size.width / 2, m_startFP.size.height / 2 };
@@ -427,7 +365,7 @@ namespace test
 					1, 1, 1, 1
 				);
 			}
-
+#endif
 			return;
 
 		}
@@ -495,6 +433,76 @@ namespace test
 				static_cast<int>(std::floor(pos.y / tileSize.height)),
 				static_cast<int>(std::floor(pos.x / tileSize.width))
 			};
+		}
+
+		// Generate a pruned map for a given footprint.
+		// tileSize: size of one tile in world units (e.g. 10x10)
+		// footprint: actor footprint in world units (can be rectangular, fractional)
+		component::tile::TileLayer GeneratePrunedLayer(const component::tile::TileLayer& base,
+			const component::tile::Tileset& tileset,
+			const spatial::SizeF& tileSize,
+			const navigation::tile::Footprint& footprint)
+		{
+			// how many tiles does the footprint span horizontally/vertically?
+			int spanCols = static_cast<int>(std::ceil(footprint.size.width / tileSize.width));
+			int spanRows = static_cast<int>(std::ceil(footprint.size.height / tileSize.height));
+
+			// if footprint fits entirely inside one tile, no pruning needed
+			if (spanCols <= 1 && spanRows <= 1)
+			{
+				return base; // return copy of base
+			}
+
+			component::tile::TileLayer pruned;
+			pruned.SetSize(base.GetSize());
+
+			for (int row = 0; row < base.GetHeight(); ++row)
+			{
+				for (int col = 0; col < base.GetWidth(); ++col)
+				{
+					component::tile::TileInstance inst = base.GetTileInstance(row, col);
+
+					// if base tile is already blocked, keep it blocked
+					if (!IsWalkable(base, tileset, row, col))
+					{
+						pruned.SetTileInstance(row, col, inst);
+						continue;
+					}
+
+					bool blocked = false;
+
+					// check the footprint area around (row,col)
+					for (int dy = 0; dy < spanRows; ++dy)
+					{
+						for (int dx = 0; dx < spanCols; ++dx)
+						{
+							int checkRow = row + dy;
+							int checkCol = col + dx;
+
+							if (!base.IsValidTile(checkRow, checkCol) ||
+								!IsWalkable(base, tileset, checkRow, checkCol))
+							{
+								blocked = true;
+								break;
+							}
+						}
+						if (blocked) break;
+					}
+
+					if (blocked)
+					{
+						component::tile::TileInstance blockedInst;
+						blockedInst.index = -1; // or your obstacle id
+						pruned.SetTileInstance(row, col, blockedInst);
+					}
+					else
+					{
+						pruned.SetTileInstance(row, col, inst);
+					}
+				}
+			}
+
+			return pruned;
 		}
 	};
 

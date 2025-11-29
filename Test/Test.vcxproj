@@ -212,7 +212,8 @@
     <ClInclude Include="StopWatch.h" />
     <ClInclude Include="StressTestRenderer.h" />
     <ClInclude Include="TestActorStateBehavior.h" />
-    <ClInclude Include="TestBed.h" />
+    <ClInclude Include="TestGridScaling.h" />
+    <ClInclude Include="TestPinchBlock.h" />
     <ClInclude Include="TestFootprintResolver.h" />
     <ClInclude Include="TestInput.h" />
     <ClInclude Include="TestPathFinder.h" />
@@ -265,6 +266,7 @@
     <None Include="CharacterTest_2304x1536_12x8.csv" />
     <None Include="debug_character_spriteatlas_6x8.csv" />
     <None Include="CharacterTestStates.csv" />
+    <None Include="PathFindingMap_24x16.csv" />
     <None Include="PathfindingTileMap.csv" />
     <None Include="StressTestImage.csv" />
     <None Include="tilemap.csv" />
