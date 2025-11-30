@@ -1,0 +1,22 @@
+﻿Win32::IWindow (interface)
+└── Win32::WindowBase (abstract base)
+    ├── Holds HWND, HINSTANCE, class name
+    ├── Provides Register/Unregister, WindowProc, OnIdle
+    └── Win32::Window (concrete implementation)
+        ├── Nested WindowClassManager
+        │   └── Manages Win32 class registration/unregistration
+        ├── Static ref count
+        └── Uses core::event::Event<> for callbacks
+            ├── OnWindowMessage
+            ├── OnSize
+            ├── OnClose / OnDestroy / OnCreate
+            ├── OnKeyDown / OnChar
+            ├── OnMouseMove
+            ├── OnLeftClick / OnRightClick
+            ├── OnLeftMouseDown / OnLeftMouseUp
+            ├── OnRightMouseDown / OnRightMouseUp
+            ├── OnShow
+            ├── OnInitialize (static)
+            ├── OnIdle (static)
+            └── OnExit (static)
+

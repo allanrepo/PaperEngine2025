@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Core">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Graphics">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Graphics\Core">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Win32">
+      <UniqueIdentifier>{1f631859-1d17-43d0-9e0f-c2618afa732d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utilities">
+      <UniqueIdentifier>{d14473e3-cf62-459a-bc8e-c7507d4290e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\Renderer">
+      <UniqueIdentifier>{876531bc-6ac7-46f6-9507-0542069bcbd5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Cache">
+      <UniqueIdentifier>{3ae92e70-acb5-410c-8a56-e4893f934dbe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine">
+      <UniqueIdentifier>{83ad4693-0167-43a8-aa53-964693de157d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Factories">
+      <UniqueIdentifier>{eb0f804a-3374-45c3-8d9a-b53bc3809a0c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Timer">
+      <UniqueIdentifier>{701c160c-b682-4567-9141-939b84aa5a1d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Include\Core\Event.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Win32\IWindow.h">
+      <Filter>Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Win32\Window.h">
+      <Filter>Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Win32\WindowBase.h">
+      <Filter>Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Core\DX11Core.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Utilities\Logger.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Core\Singleton.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Core\Canvas.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Core\DX11CanvasImpl.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Core\ICanvas.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Core\ICanvasImpl.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Core\Factory.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Cache\BindCache.h">
+      <Filter>Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Cache\Dictionary.h">
+      <Filter>Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Cache\Registry.h">
+      <Filter>Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Engine\Factory\CanvasFactory.h">
+      <Filter>Engine\Factories</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Timer\Pulse.h">
+      <Filter>Timer</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Timer\StopWatch.h">
+      <Filter>Timer</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Timer\Timer.h">
+      <Filter>Timer</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Engine\Engine.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Source\Win32\Window.cpp">
+      <Filter>Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Win32\WindowBase.cpp">
+      <Filter>Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Core\DX11Core.cpp">
+      <Filter>Graphics\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Core\Canvas.cpp">
+      <Filter>Graphics\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Core\DX11CanvasImpl.cpp">
+      <Filter>Graphics\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Factory\CanvasFactory.cpp">
+      <Filter>Engine\Factories</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Timer\Pulse.cpp">
+      <Filter>Timer</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Timer\StopWatch.cpp">
+      <Filter>Timer</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Engine.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="DependencySketch.txt" />
+  </ItemGroup>
+</Project>
