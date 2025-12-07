@@ -28,11 +28,38 @@
     <Filter Include="Engine">
       <UniqueIdentifier>{83ad4693-0167-43a8-aa53-964693de157d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Factories">
-      <UniqueIdentifier>{eb0f804a-3374-45c3-8d9a-b53bc3809a0c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Timer">
       <UniqueIdentifier>{701c160c-b682-4567-9141-939b84aa5a1d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\Renderable">
+      <UniqueIdentifier>{1e1d02ed-45c6-4c3a-8991-6ce30c04366b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Spatial">
+      <UniqueIdentifier>{07462888-1b0d-44e3-b27c-746bd7faec14}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Math">
+      <UniqueIdentifier>{cbff04dc-c7f1-4d80-8f10-882143703e10}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\Resource">
+      <UniqueIdentifier>{bb98ff06-5151-4040-b6c4-030cc1b82640}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\IO">
+      <UniqueIdentifier>{e79de898-aa42-44af-a822-87b570cc023c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Components">
+      <UniqueIdentifier>{03225cf0-78eb-4aca-bbb1-153ecb66fb4b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Loader">
+      <UniqueIdentifier>{dc32a62e-ffb5-4936-921f-3b8be4358881}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Factory">
+      <UniqueIdentifier>{eb0f804a-3374-45c3-8d9a-b53bc3809a0c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\Animation">
+      <UniqueIdentifier>{6579bc9b-87e7-4b86-b568-84a7cf953230}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="State">
+      <UniqueIdentifier>{22332b24-6622-41b9-94f2-263f9af6a728}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -82,7 +109,7 @@
       <Filter>Cache</Filter>
     </ClInclude>
     <ClInclude Include="Include\Engine\Factory\CanvasFactory.h">
-      <Filter>Engine\Factories</Filter>
+      <Filter>Engine\Factory</Filter>
     </ClInclude>
     <ClInclude Include="Include\Timer\Pulse.h">
       <Filter>Timer</Filter>
@@ -95,6 +122,141 @@
     </ClInclude>
     <ClInclude Include="Include\Engine\Engine.h">
       <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Rect.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Vector.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Spatial\Camera.h">
+      <Filter>Spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Spatial\ISizeable.h">
+      <Filter>Spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Spatial\Motion.h">
+      <Filter>Spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Spatial\Position.h">
+      <Filter>Spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Spatial\Size.h">
+      <Filter>Spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Spatial\Transform.h">
+      <Filter>Spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Spatial\IResizeable.h">
+      <Filter>Spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderer\IRenderer.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderer\IRendererImpl.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderer\Renderer.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Core\Color.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderable\IRenderable.h">
+      <Filter>Graphics\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderable\IFontAtlas.h">
+      <Filter>Graphics\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderer\DX11RendererBase.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderer\DX11RendererBatchImpl.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderer\DX11RendererImmediateImpl.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Utilities\Utilities.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Engine\Factory\RendererFactory.h">
+      <Filter>Engine\Factory</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Resource\DX11Texture.h">
+      <Filter>Graphics\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Resource\ITexture.h">
+      <Filter>Graphics\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\IO\DX11ImageFileHelper.h">
+      <Filter>Graphics\IO</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderable\DrawableSurface.h">
+      <Filter>Graphics\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderable\IDrawableSurface.h">
+      <Filter>Graphics\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Resource\ITextureImpl.h">
+      <Filter>Graphics\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Resource\Texture.h">
+      <Filter>Graphics\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Resource\DX11TextureImpl.h">
+      <Filter>Graphics\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderable\FontAtlas.h">
+      <Filter>Graphics\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Engine\Factory\TextureFactory.h">
+      <Filter>Engine\Factory</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Win32\GDIUtility.h">
+      <Filter>Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderable\IImageSurface.h">
+      <Filter>Graphics\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderable\ImageSurface.h">
+      <Filter>Graphics\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Components\Tile.h">
+      <Filter>Components</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderable\Sprite.h">
+      <Filter>Graphics\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderable\ISpriteAtlas.h">
+      <Filter>Graphics\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Renderable\SpriteAtlas.h">
+      <Filter>Graphics\Renderable</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Engine\Factory\SpriteAtlasFactory.h">
+      <Filter>Engine\Factory</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Utilities\CSVFile.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Engine\Loader\SpriteAtlasLoader.h">
+      <Filter>Engine\Loader</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Core\Input.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Animation\Animation.h">
+      <Filter>Graphics\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\State\State.h">
+      <Filter>State</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\State\StateMachine.h">
+      <Filter>State</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Engine\Loader\___SpriteLoader.h">
+      <Filter>Engine\Loader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -114,7 +276,7 @@
       <Filter>Graphics\Core</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Factory\CanvasFactory.cpp">
-      <Filter>Engine\Factories</Filter>
+      <Filter>Engine\Factory</Filter>
     </ClCompile>
     <ClCompile Include="Source\Timer\Pulse.cpp">
       <Filter>Timer</Filter>
@@ -124,6 +286,54 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Engine.cpp">
       <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Renderer\Renderer.cpp">
+      <Filter>Graphics\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Renderer\DX11RendererBase.cpp">
+      <Filter>Graphics\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Renderer\DX11RendererBatchImpl.cpp">
+      <Filter>Graphics\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Renderer\DX11RendererImmediateImpl.cpp">
+      <Filter>Graphics\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Resource\DX11Texture.cpp">
+      <Filter>Graphics\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\IO\DX11ImageFileHelper.cpp">
+      <Filter>Graphics\IO</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Renderable\DrawableSurface.cpp">
+      <Filter>Graphics\Renderable</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Resource\Texture.cpp">
+      <Filter>Graphics\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Resource\DX11TextureImpl.cpp">
+      <Filter>Graphics\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Renderable\FontAtlas.cpp">
+      <Filter>Graphics\Renderable</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Win32\GDIUtility.cpp">
+      <Filter>Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Renderable\ImageSurface.cpp">
+      <Filter>Graphics\Renderable</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Components\Tile.cpp">
+      <Filter>Components</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Renderable\Sprite.cpp">
+      <Filter>Graphics\Renderable</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Renderable\SpriteAtlas.cpp">
+      <Filter>Graphics\Renderable</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Factory\SpriteAtlasFactory.cpp">
+      <Filter>Engine\Factory</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

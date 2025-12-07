@@ -1,10 +1,13 @@
 #include <Engine/Engine.h>
 #include <Engine/Factory/CanvasFactory.h>
+#include <Engine/Factory/RendererFactory.h>
 #include <Cache/Registry.h>
 #include <Cache/Dictionary.h>
 #include <Utilities/Logger.h>
+#include <Utilities/Utilities.h>
 
 engine::Engine::Engine(
+	std::string title,
 	std::string API,
 	std::string RenderMode
 )
@@ -13,6 +16,7 @@ engine::Engine::Engine(
 	cache::Registry<cache::Dictionary<>>::Instance().Register("EnvironmentConfig", std::make_unique<cache::Dictionary<>>());
 	cache::Dictionary<>& environmentConfig = cache::Registry<cache::Dictionary<>>::Instance().Get("EnvironmentConfig");
 
+	environmentConfig.Register("Title", title);
 	environmentConfig.Register("API", API);
 	environmentConfig.Register("RenderMode", RenderMode);
 
@@ -40,12 +44,16 @@ void engine::Engine::Run()
 
 void engine::Engine::OnInitialize()
 {
+	// get environment config from cache
+	cache::Dictionary<>& environmentConfig = cache::Registry<cache::Dictionary<>>::Instance().Get("EnvironmentConfig");
+
 	// create our window here
 	m_window = std::make_unique<Win32::Window>();
 	m_window->OnClose += event::Handler(this, &Engine::OnWindowClose);
 	m_window->OnCreate += event::Handler(this, &Engine::OnWindowCreate);
 	m_window->OnSize += event::Handler(this, &Engine::OnWindowSize);
-	m_window->Create(L"Test Bedding", 1400, 900);
+	//m_window->Create(utilities::Text::ToWide(environmentConfig.Get("Title")).c_str(), 1400, 900);
+	m_window->Create(L"window title", 1400, 900);
 	m_window->OnWindowMessage += event::Handler(this, &Engine::ProcessWin32Message);
 	//m_window->OnWindowMessage += event::Handler(&input::Input::Instance(), &input::Input::ProcessWin32Message);
 }
@@ -72,8 +80,18 @@ void engine::Engine::OnWindowCreate(void* hWnd)
 	}
 	LOG("[ENGINE] Using canvas type: " << m_canvas->GetTypeName());
 	
-
 	// create sprite renderer
+	m_renderer = graphics::factory::RendererFactory::Create();
+	if (!m_renderer)
+	{
+		throw std::exception("Failed to create sprite renderer.");
+	}
+	if (!m_renderer->Initialize())
+	{
+		throw std::exception("Failed to initialize sprite renderer.");
+	}
+	LOG("[ENGINE] Using sprite renderer mode: " << environmentConfig.Get("RenderMode"));
+
 
 	// create utility font atlas
 
@@ -96,6 +114,17 @@ void engine::Engine::OnLap(float delta)
 	m_canvas->Begin();
 	{
 		m_canvas->Clear(0.2f, 0.2f, 1.0f, 1.0f);
+
+		m_canvas->Clear(0.2f, 0.2f, 1.0f, 1.0f);
+		m_canvas->SetViewPort();
+
+		// render sprites using immediate renderer. renders a bunch of quads and text at the right side of screen
+		m_renderer->Begin();
+		{
+			// emit render event
+			OnRender();
+		}
+		m_renderer->End();
 	}
 	// end the canvas. we don't draw anything past this.
 	m_canvas->End();

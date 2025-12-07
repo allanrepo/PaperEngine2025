@@ -52,7 +52,7 @@ namespace cache
             return false;
         }
 
-        bool Has(const std::string& key) const
+        bool Has(const Key& key) const
         {
             return registry.find(key) != registry.end();
         }

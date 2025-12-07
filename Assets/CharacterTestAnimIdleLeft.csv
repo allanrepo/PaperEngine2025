@@ -1,0 +1,8 @@
+loop, true
+image_file, idle_left, CharacterTest_2304x1536_12x8.png, CharacterTest_2304x1536_12x8.csv
+frame, idle_left, 11, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, idle_left, 10, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, idle_left, 9, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, idle_left, 8, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, idle_left, 7, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, idle_left, 6, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25

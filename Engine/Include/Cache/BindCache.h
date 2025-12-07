@@ -23,7 +23,7 @@ namespace cache
     class BindCache : public core::Singleton<BindCache<T>>
     {
     private:
-        friend class core::Singleton<ContextCache<T>>;
+        friend class core::Singleton<BindCache<T>>;
 
         T* m_state = nullptr;
 

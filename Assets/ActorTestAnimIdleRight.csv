@@ -1,0 +1,8 @@
+loop, 1
+image_file, idle_right, debug_character_spriteatlas_6x8.png, debug_character_spriteatlas_6x8.csv
+frame, idle_right, 0, 100
+frame, idle_right, 1, 100
+frame, idle_right, 2, 100
+frame, idle_right, 3, 100
+frame, idle_right, 4, 100
+frame, idle_right, 5, 100

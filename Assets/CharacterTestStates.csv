@@ -1,0 +1,8 @@
+walk, CharacterTestAnimWalkRight.csv
+idle, CharacterTestAnimIdleRight.csv
+idle_right, CharacterTestAnimIdleRight.csv
+walk_right, CharacterTestAnimWalkRight.csv
+attack_right, CharacterTestAnimAttackRight.csv
+idle_left, CharacterTestAnimIdleLeft.csv
+walk_left, CharacterTestAnimWalkLeft.csv
+attack_left, CharacterTestAnimAttackLeft.csv

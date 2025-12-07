@@ -1,6 +1,7 @@
 #pragma once
 #include <Timer/StopWatch.h>
 #include <Graphics/Core/ICanvas.h>
+#include <Graphics/Renderer/IRenderer.h>
 #include <Win32/Window.h>
 #include <memory>
 
@@ -11,6 +12,7 @@ namespace engine
 	private:
 		std::unique_ptr<Win32::Window> m_window;
 		std::unique_ptr<graphics::ICanvas> m_canvas;
+		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
 		timer::StopWatch m_stopwatch;
 
 		void OnInitialize();
@@ -26,6 +28,7 @@ namespace engine
 
 	public:
 		Engine(
+			std::string title = "engine",
 			std::string API = "DirectX11",
 			std::string RenderMode = "Batch"
 		);
@@ -40,6 +43,11 @@ namespace engine
 		timer::StopWatch& GetTimer()
 		{
 			return m_stopwatch;
+		}
+
+		graphics::renderer::IRenderer& GetRenderer()
+		{
+			return *m_renderer;
 		}
 
 		void Run();

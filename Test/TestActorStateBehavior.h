@@ -498,7 +498,6 @@ void CalcUV(int row, int col, int fileWidth, int fileHeight)
 			LOG(std::to_string(left) << ", " << std::to_string(top) << ", " << std::to_string(right) << ", " << std::to_string(bottom));
 		}
 	}
-
 }
 
 class TestActorStateBehavior

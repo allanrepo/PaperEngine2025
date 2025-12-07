@@ -1,0 +1,8 @@
+loop, 1
+image_file, attack_right, debug_character_spriteatlas_6x8.png, debug_character_spriteatlas_6x8.csv
+frame, attack_right, 12, 100
+frame, attack_right, 13, 100
+frame, attack_right, 14, 100
+frame, attack_right, 15, 100
+frame, attack_right, 16, 100
+frame, attack_right, 17, 100

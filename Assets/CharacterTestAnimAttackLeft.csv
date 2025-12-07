@@ -1,0 +1,14 @@
+// this is loop behavior. true if animation is looping, false if not
+loop, false
+
+// this is information about what is the filepath of the image to be used as sprite atlas. a sprite atlas key is also provided as well as filepath for file that contains UV rects
+image_file, attack_left, CharacterTest_2304x1536_12x8.png, CharacterTest_2304x1536_12x8.csv
+
+// these are the frame information:
+//	frame,	sprite atlas key,	UV rect index,	duration(ms),	{normalized render offset position},	{normalized contact region rectangle} 
+	frame,	attack_left,		35,				100,			-0.5, -0.5,								-0.25, -0.25, 0.25, 0.25
+	frame,	attack_left,		34,				100,			-0.5, -0.5,								-0.25, -0.25, 0.25, 0.25
+	frame,	attack_left,		33,				100,			-0.5, -0.5,								-0.25, -0.25, 0.25, 0.25
+	frame,	attack_left,		32,				100,			-0.5, -0.5,								-0.25, -0.25, 0.25, 0.25
+	frame,	attack_left,		31,				100,			-0.5, -0.5,								-0.25, -0.25, 0.25, 0.25
+	frame,	attack_left,		30,				100,			-0.5, -0.5,								-0.25, -0.25, 0.25, 0.25

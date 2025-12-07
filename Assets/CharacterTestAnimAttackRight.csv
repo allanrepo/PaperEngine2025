@@ -1,0 +1,14 @@
+loop, false
+image_file, attack_right, CharacterTest_2304x1536_12x8.png, CharacterTest_2304x1536_12x8.csv
+frame, attack_right, 24, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, attack_right, 25, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, attack_right, 26, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, attack_right, 27, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, attack_right, 28, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, attack_right, 29, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, attack_right, 36, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, attack_right, 37, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, attack_right, 38, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, attack_right, 39, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, attack_right, 40, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, attack_right, 41, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25

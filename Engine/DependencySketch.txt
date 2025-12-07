@@ -20,3 +20,57 @@
             ├── OnIdle (static)
             └── OnExit (static)
 
+
+        
+---
+
+1. tiles have a floor that is renderable (grass, road, water, etc)
+2. tiles can have objects on top of the floor and is renderable too (trees, buildings, units, etc)
+3. tiles have walkability property that defines if units can walk on them or not
+4. tiles can have objects that flies above them (birds, planes, etc)
+5. tiles can have cloud/fog of war effects that obscure the view of the tile. these are renderable too
+6. tiles can have interactive elements that can be renderable too (doors, traps, etc)
+7. tiles can have sound effects associated with them (ambient sounds, footsteps, etc) although for now this is low priority and can be added later
+8. tiles can have weather effects that affect their appearance (rain, snow, etc) although for now this is low priority and can be added later
+9. tiles can have terrain types that affect movement speed or other properties (mud, ice, etc) although for now this is low priority and can be added later
+
+there maybe more but let's start with these for now. let's focus on the more important ones first and ignore the low priority ones for now.
+i am seeing two different architectures here:
+1. we can have 1 tile and 1 tilelayer and tiledefinitions contain all these properties and renderables
+2. we can have multiple tilelayers (floor layer, object layer, flying object layer, fog layer, interactive layer) and each tilelayer can have its own tiledefinitions with relevant properties and renderables
+
+what i think is better is the second approach with multiple tilelayers. this way we can separate concerns and have more flexibility in rendering and managing different aspects of the tile.
+i mean we call tilelayers for a reason - "layered" approach. so having multiple layers makes sense. do you agree?
+
+This does not seem to follow unity's architecture of having everything in one tile definition but i think this layered approach is better for our engine and gives us more flexibility am i correct?
+But it seems this approach aligns more with what i envisioned and expect. but is this something acceptble? is this common in other or most 2d tiled game engines?
+
+now if we go with the layered approach, how do we define which code, feature, behavior belongs to engine and game code?
+
+---
+going for the layered approach, my next concern is TileDefinition design. should it be a parameterized type?
+Meaning Tile<T> and TileLayer<T>.
+This way, Tile and TileLayer class is generic and be reused for different types of tiles and layers. 
+accessing properties, iterating, rendering, checking logic will be game code. 
+parameterized type T will also be defined by game code. 
+the reason for me going parameterized is because if it is a base class ITileDefinition, i will have problem trying to handle renderabled tile definitions vs non-renderable tile definitions.
+this is the tension i am facing right now with a single TileDefinition base class approach like unity's. 
+with parameterized type, i can have Tile<RenderableTileDefinition> and Tile<NonRenderableTileDefinition>. and Tile and TileLayer will not care about the details of T.
+The trade off is  that most of the work load will be in game code. but i think this is acceptable. what do you think?
+
+---
+
+If we go with layered approach and parameterized TileDefinition, next concern is managing them.
+I am now thinking, engine must have a TileLayerManager or TileMap that contains multiple TileLayers.
+since TileLayer is parameterized type, TileLayerManager or TileMap must also be parameterized type. 
+but that's a problem because TileLayerManager or TileMap must manage multiple TileLayers of different parameterized types.
+so i am thinking, is it possible to have TileLayerManager or TileMap not be parameterized type, but contain multiple TileLayers of different parameterized types?
+how do most 2d tile engines handle this situation where tile and tilelayer are parameterized types but tilemap or tilelayermanager is not?
+
+---
+i am thinking now, does the engine code really need TileMap class to manage multiple TileLayers?
+or should the game code handle that responsibility?
+
+
+6. tiles can have lighting effects that change based on time of day or weather conditions
+

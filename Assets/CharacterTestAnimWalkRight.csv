@@ -1,0 +1,8 @@
+loop, true
+image_file, walk_right, CharacterTest_2304x1536_12x8.png, CharacterTest_2304x1536_12x8.csv
+frame, walk_right, 12, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, walk_right, 13, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, walk_right, 14, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, walk_right, 15, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, walk_right, 16, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25
+frame, walk_right, 17, 100, -0.5, -0.5, -0.25, -0.25, 0.25, 0.25

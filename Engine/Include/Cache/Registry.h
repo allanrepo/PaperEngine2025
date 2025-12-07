@@ -30,38 +30,38 @@ namespace cache
 	// ensures that resource lifetimes are tied directly to their presence in
 	// the repository. In other words, the singleton repository is not just a
 	// global catalog — it is also the lifetime manager for the resources it holds.
-	template<typename T>
-	class Registry : public core::Singleton<Registry<T>>
+	template<typename T, typename K = std::string>
+	class Registry : public core::Singleton<Registry<T, K>>
 	{
-		friend class core::Singleton<Registry<T>>;
+		friend class core::Singleton<Registry<T, K>>;
 
 	private:
-		cache::Dictionary<std::string, std::unique_ptr<T>> registry;
+		cache::Dictionary<K, std::unique_ptr<T>> registry;
 
 	public:
 		Registry() = default;
 
-		bool Register(const std::string& key, std::unique_ptr<T> value)
+		bool Register(const K& key, std::unique_ptr<T> value)
 		{
 			return registry.Register(key, std::move(value));
 		}
 
-		T& Get(const std::string& key) 
+		T& Get(const K& key) 
 		{
 			return *registry.Get(key).get();
 		}
 
-		const T& Get(const std::string& key) const
+		const T& Get(const K& key) const
 		{
 			return *registry.Get(key).get();
 		}
 
-		bool Has(const std::string& key) const
+		bool Has(const K& key) const
 		{
 			return registry.Has(key);
 		}
 
-		bool Unregister(const std::string& key)
+		bool Unregister(const K& key)
 		{
 			return registry.Unregister(key);
 		}
@@ -72,7 +72,7 @@ namespace cache
 		}
 
 		// replace an existing resource with a new one
-		bool Reload(const std::string& key, std::unique_ptr<T> newValue)
+		bool Reload(const K& key, std::unique_ptr<T> newValue)
 		{
 			if (Has(key))
 			{
