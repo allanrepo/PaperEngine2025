@@ -119,17 +119,17 @@ const float graphics::renderable::FontAtlas::GetHeight(const unsigned char chara
 	return texture->GetHeight() * (v1 - v0);
 }
 
-const float graphics::renderable::FontAtlas::GetWidth() const
+float graphics::renderable::FontAtlas::GetWidth() const
 {
 	return static_cast<float>(texture->GetWidth());
 }
 
-const float graphics::renderable::FontAtlas::GetHeight() const
+float graphics::renderable::FontAtlas::GetHeight() const
 {
 	return static_cast<float>(texture->GetHeight());
 }
 
-const spatial::SizeF graphics::renderable::FontAtlas::GetSize() const
+spatial::SizeF graphics::renderable::FontAtlas::GetSize() const
 {
 	return spatial::SizeF
 	{

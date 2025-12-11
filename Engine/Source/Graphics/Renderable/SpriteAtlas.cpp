@@ -29,6 +29,11 @@ const math::geometry::RectF graphics::renderable::SpriteAtlas::GetUVRect(int ind
 	return m_nUVs[index];
 }
 
+inline size_t graphics::renderable::SpriteAtlas::GetUVRectCount() const
+{
+	return m_nUVs.size();
+}
+
 graphics::renderable::Sprite graphics::renderable::SpriteAtlas::MakeSprite(int index) const
 {
 	if(index < 0 || index >= static_cast<int>(m_nUVs.size()))
@@ -55,17 +60,17 @@ bool graphics::renderable::SpriteAtlas::CanBind() const
 	return m_texture->CanBind();
 }
 
-const float graphics::renderable::SpriteAtlas::GetWidth() const
+float graphics::renderable::SpriteAtlas::GetWidth() const
 {
 	return static_cast<float>(m_texture->GetWidth());
 }
 
-const float graphics::renderable::SpriteAtlas::GetHeight() const
+float graphics::renderable::SpriteAtlas::GetHeight() const
 {
 	return static_cast<float>(m_texture->GetHeight());
 }
 
-const spatial::SizeF graphics::renderable::SpriteAtlas::GetSize() const
+spatial::SizeF graphics::renderable::SpriteAtlas::GetSize() const
 {
 	return spatial::SizeF{
 		static_cast<float>(m_texture->GetWidth()),

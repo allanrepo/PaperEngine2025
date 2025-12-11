@@ -258,6 +258,9 @@
     <ClInclude Include="Include\Engine\Loader\___SpriteLoader.h">
       <Filter>Engine\Loader</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Core\View.h">
+      <Filter>Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">

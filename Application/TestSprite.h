@@ -15,6 +15,8 @@
 #include <Graphics/Renderable/Sprite.h>
 #include <Core/Input.h>
 
+#include "Utilities.h"
+
 namespace test
 {
 	// this demo class shows how to use sprite atlas and sprite rendering
@@ -29,22 +31,22 @@ namespace test
 	class TestSprite
 	{
 	private:
-		// we are mocking the sprite class here for demo purpose so we can create sprite directly without using factory
-		class MockSprite : public graphics::renderable::Sprite
-		{
-		public:
-			MockSprite(graphics::renderable::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect) :
-				Sprite(spriteAtlas, rect)
-			{
-			}
-		};
+		//// we are mocking the sprite class here for demo purpose so we can create sprite directly without using factory
+		//class MockSprite : public graphics::renderable::Sprite
+		//{
+		//public:
+		//	MockSprite(graphics::renderable::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect) :
+		//		Sprite(spriteAtlas, rect)
+		//	{
+		//	}
+		//};
 
 	private:
 		std::unique_ptr<Win32::Window> m_window;
 		std::unique_ptr<graphics::ICanvas> m_canvas;
 		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
 		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
-		std::unique_ptr<MockSprite> m_sprite;
+		std::unique_ptr<graphics::renderable::Sprite> m_sprite;
 		spatial::SizeF m_spriteSize{};
 		input::Input m_input;
 
@@ -72,29 +74,6 @@ namespace test
 			m_input.OnMouseMove += event::Handler(this, &TestSprite::OnMouseMove);
 		}
 
-
-		void OnMouseMove(int x, int y)
-		{
-			// find the sprite cell from sprite atlas based on mouse position
-			spatial::SizeF size = m_spriteAtlas->GetSize();
-
-			// dividing by 2 because sprite atlas is drawn at half size
-			int col = static_cast<int>(x / (m_spriteSize.width / 2));
-			int row = static_cast<int>(y / (m_spriteSize.height / 2));
-
-			// normalize the rect to UV coordinates
-			math::geometry::RectF uvRect
-			{
-				col / 12.0f,
-				row / 8.0f,
-				(col + 1) / 12.0f,
-				(row + 1) / 8.0f
-			};
-
-			// recreate sprite with new UV rect
-			m_sprite = std::make_unique<MockSprite>(m_spriteAtlas.get(), uvRect);
-		}
-
 		// when window is created. we can now safely create resources dependent on window
 		void OnWindowCreate(void* hWnd)
 		{
@@ -111,16 +90,18 @@ namespace test
 			m_renderer->Initialize();
 			LOG("Renderer (DX11) created...");
 
+			// create sprite atlas manually for demo purpose
+			m_spriteAtlas = std::make_unique<MockSpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
 
-			// create sprite atlas and load the image file as well as read the csv file for the UVs	
-			m_spriteAtlas = graphics::factory::SpriteAtlasFactory::Create();
-			if (!graphics::loader::SpriteAtlasLoader::Load(
-				*m_spriteAtlas,
-				"../Assets/CharacterTest_2304x1536_12x8.png",
-				"../Assets/CharacterTest_2304x1536_12x8.csv"
-			))
+			// load sprite atlas from file manually for demo purpose
+			m_spriteAtlas->Initialize(L"../Assets/CharacterTest_2304x1536_12x8.png");
+
+			// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 8 rows and 12 columns
+			// in real scenario, you would use SpriteAtlasLoader to load from csv file 
+			std::vector<math::geometry::RectF> uvs = utilities::graphics::CalcUV(8, 12, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
+			for (math::geometry::RectF& rect : uvs)
 			{
-				LOGERROR("Failed to load sprite atlas - " << "../Assets/CharacterTest_2304x1536_12x8.png");
+				m_spriteAtlas->AddUVRect(rect);
 			}
 			
 			// calculate sprite size based on atlas size and grid
@@ -128,8 +109,25 @@ namespace test
 			m_spriteSize.height = m_spriteAtlas->GetHeight() / 8; // assuming 8 rows
 			
 			// create sprite
-			m_sprite = std::make_unique<MockSprite>(m_spriteAtlas.get(), math::geometry::RectF{0.0f, 0.0f, 1.0f, 1.0f});
+			m_sprite = std::make_unique<graphics::renderable::Sprite>(m_spriteAtlas->MakeSprite(0));
+		}
 
+		void OnMouseMove(int x, int y)
+		{
+			// find the sprite cell from sprite atlas based on mouse position
+			spatial::SizeF size = m_spriteAtlas->GetSize();
+
+			// dividing by 2 because sprite atlas is drawn at half size
+			int col = static_cast<int>(x / (m_spriteSize.width / 2));
+			int row = static_cast<int>(y / (m_spriteSize.height / 2));
+
+			int index = row * (int)(m_spriteAtlas->GetWidth()/m_spriteSize.width) + col;
+
+			// recreate sprite with new UV rect
+			if (index < m_spriteAtlas->GetUVRectCount())
+			{
+				m_sprite = std::make_unique<graphics::renderable::Sprite>(m_spriteAtlas->MakeSprite(index));
+			}
 		}
 
 		// fun stuff. this is called on each loop of the message loop. this is where we draw!

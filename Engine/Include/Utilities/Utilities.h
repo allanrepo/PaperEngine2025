@@ -30,6 +30,8 @@ namespace utilities
         }
 	};
 
+	
+
     //struct Text
     //{
     //    static std::wstring ToWide(const std::string& str)

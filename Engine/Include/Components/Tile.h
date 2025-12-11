@@ -1,11 +1,15 @@
+
+
 #pragma once
 #include <Spatial/IResizeable.h>
-#include <spatial/Size.h>
+#include <Spatial/Size.h>
 #include <Cache/Dictionary.h>
+#include <Core/View.h>
 #include <vector>
 #include <memory>
 #include <stdexcept>
 
+// forward declare
 namespace component::tile
 {
 	template<typename T>
@@ -13,6 +17,12 @@ namespace component::tile
 
 	template<typename T>
 	class Tile;
+
+	template<typename T>
+	class TileGrid;
+
+	template<typename T>
+	class TileRegion;
 
 	template<typename T>
 	class TileLayer;
@@ -23,8 +33,8 @@ namespace component::tile
 	// represents a coordinate in a 2d tile grid
 	struct TileCoord
 	{
-		int row; // row index (vertical position in the grid)
-		int col; // column index (horizontal position in the grid)
+		int row; 
+		int col; 
 
 		// equality operator: returns true if both row and col match
 		bool operator==(const TileCoord& other) const
@@ -39,50 +49,32 @@ namespace component::tile
 		}
 	};
 
+	// tile instance holds a reference to tile data from tileset
+	// lightweight view into tile data 
 	template<typename T>
-	class Tile
+	class Tile : public core::View<T>
 	{
 	private:
-		T* m_data; // pointer to tile data
-
-		// only Tileset can create Tile instances
+		// only tileset and TileGrid can create tile instances
 		friend class Tileset<T>;
+		friend class TileGrid<T>;
 
-		friend class TileLayer<T>;
-
-		// private constructor used by Tileset to create tile instances
+		// private constructor used by Tileset to create tile instances. defaults to invalid tile if no data provided
 		Tile(T* data = nullptr) :
-			m_data(data)
+			core::View<T>(data)
 		{
 		}
 
 	public:
 		virtual ~Tile() = default;
 
-		bool isValid() const
-		{
-			return m_data != nullptr;
-		}
-
-		// Pointer-like access
-		const T* operator->() const {
-			if (!isValid()) {
-				throw std::runtime_error("Tile::operator-> - invalid tile");
-			}
-			return m_data;
-		}
-
-		// Dereference access
-		const T& operator*() const {
-			if (!isValid()) {
-				throw std::runtime_error("Tile::operator* - invalid tile");
-			}
-			return *m_data;
-		}
+		Tile(const Tile&) = default;
+		Tile& operator=(const Tile&) = default;
+		Tile(Tile&&) = default;
+		Tile& operator=(Tile&&) = default;
 	};
 
-	// tileset holds tile definitions (not instances)
-	// each tile is a unique behavior object (e.g. walkable, obstacle, etc.)
+	// manages registration and retrieval of tile data by ID
 	template<typename T>
 	class Tileset 
 	{
@@ -113,76 +105,83 @@ namespace component::tile
 			return *registry.Get(id); 
 		}
 
+		// creates a tile instance for the given id. returns invalid tile if id not found
 		Tile<T> MakeTile(int id) const 
 		{ 
 			return registry.Has(id) ? Tile<T>(registry.Get(id).get()) : Tile<T>();
 		}
 	};
 
+	// tile layer represents a 2d grid of tile instances
 	template<typename T>
-	class TileLayer : public spatial::IResizeable<int>
+	class TileGrid : public spatial::IResizeable<int>
 	{
 	private:
-		std::vector<Tile<T>> m_map;	// flat array of tile instances
-		spatial::Size<int> m_size;	// grid dimensions (width x height)
+		// flat array of tiles
+		std::vector<Tile<T>> m_map;
+
+		// grid dimensions (width x height)
+		spatial::Size<int> m_size;	
 
 	public:
-		TileLayer() :
+		TileGrid() :
 			m_size({ 0, 0 })
 		{
 		}
 
-		// sets a tile instance at (row, col)
-		// passing by value because tileinstance is a lightweight pod
+		// sets a tile at (row, col)
+		// passing by value because tile is a lightweight pod
 		void SetTile(int row, int col, Tile<T> tile)
 		{
-			if (!IsValidTile(row, col))
+			if (!IsInBounds(row, col))
 			{
-				throw std::out_of_range("TileLayer::SetTile - index out of bounds");
+				throw std::out_of_range("TileGrid::SetTile - index out of bounds");
 			}
 			m_map[row * m_size.width + col] = tile;
 		}
 
-		// retrieves the tile instance at (row, col)
+		// retrieves the tile at (row, col)
 		const Tile<T>& GetTile(int row, int col) const
 		{
-			if (!IsValidTile(row, col)) {
-				throw std::out_of_range("TileLayer::GetTile - index out of bounds");
+			if (!IsInBounds(row, col)) 
+			{
+				throw std::out_of_range("TileGrid::GetTile - index out of bounds");
 			}
 			return m_map[row * m_size.width + col];
 		}
 
+		// retrieves the tile at tilecoord
 		const Tile<T>& GetTile(const TileCoord& coord) const
 		{
 			return GetTile(coord.row, coord.col);
 		}
 
 		// checks if (row, col) is within bounds
-		bool IsValidTile(int row, int col) const
+		bool IsInBounds(int row, int col) const
 		{
 			return !(row < 0 || row >= m_size.height || col < 0 || col >= m_size.width);
 		}
 
 		// overload for tilecoord input
-		bool IsValidTile(const component::tile::TileCoord& tileCoord) const
+		bool IsInBounds(const component::tile::TileCoord& tileCoord) const
 		{
-			return IsValidTile(tileCoord.row, tileCoord.col);
+			return IsInBounds(tileCoord.row, tileCoord.col);
 		}
 
 		// returns grid width
-		virtual const int GetWidth() const
+		virtual int GetWidth() const
 		{
 			return m_size.width;
 		}
 
 		// returns grid height
-		virtual const int GetHeight() const
+		virtual int GetHeight() const
 		{
 			return m_size.height;
 		}
 
 		// returns full size struct
-		virtual const spatial::Size<int> GetSize() const
+		virtual spatial::Size<int> GetSize() const
 		{
 			return m_size;
 		}
@@ -193,22 +192,25 @@ namespace component::tile
 			// need to remap the existing data to into newly sized map
 
 			// create new map and we will copy existing data into it
-			std::vector<Tile<T>> map;
-			map.reserve(size.width * size.height);
+			//std::vector<Tile<T>> map;
+			//map.reserve(size.width * size.height);
+			std::vector<Tile<T>> map(size.width * size.height, Tile<T>());
 
-			//// loop through rows of existing map. but not exceeding row size of either old or new map, whichever is smaller
-			//for (int row = 0; row < std::min<int>(size.height, m_size.height); row++)
-			//{
-			//	// loop through columns of existing map. but not exceeding column size of either old or new map, whichever is smaller
-			//	for (int col = 0; col < std::min<int>(size.width, m_size.width); col++)
-			//	{
-			//		// copy existing data into new map
-			//		// if new map is larger than old map, the extra cells will remain default initialized, but spatial layout is preserved
-			//		// if new map is smaller than old map, excess data will be discarded
-			//		map[row * size.width + col] = m_map[row * m_size.width + col];
-			//	}
-			//}
+			// loop through rows of existing map. but not exceeding row size of either old or new map, whichever is smaller
+			for (int row = 0; row < std::min<int>(size.height, m_size.height); row++)
+			{
+				// loop through columns of existing map. but not exceeding column size of either old or new map, whichever is smaller
+				for (int col = 0; col < std::min<int>(size.width, m_size.width); col++)
+				{
+					// copy existing data into new map
+					// if new map is larger than old map, the extra cells will remain default initialized, but spatial layout is preserved
+					// if new map is smaller than old map, excess data will be discarded
+					map[row * size.width + col] = m_map[row * m_size.width + col];
+				}
+			}
 
+// another way of doing this if the map is reserved but not filled initially with empty tiles
+#if false 
 			// loop through all cells of new map size
 			for (int row = 0; row < size.height; ++row)
 			{
@@ -228,7 +230,7 @@ namespace component::tile
 					}
 				}
 			}
-
+#endif
 			// replace old map with new map
 			m_map = std::move(map);
 
@@ -249,63 +251,91 @@ namespace component::tile
 			m_size.width = width;
 			SetSize(m_size);
 		}
-	
 		
 	};
 
-	//template<typename T>
-	//class Tileset
-	//{
-	//private:
-	//	// vector of tile definitions indexed by type id
-	//	std::vector<std::unique_ptr<T>> m_tiles;
+	template<typename T>
+	class TileRegion
+	{
+	private:
+		TileGrid<T> m_tilegrid;
 
-	//public:
-	//	Tileset() = default;
-	//	virtual ~Tileset() = default;
-	//	
-	//	// non-copyable
-	//	Tileset(const Tileset&) = delete;
-	//	Tileset& operator=(const Tileset&) = delete;
-	//	Tileset(Tileset&&) = default;
-	//	Tileset& operator=(Tileset&&) = default;
+		friend class TileLayer<T>;
 
-	//	// registers a tile definition at a given id
-	//	// resizes the vector if needed to accommodate the id
-	//	void Register(int id, std::unique_ptr<T> def)
-	//	{
-	//		if (id >= static_cast<int>(m_tiles.size()))
-	//		{
-	//			m_tiles.resize(id + 1);
-	//		}
-	//		m_tiles[id] = std::move(def);
-	//	}
+		TileRegion(spatial::Size<int> size)
+		{
+			m_tilegrid.SetSize(size);
+		}
 
-	//	// checks if a tile id is valid and has a definition
-	//	bool IsValid(int id) const
-	//	{
-	//		return !(id < 0 || id >= static_cast<int>(m_tiles.size()) || !m_tiles[id]);
-	//	}
+	public:
+		inline void SetTile(int row, int col, Tile<T> tile)
+		{
+			m_tilegrid.SetTile(row, col, tile);
+		}
 
-	//	// retrieves the tile definition at a given id
-	//	// throws if the id is out of bounds or unregistered
-	//	const T& Get(int id) const
-	//	{
-	//		if (id < 0 || id >= static_cast<int>(m_tiles.size()) || !m_tiles[id])
-	//		{
-	//			throw std::runtime_error("Tileset::Get - invalid index");	
-	//		}
-	//		return *m_tiles[id];
-	//	}
+		const Tile<T>& GetTile(int row, int col) const
+		{
+			return m_tilegrid.GetTile(row, col);
+		}
 
-	//	Tile<T> MakeTile(int id) const
-	//	{
-	//		if (!IsValid(id))
-	//		{
-	//			throw std::runtime_error("Tileset::MakeTile - invalid index");
-	//		}
-	//		return Tile(m_tiles[id].get());
-	//	}
-	//};
+		const Tile<T>& GetTile(const TileCoord& coord) const
+		{
+			return m_tilegrid.GetTile(coord);
+		}
+
+	};
+
+	template<typename T>
+	class TileLayer
+	{
+	private:
+		std::vector<TileRegion<T>> m_regions;
+
+		spatial::Size<int> m_size;
+
+		spatial::Size<int> m_regionSize;
+
+	public:
+		TileLayer(int rows, int cols, spatial::Size<int> regionSize): 
+			m_size({rows, cols}),
+			m_regionSize(regionSize),
+			m_regions(rows * cols, TileRegion<T>(regionSize)) 
+		{
+		}
+
+		bool IsInBounds(int row, int col) const
+		{
+			return !(row < 0 || row >= m_size.height || col < 0 || col >= m_size.width);
+		}
+
+		const TileRegion<T>& GetRegion(int row, int col) const
+		{
+			if (!IsInBounds(row, col))
+			{
+				throw std::out_of_range("TileRegion::GetRegion - index out of bounds");
+			}
+			return m_regions[row * m_size.width + col];
+		}
+
+		const component::tile::Tile<T>& GetTile(int worldRow, int worldCol) 
+		{
+			int regionRow = worldRow / m_regionSize.height;
+			int regionCol = worldCol / m_regionSize.width;
+			int localRow = worldRow % m_regionSize.height;
+			int localCol = worldCol % m_regionSize.width;
+
+			return GetRegion(regionRow, regionCol).GetTile(localRow, localCol);
+		}
+
+		void SetTile(int worldRow, int worldCol, component::tile::Tile<T> tile) 
+		{
+			int regionRow = worldRow / m_regionSize.height;
+			int regionCol = worldCol / m_regionSize.width;
+			int localRow = worldRow % m_regionSize.height;
+			int localCol = worldCol % m_regionSize.width;
+
+			GetRegion(regionRow, regionCol).SetTile(localRow, localCol, tile);
+		}
+	};
 }
 

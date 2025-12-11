@@ -1,4 +1,5 @@
 #pragma once
+#include <Spatial/ISizeable.h>
 
 namespace spatial
 {

@@ -37,9 +37,9 @@ namespace graphics
 			virtual const float GetHeight(const unsigned char character) const = 0;
 
 			// need to declare this IRenderable methods here because IFontAtlas has the same method name. it's a C++ thing.
-			virtual const float GetWidth() const = 0;
-			virtual const float GetHeight() const = 0;
-			virtual const spatial::SizeF GetSize() const = 0;
+			virtual float GetWidth() const = 0;
+			virtual float GetHeight() const = 0;
+			virtual spatial::SizeF GetSize() const = 0;
 		};
 	}
 }

@@ -30,6 +30,8 @@
 #include <Graphics/Resource/DX11TextureImpl.h>
 #include <Timer/StopWatch.h>
 
+#include "Utilities.h"
+
 namespace test
 {
 	// we are mocking the sprite atlas class here for demo purpose so we can create sprite directly without using factory
@@ -98,7 +100,7 @@ namespace test
 
 			// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 8 rows and 12 columns
 			// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-			std::vector<math::geometry::RectF> uvs = CalcUV(8, 12, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
+			std::vector<math::geometry::RectF> uvs = utilities::graphics::CalcUV(8, 12, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
 			for(math::geometry::RectF& rect : uvs)
 			{
 				m_spriteAtlas->AddUVRect(rect);
@@ -173,36 +175,36 @@ namespace test
 			m_canvas->SetViewPort();
 		}
 
-		std::vector<math::geometry::RectF> CalcUV(int row, int col, int fileWidth, int fileHeight)
-		{
-			std::vector<math::geometry::RectF> uvs;
-			float width = static_cast<float>(fileWidth / col);
-			float height = static_cast<float>(fileHeight / row);
-			float left = 0;
-			float top = 0;
-			float right = left + width;
-			float bottom = top + height;
+		//std::vector<math::geometry::RectF> CalcUV(int row, int col, int fileWidth, int fileHeight)
+		//{
+		//	std::vector<math::geometry::RectF> uvs;
+		//	float width = static_cast<float>(fileWidth / col);
+		//	float height = static_cast<float>(fileHeight / row);
+		//	float left = 0;
+		//	float top = 0;
+		//	float right = left + width;
+		//	float bottom = top + height;
 
-			for (int r = 0; r < row; r++)
-			{
-				for (int c = 0; c < col; c++)
-				{
-					left = width * c;
-					top = height * r;
-					right = left + width;
-					bottom = top + height;
+		//	for (int r = 0; r < row; r++)
+		//	{
+		//		for (int c = 0; c < col; c++)
+		//		{
+		//			left = width * c;
+		//			top = height * r;
+		//			right = left + width;
+		//			bottom = top + height;
 
-					left /= fileWidth;
-					top /= fileHeight;
-					right /= fileWidth;
-					bottom /= fileHeight;
+		//			left /= fileWidth;
+		//			top /= fileHeight;
+		//			right /= fileWidth;
+		//			bottom /= fileHeight;
 
-					uvs.push_back(math::geometry::RectF{ left, top, right, bottom });
+		//			uvs.push_back(math::geometry::RectF{ left, top, right, bottom });
 
-					//LOG(std::to_string(left) << ", " << std::to_string(top) << ", " << std::to_string(right) << ", " << std::to_string(bottom));
-				}
-			}
-			return uvs;
-		}
+		//			//LOG(std::to_string(left) << ", " << std::to_string(top) << ", " << std::to_string(right) << ", " << std::to_string(bottom));
+		//		}
+		//	}
+		//	return uvs;
+		//}
 	};
 }

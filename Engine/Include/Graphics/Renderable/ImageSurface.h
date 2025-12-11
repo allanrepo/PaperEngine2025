@@ -31,9 +31,9 @@ namespace graphics::renderable
 		virtual void Reset();
 
 		// ISizeable methods implementation
-		virtual const float GetWidth() const override final;
-		virtual const float GetHeight() const override final;
-		const spatial::SizeF GetSize() const override final;
+		virtual float GetWidth() const override final;
+		virtual float GetHeight() const override final;
+		virtual spatial::SizeF GetSize() const override final;
 
 		// IRenderable methods implementation
 		virtual math::geometry::RectF GetUVRect() const override final;

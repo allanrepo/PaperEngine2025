@@ -50,17 +50,17 @@ void graphics::renderable::DrawableSurface::End()
 	texture->EndDraw();
 }
 
-const float graphics::renderable::DrawableSurface::GetWidth() const
+float graphics::renderable::DrawableSurface::GetWidth() const
 {
 	return static_cast<float>(texture->GetWidth());
 }
 
-const float graphics::renderable::DrawableSurface::GetHeight() const
+float graphics::renderable::DrawableSurface::GetHeight() const
 {
 	return static_cast<float>(texture->GetHeight());
 }
 
-const spatial::SizeF graphics::renderable::DrawableSurface::GetSize() const
+spatial::SizeF graphics::renderable::DrawableSurface::GetSize() const
 {
 	return spatial::SizeF
 	{

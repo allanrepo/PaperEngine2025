@@ -38,10 +38,24 @@
     <ClInclude Include="ActorState.h">
       <Filter>Game Code</Filter>
     </ClInclude>
+    <ClInclude Include="Utilities.h">
+      <Filter>Game Code</Filter>
+    </ClInclude>
+    <ClInclude Include="TestLargeMap.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Main</Filter>
     </ClCompile>
+    <ClCompile Include="Utilities.cpp">
+      <Filter>Game Code</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TestCamera.h">
+      <Filter>Tests</Filter>
+    </None>
   </ItemGroup>
 </Project>

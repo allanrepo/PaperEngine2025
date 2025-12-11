@@ -13,6 +13,7 @@ namespace graphics::renderable
 		virtual bool Initialize(const wchar_t* fileNamePath) = 0;
 		virtual void AddUVRect(math::geometry::RectF rect) = 0;
 		virtual inline const math::geometry::RectF GetUVRect(int index) const = 0;
+		virtual inline size_t GetUVRectCount() const = 0;
 		virtual graphics::renderable::Sprite MakeSprite(int index) const = 0;
 	};
 }

@@ -36,11 +36,11 @@
 
 there maybe more but let's start with these for now. let's focus on the more important ones first and ignore the low priority ones for now.
 i am seeing two different architectures here:
-1. we can have 1 tile and 1 tilelayer and tiledefinitions contain all these properties and renderables
-2. we can have multiple tilelayers (floor layer, object layer, flying object layer, fog layer, interactive layer) and each tilelayer can have its own tiledefinitions with relevant properties and renderables
+1. we can have 1 tile and 1 TileGrid and tiledefinitions contain all these properties and renderables
+2. we can have multiple TileGrids (floor layer, object layer, flying object layer, fog layer, interactive layer) and each TileGrid can have its own tiledefinitions with relevant properties and renderables
 
-what i think is better is the second approach with multiple tilelayers. this way we can separate concerns and have more flexibility in rendering and managing different aspects of the tile.
-i mean we call tilelayers for a reason - "layered" approach. so having multiple layers makes sense. do you agree?
+what i think is better is the second approach with multiple TileGrids. this way we can separate concerns and have more flexibility in rendering and managing different aspects of the tile.
+i mean we call TileGrids for a reason - "layered" approach. so having multiple layers makes sense. do you agree?
 
 This does not seem to follow unity's architecture of having everything in one tile definition but i think this layered approach is better for our engine and gives us more flexibility am i correct?
 But it seems this approach aligns more with what i envisioned and expect. but is this something acceptble? is this common in other or most 2d tiled game engines?
@@ -49,26 +49,26 @@ now if we go with the layered approach, how do we define which code, feature, be
 
 ---
 going for the layered approach, my next concern is TileDefinition design. should it be a parameterized type?
-Meaning Tile<T> and TileLayer<T>.
-This way, Tile and TileLayer class is generic and be reused for different types of tiles and layers. 
+Meaning Tile<T> and TileGrid<T>.
+This way, Tile and TileGrid class is generic and be reused for different types of tiles and layers. 
 accessing properties, iterating, rendering, checking logic will be game code. 
 parameterized type T will also be defined by game code. 
 the reason for me going parameterized is because if it is a base class ITileDefinition, i will have problem trying to handle renderabled tile definitions vs non-renderable tile definitions.
 this is the tension i am facing right now with a single TileDefinition base class approach like unity's. 
-with parameterized type, i can have Tile<RenderableTileDefinition> and Tile<NonRenderableTileDefinition>. and Tile and TileLayer will not care about the details of T.
+with parameterized type, i can have Tile<RenderableTileDefinition> and Tile<NonRenderableTileDefinition>. and Tile and TileGrid will not care about the details of T.
 The trade off is  that most of the work load will be in game code. but i think this is acceptable. what do you think?
 
 ---
 
 If we go with layered approach and parameterized TileDefinition, next concern is managing them.
-I am now thinking, engine must have a TileLayerManager or TileMap that contains multiple TileLayers.
-since TileLayer is parameterized type, TileLayerManager or TileMap must also be parameterized type. 
-but that's a problem because TileLayerManager or TileMap must manage multiple TileLayers of different parameterized types.
-so i am thinking, is it possible to have TileLayerManager or TileMap not be parameterized type, but contain multiple TileLayers of different parameterized types?
-how do most 2d tile engines handle this situation where tile and tilelayer are parameterized types but tilemap or tilelayermanager is not?
+I am now thinking, engine must have a TileGridManager or TileMap that contains multiple TileGrids.
+since TileGrid is parameterized type, TileGridManager or TileMap must also be parameterized type. 
+but that's a problem because TileGridManager or TileMap must manage multiple TileGrids of different parameterized types.
+so i am thinking, is it possible to have TileGridManager or TileMap not be parameterized type, but contain multiple TileGrids of different parameterized types?
+how do most 2d tile engines handle this situation where tile and TileGrid are parameterized types but tilemap or TileGridmanager is not?
 
 ---
-i am thinking now, does the engine code really need TileMap class to manage multiple TileLayers?
+i am thinking now, does the engine code really need TileMap class to manage multiple TileGrids?
 or should the game code handle that responsibility?
 
 

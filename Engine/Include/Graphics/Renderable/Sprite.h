@@ -1,13 +1,13 @@
-// description:
+// DESCRIPTION:
 // Sprite is a renderable object that represents a portion of a sprite atlas defined by a UV rectangle.
 // it is a "view" into a sprite atlas and does not own the texture data itself.
 // It is a renderable object that can be bound for rendering operations.
 // 
-// parameters:
+// PARAMETERS:
 // - spriteAtlas: Pointer to the ISpriteAtlas that contains the texture and UV data.
 // - rect: A RectF defining the UV coordinates (normalized) within the sprite atlas.
 //
-// methods:
+// METHODS:
 // - GetWidth(): Returns the width of the sprite in pixels. it is calculated based on the sprite atlas width and the UV rectangle.
 // - GetHeight(): Returns the height of the sprite in pixels. its calculated based on the sprite atlas height and the UV rectangle.
 // - GetSize(): Returns the size of the sprite as a SizeF structure containing width and height in pixels.
@@ -18,16 +18,12 @@
 #pragma once
 #include <Graphics/Renderable/IRenderable.h>
 #include <Spatial/ISizeable.h>
+#include <Core/View.h>
 #include <memory>
 
 // forward declare
 namespace graphics
 {
-	namespace loader
-	{
-		class SpriteLoader;
-	}
-
 	namespace renderable
 	{
 		class ISpriteAtlas;
@@ -40,26 +36,25 @@ namespace graphics::renderable
 	// is renderable
 	// has pointer to sprite atlas 
 	// has source rect (normalized rectangular coordinates or UV)
-	class Sprite : public graphics::renderable::IRenderable, public spatial::ISizeable<float>
+	class Sprite : public graphics::renderable::IRenderable, public spatial::ISizeable<float>, core::View<graphics::renderable::ISpriteAtlas>
 	{
 	private:
-		const graphics::renderable::ISpriteAtlas* m_spriteAtlas;
 		math::geometry::RectF m_rect;
 
 		friend class graphics::renderable::SpriteAtlas;
 		friend class graphics::renderable::ISpriteAtlas;
 
-	public:
+	protected:
 		// use this constructor if you have the sprite atlas and the source rect, or you can use factory to get the sprite
 		Sprite(const graphics::renderable::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect);
-		~Sprite() = default;
 
 	public:
+		~Sprite() = default;
 
 		// ISizeable methods implementation
-		virtual const float GetWidth() const override final;
-		virtual const float GetHeight() const override final;
-		virtual const spatial::SizeF GetSize() const override final;
+		virtual float GetWidth() const override final;
+		virtual float GetHeight() const override final;
+		virtual spatial::SizeF GetSize() const override final;
 
 		// IRenderable methods implementation
 		virtual void Bind() const override final;
@@ -67,3 +62,4 @@ namespace graphics::renderable
 		virtual math::geometry::RectF GetUVRect() const override final;
 	};
 }
+

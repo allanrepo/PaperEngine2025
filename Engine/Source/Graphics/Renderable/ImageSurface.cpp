@@ -34,17 +34,17 @@ bool graphics::renderable::ImageSurface::CanBind() const
 	return texture->CanBind();
 }
 
-const float graphics::renderable::ImageSurface::GetWidth() const
+float graphics::renderable::ImageSurface::GetWidth() const
 {
 	return static_cast<float>(texture->GetWidth());
 }
 
-const float graphics::renderable::ImageSurface::GetHeight() const
+float graphics::renderable::ImageSurface::GetHeight() const
 {
 	return static_cast<float>(texture->GetHeight());
 }
 
-const spatial::SizeF graphics::renderable::ImageSurface::GetSize() const
+spatial::SizeF graphics::renderable::ImageSurface::GetSize() const
 {
 	return spatial::SizeF
 	{

@@ -27,6 +27,7 @@
     <ClInclude Include="Include\Core\Factory.h" />
     <ClInclude Include="Include\Core\Input.h" />
     <ClInclude Include="Include\Core\Singleton.h" />
+    <ClInclude Include="Include\Core\View.h" />
     <ClInclude Include="Include\Engine\Engine.h" />
     <ClInclude Include="Include\Engine\Factory\CanvasFactory.h" />
     <ClInclude Include="Include\Engine\Factory\RendererFactory.h" />
@@ -200,7 +201,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>E:\Development\C++\Dev2025\Engine\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\Development\C++\PaperEngine2025\Engine\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
