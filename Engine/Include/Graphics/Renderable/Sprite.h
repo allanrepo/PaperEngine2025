@@ -1,7 +1,8 @@
 // DESCRIPTION:
 // Sprite is a renderable object that represents a portion of a sprite atlas defined by a UV rectangle.
 // it is a "view" into a sprite atlas and does not own the texture data itself.
-// It is a renderable object that can be bound for rendering operations.
+// it is a renderable object that can be bound for rendering operations.
+// only sprite atlas can create sprites since its constructor is protected and sprite atlas is a friend class.
 // 
 // PARAMETERS:
 // - spriteAtlas: Pointer to the ISpriteAtlas that contains the texture and UV data.
@@ -45,7 +46,7 @@ namespace graphics::renderable
 		friend class graphics::renderable::ISpriteAtlas;
 
 	protected:
-		// use this constructor if you have the sprite atlas and the source rect, or you can use factory to get the sprite
+		// use this constructor if you have the sprite atlas and the source rect
 		Sprite(const graphics::renderable::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect);
 
 	public:

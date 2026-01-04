@@ -21,6 +21,7 @@
 #include <Components/Tile.h>
 #include <Spatial/Camera.h>
 #include <Spatial/Position.h>
+#include <State/State.h>
 
 #include "Utilities.h"
 
@@ -64,13 +65,11 @@ namespace TestLargeMap
 		bool m_isPanning = false;
 		spatial::PositionF m_focusPos;
 		int v;
-		//component::tile::TileLayer<RenderableTile> m_tileLayer;
 
 
 	public:
 		Test() :
 			m_camera({ 250, 250, 720, 640 })
-			//, m_tileLayer(4, 4, {16, 16})
 		{
 			Win32::Window::OnInitialize += event::Handler(this, &Test::OnInitialize);
 			Win32::Window::OnExit += event::Handler(this, &Test::OnExit);
@@ -211,7 +210,7 @@ namespace TestLargeMap
 			// start the canvas. we can draw from here
 			m_canvas->Begin();
 			{
-				m_canvas->Clear(0.2f, 0.2f, 1.0f, 1.0f);
+				m_canvas->Clear({ 0.2f, 0.2f, 1.0f, 1.0f });
 
 				m_renderer->Begin();
 				{
@@ -270,7 +269,7 @@ namespace TestLargeMap
 		void OnWindowSize(size_t nWidth, size_t nHeight)
 		{
 			LOG("Window resized to: " + std::to_string(nWidth) + ", " + std::to_string(nHeight));
-			m_canvas->Resize(static_cast<unsigned int>(nWidth), static_cast<unsigned int>(nHeight));
+			m_canvas->Resize({ static_cast<unsigned int>(nWidth), static_cast<unsigned int>(nHeight) });
 			m_canvas->SetViewPort();
 		}
 

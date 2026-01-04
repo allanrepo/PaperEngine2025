@@ -40,7 +40,7 @@ namespace timer
         void Reset();
 
         // Advances the timer by deltaSeconds.
-        // delta - Time since last call, in seconds.
+        // delta - this value is relative. the provider for this value defines its unit.
         // Accumulates time and fires:
         // - OnAlarm every interval  
         // - OnInterval once for OneShot  

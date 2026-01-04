@@ -3,6 +3,15 @@
 #include <memory>
 #include <queue>
 
+/*
+design notes:
+-	state machine is a component of the owner that manages the states. 
+-	hence, states have reference to owner when Enter, Exit, Update are called
+-	storing states as unique_ptr to enforce that states are not shared between multiple state machines.
+-	storing states as unique_ptr is fine performance-wise as state transitions are not frequent operations.
+	the overhead is negligible compared to the flexibility and safety it provides.
+*/
+
 namespace state
 {
 	template<typename T>

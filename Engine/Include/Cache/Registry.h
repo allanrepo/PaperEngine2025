@@ -8,9 +8,6 @@
 
 namespace cache
 {
-	// TODO: add reload support
-	// TODO:: add load if not found support, or fallback support
-
 	// Description:
 	// Repository<T> is a global resource registry keyed by string.
 	// It owns objects of type T via std::unique_ptr and provides centralized

@@ -18,6 +18,8 @@ namespace graphics::renderable
 	{
 	private:
 		std::unique_ptr<graphics::resource::ITexture> texture;
+
+		// TODO: glyphs are not populated yet. it is also not defined yet. its data structure is defined in Text/Glyph.h but it may not be final
 		std::vector<text::Glyph> glyphs;
 		std::vector<std::array<float, 4>> m_textNormalizedCoords;
 
@@ -41,6 +43,7 @@ namespace graphics::renderable
 
 		virtual const float GetWidth(const unsigned char character) const override final;
 		virtual const float GetHeight(const unsigned char character) const override final;
+		virtual const float GetWidth(const std::string& text) const override final;
 
 		// ISizeable methods implementation
 		virtual float GetWidth() const override final;

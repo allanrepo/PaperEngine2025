@@ -515,7 +515,7 @@ namespace event
     {
     private:
         std::list<IDelegate<void, Args...>*> m_subscribers;
-        std::list<typename std::list<IDelegate<void, Args...>*>::iterator> m_unsubsribers;
+        std::list<typename std::list<IDelegate<void, Args...>*>::iterator> m_unsubscribers;
     public:
         Event() //= default;
         {
@@ -562,12 +562,12 @@ namespace event
             }
 
             // Sweep deferred removals
-            for (auto it : m_unsubsribers)
+            for (auto it : m_unsubscribers)
             {
                 delete* it;                 // Destroy the delegate
                 m_subscribers.erase(it);    // Remove from listener list
             }
-            m_unsubsribers.clear();
+            m_unsubscribers.clear();
         }
 
         template <typename C>
@@ -595,7 +595,7 @@ namespace event
                 if ((*it)->Equals(&temp))
                 {
                     (*it)->Deactivate();            // Prevent dispatch
-                    m_unsubsribers.push_back(it);   // Store iterator for deferred removal
+                    m_unsubscribers.push_back(it);   // Store iterator for deferred removal
                     break;
                 }
             }
@@ -610,7 +610,7 @@ namespace event
                 if ((*it)->Equals(&temp))
                 {
                     (*it)->Deactivate();            // Prevent dispatch
-                    m_unsubsribers.push_back(it);   // Store iterator for deferred removal
+                    m_unsubscribers.push_back(it);   // Store iterator for deferred removal
                     break;
                 }
             }

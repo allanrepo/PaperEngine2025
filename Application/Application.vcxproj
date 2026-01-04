@@ -132,8 +132,10 @@
     <ClInclude Include="Actor.h" />
     <ClInclude Include="ActorState.h" />
     <ClInclude Include="TestAnimation.h" />
+    <ClInclude Include="TestAsyncFileReader.h" />
     <ClInclude Include="TestCanvas.h" />
     <ClInclude Include="TestEngine.h" />
+    <ClInclude Include="TestFileReader.h" />
     <ClInclude Include="TestLargeMap.h" />
     <ClInclude Include="TestSprite.h" />
     <ClInclude Include="TestTile.h" />

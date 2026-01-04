@@ -11,6 +11,7 @@ std::unique_ptr<graphics::ICanvas> graphics::CanvasFactory::Create()
         graphics::dx11::DX11CanvasImpl::TypeName;                                               // no config, fallback to DX11
 
     static bool loaded = false;
+	// TODO: we can improve this by registering all canvas types during engine initialization instead of doing it here
     if (!loaded)
     {
         core::Factory<std::string, graphics::Canvas>::Instance().Register(

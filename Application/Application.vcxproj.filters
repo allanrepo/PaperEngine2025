@@ -44,6 +44,12 @@
     <ClInclude Include="TestLargeMap.h">
       <Filter>Tests</Filter>
     </ClInclude>
+    <ClInclude Include="TestFileReader.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="TestAsyncFileReader.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

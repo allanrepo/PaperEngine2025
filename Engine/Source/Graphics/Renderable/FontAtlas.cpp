@@ -10,6 +10,7 @@ graphics::renderable::FontAtlas::FontAtlas(std::unique_ptr<graphics::resource::I
 void graphics::renderable::FontAtlas::Reset()
 {
 	texture->Reset();
+	// TODO: glyphs are not populated yet
 	glyphs.clear();
 }
 
@@ -35,7 +36,7 @@ bool graphics::renderable::FontAtlas::Initialize(const std::string& fontName, co
 		}
 	}
 
-	// convert mapped data into glyphs
+	// TODO: convert mapped data into glyphs
 	{
 
 	}
@@ -53,6 +54,7 @@ bool graphics::renderable::FontAtlas::Initialize(const std::string& fontName, co
 	return true;
 }
 
+// TODO: glyphs need to be populated during Initialize
 const graphics::text::Glyph* graphics::renderable::FontAtlas::GetGlyph(const unsigned char character) const
 {
 	if (character < 32 || character > 127)
@@ -60,6 +62,9 @@ const graphics::text::Glyph* graphics::renderable::FontAtlas::GetGlyph(const uns
 		throw std::runtime_error("Invalid character in getting glyph.");
 		LOGERROR("Invalid character in getting glyph. Character: " << character);
 	}
+
+	throw std::runtime_error("Glyphs are not populated yet in FontAtlas.");
+
 	return &glyphs[character - 32];
 }
 
@@ -117,6 +122,20 @@ const float graphics::renderable::FontAtlas::GetHeight(const unsigned char chara
 	float v1 = m_textNormalizedCoords[character - 32][3]; // bottom
 
 	return texture->GetHeight() * (v1 - v0);
+}
+
+const float graphics::renderable::FontAtlas::GetWidth(const std::string& text) const
+{
+	float total = 0.0f;
+	for (unsigned char c : text)
+	{
+		if (c < 32 || c > 127)
+			continue; // or handle error/logging
+
+		total += GetWidth(c);
+		// optionally add advance/kerning if your Glyph stores it
+	}
+	return total;
 }
 
 float graphics::renderable::FontAtlas::GetWidth() const

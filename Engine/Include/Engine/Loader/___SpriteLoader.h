@@ -1,8 +1,9 @@
-// NOTE:
+// NOTE: 
 // called sprite loader instead of factory because it does not create a new object
 // the sprite object is actually a view into the sprite atlas
 // the method is called Load because it loads the sprite atlas if not already loaded
-// DEPRECATED: SpriteAtlas now has method to make Sprite
+// TODO:
+// DEPRECATED: SpriteAtlas now has method to make Sprite. please DELETE THIS
 
 #pragma once
 #include <Graphics/Renderable/ISpriteAtlas.h>

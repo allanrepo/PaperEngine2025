@@ -61,6 +61,9 @@
     <Filter Include="State">
       <UniqueIdentifier>{22332b24-6622-41b9-94f2-263f9af6a728}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Command">
+      <UniqueIdentifier>{a41dcf62-9322-4b84-a69f-838d1ab9fe2b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Core\Event.h">

@@ -38,7 +38,7 @@ namespace graphics::dx11
         bool Initialize(void* windowHandle) override;
 
         // Handles resizing of the swap chain and render target view
-        void Resize(uint32_t width, uint32_t height) override;
+        void Resize(const spatial::Size<uint32_t>& size) override;
 
         // Cleans up all DX11 resources
         void ShutDown() override;
@@ -50,13 +50,18 @@ namespace graphics::dx11
         void End() override;
 
         // Clears the render target with the specified color
-        void Clear(float red, float green, float blue, float alpha) override;
+        //void Clear(float red, float green, float blue, float alpha) override;
+        void Clear(const graphics::ColorF& color) override;
 
         // Sets a custom viewport rectangle
-        void SetViewPort(float x, float y, float width, float height) override;
+        //void SetViewPort(float x, float y, float width, float height) override;
+        void SetViewPort(const math::geometry::RectF& rect) override;
 
         // Sets the default viewport to cover the entire render target
         void SetViewPort() override;
+
+		// Retrieves the current viewport rectangle
+        math::geometry::RectF GetViewPort() const override final;
 
         // this class means it is implemented with directx 11
         static constexpr const char* TypeName = "DirectX11";

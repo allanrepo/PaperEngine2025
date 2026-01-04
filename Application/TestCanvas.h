@@ -99,7 +99,7 @@ namespace test
 			// start the canvas. we can draw from here
 			m_canvas->Begin();
 			{
-				m_canvas->Clear(0.2f, 0.2f, 1.0f, 1.0f);
+				m_canvas->Clear({ 0.2f, 0.2f, 1.0f, 1.0f });
 
 				m_renderer->Begin();
 				{
@@ -134,7 +134,7 @@ namespace test
 		void OnWindowSize(size_t nWidth, size_t nHeight)
 		{
 			LOG("Window resized to: " + std::to_string(nWidth) + ", " + std::to_string(nHeight));
-			m_canvas->Resize(static_cast<unsigned int>(nWidth), static_cast<unsigned int>(nHeight));
+			m_canvas->Resize({ static_cast<unsigned int>(nWidth), static_cast<unsigned int>(nHeight) });
 			m_canvas->SetViewPort();
 		}
 	};

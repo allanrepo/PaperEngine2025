@@ -1,4 +1,23 @@
-
+// tilemap is composed of a list of tilelayers
+// tilelayer represents the renderables like floors, buildings, trees, characters 
+// tilelayer also represents logic tiles such as walkable, obstacle, etc...
+// tilelayer is composed of a list of tileregions, which are chunks of the map
+// tileregion is a chunk of a map and is composed of tilegrid
+// tilegrid contains 2d array of tiles
+//
+// tilelayer loader
+// - reads the tilemap source and stores the map data into chunks of tile regions, which will be stored into tilelayer
+// - the chunk size (tileregion size) is provided by caller. 
+// - if chunk size is larger than the tilemap source, only 1 chunk will be created and the size will be the size of the tilemap source
+// - if tilemap source size is not divisible by given chunk size...
+//		- loader will create enough chunks that fits in the tilemap source. 
+//		- the remainder of the tilemap source will be stored in chunk but the chunk size is the size of the remainder
+//		- the remainder chunks will be at the right and bottom side of the map
+// - tilemap source data is stored in file.
+//		- supports CSV file format for now
+// - map can be extremely large so it can take a while to load it. it loads the map in per frame so it does not stall the application
+//		- it first reads the data from the file and will read a chunk (size in byte
+// 
 
 #pragma once
 #include <Spatial/IResizeable.h>
@@ -79,7 +98,7 @@ namespace component::tile
 	class Tileset 
 	{
 	private:
-		cache::Dictionary<int, std::unique_ptr<T>> registry;
+		cache::Dictionary<int, std::unique_ptr<T>> m_registry;
 
 	public:
 		Tileset() = default;
@@ -93,22 +112,22 @@ namespace component::tile
 		Tileset& operator=(Tileset&&) = default;
 		bool Register(int id, std::unique_ptr<T> data) 
 		{ 
-			return registry.Register(id, std::move(data));
+			return m_registry.Register(id, std::move(data));
 		}
 		bool IsValid(int id) const 
 		{ 
-			return registry.Has(id); 
+			return m_registry.Has(id);
 		}
 		
 		const T& Get(int id) const 
 		{ 
-			return *registry.Get(id); 
+			return *m_registry.Get(id);
 		}
 
 		// creates a tile instance for the given id. returns invalid tile if id not found
 		Tile<T> MakeTile(int id) const 
 		{ 
-			return registry.Has(id) ? Tile<T>(registry.Get(id).get()) : Tile<T>();
+			return m_registry.Has(id) ? Tile<T>(m_registry.Get(id).get()) : Tile<T>();
 		}
 	};
 

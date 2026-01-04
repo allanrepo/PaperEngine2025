@@ -6,10 +6,13 @@
 #include "TestEngine.h"
 #include "TestWin32.h"
 #include "TestLargeMap.h"
+#include "TestFileReader.h"
+#include "TestAsyncFileReader.h"
 
 int main()
 {
-	TestLargeMap::Test testLargeMap;
+	//test::TestFileReader testFileReader;
+	//TestLargeMap::Test testLargeMap;
 	//TestCamera::Test testCamera;
 	//TestTile::Test testTile;
 	//test::TestWin32 testWin32;
@@ -17,6 +20,8 @@ int main()
 	//test::TestEngine testEngine;
 	//test::TestSprite testSprite;	
 	//test::TestAnimation testAnimation;
+	TestAsyncFileReader::Test testAsyncFileReader;
+
 
 	return 0;
 }

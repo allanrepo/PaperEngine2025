@@ -3,6 +3,7 @@
 #include <list>
 #include <iostream>
 #include <string>
+#include <functional>
 
 
 namespace event
@@ -111,6 +112,37 @@ namespace event
         }
     };
 
+    // specialization for lambdas or std::function. 
+	// note: don't credit me for this implementation. got this from copilot. getting lazy now :P
+    template <typename R, typename... Args>
+    class Delegate<R, std::function<R(Args...)>, Args...> : public IDelegate<R, Args...>
+    {
+    private:
+        std::function<R(Args...)> m_func;
+        bool active = true;
+
+    public:
+        Delegate(std::function<R(Args...)> func) : m_func(std::move(func)) {}
+
+        virtual ~Delegate() {}
+
+        virtual bool IsActive() const override { return active; }
+        virtual void Deactivate() override { active = false; }
+
+        virtual R operator()(const Args&... a) override
+        {
+            return m_func(a...);
+        }
+
+        bool Equals(const IDelegate<R, Args...>* other) const override
+        {
+            // Equality for lambdas is tricky — usually you don’t compare them.
+            // For simplicity, always return false (or compare addresses if stored).
+            return false;
+        }
+    };
+
+
     // this is the "view" wrapper of delegate class. instead of creating an instance of delegate class, application creates this and pass to Event class
     // the Event class will internally create an instance of delegate class with information contained in this "view" class. 
     // doing this, allows Event class to fully manage the lifetime of delegate objects.
@@ -149,6 +181,21 @@ namespace event
         }
     };
 
+    // Handler wrapper for lambdas
+    // note: don't credit me for this implementation. got this from copilot. getting lazy now :P
+    template <typename R, typename... Args>
+    class Handler<R, std::function<R(Args...)>, Args...>
+    {
+    private:
+        std::function<R(Args...)> m_func;
+
+        template <typename... EArgs>
+        friend class Event;
+
+    public:
+        Handler(std::function<R(Args...)> func) : m_func(std::move(func)) {}
+    };
+
     /*
     * the deduction guide is a fix suggested by chatgpt on an issue where if i create an instance of event::Handler with a regular function, i must explicitly specify the template parameters
     * root cause: 
@@ -165,13 +212,22 @@ namespace event
     template<typename R, typename C, typename... Args>
     Handler(C*, R(C::*)(Args...)) -> Handler<R, C, Args...>;
 
+    // Deduction guide for lambdas
+    template <typename R, typename... Args>
+    Handler(std::function<R(Args...)>) -> Handler<R, std::function<R(Args...)>, Args...>;
+
+	// this deduction guide is for lambdas without std::function wrapper. what an amazing trick copilot came up with :P
+	// but this is limited to only void return type lambdas.
+    //template <typename F>
+    //Handler(F f) -> Handler<void, std::function<void()>>;
+
     // this is the event class
     template<typename... Args>
     class Event
     {
     private:
         std::list<IDelegate<void, Args...>*> m_subscribers;
-        std::list<typename std::list<IDelegate<void, Args...>*>::iterator> m_unsubsribers;
+        std::list<typename std::list<IDelegate<void, Args...>*>::iterator> m_unsubscribers;
     public:
         Event() //= default;
         {
@@ -218,12 +274,12 @@ namespace event
             }
 
             // Sweep deferred removals
-            for (auto it : m_unsubsribers)
+            for (auto it : m_unsubscribers)
             {
                 delete* it;                 // Destroy the delegate
                 m_subscribers.erase(it);    // Remove from listener list
             }
-            m_unsubsribers.clear();
+            m_unsubscribers.clear();
         }
 
         template <typename C>
@@ -241,6 +297,15 @@ namespace event
             m_subscribers.push_back(dlgt);
         }
 
+        // Add operator += for lambda handlers
+        // note: don't credit me for this implementation. got this from copilot. getting lazy now :P
+        void operator += (Handler<void, std::function<void(Args...)>, Args...> handler)
+        {
+            IDelegate<void, Args...>* dlgt = new Delegate<void, std::function<void(Args...)>, Args...>(handler.m_func);
+
+            m_subscribers.push_back(dlgt);
+        }
+
         template <typename C>
         void operator -= (Handler<void, C, Args...> handler)
         {
@@ -251,12 +316,28 @@ namespace event
                 if ((*it)->Equals(&temp))
                 {
                     (*it)->Deactivate();            // Prevent dispatch
-                    m_unsubsribers.push_back(it);   // Store iterator for deferred removal
+                    m_unsubscribers.push_back(it);   // Store iterator for deferred removal
                     break;
                 }
             }
         }
 
+        // Add operator -= for lambda handlers
+        // note: don't credit me for this implementation. got this from copilot. getting lazy now :P
+        void operator -= (Handler<void, std::function<void(Args...)>, Args...> handler)
+        {
+            Delegate<void, std::function<void(Args...)>, Args...> temp(handler.m_func);
+
+            for (auto it = m_subscribers.begin(); it != m_subscribers.end(); ++it)
+            {
+                if ((*it)->Equals(&temp))
+                {
+                    (*it)->Deactivate();
+                    m_subscribers.push_back(it);
+                    break;
+                }
+            }
+        }
         void operator -= (Handler<void, void, Args...> handler)
         {
             Delegate<void, void, Args...> temp(handler.m_pFunc);
@@ -266,7 +347,7 @@ namespace event
                 if ((*it)->Equals(&temp))
                 {
                     (*it)->Deactivate();            // Prevent dispatch
-                    m_unsubsribers.push_back(it);   // Store iterator for deferred removal
+                    m_unsubscribers.push_back(it);   // Store iterator for deferred removal
                     break;
                 }
             }

@@ -78,7 +78,7 @@ bool graphics::dx11::DX11CanvasImpl::Initialize(void* windowHandle)
 }
 
 // Resizes the swap chain buffers and recreates the render target view
-void graphics::dx11::DX11CanvasImpl::Resize(uint32_t width, uint32_t height)
+void graphics::dx11::DX11CanvasImpl::Resize(const spatial::Size<uint32_t>& size)
 {
     if (!swapChain)
         return;
@@ -89,8 +89,8 @@ void graphics::dx11::DX11CanvasImpl::Resize(uint32_t width, uint32_t height)
     // Resize the swap chain buffers
     HRESULT result = swapChain->ResizeBuffers(
         0,                      // Preserve buffer count
-        width,                  // New width
-        height,                 // New height
+        size.width,                  // New width
+        size.height,                 // New height
         DXGI_FORMAT_UNKNOWN,    // Keep existing format
         0                       // No special flags
     );
@@ -134,29 +134,53 @@ void graphics::dx11::DX11CanvasImpl::End()
     swapChain->Present(0, 0);
 }
 
-// Clears the render target view with the specified color
-void graphics::dx11::DX11CanvasImpl::Clear(float red, float green, float blue, float alpha)
+//// Clears the render target view with the specified color
+//void graphics::dx11::DX11CanvasImpl::Clear(float red, float green, float blue, float alpha)
+//{
+//    DX11Core& core = DX11Core::Instance();
+//
+//    // Define the clear color
+//    float clearColor[] = { red, green, blue, alpha };
+//
+//    // Clear the render target view
+//    core.GetContext()->ClearRenderTargetView(renderTargetView.Get(), clearColor);
+//}
+
+void graphics::dx11::DX11CanvasImpl::Clear(const graphics::ColorF& color)
 {
-    DX11Core& core = DX11Core::Instance();
+    float clearColor[] = { color.red, color.green, color.blue, color.alpha };
 
-    // Define the clear color
-    float clearColor[] = { red, green, blue, alpha };
-
-    // Clear the render target view
-    core.GetContext()->ClearRenderTargetView(renderTargetView.Get(), clearColor);
+    DX11Core::Instance().GetContext()->ClearRenderTargetView(renderTargetView.Get(), clearColor);
 }
 
-// Sets a custom viewport rectangle
-void graphics::dx11::DX11CanvasImpl::SetViewPort(float x, float y, float width, float height)
+//// Sets a custom viewport rectangle
+//void graphics::dx11::DX11CanvasImpl::SetViewPort(float x, float y, float width, float height)
+//{
+//    DX11Core& core = DX11Core::Instance();
+//
+//    // Define the viewport dimensions
+//    D3D11_VIEWPORT viewport = {};
+//    viewport.TopLeftX = x;
+//    viewport.TopLeftY = y;
+//    viewport.Width = width;
+//    viewport.Height = height;
+//    viewport.MinDepth = 0.0f;
+//    viewport.MaxDepth = 1.0f;
+//
+//    // Apply the viewport to the rasterizer stage
+//    core.GetContext()->RSSetViewports(1, &viewport);
+//}
+
+void graphics::dx11::DX11CanvasImpl::SetViewPort(const math::geometry::RectF& rect)
 {
     DX11Core& core = DX11Core::Instance();
 
     // Define the viewport dimensions
     D3D11_VIEWPORT viewport = {};
-    viewport.TopLeftX = x;
-    viewport.TopLeftY = y;
-    viewport.Width = width;
-    viewport.Height = height;
+    viewport.TopLeftX = rect.left;
+    viewport.TopLeftY = rect.top;
+    viewport.Width = rect.GetWidth();
+    viewport.Height = rect.GetHeight();
     viewport.MinDepth = 0.0f;
     viewport.MaxDepth = 1.0f;
 
@@ -171,6 +195,27 @@ void graphics::dx11::DX11CanvasImpl::SetViewPort()
     if (SUCCEEDED(swapChain->GetDesc(&desc)))
     {
         // Use full buffer dimensions for the viewport
-        SetViewPort(0.0f, 0.0f, static_cast<float>(desc.BufferDesc.Width), static_cast<float>(desc.BufferDesc.Height));
+        SetViewPort({ 0.0f, 0.0f, static_cast<float>(desc.BufferDesc.Width), static_cast<float>(desc.BufferDesc.Height) });
     }
+}
+
+math::geometry::RectF graphics::dx11::DX11CanvasImpl::GetViewPort() const
+{
+    D3D11_VIEWPORT viewport{};
+	unsigned int numViewports = 1;
+    DX11Core::Instance().GetContext()->RSGetViewports(&numViewports, &viewport);
+
+    if (numViewports == 0) 
+    { 
+        // No viewport set, return an empty rect 
+        return math::geometry::RectF{0.0f, 0.0f, 0.0f, 0.0f}; 
+    }
+
+    return math::geometry::RectF
+    { 
+        viewport.TopLeftX,
+        viewport.TopLeftY,
+        viewport.TopLeftX + viewport.Width,
+		viewport.TopLeftY + viewport.Height
+    };
 }

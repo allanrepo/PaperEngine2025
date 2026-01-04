@@ -27,9 +27,9 @@ engine::Engine::Engine(
 	cache::Registry<cache::Dictionary<>>::Instance().Register("AtlasToUVRectsMap", std::make_unique<cache::Dictionary<>>());
 
 	// now we can setup window event handlers
-	Win32::Window::OnInitialize += event::Handler(this, &Engine::OnInitialize);
-	Win32::Window::OnExit += event::Handler(this, &Engine::OnExit);
-	Win32::Window::OnIdle += event::Handler(this, &Engine::OnIdle);
+	Win32::Window::OnInitialize += event::Handler(this, &Engine::Initialize);
+	Win32::Window::OnExit += event::Handler(this, &Engine::Exit);
+	Win32::Window::OnIdle += event::Handler(this, &Engine::Idle);
 }
 
 engine::Engine::~Engine()
@@ -42,16 +42,16 @@ void engine::Engine::Run()
 	Win32::Window::Run();
 }
 
-void engine::Engine::OnInitialize()
+void engine::Engine::Initialize()
 {
 	// get environment config from cache
 	cache::Dictionary<>& environmentConfig = cache::Registry<cache::Dictionary<>>::Instance().Get("EnvironmentConfig");
 
 	// create our window here
 	m_window = std::make_unique<Win32::Window>();
-	m_window->OnClose += event::Handler(this, &Engine::OnWindowClose);
-	m_window->OnCreate += event::Handler(this, &Engine::OnWindowCreate);
-	m_window->OnSize += event::Handler(this, &Engine::OnWindowSize);
+	m_window->OnClose += event::Handler(this, &Engine::WindowClose);
+	m_window->OnCreate += event::Handler(this, &Engine::WindowCreate);
+	m_window->OnSize += event::Handler(this, &Engine::WindowSize);
 	//m_window->Create(utilities::Text::ToWide(environmentConfig.Get("Title")).c_str(), 1400, 900);
 	m_window->Create(L"window title", 1400, 900);
 	m_window->OnWindowMessage += event::Handler(this, &Engine::ProcessWin32Message);
@@ -63,7 +63,7 @@ void engine::Engine::ProcessWin32Message(UINT msg, WPARAM wParam, LPARAM lParam)
 	OnProcessWin32Message(msg, wParam, lParam);
 }
 
-void engine::Engine::OnWindowCreate(void* hWnd)
+void engine::Engine::WindowCreate(void* hWnd)
 {
 	// get environment config from cache
 	cache::Dictionary<>& environmentConfig = cache::Registry<cache::Dictionary<>>::Instance().Get("EnvironmentConfig");
@@ -100,12 +100,12 @@ void engine::Engine::OnWindowCreate(void* hWnd)
 	LOG("[ENGINE] Start event happened...");
 
 	// setup stopwatch to manage timing
-	m_stopwatch.OnLap += event::Handler(this, &Engine::OnLap);
+	m_stopwatch.OnLap += event::Handler(this, &Engine::Lap);
 	m_stopwatch.Start();
 	LOG("[ENGINE] Timer started...");
 }
 
-void engine::Engine::OnLap(float delta)
+void engine::Engine::Lap(float delta)
 {
 	//input::Input::Instance().Update();
 	OnUpdate(delta);
@@ -113,9 +113,8 @@ void engine::Engine::OnLap(float delta)
 	// start the canvas. we can draw from here
 	m_canvas->Begin();
 	{
-		m_canvas->Clear(0.2f, 0.2f, 1.0f, 1.0f);
+		m_canvas->Clear({ 0.2f, 0.2f, 1.0f, 1.0f });
 
-		m_canvas->Clear(0.2f, 0.2f, 1.0f, 1.0f);
 		m_canvas->SetViewPort();
 
 		// render sprites using immediate renderer. renders a bunch of quads and text at the right side of screen
@@ -130,26 +129,27 @@ void engine::Engine::OnLap(float delta)
 	m_canvas->End();
 }
 
-void engine::Engine::OnIdle()
+void engine::Engine::Idle()
 {
 	m_stopwatch.Lap<timer::milliseconds>();
 }
 
-void engine::Engine::OnExit()
+void engine::Engine::Exit()
+{
+	OnEnd();
+	LOG("[ENGINE] End event happened...");
+}
+
+
+void engine::Engine::WindowClose()
 {
 
 }
 
-
-void engine::Engine::OnWindowClose()
-{
-
-}
-
-void engine::Engine::OnWindowSize(size_t width, size_t height)
+void engine::Engine::WindowSize(size_t width, size_t height)
 {
 	LOG("[ENGINE] window resized to " << width << " height = " << height << "...");
-	m_canvas->Resize(static_cast<unsigned int>(width), static_cast<unsigned int>(height));
+	m_canvas->Resize({ static_cast<unsigned int>(width), static_cast<unsigned int>(height) });
 	OnResize(width, height);
 }
 
