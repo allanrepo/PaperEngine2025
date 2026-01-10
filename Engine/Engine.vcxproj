@@ -22,6 +22,8 @@
     <ClInclude Include="Include\Cache\BindCache.h" />
     <ClInclude Include="Include\Cache\Dictionary.h" />
     <ClInclude Include="Include\Cache\Registry.h" />
+    <ClInclude Include="Include\Command\CommandQueue.h" />
+    <ClInclude Include="Include\Command\ICommand.h" />
     <ClInclude Include="Include\Components\Tile.h" />
     <ClInclude Include="Include\Core\Event.h" />
     <ClInclude Include="Include\Core\Factory.h" />
@@ -66,6 +68,7 @@
     <ClInclude Include="Include\Graphics\Resource\Texture.h" />
     <ClInclude Include="Include\Math\Rect.h" />
     <ClInclude Include="Include\Math\Vector.h" />
+    <ClInclude Include="Include\Performance\FrameRateMonitor.h" />
     <ClInclude Include="Include\Spatial\Camera.h" />
     <ClInclude Include="Include\Spatial\IResizeable.h" />
     <ClInclude Include="Include\Spatial\ISizeable.h" />
@@ -76,6 +79,7 @@
     <ClInclude Include="Include\State\State.h" />
     <ClInclude Include="Include\State\StateMachine.h" />
     <ClInclude Include="Include\Timer\Pulse.h" />
+    <ClInclude Include="Include\Timer\Scheduler.h" />
     <ClInclude Include="Include\Timer\StopWatch.h" />
     <ClInclude Include="Include\Timer\Timer.h" />
     <ClInclude Include="Include\Utilities\CSVFile.h" />
@@ -87,6 +91,8 @@
     <ClInclude Include="Include\Win32\WindowBase.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Command\CommandQueue.cpp" />
+    <ClCompile Include="Source\Command\ICommand.cpp" />
     <ClCompile Include="Source\Components\Tile.cpp" />
     <ClCompile Include="Source\Engine\Engine.cpp" />
     <ClCompile Include="Source\Engine\Factory\CanvasFactory.cpp" />
@@ -107,7 +113,9 @@
     <ClCompile Include="Source\Graphics\Resource\DX11Texture.cpp" />
     <ClCompile Include="Source\Graphics\Resource\DX11TextureImpl.cpp" />
     <ClCompile Include="Source\Graphics\Resource\Texture.cpp" />
+    <ClCompile Include="Source\Performance\FrameRateMonitor.cpp" />
     <ClCompile Include="Source\Timer\Pulse.cpp" />
+    <ClCompile Include="Source\Timer\Scheduler.cpp" />
     <ClCompile Include="Source\Timer\StopWatch.cpp" />
     <ClCompile Include="Source\Win32\GDIUtility.cpp" />
     <ClCompile Include="Source\Win32\Window.cpp" />
@@ -168,6 +176,10 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <EnableMicrosoftCodeAnalysis>false</EnableMicrosoftCodeAnalysis>
+    <CodeAnalysisRuleSet>NativeMinimumRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>

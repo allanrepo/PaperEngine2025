@@ -35,11 +35,25 @@ on map rendering state
 #include <State/StateMachine.h>	
 #include <Graphics/Renderable/IFontAtlas.h>
 #include <Graphics/Renderable/FontAtlas.h>
+#include <Command/CommandQueue.h>
+#include <Command/ICommand.h>
+#include <Command/DrawCommand.h>
 
 #include "Utilities.h"
 
 namespace TestAsyncFileReader
 {
+	class Test;
+
+	class LaunchState;
+	class LoadResourcesState;
+
+}
+namespace TestAsyncFileReader
+{
+
+
+
 	// a wrapper class to calculate simple frame rate at specified interval
 	// it averages the frame rate over the interval to avoid too much fluctuation
 	class SimpleFrameRateCounter
@@ -65,7 +79,7 @@ namespace TestAsyncFileReader
 			// assign frame rate refresher event handler. we feed it with a lambda function (C++11 feature) that sets the update flag to true
 			// we are using std::function wrapper to wrap the lambda. This is because the event handler requires a std::function object
 			// we could have also created a separate method for this instead of using lambda as this is opportunity to test this feature
-			m_frameRateRefresher.OnInterval += event::Handler(std::function<void()>([this]()
+			m_frameRateRefresher.OnInterval += event::Handler(std::function<void(float)>([this](float interval)
 				{
 					m_updateFrameRateDisplay = true;
 				}));
@@ -305,11 +319,16 @@ namespace TestAsyncFileReader
 		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
 		timer::StopWatch m_stopwatch;
 		AsyncFileReader m_fileReader;
-		state::StateMachine<Test> m_stateMachine;
 		std::unique_ptr<graphics::renderable::IFontAtlas> m_fontAtlas;
 
 		// frame rate counter
 		SimpleFrameRateCounter m_frameRateCounter;
+
+		// command manager
+		engine::command::CommandQueue m_commandQueue;
+
+		// application state machine
+		state::StateMachine<TestAsyncFileReader::Test> m_stateMachine;
 
 	public:
 		Test():
@@ -362,6 +381,33 @@ namespace TestAsyncFileReader
 			m_stopwatch.OnLap += event::Handler(this, &Test::OnLap);
 			m_stopwatch.Start();
 			LOG("Stopwatch started...");
+
+			// set initial state to launch state
+
+			//std::unique_ptr<LoadResourcesState> launchState = std::make_unique<LoadResourcesState>();
+
+			//m_stateMachine.Set(std::make_unique<LoadResourcesState>());
+
+		}
+
+		graphics::renderer::IRenderer& GetRenderer() const
+		{
+			return *m_renderer;
+		}
+
+		graphics::renderable::IFontAtlas& GetFontAtlas() const
+		{
+			return *m_fontAtlas;
+		}
+
+		engine::command::CommandQueue& GetCommandQueue()
+		{
+			return m_commandQueue;
+		}
+
+		graphics::ICanvas& GetCanvas() const
+		{
+			return *m_canvas;
 		}
 
 		// this method is fired up whenever the OnLap event is triggered from stopwatch
@@ -369,7 +415,8 @@ namespace TestAsyncFileReader
 		{
 			m_fileReader.Update(0xFFF);
 
-			m_frameRateCounter.Update(time);
+			m_stateMachine.Update(time);
+			//m_frameRateCounter.Update(time);
 		}
 
 
@@ -388,46 +435,47 @@ namespace TestAsyncFileReader
 
 				m_renderer->Begin();
 				{
-					long fileSize = m_fileReader.GetFileSizeLong();
-					long bytesRead = m_fileReader.GetNumberOfBytesReadLong();
-					float size = 600.0f;
-					float sizeRead = size * (static_cast<float>(bytesRead) / static_cast<float>(fileSize > 0 ? fileSize : 0));
+					// execute render commands on queue. clear commands after dispatching
+					m_commandQueue.Dispatch(engine::command::Type::Render, true);
 
-					m_renderer->Draw(
-						spatial::PositionF{ 100.0f, 400.0f },				// position
-						spatial::SizeF{ size, 50.0f },					// size
-						graphics::ColorF{ 1.0f, 0.0f, 0.0f, 1.0f },			// color
-						0.0f
-					);
+					//long fileSize = m_fileReader.GetFileSizeLong();
+					//long bytesRead = m_fileReader.GetNumberOfBytesReadLong();
+					//float size = 600.0f;
+					//float sizeRead = size * (static_cast<float>(bytesRead) / static_cast<float>(fileSize > 0 ? fileSize : 0));
 
-					m_renderer->Draw(
-						spatial::PositionF{ 100.0f, 400.0f },				// position
-						spatial::SizeF{ sizeRead, 50.0f },					// size
-						graphics::ColorF{ 0.0f, 1.0f, 0.0f, 1.0f },			// color
-						0.0f
-					);
+					//m_renderer->Draw(
+					//	spatial::PositionF{ 100.0f, 400.0f },				// position
+					//	spatial::SizeF{ size, 50.0f },					// size
+					//	graphics::ColorF{ 1.0f, 0.0f, 0.0f, 1.0f },			// color
+					//	0.0f
+					//);
 
-					// render frame rate at top-right corner
-					{
-						std::string fps = "FPS: " + std::to_string(static_cast<int>(m_frameRateCounter.GetCurrentFrameRate()));
-						float textWidth = m_fontAtlas->GetWidth(fps);
+					//m_renderer->Draw(
+					//	spatial::PositionF{ 100.0f, 400.0f },				// position
+					//	spatial::SizeF{ sizeRead, 50.0f },					// size
+					//	graphics::ColorF{ 0.0f, 1.0f, 0.0f, 1.0f },			// color
+					//	0.0f
+					//);
 
-						math::geometry::RectF vp = m_canvas->GetViewPort();
+					//// render frame rate at top-right corner
+					//{
+					//	std::string fps = "FPS: " + std::to_string(static_cast<int>(m_frameRateCounter.GetCurrentFrameRate()));
+					//	float textWidth = m_fontAtlas->GetWidth(fps);
 
-						spatial::PositionF pos{
-							vp.right - textWidth - 10.0f,
-							10.0f
-						};
+					//	math::geometry::RectF vp = m_canvas->GetViewPort();
 
-						m_renderer->DrawText(
-							*m_fontAtlas,
-							"FPS: " + std::to_string(static_cast<int>(m_frameRateCounter.GetCurrentFrameRate())),
-							pos,
-							graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }
-						);
-					}
+					//	spatial::PositionF pos{
+					//		vp.right - textWidth - 10.0f,
+					//		10.0f
+					//	};
 
-
+					//	m_renderer->DrawText(
+					//		*m_fontAtlas,
+					//		"FPS: " + std::to_string(static_cast<int>(m_frameRateCounter.GetCurrentFrameRate())),
+					//		pos,
+					//		graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }
+					//	);
+					//}
 
 				}
 				m_renderer->End();
@@ -469,11 +517,80 @@ namespace TestAsyncFileReader
 			{
 			}
 		}
-
-
 	};
 
-	class InitializeApplicationState : public state::State<Test>
+
+	class LaunchState : public state::State<TestAsyncFileReader::Test>
+	{
+	private:
+	public:
+		LaunchState()
+		{
+		}
+		virtual ~LaunchState() = default;
+
+		virtual void Enter(TestAsyncFileReader::Test& owner) override
+		{
+		}
+		virtual void Exit(TestAsyncFileReader::Test& owner) override
+		{
+		}
+		virtual void Update(TestAsyncFileReader::Test& owner, float delta) override
+		{
+			// render text showing which state are we in
+			float width = owner.GetFontAtlas().GetWidth("State: LaunchState");
+			float height = owner.GetFontAtlas().GetHeight();
+
+			math::geometry::RectF vp = owner.GetCanvas().GetViewPort();
+
+			owner.GetCommandQueue().Enqueue(
+				std::make_unique<engine::command::graphics::renderer::DrawTextCommand>(
+					owner.GetRenderer(),
+					owner.GetFontAtlas(),
+					"State: LaunchState",
+					spatial::PositionF
+					{
+						vp.GetWidth() - owner.GetFontAtlas().GetWidth("State: LaunchState") - 10.0f,
+						owner.GetFontAtlas().GetHeight()
+					},
+					graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }
+				));
+
+		}
+		virtual bool IsFinished(TestAsyncFileReader::Test& owner) override
+		{
+			return false;
+		}
+	};
+
+
+
+	class LoadResourcesState : public state::State<Test>
+	{
+	private:
+	public:
+		LoadResourcesState()
+		{
+		}
+		virtual ~LoadResourcesState() = default;
+
+		virtual void Enter(Test& owner) override
+		{
+		}
+		virtual void Exit(Test& owner) override
+		{
+		}
+		virtual void Update(Test& owner, float delta) override
+		{
+		}
+		virtual bool IsFinished(Test& owner) override
+		{
+			return false;
+		}
+	};
+
+
+	class IdleState : public state::State<Test>
 	{
 	private:
 	public:
@@ -483,132 +600,33 @@ namespace TestAsyncFileReader
 		virtual void Exit(Test& owner) override
 		{
 		}
-
 		virtual void Update(Test& owner, float delta) override
 		{
 		}
-
 		virtual bool IsFinished(Test& owner) override
 		{
 			return false;
 		}
 	};
 
-}
-
-namespace game
-{
-	class Game
-	{
-	private:
-		engine::Engine m_engine;
-		state::StateMachine<Game> m_stateMachine;
-
-	public:
-		Game():
-			m_engine("Test State Machine", "DirectX11", "Batch"),
-			m_stateMachine(this)
-		{
-			m_engine.OnStart += event::Handler(this, &Game::OnStart);
-			m_engine.OnUpdate += event::Handler(this, &Game::OnUpdate);
-			m_engine.OnEnd += event::Handler(this, &Game::OnExit);
-
-			m_engine.Run();
-		}
-
-		virtual ~Game()
-		{
-		}
-
-		void OnStart()
-		{
-		}
-
-		void OnUpdate(float delta)
-		{
-			m_stateMachine.Update(delta);
-		}
-
-		void OnExit()
-		{
-		}
-	};
-
-
-	class LaunchState : public state::State<Game>
+	class ExitState : public state::State<Test>
 	{
 	private:
 	public:
-		virtual void Enter(Game& owner) override
+		virtual void Enter(Test& owner) override
 		{
 		}
-		virtual void Exit(Game& owner) override
+		virtual void Exit(Test& owner) override
 		{
 		}
-		virtual void Update(Game& owner, float delta) override
+		virtual void Update(Test& owner, float delta) override
 		{
 		}
-		virtual bool IsFinished(Game& owner) override
+		virtual bool IsFinished(Test& owner) override
 		{
 			return false;
 		}
 	};
 
-	class LoadResourcesState : public state::State<Game>
-	{
-	private:
-	public:
-		virtual void Enter(Game& owner) override
-		{
-		}
-		virtual void Exit(Game& owner) override
-		{
-		}
-		virtual void Update(Game& owner, float delta) override
-		{
-		}
-		virtual bool IsFinished(Game& owner) override
-		{
-			return false;
-		}
-	};
-
-	class IdleState : public state::State<Game>
-	{
-	private:
-	public:
-		virtual void Enter(Game& owner) override
-		{
-		}
-		virtual void Exit(Game& owner) override
-		{
-		}
-		virtual void Update(Game& owner, float delta) override
-		{
-		}
-		virtual bool IsFinished(Game& owner) override
-		{
-			return false;
-		}
-	};
-
-	class ExitState : public state::State<Game>
-	{
-	private:
-	public:
-		virtual void Enter(Game& owner) override
-		{
-		}
-		virtual void Exit(Game& owner) override
-		{
-		}
-		virtual void Update(Game& owner, float delta) override
-		{
-		}
-		virtual bool IsFinished(Game& owner) override
-		{
-			return false;
-		}
-	};
 }
 

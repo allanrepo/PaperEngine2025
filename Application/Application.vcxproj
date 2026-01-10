@@ -125,17 +125,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Demo.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Actor.h" />
     <ClInclude Include="ActorState.h" />
+    <ClInclude Include="Demo.h" />
     <ClInclude Include="TestAnimation.h" />
     <ClInclude Include="TestAsyncFileReader.h" />
     <ClInclude Include="TestCanvas.h" />
     <ClInclude Include="TestEngine.h" />
     <ClInclude Include="TestFileReader.h" />
+    <ClInclude Include="TestFrameRate.h" />
     <ClInclude Include="TestLargeMap.h" />
     <ClInclude Include="TestSprite.h" />
     <ClInclude Include="TestTile.h" />

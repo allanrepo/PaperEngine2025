@@ -5,6 +5,7 @@
 #include <Cache/Dictionary.h>
 #include <Utilities/Logger.h>
 #include <Utilities/Utilities.h>
+#include <Core/Input.h>
 
 engine::Engine::Engine(
 	std::string title,
@@ -103,12 +104,18 @@ void engine::Engine::WindowCreate(void* hWnd)
 	m_stopwatch.OnLap += event::Handler(this, &Engine::Lap);
 	m_stopwatch.Start();
 	LOG("[ENGINE] Timer started...");
+
 }
 
 void engine::Engine::Lap(float delta)
 {
-	//input::Input::Instance().Update();
-	OnUpdate(delta);
+	input::Input::Instance().Update();
+
+	m_scheduler.Update(delta);
+
+	//m_commandQueue.Dispatch(engine::command::Type::Logic, true);
+
+	//OnUpdate(delta);
 
 	// start the canvas. we can draw from here
 	m_canvas->Begin();
@@ -120,8 +127,11 @@ void engine::Engine::Lap(float delta)
 		// render sprites using immediate renderer. renders a bunch of quads and text at the right side of screen
 		m_renderer->Begin();
 		{
+			// dispatch render commands on queue and clear them after dispatch
+			m_commandQueue.Dispatch(engine::command::Type::Render, true);
+
 			// emit render event
-			OnRender();
+			//OnRender();
 		}
 		m_renderer->End();
 	}
@@ -131,7 +141,7 @@ void engine::Engine::Lap(float delta)
 
 void engine::Engine::Idle()
 {
-	m_stopwatch.Lap<timer::milliseconds>();
+	m_stopwatch.Lap<timer::seconds>();
 }
 
 void engine::Engine::Exit()
@@ -152,5 +162,4 @@ void engine::Engine::WindowSize(size_t width, size_t height)
 	m_canvas->Resize({ static_cast<unsigned int>(width), static_cast<unsigned int>(height) });
 	OnResize(width, height);
 }
-
 

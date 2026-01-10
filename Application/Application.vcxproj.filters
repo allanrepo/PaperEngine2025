@@ -50,6 +50,12 @@
     <ClInclude Include="TestAsyncFileReader.h">
       <Filter>Tests</Filter>
     </ClInclude>
+    <ClInclude Include="Demo.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="TestFrameRate.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -57,6 +63,9 @@
     </ClCompile>
     <ClCompile Include="Utilities.cpp">
       <Filter>Game Code</Filter>
+    </ClCompile>
+    <ClCompile Include="Demo.cpp">
+      <Filter>Main</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -217,7 +217,7 @@ namespace event
     Handler(std::function<R(Args...)>) -> Handler<R, std::function<R(Args...)>, Args...>;
 
 	// this deduction guide is for lambdas without std::function wrapper. what an amazing trick copilot came up with :P
-	// but this is limited to only void return type lambdas.
+	// but this is limited to only void return type lambdas. i am commenting for now because i don't really want to support this yet...
     //template <typename F>
     //Handler(F f) -> Handler<void, std::function<void()>>;
 
@@ -229,18 +229,12 @@ namespace event
         std::list<IDelegate<void, Args...>*> m_subscribers;
         std::list<typename std::list<IDelegate<void, Args...>*>::iterator> m_unsubscribers;
     public:
-        Event() //= default;
-        {
-        }
+        Event() = default;
 
         virtual ~Event()
         {
             Clear();
         }
-
-        // prevent this from being copied
-        Event(const Event&) = delete;
-        Event& operator=(const Event&) = delete;
 
         void Clear()
         {
@@ -287,7 +281,7 @@ namespace event
         {
             IDelegate<void, Args...>* dlgt = new Delegate<void, C, Args...>(handler.m_pFunc, handler.m_pInst);
 
-            m_subscribers.push_back(dlgt);
+            m_subscribers.push_back(dlgt); 
         }
 
         void operator += (Handler<void, void, Args...> handler)
@@ -299,6 +293,7 @@ namespace event
 
         // Add operator += for lambda handlers
         // note: don't credit me for this implementation. got this from copilot. getting lazy now :P
+        // note: function signature is limited to void return type for now
         void operator += (Handler<void, std::function<void(Args...)>, Args...> handler)
         {
             IDelegate<void, Args...>* dlgt = new Delegate<void, std::function<void(Args...)>, Args...>(handler.m_func);
@@ -322,22 +317,6 @@ namespace event
             }
         }
 
-        // Add operator -= for lambda handlers
-        // note: don't credit me for this implementation. got this from copilot. getting lazy now :P
-        void operator -= (Handler<void, std::function<void(Args...)>, Args...> handler)
-        {
-            Delegate<void, std::function<void(Args...)>, Args...> temp(handler.m_func);
-
-            for (auto it = m_subscribers.begin(); it != m_subscribers.end(); ++it)
-            {
-                if ((*it)->Equals(&temp))
-                {
-                    (*it)->Deactivate();
-                    m_subscribers.push_back(it);
-                    break;
-                }
-            }
-        }
         void operator -= (Handler<void, void, Args...> handler)
         {
             Delegate<void, void, Args...> temp(handler.m_pFunc);
@@ -348,6 +327,24 @@ namespace event
                 {
                     (*it)->Deactivate();            // Prevent dispatch
                     m_unsubscribers.push_back(it);   // Store iterator for deferred removal
+                    break;
+                }
+            }
+        }
+
+        // Add operator -= for lambda handlers
+        // note: don't credit me for this implementation. got this from copilot. getting lazy now :P
+		// note: function signature is limited to void return type for now
+        void operator -= (Handler<void, std::function<void(Args...)>, Args...> handler)
+        {
+            Delegate<void, std::function<void(Args...)>, Args...> temp(handler.m_func);
+
+            for (auto it = m_subscribers.begin(); it != m_subscribers.end(); ++it)
+            {
+                if ((*it)->Equals(&temp))
+                {
+                    (*it)->Deactivate();
+                    m_unsubscribers.push_back(it);
                     break;
                 }
             }

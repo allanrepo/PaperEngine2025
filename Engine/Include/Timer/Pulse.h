@@ -11,6 +11,15 @@ namespace timer
     // update with delta time in seconds too
     // Supports single-fire (OneShot) or repeating (Persistent)
     // modes, and caps triggers per Update call to prevent spiraling.
+    // 
+    // design consideration:
+    //  -   on events having interval as arguments
+    //      -   although pulse will trigger exactly on interval, having the interval 
+    //          value passed to event handlers will be useful for subscribers as it 
+    //          provides convenience so subscribers don't have to query the pulse 
+    //          instance for its interval value
+	//  -   similarly on OnMaxIntervalPerUpdateReached event...
+	//      -   having the max interval per update value passed to event handlers
     //------------------------------------------------------------------------------
     class Pulse
     {
@@ -21,9 +30,9 @@ namespace timer
             OneShot     // Fires OnTimeOut event once then stops until Reset() is called.
         };
 
-        event::Event<> OnTimeOut;
-        event::Event<> OnInterval;
-        event::Event<> OnMaxIntervalPerUpdateReached;
+        event::Event<float> OnTimeOut;
+        event::Event<float> OnInterval;
+        event::Event<size_t> OnMaxIntervalPerUpdateReached;
 
     private:
         float m_interval;      
@@ -38,6 +47,11 @@ namespace timer
         ~Pulse() = default;
 
         void Reset();
+
+        float GetInterval() const
+        {
+            return m_interval;
+		}
 
         // Advances the timer by deltaSeconds.
         // delta - this value is relative. the provider for this value defines its unit.

@@ -62,7 +62,10 @@
       <UniqueIdentifier>{22332b24-6622-41b9-94f2-263f9af6a728}</UniqueIdentifier>
     </Filter>
     <Filter Include="Command">
-      <UniqueIdentifier>{a41dcf62-9322-4b84-a69f-838d1ab9fe2b}</UniqueIdentifier>
+      <UniqueIdentifier>{adb9c801-3314-4913-8ed9-756b903ae692}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Performance">
+      <UniqueIdentifier>{5f619ab5-3d4e-488c-9a9c-5d2a8bffc9ce}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -264,6 +267,18 @@
     <ClInclude Include="Include\Core\View.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Command\ICommand.h">
+      <Filter>Command</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Command\CommandQueue.h">
+      <Filter>Command</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Timer\Scheduler.h">
+      <Filter>Timer</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Performance\FrameRateMonitor.h">
+      <Filter>Performance</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">
@@ -340,6 +355,18 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Factory\SpriteAtlasFactory.cpp">
       <Filter>Engine\Factory</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Command\ICommand.cpp">
+      <Filter>Command</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Command\CommandQueue.cpp">
+      <Filter>Command</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Timer\Scheduler.cpp">
+      <Filter>Timer</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Performance\FrameRateMonitor.cpp">
+      <Filter>Performance</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

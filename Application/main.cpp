@@ -8,6 +8,8 @@
 #include "TestLargeMap.h"
 #include "TestFileReader.h"
 #include "TestAsyncFileReader.h"
+#include "Demo.h"
+#include "TestFrameRate.h"
 
 int main()
 {
@@ -20,7 +22,9 @@ int main()
 	//test::TestEngine testEngine;
 	//test::TestSprite testSprite;	
 	//test::TestAnimation testAnimation;
-	TestAsyncFileReader::Test testAsyncFileReader;
+	//TestAsyncFileReader::Test testAsyncFileReader;
+	//demo::Demo demoInstance;
+	testFrameRate::Test::Instance().Run();
 
 
 	return 0;
