@@ -18,8 +18,23 @@ namespace timer
     //          value passed to event handlers will be useful for subscribers as it 
     //          provides convenience so subscribers don't have to query the pulse 
     //          instance for its interval value
-	//  -   similarly on OnMaxIntervalPerUpdateReached event...
+	//  -   similarly on OverflowReachedEvent event...
 	//      -   having the max interval per update value passed to event handlers
+    //  -   on OverflowReachEvent arguments
+    //      -   we passing the event caller e.g. Pulse so that listeners have option
+    //          to query Pulse why overflow happened e.g. do we reset the pulse 
+    //          to flush remaining accumulated elapsed time to prevent runaway 
+    //          overflow that can cause nasty bug?
+    //      -   as above, pass the value of accumulated elapsed time in case listener
+    //          want to do something with it as well as number of interval updates
+    //          which may not be a useful information, but passing it nonetheless
+    //  -   on adding resetOnOverflow option
+    //      -   originally, we let listeners do this themselves by listening to 
+    //          OverflowReachedEvent. i even pass the Pulse caller reference so they
+    //          can conveniently reset themselves.
+    //      -   but it becomes very inconvenient to have to subscribe to the event
+    //          just to reset. so this option is provided. if listeners decided to 
+    //          not use this and instead do it via event, it can still do so.
     //------------------------------------------------------------------------------
     class Pulse
     {
@@ -30,19 +45,20 @@ namespace timer
             OneShot     // Fires OnTimeOut event once then stops until Reset() is called.
         };
 
-        event::Event<float> OnTimeOut;
-        event::Event<float> OnInterval;
-        event::Event<size_t> OnMaxIntervalPerUpdateReached;
+        event::Event<float> TimeOutEvent;
+        event::Event<float> IntervalEvent;
+        event::Event<Pulse&, float, size_t> OverflowReachedEvent;
 
     private:
         float m_interval;      
         Pulse::Mode m_mode;
         float m_elapsedTimeAccumulator;
         bool m_running;
-        size_t m_maxAlarmPerUpdate;
+        size_t m_maxTriggerPerUpdate;
+        bool m_resetOnOverflow;
 
     public:
-        Pulse(float interval, Mode mode = Mode::Persistent, size_t maxAlarmPerUpdate = 5);
+        Pulse(float interval, Mode mode = Mode::Persistent, bool resetOnOverflow = false, size_t maxTriggerPerUpdate = 5);
 
         ~Pulse() = default;
 
@@ -52,6 +68,16 @@ namespace timer
         {
             return m_interval;
 		}
+
+        size_t GetMaxTriggerPerUpdate() const
+        {
+            return m_maxTriggerPerUpdate;
+        }
+
+        bool IsResetOnOverflow() const
+        {
+            return m_resetOnOverflow;
+        }
 
         // Advances the timer by deltaSeconds.
         // delta - this value is relative. the provider for this value defines its unit.

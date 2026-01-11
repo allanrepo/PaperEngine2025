@@ -16,9 +16,7 @@ namespace demo
 		Demo();
 		virtual ~Demo();
 		void OnStart();
-		void OnRender();
 		void OnUpdate(float delta);
-		void OnExit();
 
 		engine::Engine& Engine()
 		{

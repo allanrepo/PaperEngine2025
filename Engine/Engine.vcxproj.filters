@@ -279,6 +279,9 @@
     <ClInclude Include="Include\Performance\FrameRateMonitor.h">
       <Filter>Performance</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Timer\FrameRateController.h">
+      <Filter>Timer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">
@@ -367,6 +370,9 @@
     </ClCompile>
     <ClCompile Include="Source\Performance\FrameRateMonitor.cpp">
       <Filter>Performance</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Timer\FrameRateController.cpp">
+      <Filter>Timer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

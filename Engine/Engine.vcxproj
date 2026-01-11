@@ -78,6 +78,7 @@
     <ClInclude Include="Include\Spatial\Transform.h" />
     <ClInclude Include="Include\State\State.h" />
     <ClInclude Include="Include\State\StateMachine.h" />
+    <ClInclude Include="Include\Timer\FrameRateController.h" />
     <ClInclude Include="Include\Timer\Pulse.h" />
     <ClInclude Include="Include\Timer\Scheduler.h" />
     <ClInclude Include="Include\Timer\StopWatch.h" />
@@ -114,6 +115,7 @@
     <ClCompile Include="Source\Graphics\Resource\DX11TextureImpl.cpp" />
     <ClCompile Include="Source\Graphics\Resource\Texture.cpp" />
     <ClCompile Include="Source\Performance\FrameRateMonitor.cpp" />
+    <ClCompile Include="Source\Timer\FrameRateController.cpp" />
     <ClCompile Include="Source\Timer\Pulse.cpp" />
     <ClCompile Include="Source\Timer\Scheduler.cpp" />
     <ClCompile Include="Source\Timer\StopWatch.cpp" />

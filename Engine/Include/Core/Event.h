@@ -218,8 +218,10 @@ namespace event
 
 	// this deduction guide is for lambdas without std::function wrapper. what an amazing trick copilot came up with :P
 	// but this is limited to only void return type lambdas. i am commenting for now because i don't really want to support this yet...
-    //template <typename F>
-    //Handler(F f) -> Handler<void, std::function<void()>>;
+    // well i modified it to be generic and not just void() signature. does it work?
+    // TODO: test this update by me
+    template <typename F, typename R, typename... Args>
+    Handler(F f) -> Handler<void, std::function<R(Args...)>>;
 
     // this is the event class
     template<typename... Args>
@@ -501,8 +503,6 @@ namespace event
                 evtTwoArgsStringDouble.Clear();
                 std::cout << "event has removed all its listeners. Number of listers in event : " << evtTwoArgsStringDouble.Size() << ". Is it 0?" << std::endl;
             }
-
-
         }
 
         inline void Go()
@@ -510,8 +510,8 @@ namespace event
             //bool bPrevLoggerState = Logger::Enable;
             //Logger::Enable = bLog;
 
-            TestEvent();
             TestDelegate();
+            TestEvent();
 
             //Logger::Enable = bPrevLoggerState;
             return;

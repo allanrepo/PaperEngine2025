@@ -3,13 +3,15 @@
 timer::Pulse::Pulse(
     float interval,
     Mode mode,
-    size_t maxAlarmPerUpdate
+    bool resetOnOverflow,
+    size_t maxTriggerPerUpdate
 ) :
     m_interval(interval),
     m_mode(mode),
     m_elapsedTimeAccumulator(0.0),
     m_running(true),
-    m_maxAlarmPerUpdate(maxAlarmPerUpdate)
+    m_resetOnOverflow(resetOnOverflow),
+    m_maxTriggerPerUpdate(maxTriggerPerUpdate)
 {
 }
 
@@ -35,7 +37,7 @@ void timer::Pulse::Update(float delta)
     m_elapsedTimeAccumulator += delta;
 
     size_t numUpdate = 0;
-    while (m_elapsedTimeAccumulator >= m_interval && numUpdate < m_maxAlarmPerUpdate)
+    while (m_elapsedTimeAccumulator >= m_interval && numUpdate < m_maxTriggerPerUpdate)
     {
         m_elapsedTimeAccumulator -= m_interval;
 
@@ -46,20 +48,25 @@ void timer::Pulse::Update(float delta)
         case Mode::OneShot:
             // set to false so we don't alarm anymore, until it gets reset
             m_running = false;
-            OnTimeOut(m_interval);
+            TimeOutEvent(m_interval);
             return;
         case Mode::Persistent:
             // fire snooze event. we'll keep firing this on interval
-            OnInterval(m_interval);
+            IntervalEvent(m_interval);
             break;
         default:
             throw std::runtime_error("invalid alarm clock mode");
         }
 
         // if we reach max alarm per update, we bail. remaining elapsed time will be processed in next update
-        if (numUpdate == m_maxAlarmPerUpdate)
+        if (numUpdate == m_maxTriggerPerUpdate)
         {
-            OnMaxIntervalPerUpdateReached(m_maxAlarmPerUpdate);
+            OverflowReachedEvent(*this, m_elapsedTimeAccumulator, m_maxTriggerPerUpdate);
+
+            if (m_resetOnOverflow)
+            {
+                m_elapsedTimeAccumulator = 0.0f;
+            }
         }
     }
 }

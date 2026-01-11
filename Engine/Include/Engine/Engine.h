@@ -18,8 +18,10 @@
 #include <Graphics/Renderer/IRenderer.h>
 #include <Command/ICommand.h>
 #include <Command/CommandQueue.h>
-
 #include <Win32/Window.h>
+#include <Performance/FrameRateMonitor.h>
+#include <Timer/FrameRateController.h>
+
 #include <memory>
 #include <deque>
 #include <vector>
@@ -27,6 +29,7 @@
 
 namespace engine
 {
+
 	class Engine
 	{
 	private:
@@ -35,6 +38,9 @@ namespace engine
 		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
 		timer::StopWatch m_stopwatch;
 		command::CommandQueue m_commandQueue;
+		performance::FrameRateMonitor m_mainLoopMonitor;
+		performance::FrameRateMonitor m_renderMonitorMonitor;
+		timer::FrameRateController m_renderController;
 
 		void Initialize();
 		void Idle();
@@ -47,7 +53,20 @@ namespace engine
 
 		void Lap(float delta);
 
+		void DebugShowStatistics(float delta);
+
+		void OnRender(float delta);
+
 	public:
+
+		struct Statistics
+		{
+			float mainLoopAverageFPS;
+			float mainLoopLastFPS;
+			float renderAverageFPS;
+			float renderLastFPS;
+		};
+
 		Engine(
 			std::string title = "engine",
 			std::string API = "DirectX11",
@@ -55,12 +74,10 @@ namespace engine
 		);
 		~Engine();
 
-		event::Event<> OnStart;
-		//event::Event<> OnRender;
-		//event::Event<float> OnUpdate;
-		event::Event<> OnEnd;
-		event::Event<size_t, size_t> OnResize;
-		event::Event<UINT, WPARAM, LPARAM> OnProcessWin32Message;
+		event::Event<> StartEvent;
+		event::Event<> EndEvent;
+		event::Event<size_t, size_t> ResizeEvent;
+		event::Event<UINT, WPARAM, LPARAM> ProcessWin32MessageEvent;
 
 		timer::StopWatch& Timer()
 		{
@@ -84,7 +101,17 @@ namespace engine
 
 		void Run();
 
-		//FrameRateController m_frameRateController;
+		Statistics GetStatistics()
+		{
+			return Statistics
+			{
+				m_mainLoopMonitor.GetAverageFrameRate(),
+				m_mainLoopMonitor.GetLastFrameRate(),
+				m_renderMonitorMonitor.GetAverageFrameRate(),
+				m_renderMonitorMonitor.GetLastFrameRate(),
+			};
+		}
+
 		timer::Scheduler m_scheduler;
 
 	};

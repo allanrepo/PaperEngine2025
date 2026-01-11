@@ -15,10 +15,10 @@ namespace test
 		TestEngine() :
 			m_engine("Engine Testing", "DirectX11", "Batch")
 		{
-			m_engine.OnStart += event::Handler(this, &TestEngine::OnStart);
+			m_engine.StartEvent += event::Handler(this, &TestEngine::OnStart);
 			//m_engine.OnUpdate += event::Handler(this, &TestEngine::OnUpdate);
 			//m_engine.OnRender += event::Handler(this, &TestEngine::OnRender);
-			m_engine.OnResize += event::Handler(this, &TestEngine::OnResize);
+			m_engine.ResizeEvent += event::Handler(this, &TestEngine::OnResize);
 
 			m_engine.Run();
 		}

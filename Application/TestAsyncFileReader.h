@@ -79,7 +79,7 @@ namespace TestAsyncFileReader
 			// assign frame rate refresher event handler. we feed it with a lambda function (C++11 feature) that sets the update flag to true
 			// we are using std::function wrapper to wrap the lambda. This is because the event handler requires a std::function object
 			// we could have also created a separate method for this instead of using lambda as this is opportunity to test this feature
-			m_frameRateRefresher.OnInterval += event::Handler(std::function<void(float)>([this](float interval)
+			m_frameRateRefresher.IntervalEvent += event::Handler(std::function<void(float)>([this](float interval)
 				{
 					m_updateFrameRateDisplay = true;
 				}));

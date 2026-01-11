@@ -49,6 +49,12 @@ namespace engine
 				}
 			}
 
+			void Clear(engine::command::Type type)
+			{
+				auto& queue = queues[type];
+				queue.clear();
+			}
+
 			virtual bool IsEmpty() const
 			{
 				for (const auto& pair : queues)

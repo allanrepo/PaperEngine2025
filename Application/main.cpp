@@ -23,8 +23,8 @@ int main()
 	//test::TestSprite testSprite;	
 	//test::TestAnimation testAnimation;
 	//TestAsyncFileReader::Test testAsyncFileReader;
-	//demo::Demo demoInstance;
-	testFrameRate::Test::Instance().Run();
+	demo::Demo demoInstance;
+	//testFrameRate::Test::Instance().Run();
 
 
 	return 0;

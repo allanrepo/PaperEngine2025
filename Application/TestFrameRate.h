@@ -82,17 +82,17 @@ namespace testFrameRate
 			m_fontAtlas->Initialize("Arial", 24);
 			LOG("Font atlas created and initialized...");
 
+			// subscribe to scheduler using class method
+			m_scheduler += timer::Schedule(1 / 30.0f, this, &Test::ScheduledEventHandlerMethod, false, 5);
+
+			// subscribe to scheduler using regular function (using static method from Test class, same thing as regular function)
+			m_scheduler += timer::Schedule(1 / 60.0f, &Test::ScheduledEventHandlerFunction);
+
 			// subscribe to scheduler using lambda
 			m_scheduler += timer::Schedule(1.0f / 1.0f, std::function<void(float)>([this](float delta)
 				{
 					m_frameRateMonitor1.OnFrameCompleted(delta);
 				}));
-
-			// subscribe to scheduler using class method
-			m_scheduler += timer::Schedule(1 / 30.0f, this, &Test::ScheduledEventHandlerMethod);
-
-			// subscribe to scheduler using regular function (using static method from Test class, same thing as regular function)
-			m_scheduler += timer::Schedule(1 / 60.0f, &Test::ScheduledEventHandlerFunction);
 
 			// setup stopwatch to manage timing and start it
 			m_stopwatch.OnLap += event::Handler(this, &Test::OnLap);

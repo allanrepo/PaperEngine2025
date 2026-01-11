@@ -30,19 +30,19 @@ namespace timer
         IntervalTimer::Mode m_mode;
         float m_elapsedTimeAccumulator;
         bool m_running;
-        size_t m_maxAlarmPerUpdate;
+        size_t m_maxTriggerPerUpdate;
 
     public:
         IntervalTimer(
             float interval,                
             Mode mode = Mode::Persistent,
-            size_t maxAlarmPerUpdate = 5
+            size_t maxTriggerPerUpdate = 5
         ) :
             m_interval(interval),
             m_mode(mode),
             m_elapsedTimeAccumulator(0.0),
             m_running(true),
-            m_maxAlarmPerUpdate(maxAlarmPerUpdate)
+            m_maxTriggerPerUpdate(maxTriggerPerUpdate)
         {
         }
 
@@ -70,7 +70,7 @@ namespace timer
             m_elapsedTimeAccumulator += delta;
 
             size_t numUpdate = 0;
-            while (m_elapsedTimeAccumulator >= m_interval && numUpdate < m_maxAlarmPerUpdate)
+            while (m_elapsedTimeAccumulator >= m_interval && numUpdate < m_maxTriggerPerUpdate)
             {
                 m_elapsedTimeAccumulator -= m_interval;
 
@@ -92,7 +92,7 @@ namespace timer
                 }
 
                 // if we reach max alarm per update, we bail. remaining elapsed time will be processed in next update
-                if (numUpdate == m_maxAlarmPerUpdate)
+                if (numUpdate == m_maxTriggerPerUpdate)
                 {
                     OnMaxIntervalPerUpdateReached();
                 }
