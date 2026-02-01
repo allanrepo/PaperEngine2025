@@ -1,6 +1,8 @@
 #include <Graphics/Renderer/DX11RendererImmediateImpl.h>
 #include <Utilities/Utilities.h>
 
+using namespace engine;
+
 #pragma region // DX11RendererImmediateImpl
 graphics::dx11::renderer::DX11RendererImmediateImpl::DX11RendererImmediateImpl()
 {

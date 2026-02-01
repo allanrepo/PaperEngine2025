@@ -4,13 +4,15 @@
 #include <Graphics/Resource/DX11TextureImpl.h>
 #include <Core/Factory.h>
 
+using namespace engine;
+
 std::unique_ptr<graphics::renderable::ISpriteAtlas> graphics::factory::SpriteAtlasFactory::Create()
 {
     // get environment config from cache
     std::string typeName =
-        cache::Registry<cache::Dictionary<>>::Instance().Has("EnvironmentConfig") ?                       // do we have environment config?
-        cache::Registry<cache::Dictionary<>>::Instance().Get("EnvironmentConfig").Has("API") ?             // do we have API field in environment config?
-        cache::Registry<cache::Dictionary<>>::Instance().Get("EnvironmentConfig").Get("API") :            // yes we have API field. let's get it
+        cache::Registry<container::Dictionary<>>::Instance().Has("EnvironmentConfig") ?                       // do we have environment config?
+        cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig").Has("API") ?             // do we have API field in environment config?
+        cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig").Get("API") :            // yes we have API field. let's get it
         graphics::dx11::resource::DX11TextureImpl::TypeName :                                                 // no API field in environment config, fallback to DX11
         graphics::dx11::resource::DX11TextureImpl::TypeName;                                                 // no config, fallback to DX11
 

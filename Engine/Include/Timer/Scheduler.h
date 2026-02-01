@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <Timer/Pulse.h>
+
 // -----------------------------------------------------------------------------------------------------------
 // design consideration:
 // 	-	originally designed as frame rate controller but end up being more general purpose scheduler
@@ -26,16 +27,16 @@ namespace timer
 	class Schedule
 	{
 	private:
-		void (C::* m_pFunc)(float);
+		void (C::* m_pFunc)(double);
 		C* m_pInst;
-		float m_interval;
+		double m_interval;
 		size_t m_maxTriggerPerUpdate;
 		bool m_resetOnOverflow;
 
 		friend class Scheduler;
 
 	public:
-		Schedule(float interval, C* inst, void (C::* func)(float), bool resetOnOverflow = false, size_t maxTriggerPerUpdate = 5):
+		Schedule(double interval, C* inst, void (C::* func)(double), bool resetOnOverflow = false, size_t maxTriggerPerUpdate = 5):
 			m_interval(interval), 
 			m_pInst(inst), 
 			m_pFunc(func),
@@ -50,15 +51,15 @@ namespace timer
 	class Schedule<void> 
 	{
 	private:
-		void (*m_pFunc)(float);
-		float m_interval;
+		void (*m_pFunc)(double);
+		double m_interval;
 		size_t m_maxTriggerPerUpdate;
 		bool m_resetOnOverflow;
 
 		friend class Scheduler;
 
 	public:
-		Schedule(float interval, void (*func)(float), bool resetOnOverflow = false, size_t maxTriggerPerUpdate = 5):
+		Schedule(double interval, void (*func)(double), bool resetOnOverflow = false, size_t maxTriggerPerUpdate = 5):
 			m_interval(interval), 
 			m_pFunc(func),
 			m_resetOnOverflow(resetOnOverflow),
@@ -69,18 +70,18 @@ namespace timer
 
 	// Specialization for lambdas/std::function
 	template <>
-	class Schedule<std::function<void(float)>> 
+	class Schedule<std::function<void(double)>> 
 	{
 	private:
-		std::function<void(float)> m_func;
-		float m_interval;
+		std::function<void(double)> m_func;
+		double m_interval;
 		size_t m_maxTriggerPerUpdate;
 		bool m_resetOnOverflow;
 
 		friend class Scheduler;
 
 	public:
-		Schedule(float interval, std::function<void(float)> func, bool resetOnOverflow = false, size_t maxTriggerPerUpdate = 5):
+		Schedule(double interval, std::function<void(double)> func, bool resetOnOverflow = false, size_t maxTriggerPerUpdate = 5):
 			m_interval(interval), 
 			m_func(std::move(func)),
 			m_resetOnOverflow(resetOnOverflow),
@@ -90,21 +91,21 @@ namespace timer
 	};
 
 	// deduction guide for free function
-	Schedule(float, void(*)(float))->Schedule<void>;
+	Schedule(double, void(*)(double))->Schedule<void>;
 
 	// deduction guide for member function
 	template <typename C>
-	Schedule(float, C*, void(C::*)(float)) -> Schedule<C>;
+	Schedule(double, C*, void(C::*)(double)) -> Schedule<C>;
 
 	// deduction guide for Lambda/std::function
-	Schedule(float, std::function<void(float)>)->Schedule<std::function<void(float)>>;
+	Schedule(double, std::function<void(double)>)->Schedule<std::function<void(double)>>;
 
 	class Scheduler
 	{
 	private:
 		std::vector<std::unique_ptr<timer::Pulse>> m_pulses;
 
-		timer::Pulse& GetOrCreatePulse(float interval, bool resetOnOverflow, size_t maxTriggerPerUpdate)
+		timer::Pulse& GetOrCreatePulse(double interval, bool resetOnOverflow, size_t maxTriggerPerUpdate)
 		{
 			for (auto& pulse : m_pulses)
 			{
@@ -122,7 +123,7 @@ namespace timer
 		Scheduler() = default;
 		virtual ~Scheduler() = default;
 
-		void Update(float time)
+		void Update(double time)
 		{
 			for (auto& pulse : m_pulses)
 			{
@@ -143,13 +144,13 @@ namespace timer
 			pulse.IntervalEvent += event::Handler(sched.m_pInst, sched.m_pFunc);
 		}
 
-		void operator += (const Schedule<std::function<void(float)>>& sched) 
+		void operator += (const Schedule<std::function<void(double)>>& sched) 
 		{
 			Pulse& pulse = GetOrCreatePulse(sched.m_interval, sched.m_resetOnOverflow, sched.m_maxTriggerPerUpdate);
 			pulse.IntervalEvent += event::Handler(sched.m_func);
 		}
 
-		void operator -= (const Schedule<std::function<void(float)>>& sched)
+		void operator -= (const Schedule<std::function<void(double)>>& sched)
 		{
 			Pulse& pulse = GetOrCreatePulse(sched.m_interval, sched.m_resetOnOverflow, sched.m_maxTriggerPerUpdate);
 			pulse.IntervalEvent -= event::Handler(sched.m_func);

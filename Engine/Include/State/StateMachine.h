@@ -55,14 +55,21 @@ namespace state
 			}
 		}
 
-		void Update(float dt)
+		void Update(double dt)
 		{
 			if (m_current)
 			{
+				// TODO: 
+				// another smelly thing. if machinestate sets new state inside this Update(), then m_current will have called its Exit()
+				// before this Update() finishes. that is wierd, and this is danger waiting to happen. change Set() to deferred
+				// can make set do this -> clear queue, queue(new state), set curr state finish = true. 
 				m_current->Update(*m_owner, dt);
 
 				if (m_current->IsFinished(*m_owner) && !m_queue.empty())
 				{
+					// copilot this does not smell, and is idiomatic, so i will keep it this way.
+					// my issue is clarity of intent. i set the new state first before i remove it from queue container. 
+					// i feel like it is more natural if you remove->set
 					Set(std::move(m_queue.front()));
 					m_queue.pop();
 				}

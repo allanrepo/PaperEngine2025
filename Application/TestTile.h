@@ -137,7 +137,7 @@ namespace TestTile
 			m_tileset.Register(1, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(1), false)); // obstacle
 
 			// load map into tile layer
-			m_tilegrid = utilities::io::TileGridLoader<RenderableTile, int>::LoadFromCSV(
+			m_tilegrid = app::utilities::io::TileGridLoader<RenderableTile, int>::LoadFromCSV(
 				"../Assets/PathFindingMap_24x16.csv",
 				m_tileset,
 				[](int row, int col, const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
@@ -147,15 +147,13 @@ namespace TestTile
 				}
 			);
 
-			m_tilegrid.SetSize({ 30, 24 });
-
 			// setup stopwatch to manage timing and start it
 			m_stopwatch.OnLap += event::Handler(this, &Test::OnLap);
 			m_stopwatch.Start();
 		}
 
 		// this method is fired up whenever the OnLap event is triggered from stopwatch
-		void OnLap(float time)
+		void OnLap(double time)
 		{
 		}
 

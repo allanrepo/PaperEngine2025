@@ -1,6 +1,8 @@
 #include <Graphics/Renderer/DX11RendererBatchImpl.h>
 #include <Utilities/Utilities.h>
 
+using namespace engine;
+
 #pragma region // renderer::DX11RendererBatchImpl
 graphics::dx11::renderer::DX11RendererBatchImpl::DX11RendererBatchImpl()
 {

@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <iostream>
 
-namespace cache
+namespace engine::container
 {
     // this class mimics the Dictionary from C#.
     template<typename Key = std::string, typename Value = std::string>
@@ -86,7 +86,7 @@ namespace cache
 
     static bool TestDictionary()
     {
-        cache::Dictionary<> dict;
+        Dictionary<> dict;
         std::string value;
 
         std::cout << "Try to get value of key 'hello' but dictionary is still empty" << std::endl;
@@ -121,7 +121,7 @@ namespace cache
             return false;
         }
 
-        const cache::Dictionary<>& cdict = dict;
+        const Dictionary<>& cdict = dict;
 
         std::cout << "Our dictionary is now a constant and we are going to use operator [] to read a key 'car'. our dictionary does not have this yet.'" << std::endl;
         bool exceptionHappened = false;

@@ -3,7 +3,6 @@
 #include <Graphics/Core/Canvas.h>
 #include <Core/Factory.h>
 #include <Cache/Registry.h>
-#include <Cache/Dictionary.h>
 #include <memory>
 
 using namespace graphics::dx11;

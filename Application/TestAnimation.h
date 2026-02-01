@@ -32,6 +32,8 @@
 
 #include "Utilities.h"
 
+using namespace app;
+
 namespace test
 {
 	// we are mocking the sprite atlas class here for demo purpose so we can create sprite directly without using factory
@@ -100,7 +102,7 @@ namespace test
 
 			// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 8 rows and 12 columns
 			// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-			std::vector<math::geometry::RectF> uvs = utilities::graphics::CalcUV(8, 12, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
+			std::vector<math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(8, 12, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
 			for(math::geometry::RectF& rect : uvs)
 			{
 				m_spriteAtlas->AddUVRect(rect);
@@ -127,7 +129,7 @@ namespace test
 		}
 
 		// this method is fired up whenever the OnLap event is triggered from stopwatch
-		void OnLap(float time)
+		void OnLap(double time)
 		{
 			m_animator->Update(time);
 		}

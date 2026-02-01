@@ -67,6 +67,15 @@
     <Filter Include="Performance">
       <UniqueIdentifier>{5f619ab5-3d4e-488c-9a9c-5d2a8bffc9ce}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Job">
+      <UniqueIdentifier>{e6898d6b-8750-4537-9e80-863f54eb9bdb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Containers">
+      <UniqueIdentifier>{ca274e69-392d-42b3-981b-680834dfb896}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="IO">
+      <UniqueIdentifier>{1e2388b6-dbc9-4ddf-98e3-a6030f89a392}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Core\Event.h">
@@ -108,9 +117,6 @@
     <ClInclude Include="Include\Cache\BindCache.h">
       <Filter>Cache</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Cache\Dictionary.h">
-      <Filter>Cache</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Cache\Registry.h">
       <Filter>Cache</Filter>
     </ClInclude>
@@ -130,9 +136,6 @@
       <Filter>Engine</Filter>
     </ClInclude>
     <ClInclude Include="Include\Math\Rect.h">
-      <Filter>Math</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Math\Vector.h">
       <Filter>Math</Filter>
     </ClInclude>
     <ClInclude Include="Include\Spatial\Camera.h">
@@ -282,6 +285,30 @@
     <ClInclude Include="Include\Timer\FrameRateController.h">
       <Filter>Timer</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Math\Vector.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Job\IJob.h">
+      <Filter>Job</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Job\Job.h">
+      <Filter>Job</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Containers\Dictionary.h">
+      <Filter>Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Containers\Table.h">
+      <Filter>Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\IO\ASyncFileReader.h">
+      <Filter>IO</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Engine\Loader\AsyncTileGridLoader.h">
+      <Filter>Engine\Loader</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Utilities\CSVParser.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">
@@ -373,6 +400,21 @@
     </ClCompile>
     <ClCompile Include="Source\Timer\FrameRateController.cpp">
       <Filter>Timer</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Job\Job.cpp">
+      <Filter>Job</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Containers\Table.cpp">
+      <Filter>Containers</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\IO\ASyncFileReader.cpp">
+      <Filter>IO</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Utilities\CSVParser.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Loader\AsyncTileGridLoader.cpp">
+      <Filter>Engine\Loader</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

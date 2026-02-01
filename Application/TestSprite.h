@@ -71,7 +71,7 @@ namespace test
 			m_window->Create(L"Test Sprite", 1400, 900);
 			m_window->OnWindowMessage += event::Handler(&m_input, &input::Input::ProcessWin32Message);
 
-			m_input.OnMouseMove += event::Handler(this, &TestSprite::OnMouseMove);
+			m_input.MouseMoveEvent += event::Handler(this, &TestSprite::OnMouseMove);
 		}
 
 		// when window is created. we can now safely create resources dependent on window
@@ -98,7 +98,7 @@ namespace test
 
 			// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 8 rows and 12 columns
 			// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-			std::vector<math::geometry::RectF> uvs = utilities::graphics::CalcUV(8, 12, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
+			std::vector<math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(8, 12, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
 			for (math::geometry::RectF& rect : uvs)
 			{
 				m_spriteAtlas->AddUVRect(rect);

@@ -34,7 +34,7 @@ namespace graphics::animation
 	{
 	private:
 		bool m_running = false;					// whether the animation is currently playing.
-		float m_elapsedTimeAccumulator = 0.0;	// accumulated time since last frame change.
+		double m_elapsedTimeAccumulator = 0.0;	// accumulated time since last frame change.
 		Animation<T>* m_animation;				// pointer to the current animation being played.
 		int m_currFrame = -1;					// index of the current frame in the animation.
 
@@ -82,7 +82,7 @@ namespace graphics::animation
 		}
 		 
 		// updates the animator by the specified delta time.
-		void Update(float delta) noexcept
+		void Update(double delta) noexcept
 		{
 			// do nothing if not running or no animation assigned
 			if (!m_running || !m_animation)
@@ -159,7 +159,7 @@ namespace graphics::animation
 			animation::Animation<int> animation;
 
 			// listener to game loop's interval (triggered by stopwatch' Lap)
-			void OnLoop(float delta)
+			void OnLoop(double delta)
 			{
 				animator.Update(delta);
 			}

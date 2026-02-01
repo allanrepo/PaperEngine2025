@@ -20,11 +20,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Cache\BindCache.h" />
-    <ClInclude Include="Include\Cache\Dictionary.h" />
     <ClInclude Include="Include\Cache\Registry.h" />
     <ClInclude Include="Include\Command\CommandQueue.h" />
     <ClInclude Include="Include\Command\ICommand.h" />
     <ClInclude Include="Include\Components\Tile.h" />
+    <ClInclude Include="Include\Containers\Dictionary.h" />
+    <ClInclude Include="Include\Containers\Table.h" />
     <ClInclude Include="Include\Core\Event.h" />
     <ClInclude Include="Include\Core\Factory.h" />
     <ClInclude Include="Include\Core\Input.h" />
@@ -35,6 +36,7 @@
     <ClInclude Include="Include\Engine\Factory\RendererFactory.h" />
     <ClInclude Include="Include\Engine\Factory\SpriteAtlasFactory.h" />
     <ClInclude Include="Include\Engine\Factory\TextureFactory.h" />
+    <ClInclude Include="Include\Engine\Loader\AsyncTileGridLoader.h" />
     <ClInclude Include="Include\Engine\Loader\SpriteAtlasLoader.h" />
     <ClInclude Include="Include\Engine\Loader\___SpriteLoader.h" />
     <ClInclude Include="Include\Graphics\Animation\Animation.h" />
@@ -66,6 +68,9 @@
     <ClInclude Include="Include\Graphics\Resource\ITexture.h" />
     <ClInclude Include="Include\Graphics\Resource\ITextureImpl.h" />
     <ClInclude Include="Include\Graphics\Resource\Texture.h" />
+    <ClInclude Include="Include\IO\ASyncFileReader.h" />
+    <ClInclude Include="Include\Job\IJob.h" />
+    <ClInclude Include="Include\Job\Job.h" />
     <ClInclude Include="Include\Math\Rect.h" />
     <ClInclude Include="Include\Math\Vector.h" />
     <ClInclude Include="Include\Performance\FrameRateMonitor.h" />
@@ -84,6 +89,7 @@
     <ClInclude Include="Include\Timer\StopWatch.h" />
     <ClInclude Include="Include\Timer\Timer.h" />
     <ClInclude Include="Include\Utilities\CSVFile.h" />
+    <ClInclude Include="Include\Utilities\CSVParser.h" />
     <ClInclude Include="Include\Utilities\Logger.h" />
     <ClInclude Include="Include\Utilities\Utilities.h" />
     <ClInclude Include="Include\Win32\GDIUtility.h" />
@@ -95,9 +101,11 @@
     <ClCompile Include="Source\Command\CommandQueue.cpp" />
     <ClCompile Include="Source\Command\ICommand.cpp" />
     <ClCompile Include="Source\Components\Tile.cpp" />
+    <ClCompile Include="Source\Containers\Table.cpp" />
     <ClCompile Include="Source\Engine\Engine.cpp" />
     <ClCompile Include="Source\Engine\Factory\CanvasFactory.cpp" />
     <ClCompile Include="Source\Engine\Factory\SpriteAtlasFactory.cpp" />
+    <ClCompile Include="Source\Engine\Loader\AsyncTileGridLoader.cpp" />
     <ClCompile Include="Source\Graphics\Core\Canvas.cpp" />
     <ClCompile Include="Source\Graphics\Core\DX11CanvasImpl.cpp" />
     <ClCompile Include="Source\Graphics\Core\DX11Core.cpp" />
@@ -114,11 +122,14 @@
     <ClCompile Include="Source\Graphics\Resource\DX11Texture.cpp" />
     <ClCompile Include="Source\Graphics\Resource\DX11TextureImpl.cpp" />
     <ClCompile Include="Source\Graphics\Resource\Texture.cpp" />
+    <ClCompile Include="Source\IO\ASyncFileReader.cpp" />
+    <ClCompile Include="Source\Job\Job.cpp" />
     <ClCompile Include="Source\Performance\FrameRateMonitor.cpp" />
     <ClCompile Include="Source\Timer\FrameRateController.cpp" />
     <ClCompile Include="Source\Timer\Pulse.cpp" />
     <ClCompile Include="Source\Timer\Scheduler.cpp" />
     <ClCompile Include="Source\Timer\StopWatch.cpp" />
+    <ClCompile Include="Source\Utilities\CSVParser.cpp" />
     <ClCompile Include="Source\Win32\GDIUtility.cpp" />
     <ClCompile Include="Source\Win32\Window.cpp" />
     <ClCompile Include="Source\Win32\WindowBase.cpp" />

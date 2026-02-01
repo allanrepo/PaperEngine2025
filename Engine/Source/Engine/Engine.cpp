@@ -2,23 +2,25 @@
 #include <Engine/Factory/CanvasFactory.h>
 #include <Engine/Factory/RendererFactory.h>
 #include <Cache/Registry.h>
-#include <Cache/Dictionary.h>
+#include <Containers/Dictionary.h>
 #include <Utilities/Logger.h>
 #include <Utilities/Utilities.h>
 #include <Core/Input.h>
-
 #include <iomanip>
+
+using namespace engine;
 
 engine::Engine::Engine(
 	std::string title,
 	std::string API,
-	std::string RenderMode
+	std::string RenderMode,
+	double renderFPS
 ):
-	m_renderController(600.0f)
+	m_renderController(renderFPS)
 {
 	// let's setup environment config first before we do anything else
-	cache::Registry<cache::Dictionary<>>::Instance().Register("EnvironmentConfig", std::make_unique<cache::Dictionary<>>());
-	cache::Dictionary<>& environmentConfig = cache::Registry<cache::Dictionary<>>::Instance().Get("EnvironmentConfig");
+	cache::Registry<container::Dictionary<>>::Instance().Register("EnvironmentConfig", std::make_unique<container::Dictionary<>>());
+	container::Dictionary<>& environmentConfig = cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig");
 
 	// register environment config e.g. API, render mode
 	environmentConfig.Register("Title", title);
@@ -56,7 +58,7 @@ void engine::Engine::Run()
 void engine::Engine::Initialize()
 {
 	// get environment config from cache
-	cache::Dictionary<>& environmentConfig = cache::Registry<cache::Dictionary<>>::Instance().Get("EnvironmentConfig");
+	container::Dictionary<>& environmentConfig = cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig");
 
 	// create our window application object here
 	m_window = std::make_unique<Win32::Window>();
@@ -71,6 +73,9 @@ void engine::Engine::Initialize()
 
 	// this will fire up when window resizes
 	m_window->OnSize += event::Handler(this, &Engine::WindowSize);
+
+	// input controller subscribes to window messages 
+	m_window->OnWindowMessage += event::Handler(&input::Input::Instance(), &input::Input::ProcessWin32Message);
 
 	// this will fire up whenever there is a window message the window application needs to process
 	// stuff like keyboard and mouse inputs can be handled here
@@ -88,7 +93,7 @@ void engine::Engine::ProcessWin32Message(UINT msg, WPARAM wParam, LPARAM lParam)
 void engine::Engine::WindowCreate(void* hWnd)
 {
 	// get environment config from cache
-	cache::Dictionary<>& environmentConfig = cache::Registry<cache::Dictionary<>>::Instance().Get("EnvironmentConfig");
+	container::Dictionary<>& environmentConfig = cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig");
 
 	// create canvas
 	m_canvas = graphics::CanvasFactory::Create();
@@ -96,6 +101,7 @@ void engine::Engine::WindowCreate(void* hWnd)
 	{
 		throw std::exception("Failed to create canvas.");
 	}
+
 	if (!m_canvas->Initialize(hWnd))
 	{
 		throw std::exception("Failed to initialize canvas.");
@@ -108,6 +114,7 @@ void engine::Engine::WindowCreate(void* hWnd)
 	{
 		throw std::exception("Failed to create sprite renderer.");
 	}
+
 	if (!m_renderer->Initialize())
 	{
 		throw std::exception("Failed to initialize sprite renderer.");
@@ -123,46 +130,44 @@ void engine::Engine::WindowCreate(void* hWnd)
 	m_stopwatch.Start();
 	LOG("[ENGINE] Timer started...");
 
-	//m_scheduler += timer::Schedule(1.0f, this, &Engine::DebugShowStatistics);
-
+	// the OnRender performs rendering. control its execution's frame rate here 
 	m_renderController += event::Handler(this, &Engine::OnRender);
+	LOG("[ENGINE] OnRender subscribed to frame rate controller...");
 
+	//m_scheduler += timer::Schedule(1.0f, this, &Engine::DebugShowStatistics);	
 }
 
-void engine::Engine::Lap(float delta)
+// this is the main loop of the engine. it is not exposed and purely internal because this is the critial or hot stage of the engine
+// the engine makes sure it is the only one that manages what is happening here. application can queue jobs and commands as well  as 
+// schedule tasks, but engine will execute them according to the structure of this loopok
+void engine::Engine::Lap(double delta)
 {
+	// monitor engine's main loop frame rate. this excludes rendering
 	m_mainLoopMonitor.OnFrameCompleted(delta);
 
+	// update input
 	input::Input::Instance().Update();
 
+	// scheduler is updated in main loop. this is fine. it should be here.
+	// what is important is that scheduler limits the frame rate of subscribed schedules by executing them only at their specified intervals.
+	// but it guarantees stability and consistency in interval as it will execute them multiple times if the elapsed time is too great that
+	// it can fit multiple intervals.
+	// physics logic update and movement/rotations should be scheduled here to ensure consistency 
 	m_scheduler.Update(delta);
 
-	// accumulator += delta
-	// if accumulator > target - render, accumulator = 0;
-	// if accumulator < target - delta + accumulator
-
+	// jobs are executed here in the main loop. 
+	// since it is in main loop, it will definitely throttle the main frame rate
+	// but that is ok, because its consumption is limited. default is 1ms, once it consumes > 1ms of elapsed time
+	// it will stop executing remaining jobs. 
+	// so jobs should be tasks that can be deferred and you are willing to patiently wait to finish since it is
+	// likely to be low priority.
+	m_jobQueue.Update(1.0);
+	 
+	// render loop is subscribed to this. it is a frame rate limiter, triggering the event once when it reached target elapsed time
 	m_renderController.Update(delta);
-
-	//if (m_renderController.IsReady(delta))
-	//{
-	//	OnRender(m_renderController.GetLastElapsedTime());
-	//}
-
-	return;
-
-
-	//OnUpdate(delta);
-
-
 }
 
-void engine::Engine::DebugShowStatistics(float delta)
-{
-	LOG("[ENGINE] MAIN LOOP FPS: " << std::setprecision(15) << m_mainLoopMonitor.GetAverageFrameRate());
-	LOG("[ENGINE] RENDER FPS: " << std::setprecision(15) << m_renderMonitorMonitor.GetAverageFrameRate());
-}
-
-void engine::Engine::OnRender(float delta)
+void engine::Engine::OnRender(double delta)
 {
 	// monitor render loop's frame rate
 	m_renderMonitorMonitor.OnFrameCompleted(delta);
@@ -179,7 +184,9 @@ void engine::Engine::OnRender(float delta)
 		// render block
 		m_renderer->Begin();
 		{
-			// dispatch render commands on queue 
+			// dispatch render commands on queue. commands will not be flushed after. the application must flush it themselves
+			// as the frame rate of render loop is not synchronized with other systems
+			// all commands on queue will be executed immediately. it will throttle the main loop if needed but this is high priority task
 			m_commandQueue.Dispatch(engine::command::Type::Render, false);
 		}
 		m_renderer->End();
@@ -204,6 +211,7 @@ void engine::Engine::Exit()
 
 void engine::Engine::WindowClose()
 {
+	LOG("[ENGINE] Window Close event happened...");
 }
 
 void engine::Engine::WindowSize(size_t width, size_t height)

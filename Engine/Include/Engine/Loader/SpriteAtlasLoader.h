@@ -41,7 +41,7 @@ namespace graphics::loader
             }
 
             // Step 2: read UV rects from CSV
-            utilities::fileio::CSVFile csvFile(uvCsvFilePath, ',');
+            engine::utilities::fileio::CSVFile csvFile(uvCsvFilePath, ',');
             if (!csvFile.read())
             {
                 // log error or fallback

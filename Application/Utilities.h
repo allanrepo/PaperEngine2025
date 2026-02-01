@@ -4,7 +4,7 @@
 #include <Math/Rect.h>
 #include <functional>
 
-namespace utilities
+namespace app::utilities
 {
 	namespace io
 	{
@@ -17,7 +17,7 @@ namespace utilities
 				std::function<component::tile::Tile<T>(int, int, const U&, const component::tile::Tileset<T>&)> tileLoader
 			)
 			{
-				utilities::fileio::CSVFile csvFile(filename, ',');
+				engine::utilities::fileio::CSVFile csvFile(filename, ',');
 				if (!csvFile.read())
 				{
 					throw std::runtime_error("Failed to read tile layer CSV file.");
@@ -27,7 +27,7 @@ namespace utilities
 				int width = static_cast<int>(csvFile.GetColCount(0)); // assume uniform width
 
 				component::tile::TileGrid<T> layer;
-				layer.SetSize({ width, height });
+				//layer.SetSize({ width, height });
 
 				for (int row = 0; row < height; ++row)
 				{
@@ -43,7 +43,7 @@ namespace utilities
 
 						component::tile::Tile<T> tile = tileLoader(row, col, cell, tileset);
 
-						layer.SetTile(row, col, tile);
+						//layer.SetTile(row, col, tile);
 					}
 				}
 
@@ -100,6 +100,4 @@ namespace utilities
 			return uvs;
 		}
 	}
-
-
 }

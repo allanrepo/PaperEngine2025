@@ -89,7 +89,7 @@ namespace testFrameRate
 			m_scheduler += timer::Schedule(1 / 60.0f, &Test::ScheduledEventHandlerFunction);
 
 			// subscribe to scheduler using lambda
-			m_scheduler += timer::Schedule(1.0f / 1.0f, std::function<void(float)>([this](float delta)
+			m_scheduler += timer::Schedule(1.0f / 1.0f, std::function<void(double)>([this](double delta)
 				{
 					m_frameRateMonitor1.OnFrameCompleted(delta);
 				}));
@@ -100,18 +100,18 @@ namespace testFrameRate
 			LOG("Stopwatch started...");	
 		}
 
-		void ScheduledEventHandlerMethod(float delta)
+		void ScheduledEventHandlerMethod(double delta)
 		{
 			m_frameRateMonitor2.OnFrameCompleted(delta);
 		}
 
-		static void ScheduledEventHandlerFunction(float delta)
+		static void ScheduledEventHandlerFunction(double delta)
 		{
 			testFrameRate::Test::Instance().m_frameRateMonitor3.OnFrameCompleted(delta);
 		}
 
 		// this method is fired up whenever the OnLap event is triggered from stopwatch
-		void OnLap(float time)
+		void OnLap(double time)
 		{
 			m_scheduler.Update(time);
 

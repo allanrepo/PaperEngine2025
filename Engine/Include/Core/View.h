@@ -34,6 +34,8 @@ namespace core
 		}
 
 	public:
+		virtual ~View() = default;
+
 		// check if view is valid
 		inline bool isValid() const
 		{

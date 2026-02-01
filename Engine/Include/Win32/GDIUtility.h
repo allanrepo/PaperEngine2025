@@ -7,6 +7,8 @@
 #include <memory>
 #include <array>
 
+using namespace engine;
+
 namespace Win32
 {
 	class GDIUtility

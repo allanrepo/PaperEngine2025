@@ -7,11 +7,13 @@
 
 namespace timer
 {
+    using scalar = float;
+
     static void SleepMS(unsigned int ms)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(ms));
     }
-
+    /*
     namespace stopwatch
     {
         static void Test()
@@ -217,6 +219,7 @@ namespace timer
         }
     }
 
+    
     namespace alarmclock
     {
         class TestClass
@@ -287,6 +290,7 @@ namespace timer
             TestClass test;
         }
     }
+    */
 }
 
 

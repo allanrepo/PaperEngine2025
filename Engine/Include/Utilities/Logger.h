@@ -7,7 +7,7 @@
 #define LOGERROR(a) do { std::cout << "[ERROR] " << a << std::endl; } while(0)
 #endif
 
-namespace utilities
+namespace engine::utilities
 {
     class Logger
     {

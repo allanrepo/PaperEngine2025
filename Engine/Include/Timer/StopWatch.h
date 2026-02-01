@@ -4,6 +4,7 @@
 #include <thread>
 #include <Windows.h>
 #include <ratio>
+#include <Timer/Timer.h>
 
 #pragma comment(lib, "winmm.lib")
 
@@ -29,10 +30,10 @@ namespace timer
         std::chrono::steady_clock::time_point m_pausedStartTime;
 
         // sum of all non-paused time between last and current lap
-        std::chrono::duration<float> m_lastLapDurationAccumulator = std::chrono::duration<float>::zero();
+        std::chrono::duration<double> m_lastLapDurationAccumulator = std::chrono::duration<double>::zero();
 
         // sum of all paused durations between start and stop
-        std::chrono::duration<float> m_PausedDurationAccumulator = std::chrono::duration<float>::zero();
+        std::chrono::duration<double> m_PausedDurationAccumulator = std::chrono::duration<double>::zero();
 
         bool m_running = false;
         bool m_paused = false;
@@ -42,13 +43,13 @@ namespace timer
         event::Event<>OnStart;
 
         // event that fires up when StopWatch stops
-        event::Event<float> OnStop;
+        event::Event<double> OnStop;
 
         // event that fires up when StopWatch measure lap
-        event::Event<float> OnLap;
+        event::Event<double> OnLap;
 
         // event that fires up when StopWatch peeks time since it started
-        event::Event<float> OnPeek;
+        event::Event<double> OnPeek;
 
         // event that fires up when StopWatch is paused
         event::Event<> OnPause;
@@ -77,7 +78,7 @@ namespace timer
         // Ends the current lap and returns the total *active* time since the
         // previous lap. Resets the accumulator for the next lap.
         template<typename T = timer::seconds>
-        float Lap() noexcept
+        double Lap() noexcept
         {
             if (!m_running)
             {
@@ -96,7 +97,7 @@ namespace timer
             std::chrono::steady_clock::time_point now = m_paused ? m_pausedStartTime : std::chrono::steady_clock::now();
 
             // calculate difference between start and previous lap 
-            std::chrono::duration<float> elapsedTime = now - m_lastLapTime;
+            std::chrono::duration<double> elapsedTime = now - m_lastLapTime;
 
             // subtract accumulated pause duration from start to now
             elapsedTime += m_lastLapDurationAccumulator;
@@ -107,7 +108,7 @@ namespace timer
             // start next lap now
             m_lastLapTime = now;
 
-            float elapsed = std::chrono::duration_cast<std::chrono::duration<float, T>>(elapsedTime).count();
+            double elapsed = std::chrono::duration_cast<std::chrono::duration<double, T>>(elapsedTime).count();
 
             OnLap(elapsed);
 
@@ -117,7 +118,7 @@ namespace timer
 
         // Returns the total *active* time since the last lap without resetting.
         template<typename T = timer::seconds>
-        float Peek() noexcept
+        double Peek() noexcept
         {
             if (!m_running)
             {
@@ -135,12 +136,12 @@ namespace timer
             std::chrono::steady_clock::time_point now = m_paused ? m_pausedStartTime : std::chrono::steady_clock::now();
 
             // calculate difference between start and now
-            std::chrono::duration<float> elapsedTime = now - m_startTime;
+            std::chrono::duration<double> elapsedTime = now - m_startTime;
 
             // we subtract any pause duration we accumulated
             elapsedTime -= m_PausedDurationAccumulator;
 
-            float elapsed = std::chrono::duration_cast<std::chrono::duration<float, T>>(elapsedTime).count();
+            double elapsed = std::chrono::duration_cast<std::chrono::duration<double, T>>(elapsedTime).count();
 
             OnPeek(elapsed);
 
@@ -150,7 +151,7 @@ namespace timer
 
         // Ends the run and returns total active time since start.
         template<typename T = timer::seconds>
-        float Stop() noexcept
+        double Stop() noexcept
         {
             if (!m_running)
             {
@@ -168,7 +169,7 @@ namespace timer
             std::chrono::steady_clock::time_point now = m_paused ? m_pausedStartTime : std::chrono::steady_clock::now();
 
             // calculate difference between start and now
-            std::chrono::duration<float> elapsedTime = now - m_startTime;
+            std::chrono::duration<double> elapsedTime = now - m_startTime;
 
             // we subtract any pause duration we accumulated
             elapsedTime -= m_PausedDurationAccumulator;
@@ -178,7 +179,7 @@ namespace timer
 
             m_paused = false;
 
-            float elapsed = std::chrono::duration_cast<std::chrono::duration<float, T>>(elapsedTime).count();
+            double elapsed = std::chrono::duration_cast<std::chrono::duration<double, T>>(elapsedTime).count();
 
             OnStop(elapsed);
 

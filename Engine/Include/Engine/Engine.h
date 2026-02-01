@@ -21,7 +21,8 @@
 #include <Win32/Window.h>
 #include <Performance/FrameRateMonitor.h>
 #include <Timer/FrameRateController.h>
-
+#include <Job/IJob.h>
+#include <Job/Job.h>
 #include <memory>
 #include <deque>
 #include <vector>
@@ -41,6 +42,8 @@ namespace engine
 		performance::FrameRateMonitor m_mainLoopMonitor;
 		performance::FrameRateMonitor m_renderMonitorMonitor;
 		timer::FrameRateController m_renderController;
+		timer::Scheduler m_scheduler;
+		engine::job::JobQueue m_jobQueue;
 
 		void Initialize();
 		void Idle();
@@ -51,26 +54,25 @@ namespace engine
 		void WindowCreate(void* hWnd);
 		void ProcessWin32Message(UINT msg, WPARAM wParam, LPARAM lParam);
 
-		void Lap(float delta);
+		void Lap(double delta);
 
-		void DebugShowStatistics(float delta);
-
-		void OnRender(float delta);
+		void OnRender(double delta);
 
 	public:
 
 		struct Statistics
 		{
-			float mainLoopAverageFPS;
-			float mainLoopLastFPS;
-			float renderAverageFPS;
-			float renderLastFPS;
+			double mainLoopAverageFPS;
+			double mainLoopLastFPS;
+			double renderAverageFPS;
+			double renderLastFPS;
 		};
 
 		Engine(
 			std::string title = "engine",
 			std::string API = "DirectX11",
-			std::string RenderMode = "Batch"
+			std::string RenderMode = "Batch",
+			double renderFPS = 60.0
 		);
 		~Engine();
 
@@ -99,6 +101,21 @@ namespace engine
 			return m_canvas->GetViewPort();
 		}
 
+		timer::Scheduler& Scheduler()
+		{
+			return m_scheduler;
+		}
+
+		engine::job::JobQueue& JobQueue()
+		{
+			return m_jobQueue;
+		}
+
+		void SubmitJob(std::unique_ptr<engine::job::IJob> job)
+		{
+			m_jobQueue.Submit(std::move(job));
+		}
+
 		void Run();
 
 		Statistics GetStatistics()
@@ -112,7 +129,6 @@ namespace engine
 			};
 		}
 
-		timer::Scheduler m_scheduler;
 
 	};
 }

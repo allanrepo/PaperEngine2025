@@ -1,7 +1,7 @@
 #include <Timer/Pulse.h>
 
 timer::Pulse::Pulse(
-    float interval,
+    double interval,
     Mode mode,
     bool resetOnOverflow,
     size_t maxTriggerPerUpdate
@@ -27,7 +27,7 @@ void timer::Pulse::Reset()
 // - OnAlarm every interval  
 // - OnInterval once for OneShot  
 // - OnMaxIntervalPerUpdateReached if triggers exceed cap 
-void timer::Pulse::Update(float delta)
+void timer::Pulse::Update(double delta)
 {
     if (!m_running)
     {

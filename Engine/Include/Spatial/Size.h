@@ -26,6 +26,19 @@ namespace spatial
 		{
 			return { width / scalar, height / scalar };
 		}
+
+		// equality 
+		bool operator==(const Size<T>& other) const 
+		{ 
+			return width == other.width && height == other.height; 
+		} 
+		
+		// inequality
+		bool operator!=(const Size<T>& other) const 
+		{ 
+			return !(*this == other); 
+		}
+
 	};
 
 	using SizeF = Size<float>;

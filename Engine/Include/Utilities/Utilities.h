@@ -2,7 +2,7 @@
 #include <functional>
 #include <iostream>
 
-namespace utilities
+namespace engine::utilities
 {
 	// A utility class that allows you to register a callback that will be called when the object goes out of scope.
 	// This is useful for cleanup tasks that should happen automatically when the object is destroyed.

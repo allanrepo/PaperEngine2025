@@ -1,10 +1,12 @@
 #pragma once
 #include <Core/Singleton.h>
-#include <Cache/Dictionary.h>
+#include <Containers/Dictionary.h>
 
 #include <unordered_map>
 #include <memory>
 #include <string>
+
+using namespace engine;
 
 namespace cache
 {
@@ -33,7 +35,7 @@ namespace cache
 		friend class core::Singleton<Registry<T, K>>;
 
 	private:
-		cache::Dictionary<K, std::unique_ptr<T>> registry;
+		container::Dictionary<K, std::unique_ptr<T>> registry;
 
 	public:
 		Registry() = default;

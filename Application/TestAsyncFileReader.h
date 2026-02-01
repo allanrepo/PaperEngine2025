@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 /*
 on launch
 	- the application will be on idle state not rendering anything since the map is not yet loaded
@@ -30,7 +30,6 @@ on map rendering state
 #include <Graphics/Resource/DX11TextureImpl.h>
 #include <Timer/StopWatch.h>
 #include <Timer/Pulse.h>
-#include <limits.h>
 #include <State/State.h>
 #include <State/StateMachine.h>	
 #include <Graphics/Renderable/IFontAtlas.h>
@@ -38,81 +37,78 @@ on map rendering state
 #include <Command/CommandQueue.h>
 #include <Command/ICommand.h>
 #include <Command/DrawCommand.h>
-
+#include <Performance/FrameRateMonitor.h>
+#include <limits.h>
 #include "Utilities.h"
 
 namespace TestAsyncFileReader
 {
 	class Test;
-
 	class LaunchState;
-	class LoadResourcesState;
-
+	class LoadState;
 }
+
 namespace TestAsyncFileReader
 {
+	class Job 
+	{
+	public:
+		// The actual work
+		std::function<void()> task;
 
+		// Persistent flag
+		bool persistent;
 
+		// Optional completion condition
+		std::function<bool()> isDone;
 
-	// a wrapper class to calculate simple frame rate at specified interval
-	// it averages the frame rate over the interval to avoid too much fluctuation
-	class SimpleFrameRateCounter
+		Job(
+			std::function<void()> fn,
+			bool persistent = false,
+			std::function<bool()> done = nullptr
+		): 
+			task(std::move(fn)), 
+			persistent(persistent), 
+			isDone(std::move(done)) 
+		{
+		}
+	};
+
+	class JobQueue 
 	{
 	private:
-		// calculate frame rate every pulse interval
-		timer::Pulse m_frameRateRefresher;
-
-		// pulse to refresh frame rate display so it doesn't flicker too much when frame rate changes
-		bool m_updateFrameRateDisplay = false;
-
-		// accumulated frame rate
-		float m_loopElapsedTimeAccumulator = 0.0f;
-		size_t m_loopFrameCount = 0;
-
-		// store latest calculated frame rate
-		float m_currentFrameRate = 0.0f;
+		std::deque<Job> m_jobs;
 
 	public:
-		SimpleFrameRateCounter(float interval = 1000.0f):
-			m_frameRateRefresher(interval, timer::Pulse::Mode::Persistent)
-		{
-			// assign frame rate refresher event handler. we feed it with a lambda function (C++11 feature) that sets the update flag to true
-			// we are using std::function wrapper to wrap the lambda. This is because the event handler requires a std::function object
-			// we could have also created a separate method for this instead of using lambda as this is opportunity to test this feature
-			m_frameRateRefresher.IntervalEvent += event::Handler(std::function<void(float)>([this](float interval)
-				{
-					m_updateFrameRateDisplay = true;
-				}));
-			LOG("Frame rate refresher pulse created...");
+		void Submit(const Job& job) {
+			m_jobs.push_back(job);
 		}
 
-		virtual ~SimpleFrameRateCounter()
+		void Update(size_t maxJobs = SIZE_MAX)
 		{
-		}
-
-		void Update(float time)
-		{
-			// update the frame rate refresher pulse
-			m_frameRateRefresher.Update(time);
-
-			// if it's time to update frame rate display, calculate it now
-			if (m_updateFrameRateDisplay)
+			size_t count = 0;
+			for (auto it = m_jobs.begin(); it != m_jobs.end() && count < maxJobs;) 
 			{
-				// we assume time is in milliseconds
-				m_currentFrameRate = m_loopFrameCount / m_loopElapsedTimeAccumulator * 1000.0f;
-				m_updateFrameRateDisplay = false;
-				m_loopElapsedTimeAccumulator = 0;
-				m_loopFrameCount = 0;
+				it->task(); // run the job
+
+				if (!it->persistent) 
+				{
+					// one-shot job → remove immediately
+					it = m_jobs.erase(it);
+				}
+				else {
+					// persistent job → check condition
+					if (it->isDone && it->isDone()) 
+					{
+						it = m_jobs.erase(it); // finished → remove
+					}
+					else 
+					{
+						++it; // keep it for next frame
+					}
+				}
+				count++;
 			}
-
-			// accumulate time and frame count
-			m_loopElapsedTimeAccumulator += time;
-			m_loopFrameCount++;
-		}
-
-		float GetCurrentFrameRate() const
-		{
-			return m_currentFrameRate;
 		}
 	};
 
@@ -120,6 +116,7 @@ namespace TestAsyncFileReader
 	{
 	private:
 		std::ifstream m_filestream;
+
 		std::string m_filename;
 
 	public:
@@ -157,15 +154,12 @@ namespace TestAsyncFileReader
 
 		void ProcessChunk(const char* data, size_t len)
 		{
-			// streaming state-machine parser: accumulate chars into m_currentCell, 
-			// // push on delimiter/newline, handle CRLF, quoted fields if needed. 
-
 			// put temporary delay to simulate processing time
 
 			timer::StopWatch sw;
 
 			sw.Start();
-			while (sw.Peek<timer::milliseconds>() < 16.0f)
+			while (sw.Peek<timer::milliseconds>() < 0.25)
 			{
 				// busy wait
 			}
@@ -193,14 +187,25 @@ namespace TestAsyncFileReader
 			std::streamsize n = m_filestream.gcount();
 			if (n > 0)
 			{
-				ProcessChunk(buffer.data(), static_cast<size_t>(n));
+				int nn = 0;
+				timer::StopWatch sw;
+				sw.Start();
+				while (sw.Peek<timer::milliseconds>() < 1)
+				{
+					nn++;
+					ProcessChunk(buffer.data(), static_cast<size_t>(n));
+				}
+				if (nn > 1)
+				{
+				//	LOG("read count: " << std::to_string(nn));
+				}
 			}
 
 			// returns true if reached EOF already. false otherwise
 			return m_filestream.eof();
 		}
 
-		long GetFileSizeLong()
+		long GetFileSizeInBytesLong()
 		{
 			// is file open?
 			if (!m_filestream.is_open())
@@ -309,6 +314,16 @@ namespace TestAsyncFileReader
 			// return size. warning: this cast may lose data if file is larger than what long can hold
 			return static_cast<long>(size64);
 		}
+	
+		bool IsEndOfFile() const
+		{
+			return m_filestream.eof();
+		}
+
+		bool IsOpen() const
+		{
+			return m_filestream.is_open();
+		}
 	};
 
 	class Test
@@ -319,10 +334,19 @@ namespace TestAsyncFileReader
 		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
 		timer::StopWatch m_stopwatch;
 		AsyncFileReader m_fileReader;
+		AsyncFileReader m_fileReader1;
+		AsyncFileReader m_fileReader2;
+		std::deque<std::string> m_files;
 		std::unique_ptr<graphics::renderable::IFontAtlas> m_fontAtlas;
 
-		// frame rate counter
-		SimpleFrameRateCounter m_frameRateCounter;
+		performance::FrameRateMonitor m_frameRateMonitor;
+		performance::FrameRateMonitor m_stateFrameRateMonitor;
+
+		timer::FrameRateController m_frameRateController;
+
+		timer::Scheduler m_scheduler;
+		
+		JobQueue m_jobQueue;
 
 		// command manager
 		engine::command::CommandQueue m_commandQueue;
@@ -333,13 +357,15 @@ namespace TestAsyncFileReader
 	public:
 		Test():
 			m_stateMachine(this),
-			m_frameRateCounter(500.0f) // update frame rate every 500 ms
+			m_frameRateMonitor(1.0),
+			m_stateFrameRateMonitor(1.0),
+			m_frameRateController(60.0)
 		{
 			Win32::Window::OnInitialize += event::Handler(this, &Test::OnInitialize);
 			Win32::Window::OnExit += event::Handler(this, &Test::OnExit);
 			Win32::Window::OnIdle += event::Handler(this, &Test::OnIdle);
 
-			input::Input::Instance().OnMouseDown += event::Handler(this, &Test::OnMouseDown);
+			input::Input::Instance().MouseDownEvent += event::Handler(this, &Test::OnMouseDown);
 
 			Win32::Window::Run();
 		}
@@ -382,12 +408,68 @@ namespace TestAsyncFileReader
 			m_stopwatch.Start();
 			LOG("Stopwatch started...");
 
-			// set initial state to launch state
+			m_frameRateController += event::Handler(this, &Test::OnUpdateFileReader);
 
-			//std::unique_ptr<LoadResourcesState> launchState = std::make_unique<LoadResourcesState>();
+			m_scheduler += timer::Schedule(1.0/1000.0, this, &Test::OnUpdateFileReader, true, 1);
 
-			//m_stateMachine.Set(std::make_unique<LoadResourcesState>());
+			m_files.push_back("small.csv");
+			m_files.push_back("big.csv");
+			m_files.push_back("huge.csv");
 
+		}
+
+		void SetState(std::unique_ptr<state::State<TestAsyncFileReader::Test>> state)
+		{
+			m_stateMachine.Set(std::move(state));
+		}
+
+		void DrawProgressBarCommand(spatial::PositionF pos, spatial::SizeF size, float current, float total)
+		{
+			std::unique_ptr<engine::command::graphics::renderer::DrawQuadCommand> drawQuadCmd =
+				std::make_unique<engine::command::graphics::renderer::DrawQuadCommand>(
+					*m_renderer,
+					pos,
+					size,
+					graphics::ColorF{ 1.0f, 0.0f, 0.0f, 1.0f },
+					0.0f
+				);
+			m_commandQueue.Enqueue(std::move(drawQuadCmd));
+
+			drawQuadCmd =
+				std::make_unique<engine::command::graphics::renderer::DrawQuadCommand>(
+					*m_renderer,
+					pos,
+					spatial::SizeF
+					{
+						size.width * current / total,
+						size.height
+					},
+					graphics::ColorF{ 0.0f, 1.0f, 0.0f, 1.0f },
+					0.0f
+				);
+			m_commandQueue.Enqueue(std::move(drawQuadCmd));
+		}
+
+		// helper function to draw text at top-right screen. this is for showing statistics like FPS
+		void DrawTextCommandTopRightScreen(const std::string& text, float y)
+		{
+			// render text showing which state are we in
+			float width = m_fontAtlas->GetWidth(text);
+			float height = m_fontAtlas->GetHeight();
+
+			std::unique_ptr<engine::command::graphics::renderer::DrawTextCommand> drawTextCmd =
+				std::make_unique<engine::command::graphics::renderer::DrawTextCommand>(
+					*m_renderer,
+					*m_fontAtlas,
+					text,
+					spatial::PositionF
+					{
+						m_canvas->GetViewPort().GetWidth() - width - 10.0f,
+						y
+					},
+					graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }
+				);
+			m_commandQueue.Enqueue(std::move(drawTextCmd));
 		}
 
 		graphics::renderer::IRenderer& GetRenderer() const
@@ -410,13 +492,104 @@ namespace TestAsyncFileReader
 			return *m_canvas;
 		}
 
-		// this method is fired up whenever the OnLap event is triggered from stopwatch
-		void OnLap(float time)
+		JobQueue& GetJobQueue()
 		{
-			m_fileReader.Update(0xFFF);
+			return m_jobQueue;
+		}
 
-			m_stateMachine.Update(time);
-			//m_frameRateCounter.Update(time);
+		void OnUpdateFileReader(double time)
+		{
+			m_stateFrameRateMonitor.OnFrameCompleted(time);
+
+			if (m_fileReader.IsEndOfFile() || !m_fileReader.IsOpen())
+			{
+				if (m_files.empty())
+				{
+					// time to get out of loading state
+				}
+				else
+				{
+					m_fileReader.Open(m_files.front());
+					LOG("Loading " << m_files.front());
+					m_files.pop_front();
+
+					m_jobQueue.Submit(Job(
+						[this]()
+						{
+							m_fileReader.Update(0x3FFF);
+						},
+						true,
+						[this]()
+						{
+							return m_fileReader.IsEndOfFile();
+						}
+					));
+				}
+
+			}
+
+			//// read the file in chunks
+			//m_fileReader.Update(0x3FFF);
+
+			//if (m_fileReader.IsEndOfFile() || !m_fileReader.IsOpen())
+			//{
+			//	m_fileReader.Close();
+			//	if (!m_files.empty())
+			//	{
+			//		m_fileReader.Open(m_files.front());
+			//		LOG("Loading " << m_files.front());
+			//		m_files.pop_front();
+			//	}
+			//	else
+			//	{
+			//		// time to get out of loading state
+			//		//LOG("All files loaded. state is done.");
+			//	}
+			//}
+		}
+
+		// this method is fired up whenever the OnLap event is triggered from stopwatch
+		void OnLap(double time)
+		{
+			// monitor main loop's frame rate
+			m_frameRateMonitor.OnFrameCompleted(time);
+
+			//m_frameRateController.Update(time);
+
+			m_scheduler.Update(time);
+
+			m_jobQueue.Update();
+
+			// before issuing any draw command for this frame, flush any draw command on queue first. 
+			m_commandQueue.Clear(engine::command::Type::Render);
+
+			// we consolidate all rendering calls here since this is considered to be the rendering loop
+
+			// draw progress bar for first filestream
+			DrawProgressBarCommand({ 50, 300 }, { 400, 50 },
+				static_cast<float>(!m_fileReader.IsOpen() ? 0 : m_fileReader.IsEndOfFile() ? 1 : m_fileReader.GetNumberOfBytesReadLong()), // if EOF, pass 1 so we render progress bar at 100% progress
+				static_cast<float>(m_fileReader.IsEndOfFile() ? 1 : m_fileReader.GetFileSizeInBytesLong()) // if EOF, pass 1 so we render progress bar at 100% progress
+			);
+
+			//// draw progress bar for second filestream
+			//DrawProgressBarCommand({ 50, 360 }, { 400, 50 },
+			//	static_cast<float>(!m_fileReader1.IsOpen() ? 0 : m_fileReader1.IsEndOfFile() ? 1 : m_fileReader1.GetNumberOfBytesReadLong()), // if EOF, pass 1 so we render progress bar at 100% progress
+			//	static_cast<float>(m_fileReader1.IsEndOfFile() ? 1 : m_fileReader1.GetFileSizeInBytesLong()) // if EOF, pass 1 so we render progress bar at 100% progress
+			//);
+
+			//// draw progress bar for third filestream
+			//DrawProgressBarCommand({ 50, 420 }, { 400, 50 },
+			//	static_cast<float>(!m_fileReader2.IsOpen() ? 0 : m_fileReader2.IsEndOfFile() ? 1 : m_fileReader2.GetNumberOfBytesReadLong()), // if EOF, pass 1 so we render progress bar at 100% progress
+			//	static_cast<float>(m_fileReader2.IsEndOfFile() ? 1 : m_fileReader2.GetFileSizeInBytesLong()) // if EOF, pass 1 so we render progress bar at 100% progress
+			//);
+
+			// display FPS via draw command
+			std::string text = "FPS(Render): " + std::to_string(static_cast<int>(m_frameRateMonitor.GetAverageFrameRate()));
+			DrawTextCommandTopRightScreen(text, 10.0f);
+
+			// display state FPS via draw command
+			text = "FPS(State): " + std::to_string(static_cast<int>(m_stateFrameRateMonitor.GetAverageFrameRate()));
+			DrawTextCommandTopRightScreen(text, 40.0f);
 		}
 
 
@@ -426,7 +599,7 @@ namespace TestAsyncFileReader
 			input::Input::Instance().Update();
 
 			// call lap to get elapsed time and trigger OnLap event
-			m_stopwatch.Lap<timer::milliseconds>();
+			m_stopwatch.Lap<timer::seconds>();
 
 			// start the canvas. we can draw from here
 			m_canvas->Begin();
@@ -435,48 +608,8 @@ namespace TestAsyncFileReader
 
 				m_renderer->Begin();
 				{
-					// execute render commands on queue. clear commands after dispatching
-					m_commandQueue.Dispatch(engine::command::Type::Render, true);
-
-					//long fileSize = m_fileReader.GetFileSizeLong();
-					//long bytesRead = m_fileReader.GetNumberOfBytesReadLong();
-					//float size = 600.0f;
-					//float sizeRead = size * (static_cast<float>(bytesRead) / static_cast<float>(fileSize > 0 ? fileSize : 0));
-
-					//m_renderer->Draw(
-					//	spatial::PositionF{ 100.0f, 400.0f },				// position
-					//	spatial::SizeF{ size, 50.0f },					// size
-					//	graphics::ColorF{ 1.0f, 0.0f, 0.0f, 1.0f },			// color
-					//	0.0f
-					//);
-
-					//m_renderer->Draw(
-					//	spatial::PositionF{ 100.0f, 400.0f },				// position
-					//	spatial::SizeF{ sizeRead, 50.0f },					// size
-					//	graphics::ColorF{ 0.0f, 1.0f, 0.0f, 1.0f },			// color
-					//	0.0f
-					//);
-
-					//// render frame rate at top-right corner
-					//{
-					//	std::string fps = "FPS: " + std::to_string(static_cast<int>(m_frameRateCounter.GetCurrentFrameRate()));
-					//	float textWidth = m_fontAtlas->GetWidth(fps);
-
-					//	math::geometry::RectF vp = m_canvas->GetViewPort();
-
-					//	spatial::PositionF pos{
-					//		vp.right - textWidth - 10.0f,
-					//		10.0f
-					//	};
-
-					//	m_renderer->DrawText(
-					//		*m_fontAtlas,
-					//		"FPS: " + std::to_string(static_cast<int>(m_frameRateCounter.GetCurrentFrameRate())),
-					//		pos,
-					//		graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }
-					//	);
-					//}
-
+					// execute render commands on queue. 
+					m_commandQueue.Dispatch(engine::command::Type::Render, false);
 				}
 				m_renderer->End();
 			}
@@ -503,15 +636,9 @@ namespace TestAsyncFileReader
 			if (btn == 1)
 			{
 				// open a file to read asynchronously
-				if (m_fileReader.Open("big.csv"))
-				{
-					LOG("Opened large CSV file for asynchronous reading.");
-				}
-				else
-				{
-					LOG("Failed to open large CSV file for asynchronous reading.");
-					return;
-				}
+				m_fileReader.Open("big.csv");
+				m_fileReader1.Open("big.csv");
+				m_fileReader2.Open("big.csv");
 			}
 			if (btn == 2)
 			{
@@ -519,42 +646,77 @@ namespace TestAsyncFileReader
 		}
 	};
 
-
-	class LaunchState : public state::State<TestAsyncFileReader::Test>
+	class LoadState : public state::State<TestAsyncFileReader::Test>
 	{
 	private:
+		//std::deque<std::string> m_files;
+		//std::unique_ptr<graphics::renderable::IFontAtlas> m_fontAtlas;
+		//performance::FrameRateMonitor m_frameRateMonitor;
+		//AsyncFileReader m_fileReader;
+
 	public:
-		LaunchState()
+		LoadState()
 		{
 		}
-		virtual ~LaunchState() = default;
+		virtual ~LoadState() = default;
 
 		virtual void Enter(TestAsyncFileReader::Test& owner) override
 		{
+			//// identify files we need to read and load and store them in list
+			//m_files.push_back("small.csv");
+			//m_files.push_back("big.csv");
+			//m_files.push_back("huge.csv");
+
+			//// we're going to render some text here so we create font resource
+			//m_fontAtlas = std::make_unique<graphics::renderable::FontAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
+			//m_fontAtlas->Initialize("Arial", 24);
+			//LOG("Font atlas created and initialized...");
 		}
 		virtual void Exit(TestAsyncFileReader::Test& owner) override
 		{
 		}
-		virtual void Update(TestAsyncFileReader::Test& owner, float delta) override
+		virtual void Update(TestAsyncFileReader::Test& owner, double delta) override
 		{
-			// render text showing which state are we in
-			float width = owner.GetFontAtlas().GetWidth("State: LaunchState");
-			float height = owner.GetFontAtlas().GetHeight();
+			// monitor frame rate here
+			//m_frameRateMonitor.OnFrameCompleted(delta);
 
-			math::geometry::RectF vp = owner.GetCanvas().GetViewPort();
+			// if file reader is not reading anything, get file from list and open it
+			// queue job to read file
+			// if file read is done, get again from list until it is empty.
+			// once file list is empty, our state is done!
+			//if (m_fileReader.IsEndOfFile() || !m_fileReader.IsOpen())
+			//{
+			//	if (m_files.empty())
+			//	{
+			//		// time to get out of loading state
+			//	}
+			//	else
+			//	{
+			//		m_fileReader.Open(m_files.front());
+			//		LOG("Loading " << m_files.front());
+			//		m_files.pop_front();
 
-			owner.GetCommandQueue().Enqueue(
-				std::make_unique<engine::command::graphics::renderer::DrawTextCommand>(
-					owner.GetRenderer(),
-					owner.GetFontAtlas(),
-					"State: LaunchState",
-					spatial::PositionF
-					{
-						vp.GetWidth() - owner.GetFontAtlas().GetWidth("State: LaunchState") - 10.0f,
-						owner.GetFontAtlas().GetHeight()
-					},
-					graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }
-				));
+			//		owner.GetJobQueue().Submit(Job(
+			//			[this]()
+			//			{
+			//				m_fileReader.Update(0x3FFF);
+			//			},
+			//			true,
+			//			[this]()
+			//			{
+			//				return m_fileReader.IsEndOfFile();
+			//			}
+			//		));
+			//	}
+			//}
+
+			// clear draw command queue
+
+			// queue draw command to draw text showing current file to being loaded
+
+			// queue draw command to draw progress bar
+
+			// queue draw command to draw statistics
 
 		}
 		virtual bool IsFinished(TestAsyncFileReader::Test& owner) override
@@ -580,7 +742,7 @@ namespace TestAsyncFileReader
 		virtual void Exit(Test& owner) override
 		{
 		}
-		virtual void Update(Test& owner, float delta) override
+		virtual void Update(Test& owner, double delta) override
 		{
 		}
 		virtual bool IsFinished(Test& owner) override
@@ -600,7 +762,7 @@ namespace TestAsyncFileReader
 		virtual void Exit(Test& owner) override
 		{
 		}
-		virtual void Update(Test& owner, float delta) override
+		virtual void Update(Test& owner, double delta) override
 		{
 		}
 		virtual bool IsFinished(Test& owner) override
@@ -619,7 +781,7 @@ namespace TestAsyncFileReader
 		virtual void Exit(Test& owner) override
 		{
 		}
-		virtual void Update(Test& owner, float delta) override
+		virtual void Update(Test& owner, double delta) override
 		{
 		}
 		virtual bool IsFinished(Test& owner) override

@@ -22,18 +22,18 @@ namespace performance
 	class FrameRateMonitor
 	{
 	private:
-		float m_measureRange;
-		std::deque<float> m_elapsedTimes;
-		float m_elapsedTimeAccumulator;
+		double m_measureRange;
+		std::deque<double> m_elapsedTimes;
+		double m_elapsedTimeAccumulator;
 
 	public:
-		FrameRateMonitor(float measureRange = 1.0f);
+		FrameRateMonitor(double measureRange = 1.0f);
 
-		void SetMeasureRange(float range);
-		float GetAverageFrameRate() const;
-		float GetLastFrameRate() const;
+		void SetMeasureRange(double range);
+		double GetAverageFrameRate() const;
+		double GetLastFrameRate() const;
 
 		// using "On" prefix to follow event handler naming convention since this method is used as event handler - it is called when a frame is completed
-		void OnFrameCompleted(float elapsedTime);
+		void OnFrameCompleted(double elapsedTime);
 	};
 }

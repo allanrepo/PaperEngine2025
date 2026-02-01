@@ -39,11 +39,11 @@ namespace input
 		Input() = default;
 		virtual ~Input() = default;
 
-		event::Event<int> OnKeyDown;
-		event::Event<int> OnKeyUp;
-		event::Event<int, int, int> OnMouseDown;
-		event::Event<int, int, int> OnMouseUp;
-		event::Event<int, int> OnMouseMove;
+		event::Event<int> KeyDownEvent;
+		event::Event<int> KeyUpEvent;
+		event::Event<int, int, int> MouseDownEvent;
+		event::Event<int, int, int> MouseUpEvent;
+		event::Event<int, int> MouseMoveEvent;
 
 
 		virtual void HandleMouseMove(int x, int y) noexcept
@@ -123,19 +123,19 @@ namespace input
 				switch (evt.type)
 				{
 				case InputType::KeyDown:
-					OnKeyDown(evt.code);
+					KeyDownEvent(evt.code);
 					break;
 				case InputType::KeyUp:
-					OnKeyUp(evt.code);
+					KeyUpEvent(evt.code);
 					break;
 				case InputType::MouseDown:
-					OnMouseDown(evt.code, evt.x, evt.y);
+					MouseDownEvent(evt.code, evt.x, evt.y);
 					break;
 				case InputType::MouseUp:
-					OnMouseUp(evt.code, evt.x, evt.y);
+					MouseUpEvent(evt.code, evt.x, evt.y);
 					break;
 				case InputType::MouseMove:
-					OnMouseMove(evt.x, evt.y);
+					MouseMoveEvent(evt.x, evt.y);
 					break;
 				default:
 					break;

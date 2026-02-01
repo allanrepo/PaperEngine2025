@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <Core/Event.h>
+#include <Timer/Timer.h>
 
 namespace timer
 {
@@ -45,26 +46,26 @@ namespace timer
             OneShot     // Fires OnTimeOut event once then stops until Reset() is called.
         };
 
-        event::Event<float> TimeOutEvent;
-        event::Event<float> IntervalEvent;
-        event::Event<Pulse&, float, size_t> OverflowReachedEvent;
+        event::Event<double> TimeOutEvent;
+        event::Event<double> IntervalEvent;
+        event::Event<Pulse&, double, size_t> OverflowReachedEvent;
 
     private:
-        float m_interval;      
+        double m_interval;      
         Pulse::Mode m_mode;
-        float m_elapsedTimeAccumulator;
+        double m_elapsedTimeAccumulator;
         bool m_running;
         size_t m_maxTriggerPerUpdate;
         bool m_resetOnOverflow;
 
     public:
-        Pulse(float interval, Mode mode = Mode::Persistent, bool resetOnOverflow = false, size_t maxTriggerPerUpdate = 5);
+        Pulse(double interval, Mode mode = Mode::Persistent, bool resetOnOverflow = false, size_t maxTriggerPerUpdate = 5);
 
         ~Pulse() = default;
 
         void Reset();
 
-        float GetInterval() const
+        double GetInterval() const
         {
             return m_interval;
 		}
@@ -85,7 +86,7 @@ namespace timer
         // - OnAlarm every interval  
         // - OnInterval once for OneShot  
         // - OnMaxIntervalPerUpdateReached if triggers exceed cap 
-        void Update(float delta);
+        void Update(double delta);
     };
 }
 

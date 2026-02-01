@@ -24,6 +24,7 @@
 
 #include "Utilities.h"
 
+
 namespace TestCamera
 {
 	class RenderableTile
@@ -73,9 +74,9 @@ namespace TestCamera
 			Win32::Window::OnExit += event::Handler(this, &Test::OnExit);
 			Win32::Window::OnIdle += event::Handler(this, &Test::OnIdle);
 
-			input::Input::Instance().OnMouseDown += event::Handler(this, &Test::OnMouseDown);
-			input::Input::Instance().OnMouseMove += event::Handler(this, &Test::OnMouseMove);
-			input::Input::Instance().OnMouseUp += event::Handler(this, &Test::OnMouseUp);
+			input::Input::Instance().MouseDownEvent += event::Handler(this, &Test::OnMouseDown);
+			input::Input::Instance().MouseMoveEvent += event::Handler(this, &Test::OnMouseMove);
+			input::Input::Instance().MouseUpEvent += event::Handler(this, &Test::OnMouseUp);
 
 			Win32::Window::Run();
 		}
@@ -157,7 +158,7 @@ namespace TestCamera
 
 			// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 8 rows and 12 columns
 			// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-			std::vector<math::geometry::RectF> uvs = utilities::graphics::CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
+			std::vector<math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
 			for (math::geometry::RectF& rect : uvs)
 			{
 				m_spriteAtlas->AddUVRect(rect);
@@ -168,7 +169,7 @@ namespace TestCamera
 			m_tileset.Register(1, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(1), false)); // obstacle
 
 			// load map into tile layer
-			m_tilegrid = utilities::io::TileGridLoader<RenderableTile, int>::LoadFromCSV(
+			m_tilegrid = app::utilities::io::TileGridLoader<RenderableTile, int>::LoadFromCSV(
 				"../Assets/32x32Map.csv",
 				m_tileset,
 				[](int row, int col, const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
@@ -190,7 +191,7 @@ namespace TestCamera
 		}
 
 		// this method is fired up whenever the OnLap event is triggered from stopwatch
-		void OnLap(float time)
+		void OnLap(double time)
 		{
 		}
 
