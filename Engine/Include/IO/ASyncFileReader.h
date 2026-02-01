@@ -14,13 +14,9 @@ namespace engine
 			std::string m_filename;
 
 		public:
-			AsyncFileReader()
-			{
-			}
+			AsyncFileReader() = default;
 
-			virtual ~AsyncFileReader()
-			{
-			}
+			virtual ~AsyncFileReader() = default;
 
 			bool Open(const std::string& filename)
 			{

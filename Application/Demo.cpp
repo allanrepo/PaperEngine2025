@@ -45,8 +45,8 @@ void demo::Demo::OnStart()
 	LOG("[Demo] Font atlas created and initialized...");
 
 	// set initial state
-	//m_stateMachine.Set(std::make_unique<LoadTileLayerState>());
-	m_stateMachine.Set(std::make_unique<LoadTileMapState>());
+	m_stateMachine.Set(std::make_unique<LoadTileLayerState>());
+	//m_stateMachine.Set(std::make_unique<LoadTileMapState>());
 	//m_stateMachine.Set(std::make_unique<LoadTileRegionState>());
 	//m_stateMachine.Set(std::make_unique<LoadSequentialState>());
 	LOG("[Demo] State machine set to LaunchState...");
@@ -792,8 +792,10 @@ void demo::LoadTileRegionState::Enter(Demo& owner)
 	m_tileset->Register(3, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(3), false)); // obstacle
 
 	// specify the tilemap file to read. it must be csv file
-	m_fileReader.Open("..\\Assets\\128x128Map.csv");
-	LOG("Loading ..\\Assets\\128x128Map.csv");
+	//m_fileReader.Open("..\\Assets\\128x128Map.csv");
+	//LOG("Loading ..\\Assets\\128x128Map.csv");
+	m_fileReader.Open("..\\Assets\\69x71Map.csv");
+	LOG("Loading ..\\Assets\\69x71Map.csv");
 
 	m_fileReader.ProcessChunkEvent += event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
 	m_fileReader.EndOfFileFoundEvent += event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
@@ -1022,10 +1024,12 @@ void demo::LoadTileLayerState::Enter(Demo& owner)
 	m_tileset->Register(3, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(3), false)); // obstacle
 
 	// specify the tilemap file to read. it must be csv file
-	m_fileReader.Open("..\\Assets\\128x128Map.csv");
-	LOG("Loading ..\\Assets\\128x128Map.csv");
-	//m_fileReader.Open("..\\Assets\\tilemap.csv");
-	//LOG("Loading ..\\Assets\\tilemap.csv");
+	//m_fileReader.Open("..\\Assets\\69x71Map.csv");
+	//LOG("Loading ..\\Assets\\69x71Map.csv");
+	//m_fileReader.Open("..\\Assets\\128x128Map.csv");
+	//LOG("Loading ..\\Assets\\128x128Map.csv");
+	m_fileReader.Open("..\\Assets\\tilemap.csv");
+	LOG("Loading ..\\Assets\\tilemap.csv");
 	//m_fileReader.Open("..\\Assets\\64x64Map.csv");
 	//LOG("Loading ..\\Assets\\64x64Map.csv");
 	//m_fileReader.Open("..\\Assets\\32x32Map.csv");
@@ -1075,18 +1079,18 @@ void demo::LoadTileLayerState::Enter(Demo& owner)
 
 				//m_tileLayerLoader.SyncLoadAll(
 				//	*m_layer.get(),
-				//	m_csvTable,
+				//	m_table,
 				//	*m_tileset.get(),
+				//	{ 16, 16 },
 				//	[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
 				//	{
 				//		// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
 				//		return tileset.MakeTile(cell);
 				//	},
-				//	128, 128,
-				//	0,0
+				//	0.1
 				//);
-
 				//m_tileLayerLoaded = true;
+				//return;
 
 				m_tileLayerLoader.Begin(
 					*m_layer.get(),
@@ -1104,16 +1108,16 @@ void demo::LoadTileLayerState::Enter(Demo& owner)
 					engine::job::Job(
 						[this]()
 						{
-							m_tileLayerLoader.Update(0.001);
+							m_tileLayerLoader.Update(0.000000000001);
 
-							// force 1ms delay here for simulation to slow down reading so we can observe
-							timer::StopWatch sw;
-							sw.Start();
-							while (sw.Peek<timer::milliseconds>() < 0.1)
-							{
-								// busy wait
-							}
-							sw.Stop();
+							//// force 1ms delay here for simulation to slow down reading so we can observe
+							//timer::StopWatch sw;
+							//sw.Start();
+							//while (sw.Peek<timer::milliseconds>() < 0.1)
+							//{
+							//	// busy wait
+							//}
+							//sw.Stop();
 						},
 						true,
 						[this]()

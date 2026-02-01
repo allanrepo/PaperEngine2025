@@ -72,8 +72,8 @@ void GenerateTilemapCSV(const std::string& filename, int rows, int cols, int num
 // Generate a tilemap with organic edges and islands
 void GenerateOrganicTilemapCSV(const std::string& filename,
     int rows, int cols,
-    int numIslands = 4,
-    int islandRadius = 3)
+    int numIslands = 16,
+    int islandRadius = 8)
 {
     std::vector<std::vector<int>> map(rows, std::vector<int>(cols, 0));
 
@@ -145,7 +145,7 @@ void GenerateOrganicTilemapCSV(const std::string& filename,
 
 int main()
 {
-    //GenerateOrganicTilemapCSV("tilemap.csv", 256, 256, 4, 3);
+    //GenerateOrganicTilemapCSV("tilemap.csv", 259, 263, 24, 32);
 
 	//test::TestFileReader testFileReader;
 	//TestLargeMap::Test testLargeMap;

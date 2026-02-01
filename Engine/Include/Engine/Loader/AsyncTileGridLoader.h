@@ -13,44 +13,47 @@ namespace engine
 		{
 			namespace loader
 			{
-				//	design consideration
-				//		-	purpose
-				//			-	utility class that incrementally or synchronously loads a TileGrid<T> from a StringTable of string data. 
-				//				Each cell in the table is converted to type U, then mapped into a Tile<T> using a user-provided tileLoader function.
-				//		-	features
-				//			-	non-owning references: m_table and m_tileset are borrowed pointers; caller must ensure their lifetime during loading.
-				//			-	supports both blocking (SyncLoadAll) and time-sliced (Begin + Update) loading.
-				//			-	uses a StringTable as source; assumes uniform row width but skips inconsistent rows.
-				//			-	decouples parsing from tile construction via std::function tileLoader callback.
-				//			-	maintains internal state (row, col, isDone) for incremental progress.
-				//		-	highlights:
-				//			-	async loading: Update() consumes tiles within a time budget (maxTimeToReadMS).
-				//			-	sync loading: SyncLoadAll() drives Update() until completion.
-				//			-	safe resource management: TileGrid<T> is owned via unique_ptr, with Take() to transfer ownership.
-				//			-	progress reporting: GetNumberOfLoadedTiles() and GetProgress() provide insight into load status.
-				//			-	error handling: throws if table has no rows or columns.
-				//		-	limitations:
-				//			-	assumes rectangular grid; inconsistent row widths are skipped, not corrected.
-				//			-	no parallelism: Update() runs on caller thread; external scheduling required.
-				//			-	no built-in progress events; client must poll GetProgress() or IsDone().
-				//			-	designed for tile-based maps; not a general-purpose loader.
+				// ------------------------------------------------------------------------------------------------------------------
+				// Design considerations
+				// - Purpose:
+				//     Utility class that incrementally or synchronously loads a TileGrid<T> from a Table of string data.
+				//     Each cell is converted to type U, then mapped into a Tile<T> using a user-provided tileLoader function.
+				// 
+				// - Features:
+				//     - Non-owning references: m_table, m_tileset, and m_grid are borrowed; caller manages their lifetime.
+				//     - Supports both blocking (SyncLoadAll) and time-sliced (Begin + Update) loading.
+				//     - Iterates serially over the table’s flat array of cells (row-major order).
+				//     - Decouples parsing from tile construction via std::function tileLoader callback.
+				//     - Maintains internal state via a flat index (m_currTile) and completion flag (m_isDone).
+				// 
+				// - Highlights:
+				//     - Async loading: Update() consumes tiles within a time budget (maxTimeToReadMS).
+				//     - Sync loading: SyncLoadAll() drives Update() until completion.
+				//     - Progress reporting: GetLoadedTilesCount() and GetProgress() provide insight into load status.
+				//     - Error handling: throws if table has no rows or columns.
+				// 
+				// - Limitations:
+				//     - Assumes rectangular grid; does not validate row width consistency.
+				//     - No parallelism: Update() runs on caller thread; external scheduling required.
+				//     - No built-in progress events; client must poll GetProgress() or IsDone().
+				//     - Loader does not own the TileGrid<T>; caller must manage its lifetime.
+				// 
+				// - Usage:
+				//     // Blocking load
+				//     auto grid = AsyncTileGridLoader<int,std::string>::SyncLoadAll(
+				//         table,
+				//         tileset,
+				//         [](const std::string& cell, const Tileset<int>& ts) {
+				//             return ts.CreateTile(cell);
+				//         });
 				//
-				// Usage:
-				//   // Blocking load
-				//   auto grid = AsyncTileGridLoader<int,std::string>::SyncLoadAll(
-				//       table,
-				//       tileset,
-				//       [](int row, int col, const std::string& cell, const Tileset<int>& ts) {
-				//           return ts.CreateTile(cell); // user-defined mapping
-				//       });
-				//
-				//   // Async load
-				//   AsyncTileGridLoader<int,std::string> loader;
-				//   loader.Begin(table, tileset, tileLoader);
-				//   while (!loader.IsDone()) {
-				//       loader.Update(1.0); // process tiles within 1ms budget
-				//   }
-				//   auto g	rid = loader.Take();
+				//     // Async load
+				//     AsyncTileGridLoader<int,std::string> loader;
+				//     loader.Begin(grid, table, tileset, tileLoader);
+				//     while (!loader.IsDone()) {
+				//         loader.Update(1.0); // process tiles within 1ms budget
+				//     }
+				// ------------------------------------------------------------------------------------------------------------------
 				template<typename T, typename U>
 				class AsyncTileGridLoader
 				{
@@ -62,7 +65,6 @@ namespace engine
 					bool m_isDone;
 					size_t m_currTile;
 					size_t m_totalTiles;
-
 
 				public:
 					AsyncTileGridLoader() :
@@ -260,6 +262,49 @@ namespace engine
 					}
 				};
 
+				// ------------------------------------------------------------------------------------------------------------------
+				// Design considerations
+				// - Purpose:
+				//     Utility class that incrementally or synchronously loads a TileLayer<T> from a Table of string data.
+				//     The table is partitioned into regions of configurable size; each cell is converted to type U,
+				//     then mapped into a Tile<T> using a user-provided tileLoader function.
+				//
+				// - Features:
+				//     - Non-owning references: m_table, m_tileset, and m_layer are borrowed; caller manages their lifetime.
+				//     - Supports both blocking (SyncLoadAll) and time-sliced (Begin + Update) loading.
+				//     - Partitions the map into regions of size regionSize, with edge regions clamped to fit non-divisible maps.
+				//     - Decouples parsing from tile construction via std::function tileLoader callback.
+				//     - Maintains internal state (current region, current tile, completion flag) for incremental progress.
+				//
+				// - Highlights:
+				//     - Async loading: Update() consumes tiles within a time budget (maxTimeToReadMS).
+				//     - Sync loading: SyncLoadAll() drives Update() until completion.
+				//     - Region-aware: Handles non-divisible maps by creating smaller edge regions automatically.
+				//     - Progress reporting: GetLoadedTilesCount() and GetProgress() provide insight into load status.
+				//     - Error handling: throws if table has no rows or columns.
+				//     - Encapsulated region creation logic via CreateAndAddNewRegion() helper.
+				//
+				// - Limitations:
+				//     - Assumes rectangular table; does not validate row width consistency beyond basic bounds.
+				//     - No parallelism: Update() runs on caller thread; external scheduling required.
+				//     - No built-in progress events; client must poll GetProgress() or IsDone().
+				//     - Loader does not own the TileLayer<T>; caller must manage its lifetime.
+				//
+				// - Usage:
+				//     // Blocking load
+				//     AsyncTileLayerLoader<int,std::string> loader;
+				//     loader.SyncLoadAll(layer, table, tileset, {32,32},
+				//         [](const std::string& cell, const Tileset<int>& ts) {
+				//             return ts.CreateTile(cell);
+				//         });
+				//
+				//     // Async load
+				//     AsyncTileLayerLoader<int,std::string> loader;
+				//     loader.Begin(layer, table, tileset, {32,32}, tileLoader);
+				//     while (!loader.IsDone()) {
+				//         loader.Update(1.0); // process tiles within 1ms budget
+				//     }
+				// ------------------------------------------------------------------------------------------------------------------
 				template<typename T, typename U>
 				class AsyncTileLayerLoader
 				{
@@ -275,6 +320,18 @@ namespace engine
 					Coord m_currTile;
 					size_t m_loadedTiles;
 					size_t m_totalTiles;
+					spatial::Size<size_t> m_currRegionSize;
+
+					// helper method to create and add new region
+					void CreateAndAddNewRegion()
+					{
+						// calculate the actual size of the region to create (may be smaller than regionSize if at edge)
+						m_currRegionSize.width = std::min<size_t>(m_regionSize.width, m_table->GetWidth() - m_currRegion.col * m_regionSize.width);
+						m_currRegionSize.height = std::min<size_t>(m_regionSize.height, m_table->GetHeight() - m_currRegion.row * m_regionSize.height);
+
+						// create and add the new region
+						m_layer->CreateAndAddRegion(m_currRegionSize);
+					}
 
 				public:
 					AsyncTileLayerLoader() :
@@ -287,7 +344,8 @@ namespace engine
 						m_currRegion({ 0,0 }),
 						m_currTile({ 0,0 }),
 						m_loadedTiles(0),
-						m_totalTiles(0)
+						m_totalTiles(0),
+						m_currRegionSize({ 0,0 })
 					{
 					}
 
@@ -326,18 +384,7 @@ namespace engine
 							throw std::out_of_range("csv table has no columns");
 						}
 
-						// map row size must be divisible by region row count
-						if (table.GetHeight() % regionSize.height != 0)
-						{
-							throw std::out_of_range("tilemap must be divisible by region size");
-						}
-
-						// map column size must be divisible by region column count
-						if (table.GetWidth() % regionSize.width != 0)
-						{
-							throw std::out_of_range("tilemap must be divisible by region size");
-						}
-
+						// now we know table is valid, let's initialize our loader state
 						m_table = &table;
 						m_tileset = &tileset;
 						m_tileLoader = tileLoader;
@@ -349,16 +396,18 @@ namespace engine
 						m_totalTiles = 0;
 						m_loadedTiles = 0;
 
-						// size of the layer in terms of regions
-						m_layerSize.width = m_table->GetWidth() / regionSize.width;
-						m_layerSize.height = m_table->GetHeight() / regionSize.height;
+						// size of the layer in terms of regions. we round up here to account for any remainder tiles that dont fill an entire region
+						m_layerSize.width = (m_table->GetWidth() + m_regionSize.width - 1) / m_regionSize.width;
+						m_layerSize.height = (m_table->GetHeight() + m_regionSize.height - 1) / m_regionSize.height;
 
 						// set the width of layer in region. this is the number of region across the layer's column
 						m_layer->SetWidth(m_layerSize.width);
 
-						m_totalTiles = m_layerSize.width * m_layerSize.height * m_regionSize.width* m_regionSize.height;
+						// remember the actual number of cells 
+						m_totalTiles = m_table->GetElementCount();					
 
-						component::tile::TileRegion<T>& region = m_layer->CreateAndAddRegion(m_regionSize);
+						// at this point, we know we need to add the first region because table has data (width and height > 0)
+						CreateAndAddNewRegion();
 					}
 
 					void Update(double maxTimeToReadMS = 1)
@@ -393,7 +442,7 @@ namespace engine
 							}
 
 							// if current tile row > region row, we done with this region.
-							if (m_currTile.row >= m_regionSize.height)
+							if (m_currTile.row >= m_currRegionSize.height)// m_regionSize.height)
 							{
 								// move to next region on the current row
 								m_currRegion.col++;
@@ -409,7 +458,7 @@ namespace engine
 							}
 
 							// if current tile is beyond the region's tile width...
-							if (m_currTile.col >= m_regionSize.width)
+							if (m_currTile.col >= m_currRegionSize.width)//	 m_regionSize.width)
 							{
 								// move to next tile row
 								m_currTile.col = 0;
@@ -419,14 +468,13 @@ namespace engine
 								continue;
 							}
 
-							// if we reached this point, our current layer region coord and region tile coord are valid
-
 							if (addNewRegion)
 							{
-								m_layer->CreateAndAddRegion(m_regionSize);
+								CreateAndAddNewRegion();
 								addNewRegion = false;
 							}
 
+							// if we reached this point, our current layer region coord and region tile coord are valid
 							int mapRow = m_currRegion.row * (int)m_regionSize.height + m_currTile.row;
 							int mapCol = m_currRegion.col * (int)m_regionSize.width + m_currTile.col;
 
@@ -451,77 +499,30 @@ namespace engine
 						return m_isDone;
 					}
 				
-					//bool SyncLoadAll(
-					//	component::tile::TileLayer<T>& layer,
-					//	const container::StringTable& table,
-					//	const component::tile::Tileset<T>& tileset,
-					//	std::function<component::tile::Tile<T>(const U&, const component::tile::Tileset<T>&)> tileLoader,
-					//	int tileRows,
-					//	int tileCols,
-					//	size_t maxTilesPerUpdate = 0xFF,
-					//	double maxTimePerUpdateMS = 1.0
-					//)
-					//{
-					//	// handle error if csv table has no rows
-					//	if (!table.GetRowCount())
-					//	{
-					//		throw std::out_of_range("csv table has no rows");
-					//	}
+					// Blocking load: consumes the entire table in one shot.
+					// Internally calls Begin() and repeatedly Update() until all tiles are loaded.
+					component::tile::TileLayer<T>& SyncLoadAll(
+						component::tile::TileLayer<T>& layer,
+						const container::Table<std::string>& table,
+						const component::tile::Tileset<T>& tileset,
+						const spatial::Size<size_t>& regionSize,
+						std::function<component::tile::Tile<T>(const U&, const component::tile::Tileset<T>&)> tileLoader,
+						double maxTimePerUpdateMS = 1.0
+					)
+					{
+						// Initialize
+						Begin(layer, table, tileset, regionSize, tileLoader);
 
-					//	// handle error if csv's 1st row has no column
-					//	if (!table.GetColCount(0))
-					//	{
-					//		throw std::out_of_range("csv table has no columns");
-					//	}
+						// Loop until done
+						while (!IsDone())
+						{
+							Update(maxTimePerUpdateMS);
+						}
 
-					//	// map row size must be divisible by region row count
-					//	if (table.GetRowCount() % tileRows != 0)
-					//	{
-					//		throw std::out_of_range("tilemap must be divisible by region size");
-					//	}
-
-					//	// map column size must be divisible by region column count
-					//	if (table.GetColCount(0) % tileCols != 0)
-					//	{
-					//		throw std::out_of_range("tilemap must be divisible by region size");
-					//	}
-
-					//	int regionRows = (int)table.GetRowCount() / tileRows;
-					//	int regionCols = (int)table.GetColCount(0) / tileCols;
-
-					//	layer.SetWidth(regionCols);
-
-					//	for (int currRegionRow = 0; currRegionRow < regionRows; currRegionRow++)
-					//	{
-					//		for (int currRegionCol = 0; currRegionCol < regionCols; currRegionCol++)
-					//		{
-					//			// remember, column = width, row = height...
-					//			component::tile::TileRegion<T>& region = layer.CreateAndAddRegion({ tileCols, tileRows });
-
-					//			int startTileRow = currRegionRow * tileRows;
-					//			int startTileCol = currRegionCol * tileCols;
-					//			int endTileRow = startTileRow + tileRows;
-					//			int endTileCol = startTileCol + tileCols;
-
-					//			for (int currTileRow = startTileRow; currTileRow < endTileRow; currTileRow++)
-					//			{
-					//				for (int currTileCol = startTileCol; currTileCol < endTileCol; currTileCol++)
-					//				{
-					//					U cell = table.Get<U>(currTileRow, currTileCol);
-
-					//					component::tile::Tile<T> tile = tileLoader(cell, tileset);
-
-					//					region.Append(tile);
-					//				}
-					//			}
-					//		}
-					//	}
-
-					//	return true;
-					//}
-
+						// Return the fully loaded layer
+						return layer;
+					}
 				};
-
 			}
 		}
 	}

@@ -198,8 +198,10 @@ namespace demo
 			size_t regionRows = m_layer.GetHeight();
 			size_t regionCols = m_layer.GetWidth();
 
+			size_t regionPosY = 0;
 			for (int currRegionRow = 0; currRegionRow < regionRows; currRegionRow++)
 			{
+				size_t regionPosX = 0;
 				for (int currRegionCol = 0; currRegionCol < regionCols; currRegionCol++)
 				{
 					component::tile::TileRegion region = m_layer.GetRegion(currRegionRow, currRegionCol);
@@ -207,8 +209,6 @@ namespace demo
 					size_t regionCols = region.GetWidth();
 					size_t regionRows = region.GetHeight();
 
-					size_t regionPosX = currRegionCol * regionCols;
-					size_t regionPosY = currRegionRow * regionRows;
 
 					for (int currTileRow = 0; currTileRow < regionRows; currTileRow++)
 					{
@@ -236,7 +236,13 @@ namespace demo
 							m_renderer.DrawRenderable(tile->GetSprite(), pos, tileSize, graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
 						}
 					}
+
+					// advance region position X
+					regionPosX += region.GetWidth();
 				}
+
+				// advance region position Y for next row
+				regionPosY += m_layer.GetRegion(currRegionRow, 0).GetHeight();	
 			}
 		}
 	};
