@@ -1,0 +1,62 @@
+#pragma once
+
+#include "Demo.h"
+#include <State/State.h>
+
+namespace demo
+{
+	class LoadTileLayerState : public state::State<Demo>
+	{
+	private:
+		performance::FrameRateMonitor m_frameRateMonitor;
+		loader::IAsyncLoader* m_currentLoader;
+
+		//io::AsyncFileReader m_fileReader;
+		//engine::utilities::parser::CSVParser m_csvParser;
+		//container::Table<std::string> m_table;
+		//engine::loader::tile::AsyncTileLayerLoader<RenderableTile, int> m_tileLayerLoader;
+		engine::loader::tile::AsyncTileMapLoader<RenderableTile, int> m_tileMapLoader;
+
+		bool m_isFinished;
+
+		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
+		std::unique_ptr<component::tile::Tileset<RenderableTile>> m_tileset;
+		std::unique_ptr<component::tile::TileLayer<RenderableTile>> m_layer;
+
+	public:
+		LoadTileLayerState();
+		virtual ~LoadTileLayerState();
+
+		virtual void Enter(Demo& owner) override;
+		virtual void Exit(Demo& owner) override;
+		virtual void Update(Demo& owner, double delta) override;
+		virtual bool IsFinished(Demo& owner) override;
+	};
+
+	class RenderTileLayerState : public state::State<Demo>
+	{
+	private:
+		performance::FrameRateMonitor m_frameRateMonitor;
+		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
+		std::unique_ptr<component::tile::Tileset<RenderableTile>> m_tileSet;
+		std::unique_ptr<component::tile::TileLayer<RenderableTile>> m_layer;
+		spatial::SizeF m_viewportSize;
+
+		void OnResize(size_t width, size_t height);
+
+	public:
+		RenderTileLayerState(
+			std::unique_ptr<component::tile::TileLayer<RenderableTile>> layer,
+			std::unique_ptr<graphics::renderable::ISpriteAtlas> spriteAtlas,
+			std::unique_ptr<component::tile::Tileset<RenderableTile>> tileSet
+		);
+		virtual ~RenderTileLayerState();
+
+		virtual void Enter(Demo& owner) override;
+		virtual void Update(Demo& owner, double delta) override;
+		virtual void Exit(Demo& owner) override;
+		virtual bool IsFinished(Demo& owner) override;
+
+		void OnMouseDown(int btn, int x, int y);
+	};
+};

@@ -303,11 +303,14 @@
     <ClInclude Include="Include\IO\ASyncFileReader.h">
       <Filter>IO</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Engine\Loader\AsyncTileGridLoader.h">
-      <Filter>Engine\Loader</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Utilities\CSVParser.h">
       <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Core\Loader.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Engine\Loader\AsyncLoader.h">
+      <Filter>Engine\Loader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -413,7 +416,7 @@
     <ClCompile Include="Source\Utilities\CSVParser.cpp">
       <Filter>Utilities</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Loader\AsyncTileGridLoader.cpp">
+    <ClCompile Include="Source\Engine\Loader\AsyncLoader.cpp">
       <Filter>Engine\Loader</Filter>
     </ClCompile>
   </ItemGroup>

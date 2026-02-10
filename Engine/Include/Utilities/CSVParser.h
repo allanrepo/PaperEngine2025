@@ -85,6 +85,12 @@ namespace engine
 						// but if we did find a full row (there is EOL) somewhere in the chunk, we set it as row
 						else
 						{
+							// Strip trailing carriage return if present 
+							if (!line.empty() && line.back() == '\r')
+							{
+								line.pop_back();
+							}
+
 							ParseRowEvent(ParseLine(line));
 						}
 					}

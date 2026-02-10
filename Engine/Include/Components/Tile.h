@@ -1,4 +1,4 @@
-// tilemap is composed of a list of tilelayers
+﻿// tilemap is composed of a list of tilelayers
 // tilelayer represents the renderables like floors, buildings, trees, characters 
 // tilelayer also represents logic tiles such as walkable, obstacle, etc...
 // tilelayer is composed of a list of tileregions, which are chunks of the map
@@ -27,6 +27,7 @@
 #include <vector>
 #include <memory>
 #include <stdexcept>
+#include <Containers/Table.h>
 
 using namespace engine;
 
@@ -47,6 +48,9 @@ namespace engine::component::tile
 
 	template<typename T>
 	class TileLayer;
+
+	template<typename T>
+	class TileMap;
 };
 
 namespace engine::component::tile
@@ -134,7 +138,7 @@ namespace engine::component::tile
 
 	// tile layer represents a 2d grid of tile instances
 	template<typename T>
-	class TileGrid: public spatial::ISizeable<size_t>
+	class TileGrid: public container::IGrid<Tile<T>>//public spatial::ISizeable<size_t>
 	{
 	private:
 		// flat array of tiles
@@ -142,30 +146,9 @@ namespace engine::component::tile
 		size_t m_width;
 
 	public:
-		TileGrid() :
-			m_width(0)
+		TileGrid(size_t width = 0) :
+			m_width(width)
 		{
-		}
-
-		void Clear()
-		{
-			m_map.clear();
-			// optional: doing this releases memory back to system immediately
-			m_map.shrink_to_fit();
-			m_width = 0;
-		}
-
-		void Append(Tile<T> tile)
-		{
-			m_map.push_back(tile);
-		}
-
-		void Pop()
-		{
-			if (m_map.size())
-			{
-				m_map.pop_back();
-			}
 		}
 
 		// sets grid width only
@@ -196,8 +179,111 @@ namespace engine::component::tile
 			};
 		}
 
-		// retrieves the tile at (row, col)
-		const Tile<T>& GetTile(int row, int col) const
+		// overload for tilecoord input
+		bool IsInBounds(const component::tile::Coord& tileCoord) const
+		{
+			return IsInBounds(tileCoord.row, tileCoord.col);
+		}
+
+		size_t GetTileCount() const
+		{
+			return m_map.size();
+		}
+
+		void Add(const Tile<T>& tile) override
+		{
+			m_map.push_back(tile);
+
+		}
+
+		void Take(Tile<T>&& tile) override
+		{
+			m_map.push_back(std::move(tile));
+		}
+
+		void AddRange(const std::vector<Tile<T>>& data) override
+		{
+			m_map.insert(m_map.end(), data.begin(), data.end());
+		};
+
+		void TakeRange(std::vector<Tile<T>>&& data) override
+		{
+			m_map.insert(m_map.end(), std::make_move_iterator(data.begin()), std::make_move_iterator(data.end())); // move 
+		}
+
+		void Pop() override
+		{
+			if (m_map.size())
+			{
+				m_map.pop_back();
+			}
+		}
+
+		const Tile<T>& Get(size_t index) const override
+		{
+			if (index >= m_map.size())
+			{
+				throw std::out_of_range("TileLayer::Get - index out of bounds");
+			}
+			return m_map[index];
+		}
+
+		Tile<T>& Get(size_t index) override
+		{
+			if (index >= m_map.size())
+			{
+				throw std::out_of_range("TileLayer::Get - index out of bounds");
+			}
+			return m_map[index];
+		}
+
+		void Reserve(const spatial::Size<size_t>& size) override
+		{
+			m_map.reserve(size.width * size.height);
+		}
+
+		size_t GetElementCount() const override
+		{
+			return m_map.size();
+		}
+
+		bool IsEmpty() const override
+		{
+			return m_map.empty();
+		}
+
+		void Clear() override
+		{
+			m_map.clear();
+			// optional: doing this releases memory back to system immediately
+			m_map.shrink_to_fit();
+			m_width = 0;
+		}
+
+		bool IsInBounds(const size_t index) const override
+		{
+			return index < m_map.size();
+		}
+
+		Tile<T>& Back() override
+		{
+			if (m_map.empty())
+			{
+				throw std::out_of_range("TileLayer::Back - no elements");
+			}
+			return m_map.back();
+		}
+
+		const Tile<T>& Back() const override
+		{
+			if (m_map.empty())
+			{
+				throw std::out_of_range("TileLayer::Back - no elements");
+			}
+			return m_map.back();
+		}
+
+		Tile<T>& Get(int row, int col) override
 		{
 			if (!IsInBounds(row, col))
 			{
@@ -206,40 +292,46 @@ namespace engine::component::tile
 			return m_map[row * m_width + col];
 		}
 
-		// checks if (row, col) is within bounds
-		bool IsInBounds(int row, int col) const 
+		const Tile<T>& Get(int row, int col) const override
 		{
-			return 
+			if (!IsInBounds(row, col))
+			{
+				throw std::out_of_range("TileGrid::GetTile - index out of bounds");
+			}
+			return m_map[row * m_width + col];
+		}
+
+		// retrieves the tile at tilecoord
+		const Tile<T>& Get(const Coord& coord) const
+		{
+			return Get(coord.row, coord.col);
+		}
+
+		void Set(int row, int col, const Tile<T>& data) override
+		{
+			if (!IsInBounds(row, col))
+			{
+				throw std::out_of_range("TileGrid::GetTile - index out of bounds");
+			}
+			m_map[row * m_width + col] = data;
+		}
+
+		bool IsInBounds(int row, int col) const override
+		{
+			return
 				row >= 0 && col >= 0 &&				// make sure rows and columns are not negatives.
 				col < m_width &&					// make sure column is within the grid's width
 				row * m_width + col < m_map.size();	// make sure if you map the row and column, it is within the grid array's range
 		}
 
-		// overload for tilecoord input
-		bool IsInBounds(const component::tile::Coord& tileCoord) const
+		const TileMap<T> MakeTileMap()
 		{
-			return IsInBounds(tileCoord.row, tileCoord.col);
-		}
-
-		void Reserve(const spatial::Size<size_t>& size)
-		{
-			m_map.reserve(size.width * size.height);
-		}
-		
-		// retrieves the tile at tilecoord
-		const Tile<T>& GetTile(const Coord& coord) const
-		{
-			return GetTile(coord.row, coord.col);
-		}
-
-		size_t GetTileCount() const
-		{
-			return m_map.size();
+			return TileMap<T>(this);
 		}
 	};
 
 	template<typename T>
-	class TileRegion: public spatial::ISizeable<size_t>
+	class TileRegion: public container::IGrid<Tile<T>>//public spatial::ISizeable<size_t>
 	{
 	private:
 		TileGrid<T> m_tilegrid;
@@ -247,7 +339,8 @@ namespace engine::component::tile
 		friend class TileLayer<T>;
 
 	public:
-		TileRegion()
+		TileRegion(size_t width = 0) :
+			m_tilegrid(width)
 		{
 		}
 
@@ -256,25 +349,6 @@ namespace engine::component::tile
 			return m_tilegrid;
 		}
 
-		void Append(Tile<T> tile)
-		{
-			m_tilegrid.Append(tile);
-		}
-
-		void Pop()
-		{
-			m_tilegrid.Pop();
-		}
-
-		const Tile<T>& GetTile(int row, int col) const 
-		{
-			return m_tilegrid.GetTile(row, col);
-		}
-
-		const Tile<T>& GetTile(const Coord& coord) const 
-		{
-			return m_tilegrid.GetTile(coord);
-		}
 
 		void SetWidth(const size_t width)
 		{
@@ -296,12 +370,6 @@ namespace engine::component::tile
 			return m_tilegrid.GetSize();
 		}
 
-		// checks if (row, col) is within bounds
-		bool IsInBounds(int row, int col) const
-		{
-			return m_tilegrid.IsInBounds(row, col);
-		}
-
 		// overload for tilecoord input
 		bool IsInBounds(const component::tile::Coord& tileCoord) const
 		{
@@ -312,10 +380,111 @@ namespace engine::component::tile
 		{
 			return m_tilegrid.GetTileCount();
 		}
+
+		void Add(const Tile<T>& tile) override
+		{
+			m_tilegrid.Add(tile);
+		}
+
+		void Take(Tile<T>&& data) override
+		{
+			m_tilegrid.Take(std::move(data));
+		}
+
+		void AddRange(const std::vector<Tile<T>>& data) override
+		{
+			m_tilegrid.AddRange(data);
+		}
+
+		void TakeRange(std::vector<Tile<T>>&& data) override
+		{
+			m_tilegrid.TakeRange(std::move(data));
+		}
+
+		void Pop() override
+		{
+			m_tilegrid.Pop();
+		}
+
+		const Tile<T>& Get(size_t index) const override
+		{
+			return m_tilegrid.Get(index);
+		}
+
+		Tile<T>& Get(size_t index) override
+		{
+			return m_tilegrid.Get(index);
+		}
+
+		void Reserve(const spatial::Size<size_t>& size) override
+		{
+			m_tilegrid.Reserve(size);
+		}
+
+		size_t GetElementCount() const override
+		{
+			return m_tilegrid.GetTileCount();
+		}
+
+		bool IsEmpty() const override
+		{
+			return m_tilegrid.GetTileCount() == 0;
+		}
+
+		void Clear() override
+		{
+			m_tilegrid.Clear();
+		}
+
+		bool IsInBounds(const size_t index) const override
+		{
+			return index < m_tilegrid.GetTileCount();
+		}
+
+		Tile<T>& Back() override
+		{
+			return m_tilegrid.Back();
+		}
+
+		const Tile<T>& Back() const override
+		{
+			return m_tilegrid.Back();
+		}
+
+		Tile<T>& Get(int row, int col) override
+		{
+			return m_tilegrid.Get(row, col);
+		}
+
+		const  Tile<T>& Get(int row, int col) const override
+		{
+			return m_tilegrid.Get(row, col);
+		}
+
+		// retrieves the region at coord
+		Tile<T>& Get(const Coord& coord)
+		{
+			return Get(coord.row, coord.col);
+		}
+
+		void Set(int row, int col, const Tile<T>& data) override
+		{
+			m_tilegrid.Set(row, col, data);
+		}
+
+		bool IsInBounds(int row, int col) const override
+		{
+			return m_tilegrid.IsInBounds(row, col);
+		}
+
+		const TileMap<T> MakeTileMap()
+		{
+			return m_tilegrid.MakeTileMap();
+		}
 	};
 
 	template<typename T>
-	class TileLayer: public spatial::ISizeable<size_t>
+	class TileLayer: public container::IGrid<TileRegion<T>>// public spatial::ISizeable<size_t>
 	{
 	private:
 		std::vector<TileRegion<T>> m_regions;
@@ -327,28 +496,45 @@ namespace engine::component::tile
 		{
 		}
 
-		TileRegion<T>& CreateAndAddRegion(const spatial::Size<size_t>& size)
+		void Add(const TileRegion<T>& data) override
 		{
-			TileRegion<T> region; 
-			region.SetWidth(size.width); 
-			
-			m_regions.emplace_back(std::move(region)); 
-
-			// return reference to the newly created region
-			return m_regions.back(); 
+			m_regions.push_back(data);
 		}
 
-		void Pop()
+		// data is not const reference, so we can move it. if it is set to const, code will still compile but data will be silently copied instead of moved
+		void Take(TileRegion<T>&& data) override
+		{
+			m_regions.push_back(std::move(data));
+		}
+
+		void AddRange(const std::vector<TileRegion<T>>& data) override
+		{
+			m_regions.insert(m_regions.end(), data.begin(), data.end());
+		}
+
+		// data is not const reference, so we can move it. if it is set to const, code will still compile but data will be silently copied instead of moved
+		void TakeRange(std::vector<TileRegion<T>>&& data) override
+		{
+			m_regions.insert(m_regions.end(), std::make_move_iterator(data.begin()), std::make_move_iterator(data.end())); // move 
+		}
+
+		//TileRegion<T>& CreateAndAddRegion(const spatial::Size<size_t>& size)
+		//{
+		//	TileRegion<T> region; 
+		//	region.SetWidth(size.width); 
+		//	
+		//	m_regions.emplace_back(std::move(region)); 
+
+		//	// return reference to the newly created region
+		//	return m_regions.back(); 
+		//}
+
+		void Pop() override
 		{
 			if (m_regions.size())
 			{
 				m_regions.pop_back();
 			}
-		}
-
-		void SetWidth(const size_t width)
-		{
-			m_width = width;
 		}
 
 		// ISizeable implementations
@@ -371,13 +557,8 @@ namespace engine::component::tile
 			};
 		}
 
-		void Reserve(const spatial::Size<size_t>& size)
-		{
-			m_regions.reserve(size.width * size.height);
-		}
-
 		// checks if (row, col) is within bounds
-		bool IsInBounds(int row, int col) const
+		bool IsInBounds(int row, int col) const override
 		{
 			return
 				row >= 0 && col >= 0 &&					// make sure rows and columns are not negatives.
@@ -385,14 +566,13 @@ namespace engine::component::tile
 				row * m_width + col < m_regions.size();	// make sure if you map the row and column, it is within the grid array's range
 		}
 
-		// overload for coord input
-		bool IsInBounds(const component::tile::Coord& coord) const
+		bool IsInBounds(const size_t index) const override
 		{
-			return IsInBounds(coord.row, coord.col);
+			return index < m_regions.size();
 		}
 
-		// retrieves the tile at (row, col)
-		TileRegion<T>& GetRegion(int row, int col) 
+		// retrieves the region at (row, col)
+		TileRegion<T>& Get(int row, int col) override
 		{
 			if (!IsInBounds(row, col))
 			{
@@ -401,10 +581,69 @@ namespace engine::component::tile
 			return m_regions[row * m_width + col];
 		}
 
-		// retrieves the tile at tilecoord
-		TileRegion<T>& GetRegion(const Coord& coord) 
+		const TileRegion<T>& Get(int row, int col) const override
 		{
-			return GetRegion(coord.row, coord.col);
+			if (!IsInBounds(row, col))
+			{
+				throw std::out_of_range("TileGrid::GetTile - index out of bounds");
+			}
+			return m_regions[row * m_width + col];
+		}
+		
+		void Set(int row, int col, const TileRegion<T>& data) override
+		{
+			if (!IsInBounds(row, col))
+			{
+				throw std::out_of_range("TileLayer::Set - index out of bounds");
+			}
+			m_regions[row * m_width + col] = data;
+		}
+
+		void Clear() override
+		{
+			m_regions.clear();
+			// optional: doing this releases memory back to system immediately
+			m_regions.shrink_to_fit();
+			m_width = 0;
+		}
+
+		size_t GetElementCount() const override
+		{
+			return m_regions.size();
+		}
+
+		bool IsEmpty() const override
+		{
+			return m_regions.empty();
+		}
+
+		const TileRegion<T>& Get(size_t index) const override
+		{
+			if (index >= m_regions.size())
+			{
+				throw std::out_of_range("TileLayer::Get - index out of bounds");
+			}
+			return m_regions[index];
+		}
+
+		TileRegion<T>& Get(size_t index) override
+		{
+			if (index >= m_regions.size())
+			{
+				throw std::out_of_range("TileLayer::Get - index out of bounds");
+			}
+			return m_regions[index];
+		}
+
+		void Reserve(const spatial::Size<size_t>& size) override
+		{
+			m_regions.reserve(size.width * size.height);
+		}
+	
+		// retrieves the region at coord
+		TileRegion<T>& Get(const Coord& coord)
+		{
+			return Get(coord.row, coord.col);
 		}
 
 		size_t GetTileCount() const
@@ -416,6 +655,53 @@ namespace engine::component::tile
 			}
 			return tileCount;
 		}
+		
+		bool IsInBounds(const component::tile::Coord& coord) const
+		{
+			return IsInBounds(coord.row, coord.col);
+		}
+		
+		void SetWidth(const size_t width)
+		{
+			m_width = width;
+		}
+	
+		// Returns a const reference to the last region
+		const TileRegion<T>& Back() const override
+		{
+			if (m_regions.empty())
+			{
+				throw std::out_of_range("TileLayer::Back - no elements");
+			}
+			return m_regions.back();
+		}
+
+		// Optionally, a non-const version if modification is allowed
+		TileRegion<T>& Back() override
+		{
+			if (m_regions.empty())
+			{
+				throw std::out_of_range("TileLayer::Back - no elements");
+			}
+			return m_regions.back();
+		}
+	};
+
+
+	template<typename T>
+	class TileMap: public core::View<TileGrid<T>>
+	{
+	private:
+		friend class TileGrid<T>;
+
+	protected:
+		TileMap(TileGrid<T>* tileGrid):
+			core::View<TileGrid<T>>(tileGrid)
+		{			
+		}
+
+	public:
+		virtual ~TileMap() = default;
 	};
 }
 

@@ -170,15 +170,49 @@ namespace TestLargeMap
 			m_tileset.Register(1, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(1), false)); // obstacle
 
 			// load map into tile layer
-			m_tilegrid = app::utilities::io::TileGridLoader<RenderableTile, int>::LoadFromCSV(
-				"../Assets/32x32Map.csv",
-				m_tileset,
-				[](int row, int col, const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
-				{
-					// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
-					return tileset.MakeTile(cell);
-				}
-			);
+			//m_tilegrid = app::utilities::io::TileGridLoader<RenderableTile, int>::LoadFromCSV(
+			//	"../Assets/32x32Map.csv",
+			//	m_tileset,
+			//	[](int row, int col, const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+			//	{
+			//		// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
+			//		return tileset.MakeTile(cell);
+			//	}
+			//);
+			// load map into tile layer
+			{
+				engine::io::AsyncFileReader	fileReader(0xFF);
+				fileReader.Open("../Assets/32x32Map.csv");
+
+				engine::utilities::parser::CSVParser csvParser;
+				fileReader.ProcessChunkEvent += event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
+				fileReader.EndOfFileFoundEvent += event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
+				container::Table<std::string> table;
+
+				csvParser.ParseRowEvent += event::Handler(&table, &container::Table<std::string>::AddRow);
+				csvParser.ParseRemainingEvent += event::Handler(&table, &container::Table<std::string>::AddRange);
+
+				fileReader.SyncReadAll(0xFF, 5.0);
+
+				engine::loader::tile::AsyncTileGridLoader<RenderableTile, int> tileLoader;
+				tileLoader.SyncLoadAll(
+					m_tilegrid,
+					table,
+					m_tileset,
+					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+					{
+						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
+						return tileset.MakeTile(cell);
+					},
+					0xFFFF,
+					5.0
+				);
+
+				fileReader.ProcessChunkEvent -= event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
+				fileReader.EndOfFileFoundEvent -= event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
+				csvParser.ParseRowEvent -= event::Handler(&table, &container::Table<std::string>::AddRow);
+				csvParser.ParseRemainingEvent -= event::Handler(&table, &container::Table<std::string>::AddRange);
+			}
 
 			// tell camera the size of the world. this will be the tile map
 			m_camera.SetWorldSize(
@@ -292,7 +326,7 @@ namespace TestLargeMap
 						continue;
 					}
 
-					const component::tile::Tile<RenderableTile>& tile = tilegrid.GetTile(row, col);
+					const component::tile::Tile<RenderableTile>& tile = tilegrid.Get(row, col);
 					if (tile.isValid())
 					{
 						spatial::PositionF pos =

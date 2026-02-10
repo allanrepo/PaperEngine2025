@@ -14,10 +14,43 @@
 using namespace engine;
 using namespace app;
 
+#pragma region demo methods
+std::vector<math::geometry::RectF> demo::CalcUV(int row, int col, int fileWidth, int fileHeight)
+{
+	std::vector<math::geometry::RectF> uvs;
+	float width = static_cast<float>(fileWidth / col);
+	float height = static_cast<float>(fileHeight / row);
+	float left = 0;
+	float top = 0;
+	float right = left + width;
+	float bottom = top + height;
+
+	for (int r = 0; r < row; r++)
+	{
+		for (int c = 0; c < col; c++)
+		{
+			left = width * c;
+			top = height * r;
+			right = left + width;
+			bottom = top + height;
+
+			left /= fileWidth;
+			top /= fileHeight;
+			right /= fileWidth;
+			bottom /= fileHeight;
+
+			uvs.push_back(math::geometry::RectF{ left, top, right, bottom });
+		}
+	}
+	return uvs;
+}
+#pragma endregion
+
 #pragma region demo
-demo::Demo::Demo() :
+demo::Demo::Demo(std::unique_ptr<state::State<Demo>> state) :
 	m_engine("Test State Machine", "DirectX11", "Batch", 1000),
-	m_stateMachine(this)
+	m_stateMachine(this),
+	m_state(std::move(state))
 {
 	// subscribe to start event of the engine. we do all initialization of our components here e.g. state machine
 	m_engine.StartEvent += event::Handler(this, &Demo::OnStart);
@@ -41,14 +74,11 @@ void demo::Demo::OnStart()
 {
 	// create font atlas for rendering text we will use fore demo
 	m_fontAtlas = std::make_unique<graphics::renderable::FontAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
-	m_fontAtlas->Initialize("Arial", 20);
+	m_fontAtlas->Initialize("Terminal", 12);
 	LOG("[Demo] Font atlas created and initialized...");
 
 	// set initial state
-	m_stateMachine.Set(std::make_unique<LoadTileLayerState>());
-	//m_stateMachine.Set(std::make_unique<LoadTileMapState>());
-	//m_stateMachine.Set(std::make_unique<LoadTileRegionState>());
-	//m_stateMachine.Set(std::make_unique<LoadSequentialState>());
+	m_stateMachine.Set(std::move(m_state));
 	LOG("[Demo] State machine set to LaunchState...");
 }
 
@@ -65,6 +95,11 @@ void demo::Demo::SetState(std::unique_ptr<state::State<Demo>> state)
 void demo::Demo::QueueState(std::unique_ptr<state::State<Demo>> state)
 {
 	m_stateMachine.Queue(std::move(state));
+}
+
+bool demo::Demo::LoadMap(const std::string& filename)
+{
+	return false;
 }
 
 // helper function to draw text at top-right screen. this is for showing statistics like FPS
@@ -134,6 +169,31 @@ void demo::Demo::DrawTextCommand(const std::string& text, spatial::PositionF pos
 	Engine().CommandQueue().Enqueue(std::move(drawTextCmd));
 }
 
+void demo::Demo::DrawStatisticsCommand(const std::list<std::string> &logs)
+{
+	float tab = 15.0f;
+	//for(const std::string& str : logs)
+	//{
+	//	DrawTextCommandTopRightScreen(str, tab);
+	//	tab += 20;
+	//}
+
+	// get engine performance statistics
+	engine::Engine::Statistics stats = m_engine.GetStatistics();
+
+	std::list<std::string> statLogs;
+	statLogs.insert(statLogs.end(), logs.begin(), logs.end());
+	statLogs.push_back("Render FPS: " + std::to_string(static_cast<int>(stats.renderAverageFPS)));
+	statLogs.push_back("Main Loop Ave FPS: " + std::to_string(static_cast<int>(stats.mainLoopAverageFPS)));
+	statLogs.push_back("Main Loop Last FPS: " + std::to_string(static_cast<int>(stats.mainLoopLastFPS)));
+		
+	for (const std::string& str : statLogs)
+	{
+		DrawTextCommandTopRightScreen(str, tab);
+		tab += 20;
+	}
+}
+
 void demo::Demo::RenderTileGridCommand(component::tile::TileGrid<RenderableTile>& tilegrid, float alpha)
 {
 	std::unique_ptr<DrawTileGridCommand> cmd =
@@ -165,7 +225,7 @@ void demo::Demo::RenderTileGridCommand(component::tile::TileGrid<RenderableTile>
 				continue;
 			}
 
-			const component::tile::Tile<RenderableTile>& tile = tilegrid.GetTile(row, col);
+			const component::tile::Tile<RenderableTile>& tile = tilegrid.Get(row, col);
 			if (tile.isValid())
 			{
 				spatial::PositionF pos =
@@ -246,7 +306,7 @@ void demo::LoadSequentialState::Update(Demo& owner, double delta)
 	m_frameRateMonitor.OnFrameCompleted(delta);
 
 	// in this state, we want to keep loading/reading file data from our list of the files we specified until all of them are loaded/read
-	if (m_fileReader.IsEndOfFile() ||	// file reader reached EOF of the current file it is reading
+	if (m_fileReader.IsDone() ||	// file reader reached EOF of the current file it is reading
 		!m_fileReader.IsOpen()			// file reader has yet to read any file from the list
 		)
 	{
@@ -268,9 +328,10 @@ void demo::LoadSequentialState::Update(Demo& owner, double delta)
 			// the engine itself will do it so it will not affect the frame rate of this state.
 			owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
 				engine::job::Job(
+				nullptr,
 				[this]()
 				{
-					m_fileReader.Update(m_readSize, 0.01);
+					m_fileReader.Update(0.01);
 
 					// delay per read to slow it down 
 					timer::StopWatch sw;
@@ -284,7 +345,7 @@ void demo::LoadSequentialState::Update(Demo& owner, double delta)
 				true,
 				[this]()
 				{
-					return m_fileReader.IsEndOfFile();
+					return m_fileReader.IsDone();
 				},
 				[this]()
 				{
@@ -302,11 +363,11 @@ void demo::LoadSequentialState::Update(Demo& owner, double delta)
 	// flush the draw commands on queue. we will queue new ones 
 	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
 
-	std::string loadMessage = m_files.empty() && m_fileReader.IsEndOfFile() ? "All files done loading. Click screen to switch to next demo.": "Loading  " + m_currFile + " ...";
+	std::string loadMessage = m_files.empty() && m_fileReader.IsDone() ? "All files done loading. Click screen to switch to next demo.": "Loading  " + m_currFile + " ...";
 	owner.DrawTextCommand(loadMessage, { 50, 260 }, { 1,1,1,1 });
 
 	// let's draw progress bar to show how much file reader has read compared to total size of the file
-	owner.DrawProgressBarCommand({ 50, 300 }, { 400, 40 }, static_cast<float>(m_fileReader.GetNumberOfBytesReadLong()), static_cast<float>(m_fileReader.GetFileSizeInBytesLong()));
+	owner.DrawProgressBarCommand({ 50, 300 }, { 400, 40 }, static_cast<float>(m_fileReader.GetCurrent()), static_cast<float>(m_fileReader.GetTotal()));
 
 	// get engine performance statistics
 	engine::Engine::Statistics stats = owner.Engine().GetStatistics();
@@ -364,9 +425,10 @@ void demo::LoadSimultaneousState::Enter(Demo& owner)
 	LOG("Loading small.csv");
 	owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
 		engine::job::Job(
+			nullptr,
 			[this, readSize]()
 			{
-				m_fileReader0.Update(0x1FF, 0.01);
+				m_fileReader0.Update(0.01);
 
 				// delay per read to slow it down 
 				timer::StopWatch sw;
@@ -380,7 +442,7 @@ void demo::LoadSimultaneousState::Enter(Demo& owner)
 			true,
 			[this]()
 			{
-				return m_fileReader0.IsEndOfFile();
+				return m_fileReader0.IsDone();
 			},
 			[this]()
 			{
@@ -398,9 +460,10 @@ void demo::LoadSimultaneousState::Enter(Demo& owner)
 	readSize += 0xFFF;
 	owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
 		engine::job::Job(
+			nullptr,
 			[this, readSize]()
 			{
-				m_fileReader1.Update(0x3FFF, 0.01);
+				m_fileReader1.Update(0.01);
 
 				// delay per read to slow it down 
 				timer::StopWatch sw;
@@ -414,7 +477,7 @@ void demo::LoadSimultaneousState::Enter(Demo& owner)
 			true,
 			[this]()
 			{
-				return m_fileReader1.IsEndOfFile();
+				return m_fileReader1.IsDone();
 			},
 			[this]()
 			{
@@ -432,9 +495,10 @@ void demo::LoadSimultaneousState::Enter(Demo& owner)
 	readSize += 0xFFF;
 	owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
 		engine::job::Job(
+			nullptr,
 			[this, readSize]()
 			{
-				m_fileReader2.Update(0xFFF, 0.01);
+				m_fileReader2.Update(0.01);
 
 				// delay per read to slow it down 
 				timer::StopWatch sw;
@@ -448,7 +512,7 @@ void demo::LoadSimultaneousState::Enter(Demo& owner)
 			true,
 			[this]()
 			{
-				return m_fileReader2.IsEndOfFile();
+				return m_fileReader2.IsDone();
 			},
 			[this]()
 			{
@@ -473,9 +537,9 @@ void demo::LoadSimultaneousState::Update(Demo& owner, double delta)
 	owner.DrawTextCommand(loadMessage, { 50, 260 }, { 1,1,1,1 });
 
 	// let's draw progress bar to show how much file reader has read compared to total size of the file
-	owner.DrawProgressBarCommand({ 50, 300 }, { 400, 40 }, static_cast<float>(m_fileReader0.GetNumberOfBytesReadLong()), static_cast<float>(m_fileReader0.GetFileSizeInBytesLong()));
-	owner.DrawProgressBarCommand({ 50, 360 }, { 400, 40 }, static_cast<float>(m_fileReader1.GetNumberOfBytesReadLong()), static_cast<float>(m_fileReader1.GetFileSizeInBytesLong()));
-	owner.DrawProgressBarCommand({ 50, 420 }, { 400, 40 }, static_cast<float>(m_fileReader2.GetNumberOfBytesReadLong()), static_cast<float>(m_fileReader2.GetFileSizeInBytesLong()));
+	owner.DrawProgressBarCommand({ 50, 300 }, { 400, 40 }, static_cast<float>(m_fileReader0.GetCurrent()), static_cast<float>(m_fileReader0.GetTotal()));
+	owner.DrawProgressBarCommand({ 50, 360 }, { 400, 40 }, static_cast<float>(m_fileReader1.GetCurrent()), static_cast<float>(m_fileReader1.GetTotal()));
+	owner.DrawProgressBarCommand({ 50, 420 }, { 400, 40 }, static_cast<float>(m_fileReader2.GetCurrent()), static_cast<float>(m_fileReader2.GetTotal()));
 
 	// get engine performance statistics
 	engine::Engine::Statistics stats = owner.Engine().GetStatistics();
@@ -578,14 +642,15 @@ void demo::LoadTileMapState::Enter(Demo& owner)
 	// queue job to read the file
 	owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
 		engine::job::Job(
+			nullptr,
 			[this]()
 			{
-				m_fileReader.Update(0x3, 0.00000000001);
+				m_fileReader.Update(0.00000000001);
 			},
 			true,
 			[this]()
 			{
-				return m_fileReader.IsEndOfFile();
+				return m_fileReader.IsDone();
 			},
 			[this, &owner]()
 			{
@@ -593,6 +658,7 @@ void demo::LoadTileMapState::Enter(Demo& owner)
 
 
 				m_tileGridLoader.Begin(
+					"TileGrid",
 					*m_tilegrid.get(),
 					m_table,
 					*m_tileset,
@@ -605,6 +671,7 @@ void demo::LoadTileMapState::Enter(Demo& owner)
 				// in the job's done event, queue another job to create a tilemap object and load the csv data into it
 				owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
 					engine::job::Job(
+						nullptr,
 						[this]()
 						{
 							m_tileGridLoader.Update(0.001);
@@ -645,23 +712,23 @@ void demo::LoadTileMapState::Update(Demo& owner, double delta)
 	{
 		if (m_csvTableLoaded)
 		{
-			std::string message = std::to_string(m_tileGridLoader.GetLoadedTilesCount()) + "/" + std::to_string(m_tileGridLoader.GetTotalTilesCount());
+			std::string message = std::to_string(m_tileGridLoader.GetCurrent()) + "/" + std::to_string(m_tileGridLoader.GetTotal());
 			owner.DrawTextCommand(message, { 50, 260 }, { 1,1,1,1 });
 
 			// let's draw progress bar to show how much file reader has read compared to total size of the file
 			owner.DrawProgressBarCommand(
 				{ 50, 300 }, { 400, 40 }, 
-				static_cast<float>(m_tileGridLoader.GetLoadedTilesCount()), 
-				static_cast<float>(m_tileGridLoader.GetTotalTilesCount())
+				static_cast<float>(m_tileGridLoader.GetCurrent()), 
+				static_cast<float>(m_tileGridLoader.GetTotal())
 			);
 		}
 		else
 		{
-			std::string message = m_fileReader.IsEndOfFile() ? "" : "Reading data from file " + m_fileReader.GetFileName() + "...";
+			std::string message = m_fileReader.IsDone() ? "" : "Reading data from file " + m_fileReader.GetLabel() + "...";
 			owner.DrawTextCommand(message, { 50, 260 }, { 1,1,1,1 });
 
 			// let's draw progress bar to show how much file reader has read compared to total size of the file
-			owner.DrawProgressBarCommand({ 50, 300 }, { 400, 40 }, static_cast<float>(m_fileReader.GetNumberOfBytesReadLong()), static_cast<float>(m_fileReader.GetFileSizeInBytesLong()));
+			owner.DrawProgressBarCommand({ 50, 300 }, { 400, 40 }, static_cast<float>(m_fileReader.GetCurrent()), static_cast<float>(m_fileReader.GetTotal()));
 		}
 	}
 	else
@@ -811,20 +878,22 @@ void demo::LoadTileRegionState::Enter(Demo& owner)
 	// queue job to read the file
 	owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
 		engine::job::Job(
+			nullptr,
 			[this]()
 			{
-				m_fileReader.Update(0x4, 0.01);
+				m_fileReader.Update(0.01);
 			},
 			true,
 			[this]()
 			{
-				return m_fileReader.IsEndOfFile();
+				return m_fileReader.IsDone();
 			},
 			[this, &owner]()
 			{
 				m_csvTableLoaded = true;
 
 				m_tileRegionLoader.Begin(
+					"TileRegion",
 					*m_region.get(),
 					m_table,
 					*m_tileset,
@@ -837,6 +906,7 @@ void demo::LoadTileRegionState::Enter(Demo& owner)
 				// in the job's done event, queue another job to create a tilemap object and load the csv data into it
 				owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
 					engine::job::Job(
+						nullptr,
 						[this]()
 						{
 							m_tileRegionLoader.Update(0.01);
@@ -877,23 +947,23 @@ void demo::LoadTileRegionState::Update(Demo& owner, double delta)
 	{
 		if (m_csvTableLoaded)
 		{
-			std::string message = std::to_string(m_tileRegionLoader.GetLoadedTilesCount()) + "/" + std::to_string(m_tileRegionLoader.GetTotalTilesCount());
+			std::string message = std::to_string(m_tileRegionLoader.GetCurrent()) + "/" + std::to_string(m_tileRegionLoader.GetTotal());
 			owner.DrawTextCommand(message, { 50, 260 }, { 1,1,1,1 });
 
 			// let's draw progress bar to show how much file reader has read compared to total size of the file
 			owner.DrawProgressBarCommand(
 				{ 50, 300 }, { 400, 40 },
-				static_cast<float>(m_tileRegionLoader.GetLoadedTilesCount()),
-				static_cast<float>(m_tileRegionLoader.GetTotalTilesCount())
+				static_cast<float>(m_tileRegionLoader.GetCurrent()),
+				static_cast<float>(m_tileRegionLoader.GetTotal())
 			);
 		}
 		else
 		{
-			std::string message = m_fileReader.IsEndOfFile() ? "" : "Reading data from file " + m_fileReader.GetFileName() + "...";
+			std::string message = m_fileReader.IsDone() ? "" : "Reading data from file " + m_fileReader.GetLabel() + "...";
 			owner.DrawTextCommand(message, { 50, 260 }, { 1,1,1,1 });
 
 			// let's draw progress bar to show how much file reader has read compared to total size of the file
-			owner.DrawProgressBarCommand({ 50, 300 }, { 400, 40 }, static_cast<float>(m_fileReader.GetNumberOfBytesReadLong()), static_cast<float>(m_fileReader.GetFileSizeInBytesLong()));
+			owner.DrawProgressBarCommand({ 50, 300 }, { 400, 40 }, static_cast<float>(m_fileReader.GetCurrent()), static_cast<float>(m_fileReader.GetTotal()));
 		}
 	}
 	else
@@ -988,274 +1058,4 @@ bool demo::RenderTileRegionState::IsFinished(Demo& owner)
 
 #pragma endregion
 
-#pragma region LoadTileLayerState
-demo::LoadTileLayerState::LoadTileLayerState() :
-	m_isFinished(false),
-	m_csvTableLoaded(false),
-	m_tileLayerLoaded(false)
-{
-}
 
-demo::LoadTileLayerState::~LoadTileLayerState()
-{
-}
-
-void demo::LoadTileLayerState::Enter(Demo& owner)
-{
-	// create sprite atlas to be used by tilemap
-	m_spriteAtlas = std::make_unique<graphics::renderable::SpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
-
-	// load sprite atlas from file manually for demo purpose
-	m_spriteAtlas->Initialize(L"../Assets/4x1_128x32_tile.png");
-
-	// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 1 rows and 4 columns
-	// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-	std::vector<math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
-	for (math::geometry::RectF& rect : uvs)
-	{
-		m_spriteAtlas->AddUVRect(rect);
-	}
-
-	// create tileset for tilemap and register tiles
-	m_tileset = std::make_unique<component::tile::Tileset<RenderableTile>>();
-	m_tileset->Register(0, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(0), true)); // walkable
-	m_tileset->Register(1, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(1), false)); // obstacle
-	m_tileset->Register(2, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(2), false)); // obstacle
-	m_tileset->Register(3, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(3), false)); // obstacle
-
-	// specify the tilemap file to read. it must be csv file
-	//m_fileReader.Open("..\\Assets\\69x71Map.csv");
-	//LOG("Loading ..\\Assets\\69x71Map.csv");
-	//m_fileReader.Open("..\\Assets\\128x128Map.csv");
-	//LOG("Loading ..\\Assets\\128x128Map.csv");
-	m_fileReader.Open("..\\Assets\\tilemap.csv");
-	LOG("Loading ..\\Assets\\tilemap.csv");
-	//m_fileReader.Open("..\\Assets\\64x64Map.csv");
-	//LOG("Loading ..\\Assets\\64x64Map.csv");
-	//m_fileReader.Open("..\\Assets\\32x32Map.csv");
-	//LOG("Loading ..\\Assets\\32x32Map.csv");
-	
-
-	//// add wait time for this event
-	//m_fileReader.ProcessChunkEvent += event::Handler(std::function<void(const char*, size_t)>(
-	//	[](const char* data, size_t len)
-	//	{
-	//		// force 1ms delay here for simulation to slow down reading so we can observe
-	//		timer::StopWatch sw;
-	//		sw.Start();
-	//		while (sw.Peek<timer::milliseconds>() < 0.1)
-	//		{
-	//			// busy wait
-	//		}
-	//		sw.Stop();
-	//	}));
-
-	// chain our events where CSV parser listens to file reader when it extract chunk of data from file
-	m_fileReader.ProcessChunkEvent += event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
-	m_fileReader.EndOfFileFoundEvent += event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
-
-	// chain CSV table to CSV parser to acquire row of data from CSV Parser when it parse chunk of data and extracts rows of CSV data
-	m_csvParser.ParseRowEvent += event::Handler(&m_table, &container::Table<std::string>::AddRow);
-	m_csvParser.ParseRemainingEvent += event::Handler(&m_table, &container::Table<std::string>::AddRange);
-
-	// create our layer object
-	m_layer = std::make_unique <component::tile::TileLayer<RenderableTile>>();
-
-	// queue job to read the file
-	owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
-		engine::job::Job(
-			[this]()
-			{
-				m_fileReader.Update(0x1, 0.001);
-			},
-			true,
-			[this]()
-			{
-				return m_fileReader.IsEndOfFile();
-			},
-			[this, &owner]()
-			{
-				m_csvTableLoaded = true;
-
-				//m_tileLayerLoader.SyncLoadAll(
-				//	*m_layer.get(),
-				//	m_table,
-				//	*m_tileset.get(),
-				//	{ 16, 16 },
-				//	[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
-				//	{
-				//		// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
-				//		return tileset.MakeTile(cell);
-				//	},
-				//	0.1
-				//);
-				//m_tileLayerLoaded = true;
-				//return;
-
-				m_tileLayerLoader.Begin(
-					*m_layer.get(),
-					m_table,
-					*m_tileset.get(),
-					{16, 16},
-					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
-					{
-						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
-						return tileset.MakeTile(cell);
-					});
-
-				// in the job's done event, queue another job to create a tilemap object and load the csv data into it
-				owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
-					engine::job::Job(
-						[this]()
-						{
-							m_tileLayerLoader.Update(0.000000000001);
-
-							//// force 1ms delay here for simulation to slow down reading so we can observe
-							//timer::StopWatch sw;
-							//sw.Start();
-							//while (sw.Peek<timer::milliseconds>() < 0.1)
-							//{
-							//	// busy wait
-							//}
-							//sw.Stop();
-						},
-						true,
-						[this]()
-						{
-							return m_tileLayerLoader.IsDone();
-						},
-						[this]()
-						{
-							m_tileLayerLoaded = true;
-						}
-					)
-				));
-			}
-		)));
-}
-
-void demo::LoadTileLayerState::Update(Demo& owner, double delta)
-{
-	// monitor frame rate
-	m_frameRateMonitor.OnFrameCompleted(delta);
-
-	// flush the draw commands on queue. we will queue new ones 
-	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
-
-	if (!m_tileLayerLoaded)
-	{
-		if (m_csvTableLoaded)
-		{
-			size_t loadedTiles = m_tileLayerLoader.GetLoadedTilesCount();
-			size_t total = m_tileLayerLoader.GetTotalTilesCount();
-			std::string message = " Loaded Tiles " + std::to_string(loadedTiles) + " / " + std::to_string(total) + "...";
-			owner.DrawTextCommand(message, { 50, 260 }, { 1,1,1,1 });
-
-			// let's draw progress bar to show how much file reader has read compared to total size of the file
-			float progress = (float)m_tileLayerLoader.GetProgress();
-			owner.DrawProgressBarCommand(
-				{ 50, 300 }, { 400, 40 },
-				progress,
-				1.0f
-			);
-		}
-		else
-		{
-			std::string message = m_fileReader.IsEndOfFile() ? "" : "Reading data from file " + m_fileReader.GetFileName() + "...";
-			owner.DrawTextCommand(message, { 50, 260 }, { 1,1,1,1 });
-
-			// let's draw progress bar to show how much file reader has read compared to total size of the file
-			owner.DrawProgressBarCommand({ 50, 300 }, { 400, 40 }, static_cast<float>(m_fileReader.GetNumberOfBytesReadLong()), static_cast<float>(m_fileReader.GetFileSizeInBytesLong()));
-		}
-	}
-	else
-	{
-		owner.SetState(std::make_unique<RenderTileLayerState>(std::move(m_layer), std::move(m_spriteAtlas), std::move(m_tileset)));
-	}
-
-	// get engine performance statistics
-	engine::Engine::Statistics stats = owner.Engine().GetStatistics();
-
-	// show FPS on top-right of screen
-	owner.DrawTextCommandTopRightScreen("State: LoadTileLayerState", 10.0f);
-	std::string text = "State FPS: " + std::to_string(static_cast<int>(m_frameRateMonitor.GetAverageFrameRate()));
-	owner.DrawTextCommandTopRightScreen(text, 40.0f);
-	text = "Render FPS: " + std::to_string(static_cast<int>(stats.renderAverageFPS));
-	owner.DrawTextCommandTopRightScreen(text, 70.0f);
-	text = "Main Loop Ave FPS: " + std::to_string(static_cast<int>(stats.mainLoopAverageFPS));
-	owner.DrawTextCommandTopRightScreen(text, 100.0f);
-	text = "Main Loop Last FPS: " + std::to_string(static_cast<int>(stats.mainLoopLastFPS));
-	owner.DrawTextCommandTopRightScreen(text, 130.0f);
-}
-
-void demo::LoadTileLayerState::Exit(Demo& owner)
-{
-	m_fileReader.ProcessChunkEvent -= event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
-	m_fileReader.EndOfFileFoundEvent -= event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
-
-	m_csvParser.ParseRowEvent -= event::Handler(&m_table, &container::Table<std::string>::AddRow);
-	m_csvParser.ParseRemainingEvent -= event::Handler(&m_table, &container::Table<std::string>::AddRange);
-}
-
-bool demo::LoadTileLayerState::IsFinished(Demo& owner)
-{
-	return m_isFinished;
-}
-
-#pragma endregion 
-
-#pragma region RenderTileLayerState
-demo::RenderTileLayerState::RenderTileLayerState(
-	std::unique_ptr<component::tile::TileLayer<RenderableTile>> layer,
-	std::unique_ptr<graphics::renderable::ISpriteAtlas> spriteAtlas,
-	std::unique_ptr<component::tile::Tileset<RenderableTile>> tileSet
-) :
-	m_layer(std::move(layer)),
-	m_spriteAtlas(std::move(spriteAtlas)),
-	m_tileSet(std::move(tileSet))
-{
-}
-
-demo::RenderTileLayerState::~RenderTileLayerState()
-{
-}
-
-void demo::RenderTileLayerState::Enter(Demo& owner)
-{
-}
-
-void demo::RenderTileLayerState::Update(Demo& owner, double delta)
-{
-	// monitor frame rate
-	m_frameRateMonitor.OnFrameCompleted(delta);
-
-	// flush the draw commands on queue. we will queue new ones 
-	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
-
-	owner.RenderTileLayerCommand(*m_layer.get(), 1.0f);
-
-	// get engine performance statistics
-	engine::Engine::Statistics stats = owner.Engine().GetStatistics();
-
-	// show FPS on top-right of screen
-	owner.DrawTextCommandTopRightScreen("State: RenderTileLayerState", 10.0f);
-	std::string text = "State FPS: " + std::to_string(static_cast<int>(m_frameRateMonitor.GetAverageFrameRate()));
-	owner.DrawTextCommandTopRightScreen(text, 40.0f);
-	text = "Render FPS: " + std::to_string(static_cast<int>(stats.renderAverageFPS));
-	owner.DrawTextCommandTopRightScreen(text, 70.0f);
-	text = "Main Loop Ave FPS: " + std::to_string(static_cast<int>(stats.mainLoopAverageFPS));
-	owner.DrawTextCommandTopRightScreen(text, 100.0f);
-	text = "Main Loop Last FPS: " + std::to_string(static_cast<int>(stats.mainLoopLastFPS));
-	owner.DrawTextCommandTopRightScreen(text, 130.0f);
-}
-
-void demo::RenderTileLayerState::Exit(Demo& owner)
-{
-}
-
-bool demo::RenderTileLayerState::IsFinished(Demo& owner)
-{
-	return false;
-}
-
-#pragma endregion

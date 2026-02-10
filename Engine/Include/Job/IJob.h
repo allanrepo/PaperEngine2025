@@ -16,6 +16,8 @@ namespace engine
 			virtual bool IsDone() const = 0;
 			virtual bool IsPersistent() const = 0;
 			virtual void Done() = 0;
+			virtual void Start() = 0;
+			virtual bool IsStarted() const = 0;
 		};
 	}
 }

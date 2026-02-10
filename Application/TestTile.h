@@ -32,6 +32,7 @@
 #include <Graphics/Resource/DX11TextureImpl.h>
 #include <Timer/StopWatch.h>
 #include <Components/Tile.h>
+#include <Engine/Loader/AsyncLoader.h>
 
 #include "Utilities.h"
 
@@ -137,15 +138,39 @@ namespace TestTile
 			m_tileset.Register(1, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(1), false)); // obstacle
 
 			// load map into tile layer
-			m_tilegrid = app::utilities::io::TileGridLoader<RenderableTile, int>::LoadFromCSV(
-				"../Assets/PathFindingMap_24x16.csv",
-				m_tileset,
-				[](int row, int col, const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
-				{
-					// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
-					return tileset.MakeTile(cell);
-				}
-			);
+			{
+				engine::io::AsyncFileReader	fileReader(0xFF);
+				fileReader.Open("../Assets/PathFindingMap_24x16.csv");
+
+				engine::utilities::parser::CSVParser csvParser;
+				fileReader.ProcessChunkEvent += event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
+				fileReader.EndOfFileFoundEvent += event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
+				container::Table<std::string> table;
+
+				csvParser.ParseRowEvent += event::Handler(&table, &container::Table<std::string>::AddRow);
+				csvParser.ParseRemainingEvent += event::Handler(&table, &container::Table<std::string>::AddRange);
+
+				fileReader.SyncReadAll(0xFF, 5.0);
+
+				engine::loader::tile::AsyncTileGridLoader<RenderableTile, int> tileLoader;
+				tileLoader.SyncLoadAll(
+					m_tilegrid,
+					table,
+					m_tileset,
+					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+					{
+						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
+						return tileset.MakeTile(cell);
+					},
+					0xFFFF,
+					5.0
+				);
+
+				fileReader.ProcessChunkEvent -= event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
+				fileReader.EndOfFileFoundEvent -= event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
+				csvParser.ParseRowEvent -= event::Handler(&table, &container::Table<std::string>::AddRow);
+				csvParser.ParseRemainingEvent -= event::Handler(&table, &container::Table<std::string>::AddRange);
+			}
 
 			// setup stopwatch to manage timing and start it
 			m_stopwatch.OnLap += event::Handler(this, &Test::OnLap);
@@ -230,7 +255,7 @@ namespace TestTile
 			{
 				for (int col = 0; col < TileGrid.GetWidth(); ++col)
 				{
-					const component::tile::Tile<RenderableTile>& tile = TileGrid.GetTile(row, col);
+					const component::tile::Tile<RenderableTile>& tile = TileGrid.Get(row, col);
 					if (tile.isValid())
 					{
 						m_renderer->DrawRenderable(

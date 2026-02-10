@@ -4,6 +4,7 @@
 #include <functional>
 #include <deque>
 #include <Job/IJob.h>
+#include <Core/Event.h>
 
 namespace engine
 {
@@ -26,18 +27,25 @@ namespace engine
 			// optional event triggered when job is done
 			std::function<void()> m_done;
 
+			std::function<void()> m_start;
+
+			bool m_started;
+
 
 		public:
 			Job(
+				std::function<void()> start,
 				std::function<void()> task,
 				bool persistent = false,
 				std::function<bool()> isDone = nullptr,
 				std::function<void()> done = nullptr
 			) :
+				m_start(std::move(start)),
 				m_task(std::move(task)),
 				m_persistent(persistent),
 				m_isDone(std::move(isDone)),
-				m_done(std::move(done))
+				m_done(std::move(done)),
+				m_started(false)
 			{
 			}
 
@@ -56,12 +64,27 @@ namespace engine
 			void Done()
 			{
 				if (m_done) m_done();
+				DoneEvent(*this);
 			}
 
 			bool IsPersistent() const
 			{
 				return m_persistent;
 			}
+
+			void Start() override
+			{
+				if (m_start) m_start();
+				m_started = true;
+			}
+
+			bool IsStarted() const override
+			{
+				return m_started;
+			}
+
+			event::Event<const Job&> DoneEvent;
+
 		};
 
 		class JobQueue
@@ -91,6 +114,10 @@ namespace engine
 
 				for (auto it = m_jobs.begin(); it != m_jobs.end();)
 				{
+					if((*it)->IsStarted() == false)
+					{
+						(*it)->Start();
+					}
 					// run the job
 					(*it)->Execute();
 
@@ -127,5 +154,89 @@ namespace engine
 				}
 			}
 		};
+	
+		class JobChain : public engine::job::IJob 
+		{
+			JobQueue& m_queue;
+			std::deque<std::unique_ptr<Job>> m_jobs;
+			bool m_started = false;
+			bool m_done = false;
+
+		public:
+			JobChain(JobQueue& queue) : 
+				m_queue(queue) 
+			{
+			}
+
+			// queue a job to the chain
+			void AddJob(std::unique_ptr<engine::job::Job> job) 
+			{
+				m_jobs.emplace_back(std::move(job));
+			}
+
+			void Execute() override 
+			{
+				if (IsDone()) return;
+
+				// Submit the first job only once
+				if (!m_started && !m_jobs.empty()) 
+				{
+					SubmitNext();
+					m_started = true;
+				}
+			}
+
+			bool IsDone() const override 
+			{ 
+				return m_done; 
+			}
+
+			bool IsPersistent() const override 
+			{ 
+				return true; 
+			}
+
+			void Done() override 
+			{
+			}
+
+			void Start() override
+			{
+			}
+
+			bool IsStarted() const override
+			{
+				return true;
+			}
+
+		private:
+			void SubmitNext() 
+			{
+				// if no more jobs, we are done
+				if (m_jobs.empty()) 
+				{
+					m_done = true;
+					return;
+				}
+
+				// get next job in the chain
+				std::unique_ptr<Job> job = std::move(m_jobs.front());
+				m_jobs.pop_front();
+
+				// attach event handler for when job is done
+				job->DoneEvent += event::Handler(this, &JobChain::OnJobDone);
+
+				// submit job to the queue
+				m_queue.Submit(std::move(job));
+			}
+
+			// event handler when job is done. we submit the next job in the chain here
+			void OnJobDone(const Job& job) 
+			{
+				SubmitNext(); 
+			}
+		};
+
 	}
 }
+

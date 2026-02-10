@@ -29,6 +29,7 @@
     <ClInclude Include="Include\Core\Event.h" />
     <ClInclude Include="Include\Core\Factory.h" />
     <ClInclude Include="Include\Core\Input.h" />
+    <ClInclude Include="Include\Core\Loader.h" />
     <ClInclude Include="Include\Core\Singleton.h" />
     <ClInclude Include="Include\Core\View.h" />
     <ClInclude Include="Include\Engine\Engine.h" />
@@ -36,7 +37,7 @@
     <ClInclude Include="Include\Engine\Factory\RendererFactory.h" />
     <ClInclude Include="Include\Engine\Factory\SpriteAtlasFactory.h" />
     <ClInclude Include="Include\Engine\Factory\TextureFactory.h" />
-    <ClInclude Include="Include\Engine\Loader\AsyncTileGridLoader.h" />
+    <ClInclude Include="Include\Engine\Loader\AsyncLoader.h" />
     <ClInclude Include="Include\Engine\Loader\SpriteAtlasLoader.h" />
     <ClInclude Include="Include\Engine\Loader\___SpriteLoader.h" />
     <ClInclude Include="Include\Graphics\Animation\Animation.h" />
@@ -105,7 +106,7 @@
     <ClCompile Include="Source\Engine\Engine.cpp" />
     <ClCompile Include="Source\Engine\Factory\CanvasFactory.cpp" />
     <ClCompile Include="Source\Engine\Factory\SpriteAtlasFactory.cpp" />
-    <ClCompile Include="Source\Engine\Loader\AsyncTileGridLoader.cpp" />
+    <ClCompile Include="Source\Engine\Loader\AsyncLoader.cpp" />
     <ClCompile Include="Source\Graphics\Core\Canvas.cpp" />
     <ClCompile Include="Source\Graphics\Core\DX11CanvasImpl.cpp" />
     <ClCompile Include="Source\Graphics\Core\DX11Core.cpp" />
