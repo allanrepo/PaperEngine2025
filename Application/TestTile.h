@@ -156,11 +156,10 @@ namespace TestTile
 				tileLoader.SyncLoadAll(
 					m_tilegrid,
 					table,
-					m_tileset,
-					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> component::tile::Tile<RenderableTile>
 					{
 						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
-						return tileset.MakeTile(cell);
+						return m_tileset.MakeTile(cell);
 					},
 					0xFFFF,
 					5.0

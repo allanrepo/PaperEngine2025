@@ -79,8 +79,7 @@ namespace engine
 			{
 			private:
 				const engine::container::Table<std::string>* m_table;
-				const component::tile::Tileset<T>* m_tileset;
-				std::function<component::tile::Tile<T>(const U&, const component::tile::Tileset<T>&)> m_tileLoader;
+				std::function<component::tile::Tile<T>(const U&)> m_tileLoader;
 				component::tile::TileGrid<T>* m_grid;
 				bool m_isDone;
 				size_t m_currTile;
@@ -91,7 +90,6 @@ namespace engine
 				AsyncTileGridLoader() :
 					m_isDone(false),
 					m_table(nullptr),
-					m_tileset(nullptr),
 					m_grid(nullptr),
 					m_currTile(0),
 					m_totalTiles(0),
@@ -109,14 +107,13 @@ namespace engine
 				component::tile::TileGrid<T>& SyncLoadAll(
 					component::tile::TileGrid<T>& grid,
 					const engine::container::Table<std::string>& table,
-					const engine::component::tile::Tileset<T>& tileset,
-					std::function<component::tile::Tile<T>(const U&, const component::tile::Tileset<T>&)> tileLoader,
+					std::function<component::tile::Tile<T>(const U&)> tileLoader,
 					size_t maxTilesPerUpdate = 0xFF,
 					double maxTimePerUpdateMS = 1.0
 				)
 				{
 					// Initialize 
-					Begin("TileGrid", grid, table, tileset, tileLoader);
+					Begin("TileGrid", grid, table, tileLoader);
 
 					// Loop until done 
 					while (!IsDone())
@@ -149,8 +146,7 @@ namespace engine
 					const std::string& label,
 					component::tile::TileGrid<T>& grid,
 					const engine::container::Table<std::string>& table,
-					const component::tile::Tileset<T>& tileset,
-					std::function<component::tile::Tile<T>(const U&, const component::tile::Tileset<T>&)> tileLoader
+					std::function<component::tile::Tile<T>(const U&)> tileLoader
 				)
 				{
 					// handle error if csv table has no rows
@@ -168,14 +164,13 @@ namespace engine
 					m_label = label;	
 					m_grid = &grid;
 					m_table = &table;
-					m_tileset = &tileset;
 					m_tileLoader = tileLoader;
 					m_isDone = false;
 					m_currTile = 0;
 
 					m_grid->SetWidth(m_table->GetWidth());
 
-					m_totalTiles = m_table->GetElementCount();//  m_table->GetHeight()* m_table->GetWidth();
+					m_totalTiles = m_table->GetElementCount();
 				}
 
 				// incrementally loads tiles within a given time budget.
@@ -196,7 +191,7 @@ namespace engine
 
 						// at this point we now have valid row and col tile. get the tile object and load it
 						std::string cell = m_table->Get(m_currTile);
-						component::tile::Tile<T> tile = m_tileLoader(std::stoi(cell), *m_tileset);
+						component::tile::Tile<T> tile = m_tileLoader(std::stoi(cell));
 						m_grid->Add(tile);
 
 						// move to next col tile
@@ -239,14 +234,13 @@ namespace engine
 				component::tile::TileRegion<T>& SyncLoadAll(
 					component::tile::TileRegion<T>& region,
 					const engine::container::Table<std::string>& table,
-					const engine::component::tile::Tileset<T>& tileset,
-					std::function<engine::component::tile::Tile<T>(const U&, const engine::component::tile::Tileset<T>&)> tileLoader,
+					std::function<engine::component::tile::Tile<T>(const U&)> tileLoader,
 					size_t maxTilesPerUpdate = 0xFF,
 					double maxTimePerUpdateMS = 1.0
 				)
 				{
 					// Initialize 
-					Begin(region, table, tileset, tileLoader);
+					Begin(region, table, tileLoader);
 
 					// Loop until done 
 					while (!IsDone())
@@ -280,11 +274,10 @@ namespace engine
 					std::string label,
 					component::tile::TileRegion<T>& region,
 					const engine::container::Table<std::string>& table,
-					const engine::component::tile::Tileset<T>& tileset,
-					std::function<engine::component::tile::Tile<T>(const U&, const engine::component::tile::Tileset<T>&)> tileLoader
+					std::function<engine::component::tile::Tile<T>(const U&)> tileLoader
 				)
 				{
-					m_asyncTileGridLoader.Begin(label, region.Get(), table, tileset, tileLoader);
+					m_asyncTileGridLoader.Begin(label, region.Get(), table, tileLoader);
 				}
 
 				// incrementally loads tiles within a given time budget.
@@ -349,8 +342,7 @@ namespace engine
 			{
 			private:
 				const engine::container::Table<std::string>* m_table;
-				const engine::component::tile::Tileset<T>* m_tileset;
-				std::function<engine::component::tile::Tile<T>(const U&, const engine::component::tile::Tileset<T>&)> m_tileLoader;
+				std::function<engine::component::tile::Tile<T>(const U&)> m_tileLoader;
 				engine::component::tile::TileLayer<T>* m_layer;
 				bool m_isDone;
 				spatial::Size<size_t> m_regionSize;
@@ -377,7 +369,6 @@ namespace engine
 				AsyncTileLayerLoader() :
 					m_isDone(false),
 					m_table(nullptr),
-					m_tileset(nullptr),
 					m_layer(nullptr),
 					m_regionSize({ 0,0 }),
 					m_layerSize({ 0,0 }),
@@ -399,9 +390,8 @@ namespace engine
 					const std::string& label,
 					engine::component::tile::TileLayer<T>& layer,
 					const engine::container::Table<std::string>& table,
-					const engine::component::tile::Tileset<T>& tileset,
 					const spatial::Size<size_t>& regionSize,
-					std::function<engine::component::tile::Tile<T>(const U&, const engine::component::tile::Tileset<T>&)> tileLoader
+					std::function<engine::component::tile::Tile<T>(const U&)> tileLoader
 				)
 				{
 					// handle error if csv table has no rows
@@ -419,7 +409,6 @@ namespace engine
 					// now we know table is valid, let's initialize our loader state
 					m_label = label;
 					m_table = &table;
-					m_tileset = &tileset;
 					m_tileLoader = tileLoader;
 					m_isDone = false;
 					m_layer = &layer;
@@ -514,7 +503,7 @@ namespace engine
 
 						std::string cell = m_table->Get(mapRow, mapCol);
 
-						component::tile::Tile<T> tile = m_tileLoader(std::stoi(cell), *m_tileset);
+						component::tile::Tile<T> tile = m_tileLoader(std::stoi(cell));
 
 						component::tile::TileRegion<T>& region = m_layer->Get(m_currRegion);
 						region.Add(tile);
@@ -538,14 +527,13 @@ namespace engine
 				component::tile::TileLayer<T>& SyncLoadAll(
 					component::tile::TileLayer<T>& layer,
 					const engine::container::Table<std::string>& table,
-					const engine::component::tile::Tileset<T>& tileset,
 					const spatial::Size<size_t>& regionSize,
-					std::function<component::tile::Tile<T>(const U&, const component::tile::Tileset<T>&)> tileLoader,
+					std::function<component::tile::Tile<T>(const U&)> tileLoader,
 					double maxTimePerUpdateMS = 1.0
 				)
 				{
 					// Initialize
-					Begin(layer, table, tileset, regionSize, tileLoader);
+					Begin(layer, table, regionSize, tileLoader);
 
 					// Loop until done
 					while (!IsDone())
@@ -641,8 +629,7 @@ namespace engine
 				engine::container::Table<std::string> m_table;
 
 				// references
-				const component::tile::Tileset<T>* m_tileset;
-				std::function<component::tile::Tile<T>(const U&, const component::tile::Tileset<T>&)> m_tileLoader;
+				std::function<component::tile::Tile<T>(const U&)> m_tileLoader;
 				spatial::Size<size_t> m_regionSize;
 
 				// target layer
@@ -656,7 +643,6 @@ namespace engine
 					m_isFinished(false),
 					m_fileReader(maxBytesPerRead),
 					m_currentLoader(nullptr),
-					m_tileset(nullptr),
 					m_layer(nullptr),
 					m_regionSize({ 0,0 })
 				{
@@ -680,13 +666,11 @@ namespace engine
 
 				bool Open(
 					const std::string& filename,
-					const component::tile::Tileset<T>& tileset,
 					const spatial::Size<size_t>& regionSize,
-					std::function<component::tile::Tile<T>(const U&, const component::tile::Tileset<T>&)> tileLoader,
+					std::function<component::tile::Tile<T>(const U&)> tileLoader,
 					component::tile::TileLayer<T>& layer
 				)
 				{
-					m_tileset = &tileset;
 					m_tileLoader = tileLoader;
 					m_regionSize = regionSize;
 					m_layer = &layer;
@@ -759,7 +743,6 @@ namespace engine
 							m_fileReader.GetLabel(),
 							*m_layer,
 							m_table,
-							*m_tileset,
 							m_regionSize,
 							m_tileLoader
 						);
@@ -942,8 +925,7 @@ namespace engine
 				engine::container::Table<std::string> m_table;
 
 				// references
-				const component::tile::Tileset<T>* m_tileset;
-				std::function<component::tile::Tile<T>(const U&, const component::tile::Tileset<T>&)> m_tileLoader;
+				std::function<component::tile::Tile<T>(const U&)> m_tileLoader;
 
 				// target region
 				component::tile::TileRegion<T>* m_region;
@@ -964,7 +946,6 @@ namespace engine
 					m_isFinished(false),
 					m_fileReader(maxBytesPerRead),
 					m_currentLoader(nullptr),
-					m_tileset(nullptr),
 					m_region(nullptr),
 					m_regionIsLoaded(false),
 					m_current(0)
@@ -989,8 +970,7 @@ namespace engine
 
 				bool Open(
 					const std::string& filename,
-					const component::tile::Tileset<T>& tileset,
-					std::function<component::tile::Tile<T>(const U&, const component::tile::Tileset<T>&)> tileLoader,
+					std::function<component::tile::Tile<T>(const U&)> tileLoader,
 					component::tile::TileRegion<T>& region
 				)
 				{
@@ -999,7 +979,6 @@ namespace engine
 
 					if (!rslt) return false;
 
-					m_tileset = &tileset;
 					m_tileLoader = tileLoader;
 					m_region = &region;
 					m_isFinished = false;
@@ -1065,7 +1044,6 @@ namespace engine
 							"Loading TileRegion",
 							*m_region,
 							m_table,
-							*m_tileset,
 							m_tileLoader
 						);
 						// switch to tileregion loader

@@ -127,8 +127,7 @@ namespace demo
 		bool Load(
 			const std::string& mapName,
 			const std::string& filename,
-			const engine::component::tile::Tileset<T>& tileset,
-			std::function<engine::component::tile::Tile<T>(const int&, const engine::component::tile::Tileset<T>&)> tileLoader,
+			std::function<engine::component::tile::Tile<T>(const int&)> tileLoader,
 			engine::job::JobQueue& jobQueue
 		)
 		{
@@ -149,7 +148,7 @@ namespace demo
 			}
 
 			// Each map gets its own loader instance return 
-			if(!m_loaders[mapName].Open(filename, tileset, tileLoader, *m_regions[mapName]))
+			if(!m_loaders[mapName].Open(filename, tileLoader, *m_regions[mapName]))
 			{
 				return false;
 			}
@@ -267,10 +266,9 @@ namespace demo
 				m_tileMapManager.Load(
 					"debugMap",
 					"..\\Assets\\256x256.csv",
-					*m_tileset.get(),
-					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> component::tile::Tile<RenderableTile>
 					{
-						return tileset.MakeTile(cell);
+						return m_tileset->MakeTile(cell);
 					},
 					m_engine.JobQueue());
 				stage = 1;

@@ -661,11 +661,10 @@ void demo::LoadTileMapState::Enter(Demo& owner)
 					"TileGrid",
 					*m_tilegrid.get(),
 					m_table,
-					*m_tileset,
-					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> component::tile::Tile<RenderableTile>
 					{
 						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
-						return tileset.MakeTile(cell);
+						return m_tileset->MakeTile(cell);
 					});
 				
 				// in the job's done event, queue another job to create a tilemap object and load the csv data into it
@@ -896,11 +895,10 @@ void demo::LoadTileRegionState::Enter(Demo& owner)
 					"TileRegion",
 					*m_region.get(),
 					m_table,
-					*m_tileset,
-					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> component::tile::Tile<RenderableTile>
 					{
 						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
-						return tileset.MakeTile(cell);
+						return m_tileset->MakeTile(cell);
 					});
 
 				// in the job's done event, queue another job to create a tilemap object and load the csv data into it

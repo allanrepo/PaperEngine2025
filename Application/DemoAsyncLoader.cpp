@@ -77,10 +77,10 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 		engine::job::Job(
 			[this]()
 			{
-				m_tileGridLoader.Begin("Loading TileGrid", *m_grid.get(), m_table, *m_tileset.get(), 
-					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
-					{
-						return tileset.MakeTile(cell);
+				m_tileGridLoader.Begin("Loading TileGrid", *m_grid.get(), m_table,  
+					[this](const int& cell) -> component::tile::Tile<RenderableTile>
+					{						
+						return m_tileset->MakeTile(cell);
 					});
 				m_currentLoader = &m_tileGridLoader;
 			},
@@ -95,10 +95,10 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 		engine::job::Job(
 			[this]()
 			{
-				m_tileRegionLoader.Begin("Loading TileRegion", *m_region.get(), m_table, *m_tileset.get(),
-					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+				m_tileRegionLoader.Begin("Loading TileRegion", *m_region.get(), m_table, 
+					[this](const int& cell) -> component::tile::Tile<RenderableTile>
 					{
-						return tileset.MakeTile(cell);
+						return m_tileset->MakeTile(cell);
 					});
 				m_currentLoader = &m_tileRegionLoader;
 			},
@@ -113,10 +113,10 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 		engine::job::Job(
 			[this]()
 			{
-				m_tileLayerLoader.Begin("Loading TileLayer", *m_layer.get(), m_table, *m_tileset.get(), { 32, 32 },
-					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+				m_tileLayerLoader.Begin("Loading TileLayer", *m_layer.get(), m_table, { 32, 32 },
+					[this](const int& cell) -> component::tile::Tile<RenderableTile>
 					{
-						return tileset.MakeTile(cell);
+						return m_tileset->MakeTile(cell);
 					});
 				m_currentLoader = &m_tileLayerLoader;
 			},
@@ -178,12 +178,10 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 			{
 				m_tileMapLoader.Open(
 					m_filePath,
-					*m_tileset.get(),
 					{ 128, 128 },
-					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> component::tile::Tile<RenderableTile>
 					{
-						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
-						return tileset.MakeTile(cell);
+						return m_tileset->MakeTile(cell);
 					},
 					*m_layer.get()
 				);
@@ -223,11 +221,9 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 			{
 				m_asyncCSVMapToTileRegionLoader.Open(
 					m_filePath,
-					*m_tileset.get(),
-					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> component::tile::Tile<RenderableTile>
 					{
-						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
-						return tileset.MakeTile(cell);
+						return m_tileset->MakeTile(cell);
 					},
 					*m_region.get()
 				);

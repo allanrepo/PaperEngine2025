@@ -53,12 +53,11 @@ void demo::LoadTileLayerState::Enter(Demo& owner)
 			{
 				m_tileMapLoader.Open(
 					"..\\Assets\\256x256.csv",
-					*m_tileset.get(),
 					{ 128, 128 },
-					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> component::tile::Tile<RenderableTile>
 					{
 						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
-						return tileset.MakeTile(cell);
+						return m_tileset->MakeTile(cell);
 					},
 					*m_layer.get()
 				);
@@ -80,12 +79,11 @@ void demo::LoadTileLayerState::Enter(Demo& owner)
 			{
 				m_tileMapLoader.Open(
 					"..\\Assets\\256x256.csv",
-					*m_tileset.get(),
 					{ 64, 64 },
-					[](const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> component::tile::Tile<RenderableTile>
 					{
 						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
-						return tileset.MakeTile(cell);
+						return m_tileset->MakeTile(cell);
 					},
 					* m_layer.get()
 				);
