@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <Graphics/Resource/DX11TextureImpl.h>
+#include <Cache/Registry.h>
 
 #pragma region LoadAsyncLoaderState
 demo::LoadAsyncLoaderState::LoadAsyncLoaderState(const std::string& filePath) :
@@ -22,6 +23,16 @@ demo::LoadAsyncLoaderState::~LoadAsyncLoaderState()
 
 void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 {
+	{
+		cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Register("atlas1", std::make_unique<graphics::renderable::SpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>()));
+		graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("atlas1");
+		atlas.Initialize(L"../Assets/4x1_128x32_tile.png");
+		std::vector<math::geometry::RectF> uvs = demo::CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
+		atlas.AddUVRects(uvs);
+	}
+
+
+
 	// create sprite atlas to be used by tilemap
 	m_spriteAtlas = std::make_unique<graphics::renderable::SpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
 

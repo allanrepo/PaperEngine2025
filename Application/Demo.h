@@ -18,6 +18,8 @@
 #include <unordered_map>
 #include <Graphics/Resource/DX11TextureImpl.h>
 #include <Graphics/Renderable/FontAtlas.h>
+#include <Engine/Manager/TileMapManager.h>
+#include <Engine/Manager/TileSetManager.h>
 
 using namespace engine;
 
@@ -105,108 +107,16 @@ namespace demo
 		}
 	};
 
-	template<typename T>
-	class TileMapManager
-	{
-	public:
-		enum class MapState 
-		{
-			NotLoaded,
-			Loading,
-			Loaded
-		};
-
-	private:
-		engine::container::Dictionary<std::string, std::unique_ptr<engine::component::tile::TileRegion<T>>> m_regions;
-		engine::container::Dictionary<std::string, engine::loader::tile::AsyncCSVMapToTileRegionLoader<T, int>> m_loaders;
-		engine::container::Dictionary<std::string, std::unique_ptr<engine::component::tile::Tileset<T>>> m_tilesets;
-
-		std::string m_activeRegion;
-
-	public:
-		bool Load(
-			const std::string& mapName,
-			const std::string& filename,
-			std::function<engine::component::tile::Tile<T>(const int&)> tileLoader,
-			engine::job::JobQueue& jobQueue
-		)
-		{
-			// if loading, we ignore this call. if not loaded, or already loaded, we proceed
-			if (GetState(mapName) == MapState::Loading)
-			{
-				return false;
-			}
-			
-			// if we currently have this region, we need to unload it gracefully. but wait, we do that in our loader alrady...
-			if (!m_regions.Has(mapName))
-			{
-				// create our tileregion as unique pointer
-				std::unique_ptr<engine::component::tile::TileRegion<T>> region = std::make_unique<engine::component::tile::TileRegion<T>>();
-
-				// move it to our map
-				m_regions[mapName] = std::move(region);
-			}
-
-			// Each map gets its own loader instance return 
-			if(!m_loaders[mapName].Open(filename, tileLoader, *m_regions[mapName]))
-			{
-				return false;
-			}
-
-			// create job 
-			std::unique_ptr<engine::job::Job> job = std::make_unique<engine::job::Job>(
-				nullptr,
-				[this, mapName](){ m_loaders[mapName].Update(0.001); },
-				true,
-				[this, mapName](){ return m_loaders[mapName].IsDone(); },
-				nullptr
-			);
-
-			jobQueue.Submit(std::move(job));
-
-			return true;
-		}
-
-		MapState GetState(const std::string& mapName) const 
-		{
-			if (!m_regions.Has(mapName) || !m_loaders.Has(mapName)) 
-			{
-				return MapState::NotLoaded;
-			}
-			return m_loaders[mapName].IsDone() ? MapState::Loaded : MapState::Loading;
-		}
-
-		double GetProgress(const std::string& mapName) const 
-		{
-			if (!m_regions.Has(mapName) || !m_loaders.Has(mapName)) 
-			{
-				return 0.0;
-			}
-			return m_loaders[mapName].GetProgress();
-		}
-	
-		bool Unload(
-			const std::string& mapName
-		)
-		{
-			// TODO: use clearer to unload map asynchronously. can implement later...
-			return true;
-		}
-
-		engine::component::tile::TileMap<T> GetTileMap(const std::string& mapName)
-		{
-			return m_regions[mapName]->MakeTileMap();
-		}
-	};
-
 	class Demo1
 	{
 	private:
 		engine::Engine m_engine;
 		std::unique_ptr<graphics::renderable::IFontAtlas> m_fontAtlas;
-		TileMapManager<RenderableTile> m_tileMapManager;
 		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
-		std::unique_ptr<component::tile::Tileset<RenderableTile>> m_tileset;
+		//std::unique_ptr<component::tile::Tileset<RenderableTile>> m_tileset;
+
+		engine::manager::TileSetManager<RenderableTile> m_tileSetManager;
+		engine::manager::TileMapManager<RenderableTile> m_tileMapManager;
 
 		int stage = 0;
 
@@ -251,11 +161,11 @@ namespace demo
 			LOG("Sprite atlas created...");
 
 			// create tileset for tilemap and register tiles
-			m_tileset = std::make_unique<component::tile::Tileset<RenderableTile>>();
-			m_tileset->Register(0, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(0), true)); // walkable
-			m_tileset->Register(1, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(1), false)); // obstacle
-			m_tileset->Register(2, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(2), false)); // obstacle
-			m_tileset->Register(3, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(3), false)); // obstacle
+			m_tileSetManager.Create("debugTileSet");
+			m_tileSetManager.Register("debugTileSet", 0, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(0), true));		// walkable
+			m_tileSetManager.Register("debugTileSet", 1, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(1), false));	// obstacle
+			m_tileSetManager.Register("debugTileSet", 2, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(2), false));	// obstacle
+			m_tileSetManager.Register("debugTileSet", 3, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(3), false));	// obstacle	
 			LOG("Tilesets generated...");
 		}
 
@@ -268,13 +178,13 @@ namespace demo
 					"..\\Assets\\256x256.csv",
 					[this](const int& cell) -> component::tile::Tile<RenderableTile>
 					{
-						return m_tileset->MakeTile(cell);
+						return m_tileSetManager.MakeTile("debugTileSet", cell);
 					},
 					m_engine.JobQueue());
 				stage = 1;
 			}
 
-			if (m_tileMapManager.GetState("debugMap") == TileMapManager<RenderableTile>::MapState::Loaded && stage == 1)
+			if (m_tileMapManager.GetState("debugMap") == engine::manager::TileMapManager<RenderableTile>::MapState::Loaded && stage == 1)
 			{
 				stage = 2;
 			}
@@ -377,6 +287,9 @@ namespace demo
 		state::StateMachine<Demo> m_stateMachine;
 		std::unique_ptr<graphics::renderable::IFontAtlas> m_fontAtlas;
 		std::unique_ptr<state::State<Demo>> m_state;
+
+		engine::manager::TileSetManager<RenderableTile> m_tileSetManager;
+		engine::manager::TileMapManager<RenderableTile> m_tileMapManager;
 
 	public:
 		Demo(std::unique_ptr<state::State<Demo>> state);
@@ -621,59 +534,6 @@ namespace demo
 		virtual void Enter(Demo& owner) override;
 		virtual void Exit(Demo& owner) override;
 		virtual void Update(Demo& owner, double delta) override;
-		virtual bool IsFinished(Demo& owner) override;
-
-		void OnMouseDown(int btn, int x, int y);
-	};
-
-	class LoadTileMapState : public state::State<Demo>
-	{
-	private:
-		performance::FrameRateMonitor m_frameRateMonitor;
-		io::AsyncFileReader m_fileReader;
-		engine::utilities::parser::CSVParser m_csvParser;
-		engine::loader::tile::AsyncTileGridLoader<RenderableTile, int> m_tileGridLoader;
-		engine::container::Table<std::string> m_table;
-
-		bool m_isFinished;
-		bool m_csvTableLoaded;
-		bool m_tileGridLoaded;
-
-		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
-		std::unique_ptr<component::tile::Tileset<RenderableTile>> m_tileset;
-		std::unique_ptr<component::tile::TileGrid<RenderableTile>> m_tilegrid;
-
-	public:
-		LoadTileMapState();
-		virtual ~LoadTileMapState();
-
-		virtual void Enter(Demo& owner) override;
-		virtual void Exit(Demo& owner) override;
-		virtual void Update(Demo& owner, double delta) override;
-		virtual bool IsFinished(Demo& owner) override;
-
-		void OnMouseDown(int btn, int x, int y);
-	};
-
-	class RenderTileMapState : public state::State<Demo>
-	{
-	private:
-		performance::FrameRateMonitor m_frameRateMonitor;
-		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
-		std::unique_ptr<component::tile::Tileset<RenderableTile>> m_tileSet;
-		std::unique_ptr<component::tile::TileGrid<RenderableTile>> m_tileGrid;
-
-	public:
-		RenderTileMapState(
-			std::unique_ptr<component::tile::TileGrid<RenderableTile>> tileGrid,
-			std::unique_ptr<graphics::renderable::ISpriteAtlas> spriteAtlas,
-			std::unique_ptr<component::tile::Tileset<RenderableTile>> tileSet
-		);
-		virtual ~RenderTileMapState();
-
-		virtual void Enter(Demo& owner) override;
-		virtual void Update(Demo& owner, double delta) override;
-		virtual void Exit(Demo& owner) override;
 		virtual bool IsFinished(Demo& owner) override;
 
 		void OnMouseDown(int btn, int x, int y);

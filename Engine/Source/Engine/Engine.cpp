@@ -18,20 +18,10 @@ engine::Engine::Engine(
 ):
 	m_renderController(renderFPS)
 {
-	// let's setup environment config first before we do anything else
-	cache::Registry<container::Dictionary<>>::Instance().Register("EnvironmentConfig", std::make_unique<container::Dictionary<>>());
-	container::Dictionary<>& environmentConfig = cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig");
-
 	// register environment config e.g. API, render mode
-	environmentConfig.Register("Title", title);
-	environmentConfig.Register("API", API);
-	environmentConfig.Register("RenderMode", RenderMode);
-
-	// register our lookup table into cache. this is lookup table for sprite names to corresponding sprite atlas
-	//cache::Registry<cache::Dictionary<>>::Instance().Register("SpriteToAtlasMap", std::make_unique<cache::Dictionary<>>());
-
-	// register our image file to atlas UVs lookup table into cache. our atlas UV's are stored in csv file
-	//cache::Registry<cache::Dictionary<>>::Instance().Register("AtlasToUVRectsMap", std::make_unique<cache::Dictionary<>>());
+	cache::Registry<std::string>::Instance().Register("Title", std::make_unique<std::string>(title));
+	cache::Registry<std::string>::Instance().Register("API", std::make_unique<std::string>(API));
+	cache::Registry<std::string>::Instance().Register("RenderMode", std::make_unique<std::string>(RenderMode));
 
 	// now we can setup window event handlers...
 
@@ -58,7 +48,7 @@ void engine::Engine::Run()
 void engine::Engine::Initialize()
 {
 	// get environment config from cache
-	container::Dictionary<>& environmentConfig = cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig");
+	//container::Dictionary<>& environmentConfig = cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig");
 
 	// create our window application object here
 	m_window = std::make_unique<Win32::Window>();
@@ -82,7 +72,9 @@ void engine::Engine::Initialize()
 	m_window->OnWindowMessage += event::Handler(this, &Engine::ProcessWin32Message);
 
 	// now let's create the window application
-	m_window->Create(L"window title", 1400, 900);
+	std::string title = cache::Registry<std::string>::Instance().Get("Title");
+	std::wstring wsTitle(title.begin(), title.end());
+	m_window->Create(wsTitle, 1400, 900);
 }
 
 void engine::Engine::ProcessWin32Message(UINT msg, WPARAM wParam, LPARAM lParam)
@@ -92,8 +84,6 @@ void engine::Engine::ProcessWin32Message(UINT msg, WPARAM wParam, LPARAM lParam)
 
 void engine::Engine::WindowCreate(void* hWnd)
 {
-	// get environment config from cache
-	container::Dictionary<>& environmentConfig = cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig");
 
 	// create canvas
 	m_canvas = graphics::CanvasFactory::Create();
@@ -119,7 +109,7 @@ void engine::Engine::WindowCreate(void* hWnd)
 	{
 		throw std::exception("Failed to initialize sprite renderer.");
 	}
-	LOG("[ENGINE] Using sprite renderer mode: " << environmentConfig.Get("RenderMode"));
+	LOG("[ENGINE] Using sprite renderer mode: " << cache::Registry<std::string>::Instance().Get("RenderMode") ); 
 
 	// emit event that we are ready to start
 	StartEvent();

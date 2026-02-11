@@ -1,0 +1,57 @@
+﻿1. Interfaces
+
+ITexture  
+Defines the abstract contract for textures: initialization (from data, empty, or file), binding, drawing (BeginDraw, Clear, EndDraw), querying dimensions, resetting, and saving to file.
+This is the API surface the rest of the engine uses.
+
+ITextureImpl  
+Extends ITexture. Represents the platform‑specific implementation. This allows you to swap out DirectX11, OpenGL, Vulkan, etc., while keeping the same interface.
+
+2. Front‑end wrapper
+
+Texture  
+Implements ITexture but delegates all work to an internal std::unique_ptr<ITextureImpl> m_impl.
+Acts as a façade: the engine only talks to Texture.
+Provides polymorphism: you can inject DX11TextureImpl or another backend.
+Prevents direct dependency on DirectX classes in higher‑level code.
+
+3. Back‑end implementations
+
+DX11TextureImpl  
+Inherits ITextureImpl. Encapsulates DirectX11 resources (ID3D11Texture2D, ID3D11ShaderResourceView, render target views, depth stencil views, viewport).
+Provides helper functions to create textures, shader resource views, and load data.
+Implements all ITexture methods using DirectX11 API calls.
+Follows the PImpl pattern (used via Texture).
+
+4. Flow of control
+
+Engine code calls Texture methods (Initialize, Bind, BeginDraw, etc.).
+Texture forwards calls to its m_impl (ITextureImpl).
+Depending on which implementation was injected:
+DX11TextureImpl uses DirectX11 API to manage GPU resources.
+DX11Texture (if used) does the same, but without the PImpl indirection.
+Both implementations rely on DirectX11 objects (ID3D11Texture2D, ID3D11ShaderResourceView, etc.).
+
+5. Visual hierarchy
+
+Engine code
+   ↓
+Texture (façade)
+   ↓
+ITextureImpl (interface)
+   └── DX11TextureImpl (DirectX11 implementation, PImpl)
+        ↓
+   DirectX11 API (textures, SRVs, RTVs, DSVs, viewport)
+
+Alternative path:
+ITexture
+   └── DX11Texture (DirectX11 implementation, no PImpl)
+        ↓
+   DirectX11 API
+
+6. Key architectural points
+
+Encapsulation: Texture hides platform specifics behind ITextureImpl.
+Flexibility: You can swap implementations (DX11, OpenGL, Vulkan) without changing engine code.
+Consistency: Mirrors the renderer architecture (Renderer façade + IRendererImpl backends).
+DX11Texture vs DX11TextureImpl: The former breaks the PImpl pattern; the latter aligns with your intended design. Long‑term, DX11TextureImpl is the cleaner approach.

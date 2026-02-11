@@ -33,7 +33,8 @@ namespace graphics::renderable
 
 		// ISpriteAtlas methods implementation
 		virtual bool Initialize(const wchar_t* fileNamePath) override final;
-		virtual void AddUVRect(math::geometry::RectF rect) override final;
+		virtual void AddUVRect(const math::geometry::RectF& rect) override final;
+		virtual void AddUVRects(const std::vector<math::geometry::RectF>& rects) override final;
 		virtual const inline math::geometry::RectF GetUVRect(int index) const override final;
 		virtual inline size_t GetUVRectCount() const override final;
 		virtual graphics::renderable::Sprite MakeSprite(int index) const override final;

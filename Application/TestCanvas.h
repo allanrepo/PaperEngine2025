@@ -10,7 +10,6 @@
 #include <Graphics/Renderer/DX11RendererBatchImpl.h>
 #include <Graphics/Renderer/Renderer.h>
 #include <Graphics/Renderable/DrawableSurface.h>
-#include <Graphics/Resource/DX11Texture.h>
 #include <Graphics/Resource/Texture.h>
 #include <Graphics/Resource/DX11TextureImpl.h>
 #include <Engine/Factory/TextureFactory.h>

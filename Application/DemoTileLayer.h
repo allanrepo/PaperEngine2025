@@ -2,6 +2,7 @@
 
 #include "Demo.h"
 #include <State/State.h>
+#include <Engine/Loader/AsyncLoader.h>
 
 namespace demo
 {
@@ -11,10 +12,6 @@ namespace demo
 		performance::FrameRateMonitor m_frameRateMonitor;
 		loader::IAsyncLoader* m_currentLoader;
 
-		//io::AsyncFileReader m_fileReader;
-		//engine::utilities::parser::CSVParser m_csvParser;
-		//container::Table<std::string> m_table;
-		//engine::loader::tile::AsyncTileLayerLoader<RenderableTile, int> m_tileLayerLoader;
 		engine::loader::tile::AsyncTileMapLoader<RenderableTile, int> m_tileMapLoader;
 
 		bool m_isFinished;

@@ -19,9 +19,14 @@ bool graphics::renderable::SpriteAtlas::Initialize(const wchar_t* fileNamePath)
 	return true;
 }
 
-void graphics::renderable::SpriteAtlas::AddUVRect(math::geometry::RectF rect)
+void graphics::renderable::SpriteAtlas::AddUVRect(const math::geometry::RectF& rect)
 {
 	m_nUVs.push_back(rect);
+}
+
+void graphics::renderable::SpriteAtlas::AddUVRects(const std::vector<math::geometry::RectF>& rects)
+{
+	m_nUVs.insert(m_nUVs.end(), rects.begin(), rects.end());
 }
 
 const math::geometry::RectF graphics::renderable::SpriteAtlas::GetUVRect(int index) const

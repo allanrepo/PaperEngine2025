@@ -62,6 +62,9 @@
     <ClInclude Include="DemoAsyncLoader.h">
       <Filter>Main</Filter>
     </ClInclude>
+    <ClInclude Include="DemoTileMap.h">
+      <Filter>Main</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -77,6 +80,9 @@
       <Filter>Main</Filter>
     </ClCompile>
     <ClCompile Include="DemoAsyncLoader.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
+    <ClCompile Include="DemoTileMap.cpp">
       <Filter>Main</Filter>
     </ClCompile>
   </ItemGroup>

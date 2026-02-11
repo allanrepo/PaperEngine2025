@@ -10,11 +10,9 @@ std::unique_ptr<graphics::renderable::ISpriteAtlas> graphics::factory::SpriteAtl
 {
     // get environment config from cache
     std::string typeName =
-        cache::Registry<container::Dictionary<>>::Instance().Has("EnvironmentConfig") ?                       // do we have environment config?
-        cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig").Has("API") ?             // do we have API field in environment config?
-        cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig").Get("API") :            // yes we have API field. let's get it
-        graphics::dx11::resource::DX11TextureImpl::TypeName :                                                 // no API field in environment config, fallback to DX11
-        graphics::dx11::resource::DX11TextureImpl::TypeName;                                                 // no config, fallback to DX11
+        cache::Registry<std::string>::Instance().Has("API") ?            // do we have API field?
+        cache::Registry<std::string>::Instance().Get("API") :            // yes we have API field. let's get it
+        graphics::dx11::resource::DX11TextureImpl::TypeName;             // no API field, fallback to DX11
 
     static bool loaded = false;
     if (!loaded)
@@ -34,4 +32,50 @@ std::unique_ptr<graphics::renderable::ISpriteAtlas> graphics::factory::SpriteAtl
         loaded = true;
     }
     return core::Factory <std::string, graphics::renderable::ISpriteAtlas>::Instance().Create(typeName);
+}
+
+bool graphics::factory::SpriteAtlasFactory::Create(
+    const std::string& name, 
+    const std::wstring& filepath, 
+    const std::vector<math::geometry::RectF>& uvs
+)
+{
+    std::unique_ptr<graphics::renderable::ISpriteAtlas> atlas = graphics::factory::SpriteAtlasFactory::Create(filepath, uvs);
+
+    if (!atlas)
+    {
+        return false;
+    }
+    
+    cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Register(name, std::move(atlas));
+
+    return true;
+}
+
+
+std::unique_ptr<graphics::renderable::ISpriteAtlas> graphics::factory::SpriteAtlasFactory::Create(
+    const std::wstring& filepath,
+    const std::vector<math::geometry::RectF>& uvs
+)
+{
+    std::unique_ptr<graphics::renderable::ISpriteAtlas> atlas = graphics::factory::SpriteAtlasFactory::Create();
+
+    if (!atlas)
+    {
+        return nullptr;
+    }
+
+    // load image source
+    if (!atlas->Initialize(filepath.c_str()))
+    {
+        return nullptr;
+    }
+
+    // load uv 
+    if (!uvs.empty())
+    {
+        atlas->AddUVRects(uvs);
+    }
+
+    return atlas;
 }

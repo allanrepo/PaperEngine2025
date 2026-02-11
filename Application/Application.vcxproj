@@ -128,6 +128,7 @@
     <ClCompile Include="Demo.cpp" />
     <ClCompile Include="DemoAsyncLoader.cpp" />
     <ClCompile Include="DemoTileLayer.cpp" />
+    <ClCompile Include="DemoTileMap.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Utilities.cpp" />
   </ItemGroup>
@@ -137,6 +138,7 @@
     <ClInclude Include="Demo.h" />
     <ClInclude Include="DemoAsyncLoader.h" />
     <ClInclude Include="DemoTileLayer.h" />
+    <ClInclude Include="DemoTileMap.h" />
     <ClInclude Include="TestAnimation.h" />
     <ClInclude Include="TestAsyncFileReader.h" />
     <ClInclude Include="TestCanvas.h" />

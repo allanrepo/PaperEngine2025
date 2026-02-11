@@ -1,0 +1,65 @@
+﻿1. Interfaces
+
+IRenderer  
+Defines the abstract rendering contract: initialization, shutdown, batching (Begin/End), clipping, and draw methods (Draw, DrawText, DrawChar, DrawRenderable).
+This is the API surface that the rest of the engine uses.
+
+IRendererImpl  
+Extends IRenderer. It represents the actual implementation behind the renderer. This allows you to swap out different back‑ends (e.g., DirectX11 batch vs immediate) while keeping the same interface.
+
+2. Front‑end wrapper
+
+Renderer  
+Implements IRenderer but delegates all work to an internal std::unique_ptr<IRendererImpl> impl.
+Acts as a façade: the engine only talks to Renderer.
+Provides polymorphism: you can inject either DX11RendererBatchImpl or DX11RendererImmediateImpl into it.
+Prevents direct dependency on DirectX classes in higher‑level code.
+
+3. Back‑end implementations
+
+DX11RendererBase  
+Provides common DirectX11 resource management (vertex buffers, shaders, input layouts, constant buffers, blend/sampler states).
+Shared by both batch and immediate implementations.
+Encapsulates low‑level DirectX11 API calls.
+
+DX11RendererBatchImpl  
+Inherits DX11RendererBase and implements IRendererImpl.
+Optimized for batching: accumulates up to MAXSPRITEBATCH draw calls before flushing.
+Manages constant buffer arrays for multiple sprites.
+Supports clipping regions via shader constants.
+
+DX11RendererImmediateImpl  
+Inherits DX11RendererBase and implements IRendererImpl.
+Optimized for immediate mode: each draw call updates the constant buffer and issues a draw directly.
+Simpler pipeline, useful for debugging or low‑volume rendering.
+Also supports clipping regions.
+
+4. Flow of control
+
+Engine code calls Renderer methods (Draw, DrawText, etc.).
+Renderer forwards calls to its impl (IRendererImpl).
+Depending on which implementation was injected:
+DX11RendererBatchImpl accumulates draw calls and flushes in batches.
+DX11RendererImmediateImpl issues draw calls immediately.
+Both implementations rely on DX11RendererBase for DirectX11 resource setup and management.
+
+5. Visual hierarchy
+
+Engine code
+   ↓
+Renderer (façade)
+   ↓
+IRendererImpl (interface)
+   ├── DX11RendererBatchImpl (batched rendering)
+   └── DX11RendererImmediateImpl (immediate rendering)
+        ↓
+   DX11RendererBase (DirectX11 resource helpers)
+        ↓
+   DirectX11 API (buffers, shaders, states)
+
+6. Key architectural points
+
+Flexibility: swap rendering strategies without changing engine code.
+Encapsulation: engine only sees Renderer/IRenderer, not DirectX internals.
+Reusability: DX11RendererBase consolidates common DirectX setup logic.
+Performance options: batch vs immediate rendering depending on workload.
