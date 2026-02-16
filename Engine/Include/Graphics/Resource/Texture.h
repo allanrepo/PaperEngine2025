@@ -40,8 +40,8 @@ namespace graphics::resource
 		virtual void Clear(float red, float green, float blue, float alpha) override final;
 		virtual void EndDraw() override final;
 
-		virtual void Bind() override final;
-		virtual bool CanBind() override final;
+		virtual void Bind() const override final;
+		virtual bool CanBind() const override final;
 
 		virtual const unsigned int GetWidth() const override final;
 		virtual const unsigned int GetHeight() const override final;

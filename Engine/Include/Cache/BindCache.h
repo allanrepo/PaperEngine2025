@@ -25,21 +25,21 @@ namespace cache
     private:
         friend class core::Singleton<BindCache<T>>;
 
-        T* m_state = nullptr;
+        const T* m_state = nullptr;
 
     public:
         // returns true if new state is different from cached state or force is true
-        bool CanBind(T* state, bool force = false) const
+        bool CanBind(const T* state, bool force = false) const
         {
             return force || (state != m_state);
         }
 
         // binds newState if needed, using provided binder
-        void Bind(T* state, std::function<void(T*)> binder, bool force = false)
+        void Bind(const T* state, std::function<void(const T*)> binder, bool force = false)
         {
             if (CanBind(state, force))
             {
-                binder(state);
+                if (binder) binder(state);
                 m_state = state;
             }
         }
@@ -49,15 +49,7 @@ namespace cache
             m_state = nullptr;
         }
 
-        void Bind(T* state, bool force = false)
-        {
-            if (CanBind(state, force))
-            {
-                m_state = state;
-            }
-        }
-
-        T* Get()
+        const T* Get() const
         {
             return m_state;
         }

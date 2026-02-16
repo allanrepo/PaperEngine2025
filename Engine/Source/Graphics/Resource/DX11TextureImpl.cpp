@@ -154,16 +154,20 @@ bool graphics::dx11::resource::DX11TextureImpl::Initialize(const wchar_t* fileNa
 	return true;
 }
 
-bool graphics::dx11::resource::DX11TextureImpl::CanBind()
+bool graphics::dx11::resource::DX11TextureImpl::CanBind() const
 {
 	return cache::BindCache<graphics::resource::ITexture>::Instance().CanBind(this, false);
 }
 
-void graphics::dx11::resource::DX11TextureImpl::Bind()
+void graphics::dx11::resource::DX11TextureImpl::Bind() const
 {
+	cache::BindCache<graphics::resource::ITexture>::Instance().Get();
+	cache::BindCache<graphics::resource::ITexture>::Instance().Reset();
+
+
 	cache::BindCache<graphics::resource::ITexture>::Instance().Bind(
 		this, // pointer to texture to bind if needed
-		[this](graphics::resource::ITexture* tex) // lambda to perform if bind happens
+		[this](const graphics::resource::ITexture* tex) // lambda to perform if bind happens
 		{
 			if (shaderResourceView)
 			{

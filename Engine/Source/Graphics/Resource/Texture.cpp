@@ -40,12 +40,12 @@ void graphics::resource::Texture::EndDraw()
     m_impl->EndDraw();
 }
 
-void graphics::resource::Texture::Bind()
+void graphics::resource::Texture::Bind() const 
 {
     m_impl->Bind();
 }
 
-bool graphics::resource::Texture::CanBind()
+bool graphics::resource::Texture::CanBind() const
 {
     return m_impl->CanBind();
     return false;

@@ -321,6 +321,9 @@
     <ClInclude Include="Include\Engine\Factory\AnimationFactory.h">
       <Filter>Engine\Factory</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Core\Bindable.h">
+      <Filter>Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">

@@ -75,8 +75,8 @@ namespace graphics::dx11::resource
 
 		virtual bool Initialize(const wchar_t* fileNamePath) override final;
 
-		virtual bool CanBind() override final;
-		virtual void Bind() override final;
+		virtual bool CanBind() const override final;
+		virtual void Bind() const override final;
 
 		// drawing methods
 		virtual void BeginDraw() override final;

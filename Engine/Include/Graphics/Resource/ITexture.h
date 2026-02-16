@@ -1,9 +1,10 @@
 #pragma once
 #include <string>
+#include <Core/Bindable.h>
 
 namespace graphics::resource
 {
-	class ITexture
+	class ITexture: public core::IBindable
 	{
 	protected:
 		// NOTE: need to do this so derived class like Texture can call its constructor. this is because we delete copy constructor
@@ -37,9 +38,6 @@ namespace graphics::resource
 		virtual void BeginDraw() = 0;
 		virtual void Clear(float red, float green, float blue, float alpha) = 0;
 		virtual void EndDraw() = 0;
-
-		virtual void Bind() = 0;
-		virtual bool CanBind() = 0;
 
 		virtual const unsigned int GetWidth() const = 0;
 		virtual const unsigned int GetHeight() const = 0;

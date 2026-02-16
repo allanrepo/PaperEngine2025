@@ -26,6 +26,7 @@
     <ClInclude Include="Include\Components\Tile.h" />
     <ClInclude Include="Include\Containers\Dictionary.h" />
     <ClInclude Include="Include\Containers\Table.h" />
+    <ClInclude Include="Include\Core\Bindable.h" />
     <ClInclude Include="Include\Core\Event.h" />
     <ClInclude Include="Include\Core\Factory.h" />
     <ClInclude Include="Include\Core\Input.h" />
