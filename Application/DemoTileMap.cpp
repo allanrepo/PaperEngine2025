@@ -19,7 +19,7 @@ void demo::LoadTileMapState::Enter(Demo& owner)
 	graphics::factory::SpriteAtlasFactory::Create("demoTileMapAtlas", L"../Assets/4x1_128x32_tile.png", std::vector<math::geometry::RectF>());
 
 	// add UV rects on our sprite atlas
-	graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("demoTileMapAtlas");
+	graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("demoTileMapAtlas");
 	atlas.AddUVRects(demo::CalcUV(1, 4, (int)atlas.GetWidth(), (int)atlas.GetHeight()));
 
 }

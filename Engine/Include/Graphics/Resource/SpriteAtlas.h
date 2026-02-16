@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include <vector>
-#include <Graphics/Renderable/ISpriteAtlas.h>
+#include <Graphics/Resource/ISpriteAtlas.h>
 
 // forward declare
 namespace graphics
@@ -17,18 +17,18 @@ namespace graphics
 	}
 }
 
-namespace graphics::renderable
+namespace graphics::resource
 {
-	class SpriteAtlas : public graphics::renderable::ISpriteAtlas
+	class SpriteAtlas : public graphics::resource::ISpriteAtlas
 	{
 	private:
-		friend class graphics::factory::SpriteAtlasFactory;
+		friend class ::graphics::factory::SpriteAtlasFactory;
 
-		std::shared_ptr<graphics::resource::ITexture> m_texture;
+		std::shared_ptr<::graphics::resource::ITexture> m_texture;
 		std::vector<math::geometry::RectF> m_nUVs;
 
 	public:
-		SpriteAtlas(std::unique_ptr<graphics::resource::ITexture> tex);
+		SpriteAtlas(std::unique_ptr<::graphics::resource::ITexture> tex);
 		virtual ~SpriteAtlas() = default;
 
 		// ISpriteAtlas methods implementation
@@ -38,14 +38,14 @@ namespace graphics::renderable
 		virtual const inline math::geometry::RectF GetUVRect(int index) const override final;
 		virtual inline size_t GetUVRectCount() const override final;
 		virtual graphics::renderable::Sprite MakeSprite(int index) const override final;
+		virtual graphics::renderable::Sprite GetSprite() const override final;
 
 		// ISizeable methods implementation
 		virtual float GetWidth() const override final;
 		virtual float GetHeight() const override final;
 		virtual spatial::SizeF GetSize() const override final;
 
-		// IRenderable methods implementation
-		virtual math::geometry::RectF GetUVRect() const override final;
+		// IBindable methods implementation
 		virtual void Bind() const override final;
 		virtual bool CanBind() const override final;
 	};

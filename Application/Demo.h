@@ -12,7 +12,7 @@
 #include <string>
 #include <sstream>
 #include <Components/Tile.h>
-#include <Graphics/Renderable/SpriteAtlas.h>
+#include <Graphics/Resource/SpriteAtlas.h>
 #include <Containers/Table.h>
 #include <IO/ASyncFileReader.h>
 #include <unordered_map>

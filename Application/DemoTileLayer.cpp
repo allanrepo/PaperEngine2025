@@ -17,7 +17,7 @@ demo::LoadTileLayerState::~LoadTileLayerState()
 void demo::LoadTileLayerState::Enter(Demo& owner)
 {
 	// create sprite atlas to be used by tilemap
-	m_spriteAtlas = std::make_unique<graphics::renderable::SpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
+	m_spriteAtlas = std::make_unique<graphics::resource::SpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
 
 	// load sprite atlas from file manually for demo purpose
 	m_spriteAtlas->Initialize(L"../Assets/4x1_128x32_tile.png");
@@ -147,7 +147,7 @@ bool demo::LoadTileLayerState::IsFinished(Demo& owner)
 #pragma region RenderTileLayerState
 demo::RenderTileLayerState::RenderTileLayerState(
 	std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> layer,
-	std::unique_ptr<graphics::renderable::ISpriteAtlas> spriteAtlas,
+	std::unique_ptr<graphics::resource::ISpriteAtlas> spriteAtlas,
 	std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> tileSet
 ) :
 	m_layer(std::move(layer)),

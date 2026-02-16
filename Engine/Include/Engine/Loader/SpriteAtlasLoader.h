@@ -16,7 +16,7 @@
 //  - After loading, the atlas is ready to provide UV rects for sprite creation.
  
 #pragma once
-#include <Graphics/Renderable/ISpriteAtlas.h>
+#include <Graphics/Resource/ISpriteAtlas.h>
 #include <Utilities/CSVFile.h>
 #include <string>
 #include <memory>
@@ -28,7 +28,7 @@ namespace graphics::loader
     public:
         // Load atlas image + UV rects from metadata
         static bool Load(
-            graphics::renderable::ISpriteAtlas& atlas,
+            graphics::resource::ISpriteAtlas& atlas,
             const std::string& imageFilePath,
             const std::string& uvCsvFilePath
         )

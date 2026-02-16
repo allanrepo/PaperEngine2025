@@ -161,14 +161,14 @@ int main()
     //TestCamera::Test testCamera;
     //TestTile::Test testTile;
     //test::TestFileReader testFileReader;
-    //test::TestSprite testSprite;
+    test::TestSprite testSprite;
     //test::TestAnimation testAnimation;
     //demo::Demo demoInstance(std::make_unique<demo::LoadAsyncLoaderState>("..\\Assets\\256x256.csv"));
     //demo::Demo1 demoTest;
     //demo::Demo demoInstance(std::make_unique<demo::LoadTileMapState>("..\\Assets\\256x256.csv"));
     //demo::Demo demoInstance(std::make_unique<demo::DemoState>());
     //demo::Demo demoInstance(std::make_unique<demo::DemoStateCameraMap>());
-    demo::Demo demoInstance(std::make_unique<demo::DemoStateActor>());
+    //demo::Demo demoInstance(std::make_unique<demo::DemoStateActor>());
     //TestLargeMap::Test testLargeMap;
 
 

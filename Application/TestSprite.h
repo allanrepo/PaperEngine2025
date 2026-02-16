@@ -9,7 +9,7 @@
 #include <Graphics/Renderer/IRenderer.h>
 #include <Graphics/Renderer/DX11RendererBatchImpl.h>
 #include <Graphics/Renderer/Renderer.h>
-#include <Graphics/Renderable/ISpriteAtlas.h>
+#include <Graphics/Resource/ISpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
 #include <Engine/Loader/SpriteAtlasLoader.h>
 #include <Graphics/Renderable/Sprite.h>
@@ -35,7 +35,7 @@ namespace test
 		//class MockSprite : public graphics::renderable::Sprite
 		//{
 		//public:
-		//	MockSprite(graphics::renderable::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect) :
+		//	MockSprite(graphics::resource::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect) :
 		//		Sprite(spriteAtlas, rect)
 		//	{
 		//	}
@@ -45,7 +45,7 @@ namespace test
 		std::unique_ptr<Win32::Window> m_window;
 		std::unique_ptr<graphics::ICanvas> m_canvas;
 		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
-		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
+		std::unique_ptr<graphics::resource::ISpriteAtlas> m_spriteAtlas;
 		std::unique_ptr<graphics::renderable::Sprite> m_sprite;
 		spatial::SizeF m_spriteSize{};
 		input::Input m_input;
@@ -143,7 +143,7 @@ namespace test
 				m_renderer->Begin();
 				{
 					// draw the sprite atlas at half size
-					m_renderer->DrawRenderable(*m_spriteAtlas,
+					m_renderer->DrawRenderable(m_spriteAtlas->GetSprite(),
 						spatial::PositionF{ 0, 0 },
 						spatial::SizeF{ m_spriteAtlas->GetWidth()/2, m_spriteAtlas->GetHeight()/2},
 						graphics::ColorF{ 1,1,1,1 },

@@ -1,10 +1,10 @@
 #include <Graphics/Renderable/Sprite.h>
-#include <Graphics/Renderable/ISpriteAtlas.h>
-#include <Graphics/Renderable/SpriteAtlas.h>
+#include <Graphics/Resource/ISpriteAtlas.h>
+#include <Graphics/Resource/SpriteAtlas.h>
 
 
-graphics::renderable::Sprite::Sprite(const graphics::renderable::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect) :
-	View<graphics::renderable::ISpriteAtlas>(spriteAtlas),
+graphics::renderable::Sprite::Sprite(const graphics::resource::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect) :
+	View<graphics::resource::ISpriteAtlas>(spriteAtlas),
 	m_rect(rect)
 {
 }

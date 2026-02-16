@@ -22,8 +22,8 @@
 #include <Graphics/Renderer/IRenderer.h>
 #include <Graphics/Renderer/DX11RendererBatchImpl.h>
 #include <Graphics/Renderer/Renderer.h>
-#include <Graphics/Renderable/ISpriteAtlas.h>
-#include <Graphics/Renderable/SpriteAtlas.h>
+#include <Graphics/Resource/ISpriteAtlas.h>
+#include <Graphics/Resource/SpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
 #include <Engine/Loader/SpriteAtlasLoader.h>
 #include <Graphics/Renderable/Sprite.h>
@@ -39,7 +39,7 @@
 namespace TestTile
 {	
 	// we are mocking the sprite atlas class here for demo purpose so we can create sprite directly without using factory
-	class MockSpriteAtlas : public graphics::renderable::SpriteAtlas
+	class MockSpriteAtlas : public graphics::resource::SpriteAtlas
 	{
 	public:
 		MockSpriteAtlas(std::unique_ptr<graphics::resource::ITexture> tex) :

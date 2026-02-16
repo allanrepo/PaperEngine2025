@@ -237,12 +237,6 @@
     <ClInclude Include="Include\Graphics\Renderable\Sprite.h">
       <Filter>Graphics\Renderable</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\Renderable\ISpriteAtlas.h">
-      <Filter>Graphics\Renderable</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Graphics\Renderable\SpriteAtlas.h">
-      <Filter>Graphics\Renderable</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Engine\Factory\SpriteAtlasFactory.h">
       <Filter>Engine\Factory</Filter>
     </ClInclude>
@@ -324,6 +318,12 @@
     <ClInclude Include="Include\Core\Bindable.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Graphics\Resource\ISpriteAtlas.h">
+      <Filter>Graphics\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Resource\SpriteAtlas.h">
+      <Filter>Graphics\Resource</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">
@@ -392,9 +392,6 @@
     <ClCompile Include="Source\Graphics\Renderable\Sprite.cpp">
       <Filter>Graphics\Renderable</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\Renderable\SpriteAtlas.cpp">
-      <Filter>Graphics\Renderable</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Engine\Factory\SpriteAtlasFactory.cpp">
       <Filter>Engine\Factory</Filter>
     </ClCompile>
@@ -427,6 +424,9 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Loader\AsyncLoader.cpp">
       <Filter>Engine\Loader</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Resource\SpriteAtlas.cpp">
+      <Filter>Graphics\Resource</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

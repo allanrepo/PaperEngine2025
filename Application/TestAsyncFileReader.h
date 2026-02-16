@@ -20,8 +20,8 @@ on map rendering state
 #include <Graphics/Renderer/IRenderer.h>
 #include <Graphics/Renderer/DX11RendererBatchImpl.h>
 #include <Graphics/Renderer/Renderer.h>
-#include <Graphics/Renderable/ISpriteAtlas.h>
-#include <Graphics/Renderable/SpriteAtlas.h>
+#include <Graphics/Resource/ISpriteAtlas.h>
+#include <Graphics/Resource/SpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
 #include <Engine/Loader/SpriteAtlasLoader.h>
 #include <Graphics/Renderable/Sprite.h>

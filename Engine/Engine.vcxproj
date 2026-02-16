@@ -59,9 +59,7 @@
     <ClInclude Include="Include\Graphics\Renderable\IImageSurface.h" />
     <ClInclude Include="Include\Graphics\Renderable\ImageSurface.h" />
     <ClInclude Include="Include\Graphics\Renderable\IRenderable.h" />
-    <ClInclude Include="Include\Graphics\Renderable\ISpriteAtlas.h" />
     <ClInclude Include="Include\Graphics\Renderable\Sprite.h" />
-    <ClInclude Include="Include\Graphics\Renderable\SpriteAtlas.h" />
     <ClInclude Include="Include\Graphics\Renderer\DX11RendererBase.h" />
     <ClInclude Include="Include\Graphics\Renderer\DX11RendererBatchImpl.h" />
     <ClInclude Include="Include\Graphics\Renderer\DX11RendererImmediateImpl.h" />
@@ -69,8 +67,10 @@
     <ClInclude Include="Include\Graphics\Renderer\IRendererImpl.h" />
     <ClInclude Include="Include\Graphics\Renderer\Renderer.h" />
     <ClInclude Include="Include\Graphics\Resource\DX11TextureImpl.h" />
+    <ClInclude Include="Include\Graphics\Resource\ISpriteAtlas.h" />
     <ClInclude Include="Include\Graphics\Resource\ITexture.h" />
     <ClInclude Include="Include\Graphics\Resource\ITextureImpl.h" />
+    <ClInclude Include="Include\Graphics\Resource\SpriteAtlas.h" />
     <ClInclude Include="Include\Graphics\Resource\Texture.h" />
     <ClInclude Include="Include\IO\ASyncFileReader.h" />
     <ClInclude Include="Include\Job\IJob.h" />
@@ -118,12 +118,12 @@
     <ClCompile Include="Source\Graphics\Renderable\FontAtlas.cpp" />
     <ClCompile Include="Source\Graphics\Renderable\ImageSurface.cpp" />
     <ClCompile Include="Source\Graphics\Renderable\Sprite.cpp" />
-    <ClCompile Include="Source\Graphics\Renderable\SpriteAtlas.cpp" />
     <ClCompile Include="Source\Graphics\Renderer\DX11RendererBase.cpp" />
     <ClCompile Include="Source\Graphics\Renderer\DX11RendererBatchImpl.cpp" />
     <ClCompile Include="Source\Graphics\Renderer\DX11RendererImmediateImpl.cpp" />
     <ClCompile Include="Source\Graphics\Renderer\Renderer.cpp" />
     <ClCompile Include="Source\Graphics\Resource\DX11TextureImpl.cpp" />
+    <ClCompile Include="Source\Graphics\Resource\SpriteAtlas.cpp" />
     <ClCompile Include="Source\Graphics\Resource\Texture.cpp" />
     <ClCompile Include="Source\IO\ASyncFileReader.cpp" />
     <ClCompile Include="Source\Job\Job.cpp" />

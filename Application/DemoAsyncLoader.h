@@ -37,7 +37,7 @@ namespace demo
 
 		bool m_isFinished;
 
-		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
+		std::unique_ptr<graphics::resource::ISpriteAtlas> m_spriteAtlas;
 		std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> m_tileset;
 		std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> m_layer;
 

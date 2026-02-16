@@ -1,6 +1,6 @@
 #pragma once
 #include <Graphics/Animation/Animation.h>
-#include <Graphics/Renderable/ISpriteAtlas.h>
+#include <Graphics/Resource/ISpriteAtlas.h>
 #include <Graphics/Renderable/Sprite.h>
 
 namespace engine
@@ -11,7 +11,7 @@ namespace engine
 		{
 			using Sprite = ::graphics::renderable::Sprite;
 			using Animation = ::graphics::animation::Animation<Sprite>;
-			using ISpriteAtlas = ::graphics::renderable::ISpriteAtlas;
+			using ISpriteAtlas = ::graphics::resource::ISpriteAtlas;
 
 			class AnimationFactory
 			{

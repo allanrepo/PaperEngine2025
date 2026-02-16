@@ -9,8 +9,8 @@
 #include <Graphics/Renderer/IRenderer.h>
 #include <Graphics/Renderer/DX11RendererBatchImpl.h>
 #include <Graphics/Renderer/Renderer.h>
-#include <Graphics/Renderable/ISpriteAtlas.h>
-#include <Graphics/Renderable/SpriteAtlas.h>
+#include <Graphics/Resource/ISpriteAtlas.h>
+#include <Graphics/Resource/SpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
 #include <Engine/Loader/SpriteAtlasLoader.h>
 #include <Graphics/Renderable/Sprite.h>
@@ -55,7 +55,7 @@ namespace TestLargeMap
 		std::unique_ptr<Win32::Window> m_window;
 		std::unique_ptr<graphics::ICanvas> m_canvas;
 		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
-		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
+		std::unique_ptr<graphics::resource::ISpriteAtlas> m_spriteAtlas;
 		timer::StopWatch m_stopwatch;
 		engine::component::tile::Tileset<RenderableTile> m_tileset;
 		engine::component::tile::TileGrid<RenderableTile> m_tilegrid;
@@ -151,7 +151,7 @@ namespace TestLargeMap
 			LOG("Renderer (DX11) created...");
 
 			// create sprite atlas manually for demo purpose
-			m_spriteAtlas = std::make_unique<graphics::renderable::SpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
+			m_spriteAtlas = std::make_unique<graphics::resource::SpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
 
 			// load sprite atlas from file manually for demo purpose
 			m_spriteAtlas->Initialize(L"../Assets/4x1_128x32_tile.png");

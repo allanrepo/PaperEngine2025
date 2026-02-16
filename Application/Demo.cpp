@@ -6,7 +6,7 @@
 #include "Demo.h"
 #include <Job/IJob.h>
 #include <Job/Job.h>
-#include <Graphics/Renderable/SpriteAtlas.h>
+#include <Graphics/Resource/SpriteAtlas.h>
 #include "Utilities.h"
 #include <Containers/Table.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
@@ -285,7 +285,7 @@ void demo::DemoState::Enter(Demo& owner)
 	{
 		// create sprite atlas for tilemap (grass, wall, etc...)
 		graphics::factory::SpriteAtlasFactory::Create("576x384TileSet", L"../Assets/576x384px_6x9tile_TileMap.png", 6, 9);
-		graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("576x384TileSet");
+		graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
 
 		// create animated tileset for tilemap (grass, wall, etc...)
 		owner.TileSetManager().Create("576x384TileSet");
@@ -305,7 +305,7 @@ void demo::DemoState::Enter(Demo& owner)
 	{
 		// create sprite atlas for the water splash animation
 		graphics::factory::SpriteAtlasFactory::Create("3072x192TileSet", L"../Assets/3072x192px_1x17tile_waterfoam.png", 1, 16);
-		graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("3072x192TileSet");
+		graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("3072x192TileSet");
 
 		// load all sprite atlas's sprites into animation object
 		graphics::animation::Animation<graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
@@ -358,7 +358,7 @@ void demo::DemoState::Update(Demo& owner, double delta)
 	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
 
 
-	//graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("576x384TileSet");
+	//graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
 	//{
 	//	std::unique_ptr<engine::command::graphics::renderer::DrawRenderableCommand> drawRenderableCmd =
 	//		std::make_unique<engine::command::graphics::renderer::DrawRenderableCommand>(
@@ -475,7 +475,7 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 	{
 		// create sprite atlas for tilemap (grass, wall, etc...)
 		graphics::factory::SpriteAtlasFactory::Create("576x384TileSet", L"../Assets/576x384px_6x9tile_TileMap.png", 6, 9);
-		graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("576x384TileSet");
+		graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
 
 		// create animated tileset for tilemap (grass, wall, etc...)
 		owner.TileSetManager().Create("576x384TileSet");
@@ -495,7 +495,7 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 	{
 		// create sprite atlas for the water splash animation
 		graphics::factory::SpriteAtlasFactory::Create("3072x192TileSet", L"../Assets/3072x192px_1x17tile_waterfoam.png", 1, 16);
-		graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("3072x192TileSet");
+		graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("3072x192TileSet");
 
 		// load all sprite atlas's sprites into animation object
 		graphics::animation::Animation<graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
@@ -672,7 +672,7 @@ void demo::DemoStateActor::Enter(Demo& owner)
 	{
 		// create sprite atlas for tilemap (grass, wall, etc...)
 		graphics::factory::SpriteAtlasFactory::Create("Character", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12);
-		graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("Character");
+		graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("Character");
 
 		// create animated tileset for tilemap (grass, wall, etc...)
 		owner.TileSetManager().Create("Character");
