@@ -1,12 +1,12 @@
 #include <Win32/Window.h>
 
-std::unordered_map<std::wstring, int> Win32::Window::WindowClassManager::s_mapRefCount;
+std::unordered_map<std::wstring, int> engine::win32::Window::WindowClassManager::s_mapRefCount;
 
-event::Event<> Win32::Window::OnInitialize;
-event::Event<> Win32::Window::OnIdle;
-event::Event<> Win32::Window::OnExit;
+event::Event<> engine::win32::Window::OnInitialize;
+event::Event<> engine::win32::Window::OnIdle;
+event::Event<> engine::win32::Window::OnExit;
 
-void Win32::Window::Run()
+void engine::win32::Window::Run()
 {
 	OnInitialize();
 
@@ -35,7 +35,7 @@ void Win32::Window::Run()
 	OnExit();
 }
 
-bool Win32::Window::WindowClassManager::Register(HINSTANCE hInstance, const std::wstring& wszClassName, WNDCLASSEXW& wcex)
+bool engine::win32::Window::WindowClassManager::Register(HINSTANCE hInstance, const std::wstring& wszClassName, WNDCLASSEXW& wcex)
 {
 	if (s_mapRefCount[wszClassName]++ == 0)
 	{
@@ -51,7 +51,7 @@ bool Win32::Window::WindowClassManager::Register(HINSTANCE hInstance, const std:
 	return true;
 }
 
-void Win32::Window::WindowClassManager::Unregister(HINSTANCE hInstance, const std::wstring& wszClassName)
+void engine::win32::Window::WindowClassManager::Unregister(HINSTANCE hInstance, const std::wstring& wszClassName)
 {
 	auto it = s_mapRefCount.find(wszClassName);
 	if (it != s_mapRefCount.end() && --it->second <= 0)
@@ -61,7 +61,7 @@ void Win32::Window::WindowClassManager::Unregister(HINSTANCE hInstance, const st
 	}
 }
 
-LRESULT Win32::Window::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT engine::win32::Window::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	OnWindowMessage(uMsg, wParam, lParam);
 
@@ -157,7 +157,7 @@ LRESULT Win32::Window::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 	return 0;
 }
 
-bool Win32::Window::Register(WNDCLASSEXW& wcex)
+bool engine::win32::Window::Register(WNDCLASSEXW& wcex)
 {
 	// register window class safely. this helper will register only if there is no window using the same class name yet
 	if (!WindowClassManager::Register(m_hInstance, m_wszClassName, wcex))
@@ -168,14 +168,14 @@ bool Win32::Window::Register(WNDCLASSEXW& wcex)
 	return true;
 }
 
-void Win32::Window::Unregister()
+void engine::win32::Window::Unregister()
 {
 	WindowClassManager::Unregister(m_hInstance, m_wszClassName);
 }
 
-int Win32::Window::s_nRefCount = 0;
+int engine::win32::Window::s_nRefCount = 0;
 
-Win32::Window::Window(const std::wstring& wszClassName)
+engine::win32::Window::Window(const std::wstring& wszClassName)
 	:WindowBase(wszClassName)
 {
 }

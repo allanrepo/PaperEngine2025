@@ -3,7 +3,7 @@
 #include <Windows.h>
 #include "IWindow.h"
 
-namespace Win32
+namespace engine::win32
 {
 	class WindowBase : public IWindow
 	{

@@ -5,7 +5,7 @@
 #include <chrono>
 #include <thread>
 
-namespace timer
+namespace engine::timer
 {
     using scalar = float;
 

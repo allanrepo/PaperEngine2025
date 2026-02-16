@@ -1,6 +1,6 @@
 #include <Timer/Pulse.h>
 
-timer::Pulse::Pulse(
+engine::timer::Pulse::Pulse(
     double interval,
     Mode mode,
     bool resetOnOverflow,
@@ -15,7 +15,7 @@ timer::Pulse::Pulse(
 {
 }
 
-void timer::Pulse::Reset()
+void engine::timer::Pulse::Reset()
 {
     m_elapsedTimeAccumulator = 0.0;
     m_running = true;
@@ -27,7 +27,7 @@ void timer::Pulse::Reset()
 // - OnAlarm every interval  
 // - OnInterval once for OneShot  
 // - OnMaxIntervalPerUpdateReached if triggers exceed cap 
-void timer::Pulse::Update(double delta)
+void engine::timer::Pulse::Update(double delta)
 {
     if (!m_running)
     {

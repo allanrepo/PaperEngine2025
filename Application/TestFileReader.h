@@ -83,10 +83,10 @@ namespace test
 		
 			// put temporary delay to simulate processing time
 
-			timer::StopWatch sw;
+			engine::timer::StopWatch sw;
 
 			sw.Start();
-			while (sw.Peek<timer::milliseconds>() < 10.0f)
+			while (sw.Peek<engine::timer::milliseconds>() < 10.0f)
 			{
 				// busy wait
 			}

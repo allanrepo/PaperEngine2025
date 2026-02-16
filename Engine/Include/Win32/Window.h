@@ -4,7 +4,7 @@
 #include <Core/Event.h>
 #include <unordered_map>
 #
-namespace Win32
+namespace engine::win32
 {
 	class Window : public WindowBase
 	{

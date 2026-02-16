@@ -21,7 +21,7 @@
 // -----------------------------------------------------------------------------------------------------------
 
 
-namespace timer
+namespace engine::timer
 {
 	template <typename C>
 	class Schedule
@@ -103,9 +103,9 @@ namespace timer
 	class Scheduler
 	{
 	private:
-		std::vector<std::unique_ptr<timer::Pulse>> m_pulses;
+		std::vector<std::unique_ptr<engine::timer::Pulse>> m_pulses;
 
-		timer::Pulse& GetOrCreatePulse(double interval, bool resetOnOverflow, size_t maxTriggerPerUpdate)
+		engine::timer::Pulse& GetOrCreatePulse(double interval, bool resetOnOverflow, size_t maxTriggerPerUpdate)
 		{
 			for (auto& pulse : m_pulses)
 			{
@@ -115,7 +115,7 @@ namespace timer
 				}
 			}
 			// if not found, create a new one
-			m_pulses.push_back(std::make_unique<timer::Pulse>(interval, timer::Pulse::Mode::Persistent, resetOnOverflow, maxTriggerPerUpdate));
+			m_pulses.push_back(std::make_unique<engine::timer::Pulse>(interval, engine::timer::Pulse::Mode::Persistent, resetOnOverflow, maxTriggerPerUpdate));
 			return *m_pulses.back();
 		}
 

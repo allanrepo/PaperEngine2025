@@ -23,7 +23,7 @@ namespace test
 	class TestCanvas
 	{
 	private:
-		std::unique_ptr<Win32::Window> m_window;
+		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		std::unique_ptr<engine::graphics::renderable::IDrawableSurface> m_drawableSurface;
@@ -33,18 +33,18 @@ namespace test
 	public:
 		TestCanvas()
 		{
-			Win32::Window::OnInitialize += event::Handler(this, &TestCanvas::OnInitialize);
-			Win32::Window::OnExit += event::Handler(this, &TestCanvas::OnExit);
-			Win32::Window::OnIdle += event::Handler(this, &TestCanvas::OnIdle);
+			engine::win32::Window::OnInitialize += event::Handler(this, &TestCanvas::OnInitialize);
+			engine::win32::Window::OnExit += event::Handler(this, &TestCanvas::OnExit);
+			engine::win32::Window::OnIdle += event::Handler(this, &TestCanvas::OnIdle);
 
-			Win32::Window::Run();
+			engine::win32::Window::Run();
 		}
 
 		// function that will be called just before we enter into message loop
 		void OnInitialize()
 		{
 			// create our window here
-			m_window = std::make_unique<Win32::Window>();
+			m_window = std::make_unique<engine::win32::Window>();
 			m_window->OnClose += event::Handler(this, &TestCanvas::OnWindowClose);
 			m_window->OnCreate += event::Handler(this, &TestCanvas::OnWindowCreate);
 			m_window->OnSize += event::Handler(this, &TestCanvas::OnWindowSize);

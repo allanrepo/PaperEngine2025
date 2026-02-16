@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace Win32
+namespace engine::win32
 {
 	class IWindow
 	{

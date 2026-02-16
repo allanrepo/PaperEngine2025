@@ -60,7 +60,7 @@ demo::Demo::Demo(std::unique_ptr<engine::state::State<Demo>> state) :
 	// the scheduler fires up event that is registered at specific interval.
 	// we subscribe to be notified every x elapsed time so we can update ourselves at consistent frame rate
 	// in our demo this is where we update our state machine
-	m_engine.Scheduler() += timer::Schedule(1.0f / 100.0f, this, &Demo::OnUpdate, true, 1);
+	m_engine.Scheduler() += engine::timer::Schedule(1.0f / 100.0f, this, &Demo::OnUpdate, true, 1);
 
 	// let the engine run!
 	m_engine.Run();

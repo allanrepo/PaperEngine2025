@@ -230,7 +230,7 @@ namespace engine::graphics::animation
 		class TestClass
 		{
 		private:
-			timer::StopWatch stopwatch;
+			engine::timer::StopWatch stopwatch;
 			animation::Animator<int> animator;
 			animation::Animation<int> animation;
 

@@ -26,13 +26,13 @@ engine::Engine::Engine(
 	// now we can setup window event handlers...
 
 	// this event will fire up just before window application is created
-	Win32::Window::OnInitialize += event::Handler(this, &Engine::Initialize);
+	engine::win32::Window::OnInitialize += event::Handler(this, &Engine::Initialize);
 
 	// this event will fire up after window application closes
-	Win32::Window::OnExit += event::Handler(this, &Engine::Exit);
+	engine::win32::Window::OnExit += event::Handler(this, &Engine::Exit);
 
 	// this event will fire up on every windows message loop (main loop)
-	Win32::Window::OnIdle += event::Handler(this, &Engine::Idle);
+	engine::win32::Window::OnIdle += event::Handler(this, &Engine::Idle);
 }
 
 engine::Engine::~Engine()
@@ -42,7 +42,7 @@ engine::Engine::~Engine()
 void engine::Engine::Run()
 {
 	// now run the window message loop
-	Win32::Window::Run();
+	engine::win32::Window::Run();
 }
 
 void engine::Engine::Initialize()
@@ -51,7 +51,7 @@ void engine::Engine::Initialize()
 	//container::Dictionary<>& environmentConfig = cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig");
 
 	// create our window application object here
-	m_window = std::make_unique<Win32::Window>();
+	m_window = std::make_unique<engine::win32::Window>();
 
 	// subscribe the window application's events...
 

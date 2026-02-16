@@ -29,7 +29,7 @@ bool engine::graphics::renderable::FontAtlas::Initialize(const std::string& font
 		// create a font atlas of specified font drawn in a bitmap array
 		// also get the width and height of the bitmap so it will be used for creating texture of that size to draw the bitmap
 		// also get the array of coords (normalized) that map each characters in the bitmap
-		if (!Win32::GDIUtility::GenerateFontAtlas(&srcData, width, height, m_textNormalizedCoords, fontName, fontSize))
+		if (!engine::win32::GDIUtility::GenerateFontAtlas(&srcData, width, height, m_textNormalizedCoords, fontName, fontSize))
 		{
 			LOGERROR("Failed to create font resource.");
 			return false;

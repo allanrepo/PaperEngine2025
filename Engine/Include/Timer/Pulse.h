@@ -4,7 +4,7 @@
 #include <Core/Event.h>
 #include <Timer/Timer.h>
 
-namespace timer
+namespace engine::timer
 {
     //------------------------------------------------------------------------------
     // Fires events every specified time - interval.

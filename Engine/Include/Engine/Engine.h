@@ -37,10 +37,10 @@ namespace engine
 	class Engine
 	{
 	private:
-		std::unique_ptr<Win32::Window> m_window;
+		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
-		timer::StopWatch m_stopwatch;
+		engine::timer::StopWatch m_stopwatch;
 		command::CommandQueue m_commandQueue;
 		performance::FrameRateMonitor m_mainLoopMonitor;
 		performance::FrameRateMonitor m_renderMonitorMonitor;
@@ -84,7 +84,7 @@ namespace engine
 		event::Event<size_t, size_t> ResizeEvent;
 		event::Event<UINT, WPARAM, LPARAM> ProcessWin32MessageEvent;
 
-		timer::StopWatch& Timer()
+		engine::timer::StopWatch& Timer()
 		{
 			return m_stopwatch;
 		}

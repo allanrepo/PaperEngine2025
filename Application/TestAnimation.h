@@ -49,28 +49,28 @@ namespace test
 	class TestAnimation
 	{
 	private:
-		std::unique_ptr<Win32::Window> m_window;
+		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		std::unique_ptr<MockSpriteAtlas> m_spriteAtlas;
 		std::unique_ptr<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>> m_animator;
-		timer::StopWatch m_stopwatch;
+		engine::timer::StopWatch m_stopwatch;
 
 	public:
 		TestAnimation()
 		{
-			Win32::Window::OnInitialize += event::Handler(this, &TestAnimation::OnInitialize);
-			Win32::Window::OnExit += event::Handler(this, &TestAnimation::OnExit);
-			Win32::Window::OnIdle += event::Handler(this, &TestAnimation::OnIdle);
+			engine::win32::Window::OnInitialize += event::Handler(this, &TestAnimation::OnInitialize);
+			engine::win32::Window::OnExit += event::Handler(this, &TestAnimation::OnExit);
+			engine::win32::Window::OnIdle += event::Handler(this, &TestAnimation::OnIdle);
 
-			Win32::Window::Run();
+			engine::win32::Window::Run();
 		}
 
 		// function that will be called just before we enter into message loop
 		void OnInitialize()
 		{
 			// create our window here
-			m_window = std::make_unique<Win32::Window>();
+			m_window = std::make_unique<engine::win32::Window>();
 			m_window->OnClose += event::Handler(this, &TestAnimation::OnWindowClose);
 			m_window->OnCreate += event::Handler(this, &TestAnimation::OnWindowCreate);
 			m_window->OnSize += event::Handler(this, &TestAnimation::OnWindowSize);
@@ -138,7 +138,7 @@ namespace test
 		void OnIdle()
 		{
 			// call lap to get elapsed time and trigger OnLap event
-			m_stopwatch.Lap<timer::milliseconds>();
+			m_stopwatch.Lap<engine::timer::milliseconds>();
 
 			// start the canvas. we can draw from here
 			m_canvas->Begin();

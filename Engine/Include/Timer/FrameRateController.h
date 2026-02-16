@@ -1,7 +1,7 @@
 #pragma once
 #include <Core/Event.h>
 
-namespace timer
+namespace engine::timer
 {
 	class FrameRateController
 	{

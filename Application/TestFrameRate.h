@@ -24,12 +24,12 @@ namespace testFrameRate
 	private:
 		friend class core::Singleton<Test>;
 
-		std::unique_ptr<Win32::Window> m_window;
+		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
-		timer::StopWatch m_stopwatch;
+		engine::timer::StopWatch m_stopwatch;
 		std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
-		timer::Scheduler m_scheduler;
+		engine::timer::Scheduler m_scheduler;
 		engine::performance::FrameRateMonitor m_frameRateMonitor1;
 		engine::performance::FrameRateMonitor m_frameRateMonitor2;
 		engine::performance::FrameRateMonitor m_frameRateMonitor3;
@@ -41,21 +41,21 @@ namespace testFrameRate
 			m_frameRateMonitor3(1.0f),
 			m_frameRateMonitor4(1.0f)
 		{
-			Win32::Window::OnInitialize += event::Handler(this, &Test::OnInitialize);
-			Win32::Window::OnIdle += event::Handler(this, &Test::OnIdle);
+			engine::win32::Window::OnInitialize += event::Handler(this, &Test::OnInitialize);
+			engine::win32::Window::OnIdle += event::Handler(this, &Test::OnIdle);
 		}
 
 	public:
 		void Run()
 		{
-			Win32::Window::Run();
+			engine::win32::Window::Run();
 		}
 
 		// function that will be called just before we enter into message loop
 		void OnInitialize()
 		{
 			// create our window here
-			m_window = std::make_unique<Win32::Window>();
+			m_window = std::make_unique<engine::win32::Window>();
 			m_window->OnCreate += event::Handler(this, &Test::OnWindowCreate);
 			m_window->OnSize += event::Handler(this, &Test::OnWindowSize);
 			m_window->Create(L"Test Frame Rate Monitor and Scheduler", 1400, 900);
@@ -83,13 +83,13 @@ namespace testFrameRate
 			LOG("Font atlas created and initialized...");
 
 			// subscribe to scheduler using class method
-			m_scheduler += timer::Schedule(1 / 30.0f, this, &Test::ScheduledEventHandlerMethod, false, 5);
+			m_scheduler += engine::timer::Schedule(1 / 30.0f, this, &Test::ScheduledEventHandlerMethod, false, 5);
 
 			// subscribe to scheduler using regular function (using static method from Test class, same thing as regular function)
-			m_scheduler += timer::Schedule(1 / 60.0f, &Test::ScheduledEventHandlerFunction);
+			m_scheduler += engine::timer::Schedule(1 / 60.0f, &Test::ScheduledEventHandlerFunction);
 
 			// subscribe to scheduler using lambda
-			m_scheduler += timer::Schedule(1.0f / 1.0f, std::function<void(double)>([this](double delta)
+			m_scheduler += engine::timer::Schedule(1.0f / 1.0f, std::function<void(double)>([this](double delta)
 				{
 					m_frameRateMonitor1.OnFrameCompleted(delta);
 				}));
@@ -155,7 +155,7 @@ namespace testFrameRate
 		void OnIdle()
 		{
 			// call lap to get elapsed time and trigger OnLap event
-			m_stopwatch.Lap<timer::seconds>();
+			m_stopwatch.Lap<engine::timer::seconds>();
 		}
 
 		void OnWindowSize(size_t nWidth, size_t nHeight)

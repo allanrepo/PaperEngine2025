@@ -42,7 +42,7 @@ namespace test
 		//};
 
 	private:
-		std::unique_ptr<Win32::Window> m_window;
+		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
@@ -53,18 +53,18 @@ namespace test
 	public:
 		TestSprite()
 		{
-			Win32::Window::OnInitialize += event::Handler(this, &TestSprite::OnInitialize);
-			Win32::Window::OnExit += event::Handler(this, &TestSprite::OnExit);
-			Win32::Window::OnIdle += event::Handler(this, &TestSprite::OnIdle);
+			engine::win32::Window::OnInitialize += event::Handler(this, &TestSprite::OnInitialize);
+			engine::win32::Window::OnExit += event::Handler(this, &TestSprite::OnExit);
+			engine::win32::Window::OnIdle += event::Handler(this, &TestSprite::OnIdle);
 
-			Win32::Window::Run();
+			engine::win32::Window::Run();
 		}
 
 		// function that will be called just before we enter into message loop
 		void OnInitialize()
 		{
 			// create our window here
-			m_window = std::make_unique<Win32::Window>();
+			m_window = std::make_unique<engine::win32::Window>();
 			m_window->OnClose += event::Handler(this, &TestSprite::OnWindowClose);
 			m_window->OnCreate += event::Handler(this, &TestSprite::OnWindowCreate);
 			m_window->OnSize += event::Handler(this, &TestSprite::OnWindowSize);

@@ -1,8 +1,8 @@
-﻿Win32::IWindow (interface)
-└── Win32::WindowBase (abstract base)
+﻿engine::win32::IWindow (interface)
+└── engine::win32::WindowBase (abstract base)
     ├── Holds HWND, HINSTANCE, class name
     ├── Provides Register/Unregister, WindowProc, OnIdle
-    └── Win32::Window (concrete implementation)
+    └── engine::win32::Window (concrete implementation)
         ├── Nested WindowClassManager
         │   └── Manages Win32 class registration/unregistration
         ├── Static ref count

@@ -9,23 +9,23 @@ namespace test
 	class TestWin32
 	{
 	private:
-		std::unique_ptr<Win32::Window> window;
+		std::unique_ptr<engine::win32::Window> window;
 
 	public:
 		TestWin32()
 		{
-			Win32::Window::OnInitialize += event::Handler(this, &TestWin32::OnInitialize);
-			Win32::Window::OnExit += event::Handler(this, &TestWin32::OnExit);
-			Win32::Window::OnIdle += event::Handler(this, &TestWin32::OnIdle);
+			engine::win32::Window::OnInitialize += event::Handler(this, &TestWin32::OnInitialize);
+			engine::win32::Window::OnExit += event::Handler(this, &TestWin32::OnExit);
+			engine::win32::Window::OnIdle += event::Handler(this, &TestWin32::OnIdle);
 
-			Win32::Window::Run();
+			engine::win32::Window::Run();
 		}
 
 		// function that will be called just before we enter into message loop
 		void OnInitialize()
 		{
 			// create our window here
-			window = std::make_unique<Win32::Window>();
+			window = std::make_unique<engine::win32::Window>();
 			window->OnClose += event::Handler(this, &TestWin32::OnWindowClose);
 			window->OnCreate += event::Handler(this, &TestWin32::OnWindowCreate);
 			window->OnSize += event::Handler(this, &TestWin32::OnWindowSize);
@@ -38,8 +38,6 @@ namespace test
 			LOG("Window created...");
 		}
 
-
-
 		// fun stuff. this is called on each loop of the message loop. this is where we draw!
 		void OnIdle()
 		{
@@ -49,6 +47,8 @@ namespace test
 		{
 
 		}
+
+
 
 		void OnWindowClose()
 		{

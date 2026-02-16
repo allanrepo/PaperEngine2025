@@ -1,17 +1,17 @@
 #include <Win32/WindowBase.h>
 
-Win32::WindowBase::WindowBase(const std::wstring& wszClassName)
+engine::win32::WindowBase::WindowBase(const std::wstring& wszClassName)
 {
 	m_hWnd = nullptr;
 	m_hInstance = GetModuleHandle(NULL);
 	m_wszClassName = wszClassName;
 }
 
-Win32::WindowBase::~WindowBase()
+engine::win32::WindowBase::~WindowBase()
 {
 }
 
-bool Win32::WindowBase::Create(const std::wstring& wszWindowTitle, const int width, const int height)
+bool engine::win32::WindowBase::Create(const std::wstring& wszWindowTitle, const int width, const int height)
 {
 	// check if window class is already registered. if not, register it
 	WNDCLASSEX wcex = {};
@@ -51,7 +51,7 @@ bool Win32::WindowBase::Create(const std::wstring& wszWindowTitle, const int wid
 	return true;
 }
 
-void Win32::WindowBase::Run()
+void engine::win32::WindowBase::Run()
 {
 	// listen for message events
 	MSG msg = {};
@@ -70,11 +70,11 @@ void Win32::WindowBase::Run()
 
 }
 
-void Win32::WindowBase::OnIdle()
+void engine::win32::WindowBase::OnIdle()
 {
 }
 
-bool Win32::WindowBase::Register(WNDCLASSEXW& wcex)
+bool engine::win32::WindowBase::Register(WNDCLASSEXW& wcex)
 {
 	if (!RegisterClassExW(&wcex))
 	{
@@ -84,7 +84,7 @@ bool Win32::WindowBase::Register(WNDCLASSEXW& wcex)
 	return true;
 }
 
-void Win32::WindowBase::Unregister()
+void engine::win32::WindowBase::Unregister()
 {
 	WNDCLASSEX wcex = {};
 	if (GetClassInfoEx(m_hInstance, m_wszClassName.c_str(), &wcex))
@@ -97,7 +97,7 @@ void Win32::WindowBase::Unregister()
 /// sends WM_QUIT message to the application that spawns this window
 /// typically, the application's message loop handles WM_QUIT message to break off message loop and exit the application
 /// </summary>
-void Win32::WindowBase::Quit()
+void engine::win32::WindowBase::Quit()
 {
 	PostQuitMessage(0);
 }
@@ -105,7 +105,7 @@ void Win32::WindowBase::Quit()
 /// <summary>
 /// close this window thereby destroying it
 /// </summary>
-void Win32::WindowBase::Close()
+void engine::win32::WindowBase::Close()
 {
 	if (m_hWnd)
 	{
@@ -116,7 +116,7 @@ void Win32::WindowBase::Close()
 	}
 }
 
-void Win32::WindowBase::SetClientSize(int width, int height)
+void engine::win32::WindowBase::SetClientSize(int width, int height)
 {
 	RECT rc = { 0, 0, width, height };
 	unsigned long dwStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
@@ -127,7 +127,7 @@ void Win32::WindowBase::SetClientSize(int width, int height)
 	SetWindowPos(m_hWnd, HWND_NOTOPMOST, rc.left, rc.top, width, height, SWP_SHOWWINDOW);
 }
 
-LRESULT CALLBACK Win32::WindowBase::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK engine::win32::WindowBase::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
@@ -148,7 +148,7 @@ LRESULT CALLBACK Win32::WindowBase::WindowProc(HWND hWnd, UINT uMsg, WPARAM wPar
 	return 0;
 }
 
-LRESULT CALLBACK Win32::WindowBase::staticWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK engine::win32::WindowBase::staticWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	WindowBase* pWnd;
 
@@ -156,12 +156,12 @@ LRESULT CALLBACK Win32::WindowBase::staticWindowProc(HWND hWnd, UINT uMsg, WPARA
 	if (uMsg == WM_NCCREATE)
 	{
 		LPCREATESTRUCT pCreateStruct = reinterpret_cast<LPCREATESTRUCT>(lParam);
-		pWnd = static_cast<Win32::WindowBase*>(pCreateStruct->lpCreateParams);
+		pWnd = static_cast<engine::win32::WindowBase*>(pCreateStruct->lpCreateParams);
 		SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pWnd));
 	}
 
 	// Get the pointer to the window that call this procedure
-	pWnd = reinterpret_cast<Win32::WindowBase*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+	pWnd = reinterpret_cast<engine::win32::WindowBase*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
 	// if the window exists, call this window's specific message handler
 	if (pWnd)

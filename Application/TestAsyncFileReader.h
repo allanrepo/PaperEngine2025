@@ -156,10 +156,10 @@ namespace TestAsyncFileReader
 		{
 			// put temporary delay to simulate processing time
 
-			timer::StopWatch sw;
+			engine::timer::StopWatch sw;
 
 			sw.Start();
-			while (sw.Peek<timer::milliseconds>() < 0.25)
+			while (sw.Peek<engine::timer::milliseconds>() < 0.25)
 			{
 				// busy wait
 			}
@@ -188,9 +188,9 @@ namespace TestAsyncFileReader
 			if (n > 0)
 			{
 				int nn = 0;
-				timer::StopWatch sw;
+				engine::timer::StopWatch sw;
 				sw.Start();
-				while (sw.Peek<timer::milliseconds>() < 1)
+				while (sw.Peek<engine::timer::milliseconds>() < 1)
 				{
 					nn++;
 					ProcessChunk(buffer.data(), static_cast<size_t>(n));
@@ -329,10 +329,10 @@ namespace TestAsyncFileReader
 	class Test
 	{
 	private:
-		std::unique_ptr<Win32::Window> m_window;
+		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
-		timer::StopWatch m_stopwatch;
+		engine::timer::StopWatch m_stopwatch;
 		AsyncFileReader m_fileReader;
 		AsyncFileReader m_fileReader1;
 		AsyncFileReader m_fileReader2;
@@ -342,9 +342,9 @@ namespace TestAsyncFileReader
 		engine::performance::FrameRateMonitor m_frameRateMonitor;
 		engine::performance::FrameRateMonitor m_stateFrameRateMonitor;
 
-		timer::FrameRateController m_frameRateController;
+		engine::timer::FrameRateController m_frameRateController;
 
-		timer::Scheduler m_scheduler;
+		engine::timer::Scheduler m_scheduler;
 		
 		JobQueue m_jobQueue;
 
@@ -361,20 +361,20 @@ namespace TestAsyncFileReader
 			m_stateFrameRateMonitor(1.0),
 			m_frameRateController(60.0)
 		{
-			Win32::Window::OnInitialize += event::Handler(this, &Test::OnInitialize);
-			Win32::Window::OnExit += event::Handler(this, &Test::OnExit);
-			Win32::Window::OnIdle += event::Handler(this, &Test::OnIdle);
+			engine::win32::Window::OnInitialize += event::Handler(this, &Test::OnInitialize);
+			engine::win32::Window::OnExit += event::Handler(this, &Test::OnExit);
+			engine::win32::Window::OnIdle += event::Handler(this, &Test::OnIdle);
 
 			input::Input::Instance().MouseDownEvent += event::Handler(this, &Test::OnMouseDown);
 
-			Win32::Window::Run();
+			engine::win32::Window::Run();
 		}
 
 		// function that will be called just before we enter into message loop
 		void OnInitialize()
 		{
 			// create our window here
-			m_window = std::make_unique<Win32::Window>();
+			m_window = std::make_unique<engine::win32::Window>();
 			m_window->OnClose += event::Handler(this, &Test::OnWindowClose);
 			m_window->OnCreate += event::Handler(this, &Test::OnWindowCreate);
 			m_window->OnSize += event::Handler(this, &Test::OnWindowSize);
@@ -410,7 +410,7 @@ namespace TestAsyncFileReader
 
 			m_frameRateController += event::Handler(this, &Test::OnUpdateFileReader);
 
-			m_scheduler += timer::Schedule(1.0/1000.0, this, &Test::OnUpdateFileReader, true, 1);
+			m_scheduler += engine::timer::Schedule(1.0/1000.0, this, &Test::OnUpdateFileReader, true, 1);
 
 			m_files.push_back("small.csv");
 			m_files.push_back("big.csv");
@@ -599,7 +599,7 @@ namespace TestAsyncFileReader
 			input::Input::Instance().Update();
 
 			// call lap to get elapsed time and trigger OnLap event
-			m_stopwatch.Lap<timer::seconds>();
+			m_stopwatch.Lap<engine::timer::seconds>();
 
 			// start the canvas. we can draw from here
 			m_canvas->Begin();

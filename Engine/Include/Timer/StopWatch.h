@@ -8,7 +8,7 @@
 
 #pragma comment(lib, "winmm.lib")
 
-namespace timer
+namespace engine::timer
 {
     using milliseconds = std::milli;
     using microseconds = std::micro;

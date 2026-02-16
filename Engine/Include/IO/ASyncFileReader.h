@@ -96,7 +96,7 @@ namespace engine
 					return;
 				}
 
-				timer::StopWatch sw;
+				engine::timer::StopWatch sw;
 				sw.Start();
 				while (!m_filestream.eof())
 				{

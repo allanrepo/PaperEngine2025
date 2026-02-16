@@ -54,11 +54,11 @@ namespace TestCamera
 	class Test
 	{
 	private:
-		std::unique_ptr<Win32::Window> m_window;
+		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
-		timer::StopWatch m_stopwatch;
+		engine::timer::StopWatch m_stopwatch;
 		engine::component::tile::Tileset<RenderableTile> m_tileset;
 		engine::component::tile::TileGrid<RenderableTile> m_tilegrid;
 		engine::spatial::SizeF m_tileSize{ 32.0f, 32.0f };
@@ -72,15 +72,15 @@ namespace TestCamera
 		Test():
 			m_camera({ 250, 250, 720, 640 })
 		{
-			Win32::Window::OnInitialize += event::Handler(this, &Test::OnInitialize);
-			Win32::Window::OnExit += event::Handler(this, &Test::OnExit);
-			Win32::Window::OnIdle += event::Handler(this, &Test::OnIdle);
+			engine::win32::Window::OnInitialize += event::Handler(this, &Test::OnInitialize);
+			engine::win32::Window::OnExit += event::Handler(this, &Test::OnExit);
+			engine::win32::Window::OnIdle += event::Handler(this, &Test::OnIdle);
 
 			input::Input::Instance().MouseDownEvent += event::Handler(this, &Test::OnMouseDown);
 			input::Input::Instance().MouseMoveEvent += event::Handler(this, &Test::OnMouseMove);
 			input::Input::Instance().MouseUpEvent += event::Handler(this, &Test::OnMouseUp);
 
-			Win32::Window::Run();
+			engine::win32::Window::Run();
 		}
 
 
@@ -129,7 +129,7 @@ namespace TestCamera
 		void OnInitialize()
 		{
 			// create our window here
-			m_window = std::make_unique<Win32::Window>();
+			m_window = std::make_unique<engine::win32::Window>();
 			m_window->OnClose += event::Handler(this, &Test::OnWindowClose);
 			m_window->OnCreate += event::Handler(this, &Test::OnWindowCreate);
 			m_window->OnSize += event::Handler(this, &Test::OnWindowSize);
@@ -241,7 +241,7 @@ namespace TestCamera
 			input::Input::Instance().Update();
 
 			// call lap to get elapsed time and trigger OnLap event
-			m_stopwatch.Lap<timer::milliseconds>();
+			m_stopwatch.Lap<engine::timer::milliseconds>();
 
 			// does not need to do this every frame. just do this once everytime camera viewport changes
 			m_renderer->SetClipRegion(m_camera.GetViewport());

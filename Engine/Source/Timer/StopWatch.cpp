@@ -1,6 +1,6 @@
 #include <Timer/StopWatch.h>
 
-timer::StopWatch::StopWatch() noexcept :
+engine::timer::StopWatch::StopWatch() noexcept :
     m_paused(false),
     m_lastLapDurationAccumulator(0.0),
     m_lastLapTime(std::chrono::steady_clock::now()),
@@ -10,18 +10,18 @@ timer::StopWatch::StopWatch() noexcept :
 {
 }
 
-const bool timer::StopWatch::IsRunning() const
+const bool engine::timer::StopWatch::IsRunning() const
 {
     return m_running;
 }
 
-const bool timer::StopWatch::IsPaused() const
+const bool engine::timer::StopWatch::IsPaused() const
 {
     return m_paused;
 }
 
 // starts the StopWatch
-void timer::StopWatch::Start() noexcept
+void engine::timer::StopWatch::Start() noexcept
 {
     // measure current time (start)
     m_startTime = std::chrono::steady_clock::now();
@@ -42,7 +42,7 @@ void timer::StopWatch::Start() noexcept
     OnStart();
 }
 
-void timer::StopWatch::Pause() noexcept
+void engine::timer::StopWatch::Pause() noexcept
 {
     if (!m_running || m_paused)
     {
@@ -63,7 +63,7 @@ void timer::StopWatch::Pause() noexcept
     OnPause();
 }
 
-void timer::StopWatch::Resume() noexcept
+void engine::timer::StopWatch::Resume() noexcept
 {
     if (!m_running || !m_paused)
     {

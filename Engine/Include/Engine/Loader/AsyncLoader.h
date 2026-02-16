@@ -176,7 +176,7 @@ namespace engine
 				// marks loader as done when all rows are processed.
 				void Update(double maxTimeToReadMS = 1) override
 				{
-					timer::StopWatch sw;
+					engine::timer::StopWatch sw;
 					sw.Start();
 					while (!m_isDone)
 					{
@@ -433,7 +433,7 @@ namespace engine
 				void Update(double maxTimeToReadMS = 1) override
 				{						
 					bool addNewRegion = false;
-					timer::StopWatch sw;
+					engine::timer::StopWatch sw;
 					sw.Start();
 					while (!m_isDone)
 					{
@@ -832,7 +832,7 @@ namespace engine
 						return;
 					}
 
-					timer::StopWatch sw;
+					engine::timer::StopWatch sw;
 					sw.Start();
 					while (!m_isDone)
 					{
@@ -861,7 +861,7 @@ namespace engine
 
 						// for debug purposes only, we can add a delay here to simulate longer processing time
 						{
-							timer::StopWatch delay;
+							engine::timer::StopWatch delay;
 							delay.Start();
 							while (delay.Peek<timer::milliseconds>() < m_delayMS) {}
 							delay.Stop();
@@ -1202,7 +1202,7 @@ namespace engine
 						return;
 					}
 
-					timer::StopWatch sw;
+					engine::timer::StopWatch sw;
 					sw.Start();
 					while (!m_isDone)
 					{
@@ -1217,7 +1217,7 @@ namespace engine
 
 						// for debug purposes only, we can add a delay here to simulate longer processing time
 						{
-							timer::StopWatch delay;
+							engine::timer::StopWatch delay;
 							delay.Start();
 							while (delay.Peek<timer::milliseconds>() < m_delayMS) {}
 							delay.Stop();
