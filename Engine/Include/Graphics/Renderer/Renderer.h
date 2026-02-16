@@ -31,12 +31,12 @@ namespace engine::graphics::renderer
         virtual void End() override final;
 
         // clipping region for rendering
-		virtual void SetClipRegion(const math::geometry::RectF& region) override final;
+		virtual void SetClipRegion(const engine::math::geometry::RectF& region) override final;
 		virtual void EnableClipping(const bool enable) override final;
 
         // Draws a colored quad at the specified position, size, and rotation
         virtual void Draw(
-            const spatial::PositionF pos,                                 // Top-left screen position
+            const engine::spatial::PositionF pos,                                 // Top-left screen position
             const spatial::SizeF size,                               // Sprite dimensions
             const engine::graphics::ColorF color,                                   // RGBA color tint
             const float rotation                                                    // Rotation in radians
@@ -46,7 +46,7 @@ namespace engine::graphics::renderer
         virtual void DrawText(
             const engine::graphics::renderable::IFontAtlas& font, // Font atlas
             const std::string& text,                    // Text to render
-            const spatial::PositionF pos,                                 // Top-left screen position
+            const engine::spatial::PositionF pos,                                 // Top-left screen position
             const engine::graphics::ColorF color                                   // RGBA color tint
         )  override final;
 
@@ -54,7 +54,7 @@ namespace engine::graphics::renderer
         virtual void DrawChar(
             const engine::graphics::renderable::IFontAtlas& font, // Font atlas
             const unsigned char character,              // Character to render
-            const spatial::PositionF pos,               // Top-left screen position
+            const engine::spatial::PositionF pos,               // Top-left screen position
             const engine::graphics::ColorF color,               // RGBA color tint
             const float rotation                        // Rotation in radians
         )  override final;
@@ -62,7 +62,7 @@ namespace engine::graphics::renderer
         // Draws a renderable quad with color tint and rotation
         virtual void DrawRenderable(
             const engine::graphics::renderable::IRenderable& renderable,                    // renderable object
-            const spatial::PositionF pos,                                 // Top-left screen position
+            const engine::spatial::PositionF pos,                                 // Top-left screen position
             const spatial::SizeF size,                               // Sprite dimensions
             const engine::graphics::ColorF color,                                   // RGBA color tint
             const float rotation                                                    // Rotation in radians

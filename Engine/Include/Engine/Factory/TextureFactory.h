@@ -17,9 +17,9 @@ namespace graphics
         {
             // get environment config from cache
             std::string typeName =
-                cache::Registry<engine::container::Dictionary<>>::Instance().Has("EnvironmentConfig") ?             // do we have environment config?
-                cache::Registry<engine::container::Dictionary<>>::Instance().Get("EnvironmentConfig").Has("API") ?   // do we have API field in environment config?
-                cache::Registry<engine::container::Dictionary<>>::Instance().Get("EnvironmentConfig").Get("API") :  // yes we have API field. let's get it
+                engine::cache::Registry<engine::container::Dictionary<>>::Instance().Has("EnvironmentConfig") ?             // do we have environment config?
+                engine::cache::Registry<engine::container::Dictionary<>>::Instance().Get("EnvironmentConfig").Has("API") ?   // do we have API field in environment config?
+                engine::cache::Registry<engine::container::Dictionary<>>::Instance().Get("EnvironmentConfig").Get("API") :  // yes we have API field. let's get it
                 engine::graphics::dx11::resource::DX11TextureImpl::TypeName :                                    // no API field in environment config, fallback to DX11
                 engine::graphics::dx11::resource::DX11TextureImpl::TypeName;                                    // no config, fallback to DX11
 

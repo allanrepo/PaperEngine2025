@@ -10,7 +10,7 @@ namespace demo
 	class LoadAsyncLoaderState : public state::State<Demo>
 	{
 	private:
-		performance::FrameRateMonitor m_frameRateMonitor;
+		engine::performance::FrameRateMonitor m_frameRateMonitor;
 
 		engine::io::AsyncFileReader m_fileReader;
 		engine::loader::tile::AsyncTileGridLoader<RenderableTile, int> m_tileGridLoader;
@@ -54,10 +54,10 @@ namespace demo
 	class RenderAsyncLoaderState : public state::State<Demo>
 	{
 	private:
-		performance::FrameRateMonitor m_frameRateMonitor;
+		engine::performance::FrameRateMonitor m_frameRateMonitor;
 		std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> m_tileSet;
 		std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> m_layer;
-		spatial::SizeF m_viewportSize;
+		engine::spatial::SizeF m_viewportSize;
 
 		void OnResize(size_t width, size_t height);
 

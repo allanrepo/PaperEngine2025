@@ -264,7 +264,7 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::End()
 {
 }
 
-void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::SetClipRegion(const math::geometry::RectF& region)
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::SetClipRegion(const engine::math::geometry::RectF& region)
 {
 	m_clipRegion = region;
 }
@@ -275,7 +275,7 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::EnableClipping
 }
 
 void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
-	const spatial::PositionF pos, 
+	const engine::spatial::PositionF pos, 
 	const spatial::SizeF size, 
 	const engine::graphics::ColorF color, 
 	const float rotation
@@ -333,14 +333,14 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
 void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawText(
 	const engine::graphics::renderable::IFontAtlas& font, // Font atlas
 	const std::string& text,                    // Text to render
-	const spatial::PositionF pos,                                 // Top-left screen position
+	const engine::spatial::PositionF pos,                                 // Top-left screen position
 	const engine::graphics::ColorF color                                   // RGBA color tint
 )
 {
 	float xCurr = pos.x;
 	for (char c : text)
 	{
-		spatial::PositionF _pos = { xCurr, pos.y };
+		engine::spatial::PositionF _pos = { xCurr, pos.y };
 		// draw the char
 		DrawChar(font, c, _pos, color, 0);
 
@@ -352,7 +352,7 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawText(
 void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawChar(
 	const engine::graphics::renderable::IFontAtlas& font, // Font atlas
 	const unsigned char character,            // Character to render
-	const spatial::PositionF pos,                                 // Top-left screen position
+	const engine::spatial::PositionF pos,                                 // Top-left screen position
 	const engine::graphics::ColorF color,                                   // RGBA color tint
 	const float rotation                      // Rotation in radians
 )
@@ -412,7 +412,7 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawChar(
 
 void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawRenderable(
 	const engine::graphics::renderable::IRenderable& renderable, 
-	const spatial::PositionF pos, 
+	const engine::spatial::PositionF pos, 
 	const spatial::SizeF size, 
 	const engine::graphics::ColorF color, 
 	const float rotation
@@ -427,7 +427,7 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawRenderable
 #pragma endregion
 
 #pragma region // update texture transform for this draw request. the scale and translate setting will fit the size of the texture into specified size
-	math::geometry::RectF rect = renderable.GetUVRect();
+	engine::math::geometry::RectF rect = renderable.GetUVRect();
 	m_UpdateConstantBuffer.texture.scale.x = (rect.right - rect.left);
 	m_UpdateConstantBuffer.texture.scale.y = (rect.bottom - rect.top);
 	m_UpdateConstantBuffer.texture.translate.x = rect.left;

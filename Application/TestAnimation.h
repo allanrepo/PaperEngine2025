@@ -101,8 +101,8 @@ namespace test
 
 			// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 8 rows and 12 columns
 			// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-			std::vector<math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(8, 12, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
-			for(math::geometry::RectF& rect : uvs)
+			std::vector<engine::math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(8, 12, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
+			for(engine::math::geometry::RectF& rect : uvs)
 			{
 				m_spriteAtlas->AddUVRect(rect);
 			}
@@ -149,7 +149,7 @@ namespace test
 				{
 					m_renderer->DrawRenderable(
 						m_animator->GetCurrentFrame().element,				// get the sprite from animator's current frame
-						spatial::PositionF {
+						engine::spatial::PositionF {
 						100.0f, 100.0f
 					},				// position
 						m_animator->GetCurrentFrame().element.GetSize(),	// get the sprite size from animator's current frame

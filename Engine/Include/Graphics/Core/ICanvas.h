@@ -19,10 +19,10 @@ namespace engine::graphics
         virtual void Begin() = 0;
         virtual void End() = 0;
 
-        virtual void SetViewPort(const math::geometry::RectF& rect) = 0;
+        virtual void SetViewPort(const engine::math::geometry::RectF& rect) = 0;
         virtual void Clear(const engine::graphics::ColorF& color) = 0;
         virtual void SetViewPort() = 0;
-		virtual math::geometry::RectF GetViewPort() const = 0;
+		virtual engine::math::geometry::RectF GetViewPort() const = 0;
 
         virtual std::string GetTypeName() const = 0;
     };

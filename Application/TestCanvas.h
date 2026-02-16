@@ -76,8 +76,8 @@ namespace test
 				m_drawableSurface->Clear(0, 0.5f, 0, 1);
 				m_drawableSurface->Begin();
 				{
-					m_renderer->Draw(spatial::PositionF{ 32, 32 }, spatial::SizeF{ 64, 64 }, engine::graphics::ColorF{ 0.5f,0,0,1 }, 0);
-					m_renderer->Draw(spatial::PositionF{ 48, 56 }, spatial::SizeF{ 64, 48 }, engine::graphics::ColorF{ 0,0,0.5f,1 }, 0);
+					m_renderer->Draw(engine::spatial::PositionF{ 32, 32 }, engine::spatial::SizeF{ 64, 64 }, engine::graphics::ColorF{ 0.5f,0,0,1 }, 0);
+					m_renderer->Draw(engine::spatial::PositionF{ 48, 56 }, engine::spatial::SizeF{ 64, 48 }, engine::graphics::ColorF{ 0,0,0.5f,1 }, 0);
 				}
 				m_drawableSurface->End();
 			}
@@ -103,16 +103,16 @@ namespace test
 				m_renderer->Begin();
 				{
 					// draw a rectangle fill
-					m_renderer->Draw(spatial::PositionF{ 100, 100 }, spatial::SizeF{ 100, 100 }, engine::graphics::ColorF{ 1,1,0,1 }, 0);
+					m_renderer->Draw(engine::spatial::PositionF{ 100, 100 }, engine::spatial::SizeF{ 100, 100 }, engine::graphics::ColorF{ 1,1,0,1 }, 0);
 
 					// draw the drawable surface
-					m_renderer->DrawRenderable(*m_drawableSurface, spatial::PositionF{ 250, 250 }, m_drawableSurface->GetSize(), engine::graphics::ColorF{ 1,1,1,1 }, 0);
+					m_renderer->DrawRenderable(*m_drawableSurface, engine::spatial::PositionF{ 250, 250 }, m_drawableSurface->GetSize(), engine::graphics::ColorF{ 1,1,1,1 }, 0);
 
 					// draw text
-					m_renderer->DrawText(*m_fontAtlas, "Hello World", spatial::PositionF{ 250, 200 }, engine::graphics::ColorF{ 0,1,1,1 });
+					m_renderer->DrawText(*m_fontAtlas, "Hello World", engine::spatial::PositionF{ 250, 200 }, engine::graphics::ColorF{ 0,1,1,1 });
 
 					// draw image surface
-					m_renderer->DrawRenderable(*m_imageSurface, spatial::PositionF{ 400, 250 }, m_imageSurface->GetSize(), engine::graphics::ColorF{ 1,1,1,1 }, 0);
+					m_renderer->DrawRenderable(*m_imageSurface, engine::spatial::PositionF{ 400, 250 }, m_imageSurface->GetSize(), engine::graphics::ColorF{ 1,1,1,1 }, 0);
 				}
 				m_renderer->End();
 			}

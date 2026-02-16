@@ -3,7 +3,7 @@
 #include <Math/Rect.h>
 #include <algorithm>
 
-namespace spatial
+namespace engine::spatial
 {
 	// a 2d camera abstraction for world-to-screen transformations.
 	//
@@ -30,11 +30,11 @@ namespace spatial
 		// the camera’s top‑left corner in world space
 		// think of it as “where the camera is looking from.”
 		// in world space, this is the top-left position of the viewport
-		spatial::Position<T> m_position;
+		engine::spatial::Position<T> m_position;
 
 		// the rectangle on the screen where the world is drawn.
 		// defines the visible area size (width/height) and offset (left/top).
-		math::geometry::Rect<T> m_viewport;
+		engine::math::geometry::Rect<T> m_viewport;
 
 		// the total size of the world/map
 		spatial::Size<T> m_worldSize;
@@ -52,7 +52,7 @@ namespace spatial
 		}
 
 	public:
-		Camera(math::geometry::RectF viewport) :
+		Camera(engine::math::geometry::RectF viewport) :
 			m_viewport(viewport),
 			m_position({ 0, 0 }),
 			m_worldSize({ 0, 0 })
@@ -65,14 +65,14 @@ namespace spatial
 			ClampToBounds();
 		}
 
-		void SetViewport(math::geometry::Rect<T> viewport)
+		void SetViewport(engine::math::geometry::Rect<T> viewport)
 		{
 			m_viewport = viewport;
 			ClampToBounds();
 		}
 
 		// move the camera in the world by given delta. this pans the world in the viewport
-		void MoveBy(math::Vec<T> delta)
+		void MoveBy(engine::math::Vec<T> delta)
 		{
 			// why it's negative? because we are moving the camera (in world space), not the world
 			m_position -= delta;
@@ -80,42 +80,42 @@ namespace spatial
 		}
 
 		// set the camera in the world by given position in world space.
-		void SetPosition(spatial::Position<T> position)
+		void SetPosition(engine::spatial::Position<T> position)
 		{
 			m_position = position;
 			ClampToBounds();
 		}
 
 		// set camera position so that the specified world position is at the center of the viewport
-		void CenterOn(spatial::Position<T> worldPos)
+		void CenterOn(engine::spatial::Position<T> worldPos)
 		{
 			m_position = worldPos - math::Vec<T>(m_viewport.GetWidth() / 2, m_viewport.GetHeight() / 2);
 			ClampToBounds();
 		}
 
-		spatial::Position<T> GetPosition() const
+		engine::spatial::Position<T> GetPosition() const
 		{
 			return m_position;
 		}
 
-		math::geometry::Rect<T> GetViewport() const
+		engine::math::geometry::Rect<T> GetViewport() const
 		{
 			return m_viewport;
 		}
 
 		// Converts a world position to screen-space
-		spatial::Position<T> WorldToScreen(spatial::Position<T> worldPos) const
+		engine::spatial::Position<T> WorldToScreen(engine::spatial::Position<T> worldPos) const
 		{
 			// translate the world position by viewport's top left position so the world position is now in viewport space
 			// then offset it by camera's position to scroll the world to the correct position in the viewport
-			return worldPos + spatial::Position<T>{ m_viewport.left, m_viewport.top } - m_position;
+			return worldPos + engine::spatial::Position<T>{ m_viewport.left, m_viewport.top } - m_position;
 		}
 
-		spatial::Position<T> ScreenToWorld(spatial::Position<T> screenPos) const
+		engine::spatial::Position<T> ScreenToWorld(engine::spatial::Position<T> screenPos) const
 		{
 			// translate the screen position by viewport's top left position so the screen position is now in viewport space
 			// then offset it by camera's position to scroll the world to the correct position in the viewport
-			return screenPos - spatial::Position<T>{ m_viewport.left, m_viewport.top } + m_position;
+			return screenPos - engine::spatial::Position<T>{ m_viewport.left, m_viewport.top } + m_position;
 		}
 	};
 

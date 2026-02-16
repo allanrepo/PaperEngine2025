@@ -30,10 +30,10 @@ namespace testFrameRate
 		timer::StopWatch m_stopwatch;
 		std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
 		timer::Scheduler m_scheduler;
-		performance::FrameRateMonitor m_frameRateMonitor1;
-		performance::FrameRateMonitor m_frameRateMonitor2;
-		performance::FrameRateMonitor m_frameRateMonitor3;
-		performance::FrameRateMonitor m_frameRateMonitor4;
+		engine::performance::FrameRateMonitor m_frameRateMonitor1;
+		engine::performance::FrameRateMonitor m_frameRateMonitor2;
+		engine::performance::FrameRateMonitor m_frameRateMonitor3;
+		engine::performance::FrameRateMonitor m_frameRateMonitor4;
 
 		Test() :
 			m_frameRateMonitor1(1.0f),

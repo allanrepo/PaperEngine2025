@@ -47,7 +47,7 @@ namespace test
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
 		std::unique_ptr<engine::graphics::renderable::Sprite> m_sprite;
-		spatial::SizeF m_spriteSize{};
+		engine::spatial::SizeF m_spriteSize{};
 		input::Input m_input;
 
 	public:
@@ -98,8 +98,8 @@ namespace test
 
 			// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 8 rows and 12 columns
 			// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-			std::vector<math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(8, 12, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
-			for (math::geometry::RectF& rect : uvs)
+			std::vector<engine::math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(8, 12, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
+			for (engine::math::geometry::RectF& rect : uvs)
 			{
 				m_spriteAtlas->AddUVRect(rect);
 			}
@@ -115,7 +115,7 @@ namespace test
 		void OnMouseMove(int x, int y)
 		{
 			// find the sprite cell from sprite atlas based on mouse position
-			spatial::SizeF size = m_spriteAtlas->GetSize();
+			engine::spatial::SizeF size = m_spriteAtlas->GetSize();
 
 			// dividing by 2 because sprite atlas is drawn at half size
 			int col = static_cast<int>(x / (m_spriteSize.width / 2));
@@ -144,16 +144,16 @@ namespace test
 				{
 					// draw the sprite atlas at half size
 					m_renderer->DrawRenderable(m_spriteAtlas->GetSprite(),
-						spatial::PositionF{ 0, 0 },
-						spatial::SizeF{ m_spriteAtlas->GetWidth()/2, m_spriteAtlas->GetHeight()/2},
+						engine::spatial::PositionF{ 0, 0 },
+						engine::spatial::SizeF{ m_spriteAtlas->GetWidth()/2, m_spriteAtlas->GetHeight()/2},
 						engine::graphics::ColorF{ 1,1,1,1 },
 						0
 					);
 
 					// draw the selected sprite cell next to the sprite atlas
 					m_renderer->DrawRenderable(*m_sprite,
-						spatial::PositionF{ m_spriteAtlas->GetWidth() / 2 + 10, 0 },
-						spatial::SizeF{ m_sprite->GetWidth(), m_sprite->GetHeight() },
+						engine::spatial::PositionF{ m_spriteAtlas->GetWidth() / 2 + 10, 0 },
+						engine::spatial::SizeF{ m_sprite->GetWidth(), m_sprite->GetHeight() },
 						engine::graphics::ColorF{ 1,1,1,1 },
 						0
 					);

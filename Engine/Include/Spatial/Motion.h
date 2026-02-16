@@ -16,7 +16,7 @@ namespace spatial
 			transform.SetPosition(transform.GetPosition() + (m_velocity * delta));
 		}
 
-		void MoveTo(const spatial::Transform<T>& transform, const spatial::Position<T> target, float speed)
+		void MoveTo(const spatial::Transform<T>& transform, const engine::spatial::Position<T> target, float speed)
 		{
 			math::VecF direction = target - transform.GetPosition();
 			direction = direction.Normalize();

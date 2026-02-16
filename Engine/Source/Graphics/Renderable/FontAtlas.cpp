@@ -82,9 +82,9 @@ bool engine::graphics::renderable::FontAtlas::GetNormalizedTexCoord(const unsign
 	return true;
 }
 
-math::geometry::RectF engine::graphics::renderable::FontAtlas::GetUVRect() const
+engine::math::geometry::RectF engine::graphics::renderable::FontAtlas::GetUVRect() const
 {
-	return math::geometry::RectF{ 0, 0, 1, 1 };
+	return engine::math::geometry::RectF{ 0, 0, 1, 1 };
 }
 
 void engine::graphics::renderable::FontAtlas::Bind() const
@@ -148,7 +148,7 @@ float engine::graphics::renderable::FontAtlas::GetHeight() const
 	return static_cast<float>(texture->GetHeight());
 }
 
-spatial::SizeF engine::graphics::renderable::FontAtlas::GetSize() const
+engine::spatial::SizeF engine::graphics::renderable::FontAtlas::GetSize() const
 {
 	return spatial::SizeF
 	{

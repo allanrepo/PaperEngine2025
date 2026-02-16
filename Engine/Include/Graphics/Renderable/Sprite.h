@@ -44,14 +44,14 @@ namespace engine::graphics::renderable
 	class Sprite : public engine::graphics::renderable::IRenderable, public spatial::ISizeable<float>, public core::View<engine::graphics::resource::ISpriteAtlas>
 	{
 	private:
-		math::geometry::RectF m_rect;
+		engine::math::geometry::RectF m_rect;
 
 		friend class engine::graphics::resource::SpriteAtlas;
 		friend class engine::graphics::resource::ISpriteAtlas;
 
 	protected:
 		// use this constructor if you have the sprite atlas and the source rect
-		Sprite(const engine::graphics::resource::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect);
+		Sprite(const engine::graphics::resource::ISpriteAtlas* spriteAtlas, engine::math::geometry::RectF rect);
 
 	public:
 		~Sprite() = default;
@@ -64,7 +64,7 @@ namespace engine::graphics::renderable
 		// IRenderable methods implementation
 		virtual void Bind() const override final;
 		virtual bool CanBind() const override final;
-		virtual math::geometry::RectF GetUVRect() const override final;
+		virtual engine::math::geometry::RectF GetUVRect() const override final;
 	};
 }
 

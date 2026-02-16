@@ -35,7 +35,7 @@ void engine::graphics::Canvas::SetViewPort()
     impl->SetViewPort();
 }
 
-void engine::graphics::Canvas::SetViewPort(const math::geometry::RectF& rect)
+void engine::graphics::Canvas::SetViewPort(const engine::math::geometry::RectF& rect)
 {
 	impl->SetViewPort(rect);
 }
@@ -45,7 +45,7 @@ void engine::graphics::Canvas::Clear(const engine::graphics::ColorF& color)
 	impl->Clear(color);
 }
 
-math::geometry::RectF engine::graphics::Canvas::GetViewPort() const
+engine::math::geometry::RectF engine::graphics::Canvas::GetViewPort() const
 {
 	return impl->GetViewPort();
 }

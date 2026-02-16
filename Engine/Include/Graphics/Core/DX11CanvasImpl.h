@@ -55,13 +55,13 @@ namespace engine::graphics::dx11
 
         // Sets a custom viewport rectangle
         //void SetViewPort(float x, float y, float width, float height) override;
-        void SetViewPort(const math::geometry::RectF& rect) override;
+        void SetViewPort(const engine::math::geometry::RectF& rect) override;
 
         // Sets the default viewport to cover the entire render target
         void SetViewPort() override;
 
 		// Retrieves the current viewport rectangle
-        math::geometry::RectF GetViewPort() const override final;
+        engine::math::geometry::RectF GetViewPort() const override final;
 
         // this class means it is implemented with directx 11
         static constexpr const char* TypeName = "DirectX11";

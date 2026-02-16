@@ -20,9 +20,9 @@ namespace engine::graphics
         //virtual void Clear(float fRed, float fGreen, float fBlue, float fAlpha) override final;
         //virtual void SetViewPort(float uiX, float uiY, float uiWidth, float uiHeight) override final;
         virtual void SetViewPort() override final;
-        virtual void SetViewPort(const math::geometry::RectF& rect) override final;
+        virtual void SetViewPort(const engine::math::geometry::RectF& rect) override final;
         virtual void Clear(const engine::graphics::ColorF& color) override final;
-        virtual math::geometry::RectF GetViewPort() const override final;
+        virtual engine::math::geometry::RectF GetViewPort() const override final;
 
         virtual std::string GetTypeName() const override final;
 

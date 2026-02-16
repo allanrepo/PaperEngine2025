@@ -19,17 +19,17 @@ bool engine::graphics::resource::SpriteAtlas::Initialize(const wchar_t* fileName
 	return true;
 }
 
-void engine::graphics::resource::SpriteAtlas::AddUVRect(const math::geometry::RectF& rect)
+void engine::graphics::resource::SpriteAtlas::AddUVRect(const engine::math::geometry::RectF& rect)
 {
 	m_nUVs.push_back(rect);
 }
 
-void engine::graphics::resource::SpriteAtlas::AddUVRects(const std::vector<math::geometry::RectF>& rects)
+void engine::graphics::resource::SpriteAtlas::AddUVRects(const std::vector<engine::math::geometry::RectF>& rects)
 {
 	m_nUVs.insert(m_nUVs.end(), rects.begin(), rects.end());
 }
 
-const math::geometry::RectF engine::graphics::resource::SpriteAtlas::GetUVRect(int index) const
+const engine::math::geometry::RectF engine::graphics::resource::SpriteAtlas::GetUVRect(int index) const
 {
 	return m_nUVs[index];
 }
@@ -51,7 +51,7 @@ engine::graphics::renderable::Sprite engine::graphics::resource::SpriteAtlas::Ma
 
 engine::graphics::renderable::Sprite engine::graphics::resource::SpriteAtlas::GetSprite() const
 {
-	return engine::graphics::renderable::Sprite(this, math::geometry::RectF{ 0, 0, 1, 1 });
+	return engine::graphics::renderable::Sprite(this, engine::math::geometry::RectF{ 0, 0, 1, 1 });
 }
 
 void engine::graphics::resource::SpriteAtlas::Bind() const
@@ -74,7 +74,7 @@ float engine::graphics::resource::SpriteAtlas::GetHeight() const
 	return static_cast<float>(m_texture->GetHeight());
 }
 
-spatial::SizeF engine::graphics::resource::SpriteAtlas::GetSize() const
+engine::spatial::SizeF engine::graphics::resource::SpriteAtlas::GetSize() const
 {
 	return spatial::SizeF{
 		static_cast<float>(m_texture->GetWidth()),

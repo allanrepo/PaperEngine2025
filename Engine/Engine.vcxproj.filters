@@ -324,6 +324,9 @@
     <ClInclude Include="Include\Graphics\Resource\SpriteAtlas.h">
       <Filter>Graphics\Resource</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Command\DrawCommand.h">
+      <Filter>Command</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">

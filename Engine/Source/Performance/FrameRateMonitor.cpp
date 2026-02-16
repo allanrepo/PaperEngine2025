@@ -1,18 +1,18 @@
 #include <Performance/FrameRateMonitor.h>
 
-performance::FrameRateMonitor::FrameRateMonitor(double measureRange) :
+engine::performance::FrameRateMonitor::FrameRateMonitor(double measureRange) :
 	m_measureRange(measureRange),
 	m_elapsedTimeAccumulator(0.0f),
 	m_elapsedTimes()
 {
 }
 
-void performance::FrameRateMonitor::SetMeasureRange(double range)
+void engine::performance::FrameRateMonitor::SetMeasureRange(double range)
 {
 	m_measureRange = range;
 }
 
-double performance::FrameRateMonitor::GetAverageFrameRate() const
+double engine::performance::FrameRateMonitor::GetAverageFrameRate() const
 {
 	if (m_elapsedTimeAccumulator > 0.0f && !m_elapsedTimes.empty())
 	{
@@ -21,7 +21,7 @@ double performance::FrameRateMonitor::GetAverageFrameRate() const
 	return 0;
 }
 
-double performance::FrameRateMonitor::GetLastFrameRate() const
+double engine::performance::FrameRateMonitor::GetLastFrameRate() const
 {
 	if (m_elapsedTimes.size() > 0)
 	{
@@ -35,7 +35,7 @@ double performance::FrameRateMonitor::GetLastFrameRate() const
 }
 
 // using "On" prefix to follow event handler naming convention since this method is used as event handler - it is called when a frame is completed
-void performance::FrameRateMonitor::OnFrameCompleted(double elapsedTime)
+void engine::performance::FrameRateMonitor::OnFrameCompleted(double elapsedTime)
 {
 	m_elapsedTimes.push_back(elapsedTime);
 	m_elapsedTimeAccumulator += elapsedTime;

@@ -2,94 +2,98 @@
 #include <Spatial/Size.h>
 #include <Spatial/Position.h>
 
-namespace math
+namespace engine
 {
-	namespace geometry
+	namespace math
 	{
-		template<typename T>
-		struct Rect
+		namespace geometry
 		{
-			T left, top, right, bottom;
-
-			bool Overlaps(const Rect<T>& other) const
+			template<typename T>
+			struct Rect
 			{
-				if (other.left > right) return false;
-				if (other.right < left) return false;
-				if (other.top > bottom) return false;
-				if (other.bottom < top) return false;
-				return true;
-			}
+				T left, top, right, bottom;
 
-			const bool Contains(const spatial::Position<T> pos) const
-			{
-				if (pos.x > right) return false;
-				if (pos.x < left) return false;
-				if (pos.y > bottom) return false;
-				if (pos.y < top) return false;
-				return true;
-			}
+				bool Overlaps(const Rect<T>& other) const
+				{
+					if (other.left > right) return false;
+					if (other.right < left) return false;
+					if (other.top > bottom) return false;
+					if (other.bottom < top) return false;
+					return true;
+				}
 
-			const Rect<T> Translate(const spatial::Position<T> pos) const
-			{
-				Rect<T> result{};
+				const bool Contains(const engine::spatial::Position<T> pos) const
+				{
+					if (pos.x > right) return false;
+					if (pos.x < left) return false;
+					if (pos.y > bottom) return false;
+					if (pos.y < top) return false;
+					return true;
+				}
 
-				result.left = left + pos.x;
-				result.top = top + pos.y;
-				result.right = right + pos.x;
-				result.bottom = bottom + pos.y;
-				return result;
-			}
+				const Rect<T> Translate(const engine::spatial::Position<T> pos) const
+				{
+					Rect<T> result{};
 
-			const T GetWidth() const
-			{
-				return right - left;
-			}
+					result.left = left + pos.x;
+					result.top = top + pos.y;
+					result.right = right + pos.x;
+					result.bottom = bottom + pos.y;
+					return result;
+				}
 
-			const T GetHeight() const
-			{
-				return bottom - top;
-			}
+				const T GetWidth() const
+				{
+					return right - left;
+				}
 
-			const spatial::Size<T> GetSize() const
-			{
-				return spatial::Size<T>{ GetWidth(), GetHeight() };
-			}
+				const T GetHeight() const
+				{
+					return bottom - top;
+				}
 
-			const spatial::Position<T> GetCenter() const
-			{
-				return spatial::Position<T>{ (left + right) / 2, (top + bottom) / 2 };
-			}
+				const engine::spatial::Size<T> GetSize() const
+				{
+					return spatial::Size<T>{ GetWidth(), GetHeight() };
+				}
 
-			const spatial::Position<T> GetTopLeft() const
-			{
-				return spatial::Position<T>{ left, top };
-			}
+				const engine::spatial::Position<T> GetCenter() const
+				{
+					return engine::spatial::Position<T>{ (left + right) / 2, (top + bottom) / 2 };
+				}
 
-			const spatial::Position<T> GetBottomRight() const
-			{
-				return spatial::Position<T>{ right, bottom };
-			}
+				const engine::spatial::Position<T> GetTopLeft() const
+				{
+					return engine::spatial::Position<T>{ left, top };
+				}
 
-			const spatial::Position<T> GetTopRight() const
-			{
-				return spatial::Position<T>{ right, top };
-			}
+				const engine::spatial::Position<T> GetBottomRight() const
+				{
+					return engine::spatial::Position<T>{ right, bottom };
+				}
 
-			const spatial::Position<T> GetBottomLeft() const
-			{
-				return spatial::Position<T>{ left, bottom };
-			}
+				const engine::spatial::Position<T> GetTopRight() const
+				{
+					return engine::spatial::Position<T>{ right, top };
+				}
 
-			void Inflate(const T dx, const T dy)
-			{
-				left -= dx;
-				top -= dy;
-				right += dx;
-				bottom += dy;
-			}
+				const engine::spatial::Position<T> GetBottomLeft() const
+				{
+					return engine::spatial::Position<T>{ left, bottom };
+				}
 
-		};
+				void Inflate(const T dx, const T dy)
+				{
+					left -= dx;
+					top -= dy;
+					right += dx;
+					bottom += dy;
+				}
 
-		using RectF = math::geometry::Rect<float>;
+			};
+
+			using RectF = engine::math::geometry::Rect<float>;
+		}
 	}
 }
+

@@ -10,6 +10,6 @@ namespace engine::graphics::renderable
 
 		virtual void Bind() const = 0;
 		virtual bool CanBind() const = 0;
-		virtual math::geometry::RectF GetUVRect() const = 0;
+		virtual engine::math::geometry::RectF GetUVRect() const = 0;
 	};
 }

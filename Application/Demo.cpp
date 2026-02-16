@@ -17,9 +17,9 @@ using namespace app;
 
 #pragma region demo
 
-std::vector<math::geometry::RectF> demo::CalcUV(int row, int col, int fileWidth, int fileHeight)
+std::vector<engine::math::geometry::RectF> demo::CalcUV(int row, int col, int fileWidth, int fileHeight)
 {
-	std::vector<math::geometry::RectF> uvs;
+	std::vector<engine::math::geometry::RectF> uvs;
 	float width = static_cast<float>(fileWidth / col);
 	float height = static_cast<float>(fileHeight / row);
 	float left = 0;
@@ -41,7 +41,7 @@ std::vector<math::geometry::RectF> demo::CalcUV(int row, int col, int fileWidth,
 			right /= fileWidth;
 			bottom /= fileHeight;
 
-			uvs.push_back(math::geometry::RectF{ left, top, right, bottom });
+			uvs.push_back(engine::math::geometry::RectF{ left, top, right, bottom });
 		}
 	}
 	return uvs;
@@ -114,7 +114,7 @@ void demo::Demo::DrawTextCommandTopRightScreen(const std::string& text, float y)
 			Engine().Renderer(),
 			*m_fontAtlas,
 			text,
-			spatial::PositionF
+			engine::spatial::PositionF
 			{
 				Engine().GetViewPort().GetWidth() - width - 10.0f,
 				y
@@ -125,7 +125,7 @@ void demo::Demo::DrawTextCommandTopRightScreen(const std::string& text, float y)
 }
 
 
-void demo::Demo::DrawProgressBarCommand(spatial::PositionF pos, spatial::SizeF size, float current, float total)
+void demo::Demo::DrawProgressBarCommand(engine::spatial::PositionF pos, engine::spatial::SizeF size, float current, float total)
 {
 	std::unique_ptr<engine::command::graphics::renderer::DrawQuadCommand> drawQuadCmd =
 		std::make_unique<engine::command::graphics::renderer::DrawQuadCommand>(
@@ -141,7 +141,7 @@ void demo::Demo::DrawProgressBarCommand(spatial::PositionF pos, spatial::SizeF s
 		std::make_unique<engine::command::graphics::renderer::DrawQuadCommand>(
 			m_engine.Renderer(),
 			pos,
-			spatial::SizeF
+			engine::spatial::SizeF
 			{
 				size.width * current / total,
 				size.height
@@ -152,7 +152,7 @@ void demo::Demo::DrawProgressBarCommand(spatial::PositionF pos, spatial::SizeF s
 	m_engine.CommandQueue().Enqueue(std::move(drawQuadCmd));
 }
 
-void demo::Demo::DrawTextCommand(const std::string& text, spatial::PositionF pos, engine::graphics::ColorF color)
+void demo::Demo::DrawTextCommand(const std::string& text, engine::spatial::PositionF pos, engine::graphics::ColorF color)
 {
 	// render text showing which state are we in
 	float width = m_fontAtlas->GetWidth(text);
@@ -193,7 +193,7 @@ void demo::Demo::RenderTileGridCommand(engine::component::tile::TileGrid<Rendera
 		std::make_unique<DrawTileGridCommand>(
 			Engine().Renderer(),
 			tilegrid,
-			spatial::PositionF{50,50}
+			engine::spatial::PositionF{50,50}
 		);
 	Engine().CommandQueue().Enqueue(std::move(cmd));
 
@@ -207,7 +207,7 @@ void demo::Demo::RenderTileGridCommand(engine::component::tile::TileGrid<Rendera
 	//int right = (int)((camPos.x + vp.GetWidth()) / m_tileSize.width);
 	//int bottom = (int)((camPos.y + vp.GetHeight()) / m_tileSize.height);
 
-	spatial::SizeF tileSize{ 16.0f, 16.0f };	 
+	engine::spatial::SizeF tileSize{ 16.0f, 16.0f };
 
 	for (int row = 0; row <= tilegrid.GetHeight(); ++row)
 	{
@@ -221,7 +221,7 @@ void demo::Demo::RenderTileGridCommand(engine::component::tile::TileGrid<Rendera
 			const engine::component::tile::Tile<RenderableTile>& tile = tilegrid.Get(row, col);
 			if (tile.isValid())
 			{
-				spatial::PositionF pos =
+				engine::spatial::PositionF pos =
 				{
 					col * tileSize.width,
 					row * tileSize.height
@@ -248,7 +248,7 @@ void demo::Demo::RenderTileRegionCommand(engine::component::tile::TileRegion<Ren
 		std::make_unique<DrawTileRegionCommand>(
 			Engine().Renderer(),
 			region,
-			spatial::PositionF{ 50,50 }
+			engine::spatial::PositionF{ 50,50 }
 		);
 	Engine().CommandQueue().Enqueue(std::move(cmd));
 }
@@ -259,7 +259,7 @@ void demo::Demo::RenderTileLayerCommand(engine::component::tile::TileLayer<Rende
 		std::make_unique<DrawTileLayerCommand>(
 			Engine().Renderer(),
 			layer,
-			spatial::PositionF{ 50,50 }
+			engine::spatial::PositionF{ 50,50 }
 		);
 	Engine().CommandQueue().Enqueue(std::move(cmd));
 }
@@ -285,7 +285,7 @@ void demo::DemoState::Enter(Demo& owner)
 	{
 		// create sprite atlas for tilemap (grass, wall, etc...)
 		engine::graphics::factory::SpriteAtlasFactory::Create("576x384TileSet", L"../Assets/576x384px_6x9tile_TileMap.png", 6, 9);
-		engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
+		engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
 
 		// create animated tileset for tilemap (grass, wall, etc...)
 		owner.TileSetManager().Create("576x384TileSet");
@@ -305,7 +305,7 @@ void demo::DemoState::Enter(Demo& owner)
 	{
 		// create sprite atlas for the water splash animation
 		engine::graphics::factory::SpriteAtlasFactory::Create("3072x192TileSet", L"../Assets/3072x192px_1x17tile_waterfoam.png", 1, 16);
-		engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("3072x192TileSet");
+		engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("3072x192TileSet");
 
 		// load all sprite atlas's sprites into animation object
 		engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
@@ -428,7 +428,7 @@ void  demo::DemoStateCameraMap::OnMouseMove(int x, int y)
 	if (m_isPanning)
 	{
 		// get the change in position and move camera position by that
-		math::VecF delta = math::VecF((float)x, (float)y) - m_lastMousePos;
+		engine::math::VecF delta = engine::math::VecF((float)x, (float)y) - m_lastMousePos;
 		m_camera.MoveBy(delta);
 
 		// remember the last mouse position
@@ -448,7 +448,7 @@ void  demo::DemoStateCameraMap::OnMouseDown(int btn, int x, int y)
 	if (btn == 2)
 	{
 		// this is screen position and convert it to world position
-		spatial::PositionF pos((float)x, (float)y);
+		engine::spatial::PositionF pos((float)x, (float)y);
 		pos = m_camera.ScreenToWorld(pos);
 		m_focusPos = pos;
 
@@ -475,7 +475,7 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 	{
 		// create sprite atlas for tilemap (grass, wall, etc...)
 		engine::graphics::factory::SpriteAtlasFactory::Create("576x384TileSet", L"../Assets/576x384px_6x9tile_TileMap.png", 6, 9);
-		engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
+		engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
 
 		// create animated tileset for tilemap (grass, wall, etc...)
 		owner.TileSetManager().Create("576x384TileSet");
@@ -495,7 +495,7 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 	{
 		// create sprite atlas for the water splash animation
 		engine::graphics::factory::SpriteAtlasFactory::Create("3072x192TileSet", L"../Assets/3072x192px_1x17tile_waterfoam.png", 1, 16);
-		engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("3072x192TileSet");
+		engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("3072x192TileSet");
 
 		// load all sprite atlas's sprites into animation object
 		engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
@@ -563,11 +563,11 @@ void demo::DemoStateCameraMap::Update(Demo& owner, double delta)
 	owner.Engine().QueueEnableClipRegionCommand(m_camera.GetViewport());
 
 	// draw dark background in viewport so we know the boundaries of viewport
-	math::geometry::RectF vp = m_camera.GetViewport();
+	engine::math::geometry::RectF vp = m_camera.GetViewport();
 	owner.Engine().QueueDrawQuadCommand(vp.GetTopLeft(), vp.GetSize(), engine::graphics::ColorF{ 0.2f,0.2f,0.2f,1 }, 0.0f);
 
 	// this is the position of map's top-left in the world.
-	spatial::PositionF pos = {0,0};
+	engine::spatial::PositionF pos = {0,0};
 
 	// draw the tilemap via command
 	owner.RenderTileMapOnViewPortCommand<AnimatedTile>(owner.TileMapManager().GetTileMap("map_splashAnim"), m_camera, pos, m_tileSize, { -64,-68 }, { 3,3 }, 1.0f);
@@ -626,7 +626,7 @@ void  demo::DemoStateActor::OnMouseMove(int x, int y)
 	if (m_isPanning)
 	{
 		// get the change in position and move camera position by that
-		math::VecF delta = math::VecF((float)x, (float)y) - m_lastMousePos;
+		engine::math::VecF delta = engine::math::VecF((float)x, (float)y) - m_lastMousePos;
 		m_camera.MoveBy(delta);
 
 		// remember the last mouse position
@@ -646,7 +646,7 @@ void  demo::DemoStateActor::OnMouseDown(int btn, int x, int y)
 	if (btn == 2)
 	{
 		// this is screen position and convert it to world position
-		spatial::PositionF pos((float)x, (float)y);
+		engine::spatial::PositionF pos((float)x, (float)y);
 		pos = m_camera.ScreenToWorld(pos);
 		m_focusPos = pos;
 
@@ -672,14 +672,14 @@ void demo::DemoStateActor::Enter(Demo& owner)
 	{
 		// create sprite atlas for tilemap (grass, wall, etc...)
 		engine::graphics::factory::SpriteAtlasFactory::Create("Character", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12);
-		engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("Character");
+		engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("Character");
 
 		// create animated tileset for tilemap (grass, wall, etc...)
 		owner.TileSetManager().Create("Character");
 
 
-		cache::Registry<Animator>::Instance().Register("Character", std::make_unique<Animator>());
-		Animator& animator = cache::Registry<Animator>::Instance().Get("Character");
+		engine::cache::Registry<Animator>::Instance().Register("Character", std::make_unique<Animator>());
+		Animator& animator = engine::cache::Registry<Animator>::Instance().Get("Character");
 
 		animator.Add("idle right face", engine::graphics::factory::AnimationFactory::Create(atlas, { 0, 1, 2, 3, 4, 5 }, 0.1f, true));
 		animator.Play("idle right face");
@@ -696,13 +696,13 @@ void demo::DemoStateActor::Update(Demo& owner, double delta)
 	input::Input::Instance().Update();
 
 	// update animator
-	Animator& animator = cache::Registry<Animator>::Instance().Get("Character");
+	Animator& animator = engine::cache::Registry<Animator>::Instance().Get("Character");
 	animator.Update(delta);
 
 	// flush the draw commands on queue. we will queue new ones 
 	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
 
-	owner.Engine().QueueDrawSpriteCommand(animator.GetCurrent(), spatial::PositionF{ 50.0f, 50.0f }, animator.GetCurrent().GetSize(), engine::graphics::ColorF{ 1.0f,1.0f,1.0f,1.0f }, 0.0f);
+	owner.Engine().QueueDrawSpriteCommand(animator.GetCurrent(), engine::spatial::PositionF{ 50.0f, 50.0f }, animator.GetCurrent().GetSize(), engine::graphics::ColorF{ 1.0f,1.0f,1.0f,1.0f }, 0.0f);
 
 
 	// render statistics

@@ -1,7 +1,7 @@
 #pragma once
 #include <Spatial/ISizeable.h>
 
-namespace spatial
+namespace engine::spatial
 {
 	template<typename T>
 	class IResizeable : public ISizeable<T>

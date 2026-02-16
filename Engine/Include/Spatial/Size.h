@@ -1,6 +1,6 @@
 #pragma once
 
-namespace spatial
+namespace engine::spatial
 {
 	template<typename T>
 	struct Size

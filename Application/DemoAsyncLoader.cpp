@@ -24,11 +24,11 @@ demo::LoadAsyncLoaderState::~LoadAsyncLoaderState()
 void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 {
 	// create sprite atlas to be used by tilemap
-	cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Register("atlasForDemo", std::make_unique<engine::graphics::resource::SpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>()));
+	engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Register("atlasForDemo", std::make_unique<engine::graphics::resource::SpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>()));
 
 
 	// load sprite atlas from file manually for demo purpose
-	engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("atlasForDemo");
+	engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("atlasForDemo");
 	atlas.Initialize(L"../Assets/4x1_128x32_tile.png");
 
 	// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 1 rows and 4 columns
@@ -348,7 +348,7 @@ bool demo::RenderAsyncLoaderState::IsFinished(Demo& owner)
 
 void demo::RenderAsyncLoaderState::OnResize(size_t width, size_t height)
 {
-	m_viewportSize = spatial::SizeF({ static_cast<float>(width - 50), static_cast<float>(height - 50) });
+	m_viewportSize = engine::spatial::SizeF({ static_cast<float>(width - 50), static_cast<float>(height - 50) });
 }
 
 #pragma endregion

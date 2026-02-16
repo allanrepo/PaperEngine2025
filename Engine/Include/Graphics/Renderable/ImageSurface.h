@@ -40,7 +40,7 @@ namespace engine::graphics::renderable
 		virtual spatial::SizeF GetSize() const override final;
 
 		// IRenderable methods implementation
-		virtual math::geometry::RectF GetUVRect() const override final;
+		virtual engine::math::geometry::RectF GetUVRect() const override final;
 		virtual void Bind() const override final;
 		virtual bool CanBind() const override final;
 	};

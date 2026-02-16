@@ -10,7 +10,7 @@ namespace engine::graphics
 	{
 		struct Glyph
 		{
-			math::geometry::RectF normUV;
+			engine::math::geometry::RectF normUV;
 			spatial::SizeF size;
 		};
 

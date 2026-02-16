@@ -61,11 +61,11 @@ namespace TestCamera
 		timer::StopWatch m_stopwatch;
 		engine::component::tile::Tileset<RenderableTile> m_tileset;
 		engine::component::tile::TileGrid<RenderableTile> m_tilegrid;
-		spatial::SizeF m_tileSize{ 32.0f, 32.0f };
-		spatial::CameraF m_camera;
-		spatial::PositionF m_lastMousePos;
+		engine::spatial::SizeF m_tileSize{ 32.0f, 32.0f };
+		engine::spatial::CameraF m_camera;
+		engine::spatial::PositionF m_lastMousePos;
 		bool m_isPanning = false;
-		spatial::PositionF m_focusPos;
+		engine::spatial::PositionF m_focusPos;
 
 
 	public:
@@ -91,7 +91,7 @@ namespace TestCamera
 			if (m_isPanning)
 			{
 				// get the change in position and move camera position by that
-				math::VecF delta = math::VecF((float)x, (float)y) - m_lastMousePos;
+				engine::math::VecF delta = engine::math::VecF((float)x, (float)y) - m_lastMousePos;
 				m_camera.MoveBy(delta);
 
 				// remember the last mouse position
@@ -111,7 +111,7 @@ namespace TestCamera
 			if (btn == 2)
 			{
 				// this is screen position and convert it to world position
-				spatial::PositionF pos((float)x, (float)y);
+				engine::spatial::PositionF pos((float)x, (float)y);
 				pos = m_camera.ScreenToWorld(pos);
 				m_focusPos = pos;
 
@@ -162,8 +162,8 @@ namespace TestCamera
 
 			// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 8 rows and 12 columns
 			// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-			std::vector<math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
-			for (math::geometry::RectF& rect : uvs)
+			std::vector<engine::math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
+			for (engine::math::geometry::RectF& rect : uvs)
 			{
 				m_spriteAtlas->AddUVRect(rect);
 			}
@@ -264,7 +264,7 @@ namespace TestCamera
 					// draw a red rectangle that shows where the camera position is (top-left position of viewport)
 					{
 						// get the position of camera in world coordinates
-						spatial::PositionF camPos = m_camera.GetPosition();
+						engine::spatial::PositionF camPos = m_camera.GetPosition();
 
 						// convert to screen position
 						camPos = m_camera.WorldToScreen(camPos);
@@ -281,7 +281,7 @@ namespace TestCamera
 					// draw a yellow rectangle that shows where the "focus" object is in the map (or the screen)
 					{
 						// focus object's position is in world space (map). convert to screen position
-						spatial::PositionF focusPos = m_camera.WorldToScreen(m_focusPos);
+						engine::spatial::PositionF focusPos = m_camera.WorldToScreen(m_focusPos);
 
 						// then draw. add a little offset to make the rectangle centered on position
 						m_renderer->Draw(
@@ -315,8 +315,8 @@ namespace TestCamera
 
 		void RenderTiles(engine::component::tile::TileGrid<RenderableTile>& tilegrid, float alpha = 1.0f)
 		{
-			math::geometry::RectF vp = m_camera.GetViewport();
-			spatial::PositionF camPos = m_camera.GetPosition();
+			engine::math::geometry::RectF vp = m_camera.GetViewport();
+			engine::spatial::PositionF camPos = m_camera.GetPosition();
 
 			int left = (int)(camPos.x / m_tileSize.width);
 			int top = (int)(camPos.y / m_tileSize.height);
@@ -335,7 +335,7 @@ namespace TestCamera
 					const engine::component::tile::Tile<RenderableTile>& tile = tilegrid.Get(row, col);
 					if (tile.isValid())
 					{
-						spatial::PositionF pos =
+						engine::spatial::PositionF pos =
 						{
 							col * m_tileSize.width,
 							row * m_tileSize.height

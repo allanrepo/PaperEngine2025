@@ -24,8 +24,8 @@ void demo::LoadTileLayerState::Enter(Demo& owner)
 
 	// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 1 rows and 4 columns
 	// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-	std::vector<math::geometry::RectF> uvs = demo::CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
-	for (math::geometry::RectF& rect : uvs)
+	std::vector<engine::math::geometry::RectF> uvs = demo::CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
+	for (engine::math::geometry::RectF& rect : uvs)
 	{
 		m_spriteAtlas->AddUVRect(rect);
 	}
@@ -195,7 +195,7 @@ bool demo::RenderTileLayerState::IsFinished(Demo& owner)
 
 void demo::RenderTileLayerState::OnResize(size_t width, size_t height)
 {
-	m_viewportSize = spatial::SizeF({ static_cast<float>(width - 50), static_cast<float>(height - 50) });
+	m_viewportSize = engine::spatial::SizeF({ static_cast<float>(width - 50), static_cast<float>(height - 50) });
 }
 
 #pragma endregion

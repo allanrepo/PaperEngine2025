@@ -339,8 +339,8 @@ namespace TestAsyncFileReader
 		std::deque<std::string> m_files;
 		std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
 
-		performance::FrameRateMonitor m_frameRateMonitor;
-		performance::FrameRateMonitor m_stateFrameRateMonitor;
+		engine::performance::FrameRateMonitor m_frameRateMonitor;
+		engine::performance::FrameRateMonitor m_stateFrameRateMonitor;
 
 		timer::FrameRateController m_frameRateController;
 
@@ -423,7 +423,7 @@ namespace TestAsyncFileReader
 			m_stateMachine.Set(std::move(state));
 		}
 
-		void DrawProgressBarCommand(spatial::PositionF pos, spatial::SizeF size, float current, float total)
+		void DrawProgressBarCommand(engine::spatial::PositionF pos, engine::spatial::SizeF size, float current, float total)
 		{
 			std::unique_ptr<engine::command::graphics::renderer::DrawQuadCommand> drawQuadCmd =
 				std::make_unique<engine::command::graphics::renderer::DrawQuadCommand>(
@@ -439,7 +439,7 @@ namespace TestAsyncFileReader
 				std::make_unique<engine::command::graphics::renderer::DrawQuadCommand>(
 					*m_renderer,
 					pos,
-					spatial::SizeF
+					engine::spatial::SizeF
 					{
 						size.width * current / total,
 						size.height
@@ -462,7 +462,7 @@ namespace TestAsyncFileReader
 					*m_renderer,
 					*m_fontAtlas,
 					text,
-					spatial::PositionF
+					engine::spatial::PositionF
 					{
 						m_canvas->GetViewPort().GetWidth() - width - 10.0f,
 						y

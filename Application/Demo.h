@@ -38,7 +38,7 @@ namespace demo
 
 namespace demo
 {
-	std::vector<math::geometry::RectF> CalcUV(int row, int col, int fileWidth, int fileHeight);
+	std::vector<engine::math::geometry::RectF> CalcUV(int row, int col, int fileWidth, int fileHeight);
 	
 	class RenderableTile
 	{
@@ -73,21 +73,21 @@ namespace demo
 	class DrawTileMapCommand : public engine::command::graphics::renderer::DrawCommandBase
 	{
 	private:
-		spatial::PositionF m_pos;
+		engine::spatial::PositionF m_pos;
 		engine::component::tile::TileMap<T> m_tilemap;
-		spatial::SizeF m_tilesize;
+		engine::spatial::SizeF m_tilesize;
 		float m_alpha;
-		math::VecF m_scale;
-		math::VecF m_offset;
+		engine::math::VecF m_scale;
+		engine::math::VecF m_offset;
 
 	public:
 		DrawTileMapCommand(
 			engine::graphics::renderer::IRenderer& renderer,
 			engine::component::tile::TileMap<T> tilemap,
-			spatial::PositionF pos = {50.0f, 50.0f},
-			spatial::SizeF tilesize = { 8.0f, 8.0f },
-			math::VecF offset = {0,0},
-			math::VecF scale = {1,1},
+			engine::spatial::PositionF pos = {50.0f, 50.0f},
+			engine::spatial::SizeF tilesize = { 8.0f, 8.0f },
+			engine::math::VecF offset = {0,0},
+			engine::math::VecF scale = {1,1},
 			float alpha = 1.0f
 		) :
 			DrawCommandBase(renderer),
@@ -114,7 +114,7 @@ namespace demo
 					const engine::component::tile::Tile<T>& tile = m_tilemap->Get(row, col);
 					if (tile.isValid())
 					{
-						spatial::PositionF pos =
+						engine::spatial::PositionF pos =
 						{
 							col * m_tilesize.width,
 							row * m_tilesize.height
@@ -122,7 +122,7 @@ namespace demo
 
 						pos += m_pos + m_offset;
 
-						spatial::SizeF tilesize =
+						engine::spatial::SizeF tilesize =
 						{
 							m_tilesize.width * m_scale.x,
 							m_tilesize.height * m_scale.y
@@ -139,23 +139,23 @@ namespace demo
 	class DrawTileMapOnViewPortCommand : public engine::command::graphics::renderer::DrawCommandBase
 	{
 	private:
-		spatial::PositionF m_pos;
+		engine::spatial::PositionF m_pos;
 		engine::component::tile::TileMap<T> m_tilemap;
-		spatial::SizeF m_tilesize;
+		engine::spatial::SizeF m_tilesize;
 		float m_alpha;
-		math::VecF m_scale;
-		math::VecF m_offset;
-		spatial::CameraF& m_camera;
+		engine::math::VecF m_scale;
+		engine::math::VecF m_offset;
+		engine::spatial::CameraF& m_camera;
 
 	public:
 		DrawTileMapOnViewPortCommand(
 			engine::graphics::renderer::IRenderer& renderer,
 			engine::component::tile::TileMap<T> tilemap,
-			spatial::CameraF& camera,
-			spatial::PositionF pos = { 50.0f, 50.0f },
-			spatial::SizeF tilesize = { 8.0f, 8.0f },
-			math::VecF offset = { 0,0 },
-			math::VecF scale = { 1,1 },
+			engine::spatial::CameraF& camera,
+			engine::spatial::PositionF pos = { 50.0f, 50.0f },
+			engine::spatial::SizeF tilesize = { 8.0f, 8.0f },
+			engine::math::VecF offset = { 0,0 },
+			engine::math::VecF scale = { 1,1 },
 			float alpha = 1.0f
 		) :
 			DrawCommandBase(renderer),
@@ -171,8 +171,8 @@ namespace demo
 
 		void Execute() override
 		{
-			math::geometry::RectF vp = m_camera.GetViewport();
-			spatial::PositionF camPos = m_camera.GetPosition();
+			engine::math::geometry::RectF vp = m_camera.GetViewport();
+			engine::spatial::PositionF camPos = m_camera.GetPosition();
 
 			// the whole tilemap might be bigger than viewport. so we may not need to draw all the tiles as some are outside viewport
 			// calculate the start and end tile row and column that is visible in viewport and we will only render them
@@ -200,7 +200,7 @@ namespace demo
 					if (tile.isValid())
 					{
 						// this will be the top-left position of this tile in map coordinate.
-						spatial::PositionF pos =
+						engine::spatial::PositionF pos =
 						{
 							col * m_tilesize.width,
 							row * m_tilesize.height
@@ -214,7 +214,7 @@ namespace demo
 
 						pos += m_offset;
 
-						spatial::SizeF tilesize =
+						engine::spatial::SizeF tilesize =
 						{
 							m_tilesize.width * m_scale.x,
 							m_tilesize.height * m_scale.y
@@ -260,17 +260,17 @@ namespace demo
 		engine::manager::TileMapManager<AnimatedTile>& TileMapManager() { return m_tileMapManager; }
 
 		void DrawTextCommandTopRightScreen(const std::string& text, float y);
-		void DrawProgressBarCommand(spatial::PositionF pos, spatial::SizeF size, float current, float total);
-		void DrawTextCommand(const std::string& text, spatial::PositionF pos, engine::graphics::ColorF color);
+		void DrawProgressBarCommand(engine::spatial::PositionF pos, engine::spatial::SizeF size, float current, float total);
+		void DrawTextCommand(const std::string& text, engine::spatial::PositionF pos, engine::graphics::ColorF color);
 		void DrawStatisticsCommand(const std::list<std::string>& logs);
 
 		template<typename T>
 		void RenderTileMapCommand(
 			engine::component::tile::TileMap<T> map,
-			spatial::PositionF pos = { 50.0f, 50.0f },
-			spatial::SizeF tilesize = { 8.0f, 8.0f },
-			math::VecF offset = { 0,0 },
-			math::VecF scale = { 1,1 },
+			engine::spatial::PositionF pos = { 50.0f, 50.0f },
+			engine::spatial::SizeF tilesize = { 8.0f, 8.0f },
+			engine::math::VecF offset = { 0,0 },
+			engine::math::VecF scale = { 1,1 },
 			float alpha = 1.0f)
 		{
 			std::unique_ptr<DrawTileMapCommand<T>> cmd =
@@ -289,11 +289,11 @@ namespace demo
 		template<typename T>
 		void RenderTileMapOnViewPortCommand(
 			engine::component::tile::TileMap<T> map,
-			spatial::CameraF& camera,
-			spatial::PositionF pos = { 50.0f, 50.0f },
-			spatial::SizeF tilesize = { 8.0f, 8.0f },
-			math::VecF offset = { 0,0 },
-			math::VecF scale = { 1,1 },
+			engine::spatial::CameraF& camera,
+			engine::spatial::PositionF pos = { 50.0f, 50.0f },
+			engine::spatial::SizeF tilesize = { 8.0f, 8.0f },
+			engine::math::VecF offset = { 0,0 },
+			engine::math::VecF scale = { 1,1 },
 			float alpha = 1.0f)
 		{
 			std::unique_ptr<DrawTileMapOnViewPortCommand<T>> cmd =
@@ -325,14 +325,14 @@ namespace demo
 	class DrawTileGridCommand : public engine::command::graphics::renderer::DrawCommandBase
 	{
 	private:
-		spatial::PositionF m_pos;
+		engine::spatial::PositionF m_pos;
 		engine::component::tile::TileGrid<RenderableTile>& m_tilegrid;
 
 	public:
 		DrawTileGridCommand(
 			engine::graphics::renderer::IRenderer& renderer,
 			engine::component::tile::TileGrid<RenderableTile>& tilegrid,
-			spatial::PositionF pos,
+			engine::spatial::PositionF pos,
 			float alpha = 1.0f
 			) :
 			DrawCommandBase(renderer),
@@ -343,7 +343,7 @@ namespace demo
 
 		void Execute() override
 		{
-			spatial::SizeF tileSize{ 8.0f, 8.0f };
+			engine::spatial::SizeF tileSize{ 8.0f, 8.0f };
 
 			for (int row = 0; row <= m_tilegrid.GetHeight(); ++row)
 			{
@@ -357,7 +357,7 @@ namespace demo
 					const engine::component::tile::Tile<RenderableTile>& tile = m_tilegrid.Get(row, col);
 					if (tile.isValid())
 					{
-						spatial::PositionF pos =
+						engine::spatial::PositionF pos =
 						{
 							col * tileSize.width,
 							row * tileSize.height
@@ -375,14 +375,14 @@ namespace demo
 	class DrawTileRegionCommand : public engine::command::graphics::renderer::DrawCommandBase
 	{
 	private:
-		spatial::PositionF m_pos;
+		engine::spatial::PositionF m_pos;
 		engine::component::tile::TileRegion<RenderableTile>& m_region;
 
 	public:
 		DrawTileRegionCommand(
 			engine::graphics::renderer::IRenderer& renderer,
 			engine::component::tile::TileRegion<RenderableTile>& region,
-			spatial::PositionF pos,
+			engine::spatial::PositionF pos,
 			float alpha = 1.0f
 		) :
 			DrawCommandBase(renderer),
@@ -393,7 +393,7 @@ namespace demo
 
 		void Execute() override
 		{
-			spatial::SizeF tileSize{ 8.0f, 8.0f };
+			engine::spatial::SizeF tileSize{ 8.0f, 8.0f };
 
 			for (int row = 0; row <= m_region.GetHeight(); ++row)
 			{
@@ -407,7 +407,7 @@ namespace demo
 					const engine::component::tile::Tile<RenderableTile>& tile = m_region.Get(row, col);
 					if (tile.isValid())
 					{
-						spatial::PositionF pos =
+						engine::spatial::PositionF pos =
 						{
 							col * tileSize.width,
 							row * tileSize.height
@@ -425,14 +425,14 @@ namespace demo
 	class DrawTileLayerCommand : public engine::command::graphics::renderer::DrawCommandBase
 	{
 	private:
-		spatial::PositionF m_pos;
+		engine::spatial::PositionF m_pos;
 		engine::component::tile::TileLayer<RenderableTile>& m_layer;
 
 	public:
 		DrawTileLayerCommand(
 			engine::graphics::renderer::IRenderer& renderer,
 			engine::component::tile::TileLayer<RenderableTile>& layer,
-			spatial::PositionF pos,
+			engine::spatial::PositionF pos,
 			float alpha = 1.0f
 		) :
 			DrawCommandBase(renderer),
@@ -443,7 +443,7 @@ namespace demo
 
 		void Execute() override
 		{
-			spatial::SizeF tileSize{ 8.0f, 8.0f };
+			engine::spatial::SizeF tileSize{ 8.0f, 8.0f };
 
 			size_t regionRows = m_layer.GetHeight();
 			size_t regionCols = m_layer.GetWidth();
@@ -475,7 +475,7 @@ namespace demo
 								continue;
 							}
 							
-							spatial::PositionF pos =
+							engine::spatial::PositionF pos =
 							{
 								(regionPosX + currTileCol) * tileSize.width,
 								(regionPosY + currTileRow) * tileSize.height
@@ -502,7 +502,7 @@ namespace demo
 	private:
 		using AnimatedTile = engine::component::tile::AnimatedTile;
 
-		performance::FrameRateMonitor m_frameRateMonitor;
+		engine::performance::FrameRateMonitor m_frameRateMonitor;
 		bool m_isFinished;
 
 	public:
@@ -522,14 +522,14 @@ namespace demo
 	private:
 		using AnimatedTile = engine::component::tile::AnimatedTile;
 
-		performance::FrameRateMonitor m_frameRateMonitor;
+		engine::performance::FrameRateMonitor m_frameRateMonitor;
 		bool m_isFinished;
 
-		spatial::CameraF m_camera;
-		spatial::PositionF m_lastMousePos;
+		engine::spatial::CameraF m_camera;
+		engine::spatial::PositionF m_lastMousePos;
 		bool m_isPanning;
-		spatial::PositionF m_focusPos;
-		spatial::SizeF m_tileSize;
+		engine::spatial::PositionF m_focusPos;
+		engine::spatial::SizeF m_tileSize;
 
 
 	public:
@@ -554,14 +554,14 @@ namespace demo
 		using Animator = engine::graphics::animation::Animator<Sprite>;
 		using Animation = engine::graphics::animation::Animation<Sprite>;
 
-		performance::FrameRateMonitor m_frameRateMonitor;
+		engine::performance::FrameRateMonitor m_frameRateMonitor;
 		bool m_isFinished;
 
-		spatial::CameraF m_camera;
-		spatial::PositionF m_lastMousePos;
+		engine::spatial::CameraF m_camera;
+		engine::spatial::PositionF m_lastMousePos;
 		bool m_isPanning;
-		spatial::PositionF m_focusPos;
-		spatial::SizeF m_tileSize;
+		engine::spatial::PositionF m_focusPos;
+		engine::spatial::SizeF m_tileSize;
 
 
 	public:

@@ -171,7 +171,7 @@ void engine::graphics::dx11::DX11CanvasImpl::Clear(const engine::graphics::Color
 //    core.GetContext()->RSSetViewports(1, &viewport);
 //}
 
-void engine::graphics::dx11::DX11CanvasImpl::SetViewPort(const math::geometry::RectF& rect)
+void engine::graphics::dx11::DX11CanvasImpl::SetViewPort(const engine::math::geometry::RectF& rect)
 {
     DX11Core& core = DX11Core::Instance();
 
@@ -199,7 +199,7 @@ void engine::graphics::dx11::DX11CanvasImpl::SetViewPort()
     }
 }
 
-math::geometry::RectF engine::graphics::dx11::DX11CanvasImpl::GetViewPort() const
+engine::math::geometry::RectF engine::graphics::dx11::DX11CanvasImpl::GetViewPort() const
 {
     D3D11_VIEWPORT viewport{};
 	unsigned int numViewports = 1;
@@ -208,10 +208,10 @@ math::geometry::RectF engine::graphics::dx11::DX11CanvasImpl::GetViewPort() cons
     if (numViewports == 0) 
     { 
         // No viewport set, return an empty rect 
-        return math::geometry::RectF{0.0f, 0.0f, 0.0f, 0.0f}; 
+        return engine::math::geometry::RectF{0.0f, 0.0f, 0.0f, 0.0f}; 
     }
 
-    return math::geometry::RectF
+    return engine::math::geometry::RectF
     { 
         viewport.TopLeftX,
         viewport.TopLeftY,

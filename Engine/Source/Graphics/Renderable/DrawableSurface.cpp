@@ -19,9 +19,9 @@ bool engine::graphics::renderable::DrawableSurface::Initialize(unsigned int widt
 	return true;
 }
 
-math::geometry::RectF engine::graphics::renderable::DrawableSurface::GetUVRect() const
+engine::math::geometry::RectF engine::graphics::renderable::DrawableSurface::GetUVRect() const
 {
-	return math::geometry::RectF{ 0, 0, 1, 1 };
+	return engine::math::geometry::RectF{ 0, 0, 1, 1 };
 }
 
 void engine::graphics::renderable::DrawableSurface::Bind() const
@@ -60,7 +60,7 @@ float engine::graphics::renderable::DrawableSurface::GetHeight() const
 	return static_cast<float>(texture->GetHeight());
 }
 
-spatial::SizeF engine::graphics::renderable::DrawableSurface::GetSize() const
+engine::spatial::SizeF engine::graphics::renderable::DrawableSurface::GetSize() const
 {
 	return spatial::SizeF
 	{

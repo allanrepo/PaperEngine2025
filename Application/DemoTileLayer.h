@@ -9,7 +9,7 @@ namespace demo
 	class LoadTileLayerState : public state::State<Demo>
 	{
 	private:
-		performance::FrameRateMonitor m_frameRateMonitor;
+		engine::performance::FrameRateMonitor m_frameRateMonitor;
 		engine::loader::IAsyncLoader* m_currentLoader;
 
 		engine::loader::tile::AsyncTileMapLoader<RenderableTile, int> m_tileMapLoader;
@@ -33,11 +33,11 @@ namespace demo
 	class RenderTileLayerState : public state::State<Demo>
 	{
 	private:
-		performance::FrameRateMonitor m_frameRateMonitor;
+		engine::performance::FrameRateMonitor m_frameRateMonitor;
 		std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
 		std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> m_tileSet;
 		std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> m_layer;
-		spatial::SizeF m_viewportSize;
+		engine::spatial::SizeF m_viewportSize;
 
 		void OnResize(size_t width, size_t height);
 

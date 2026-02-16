@@ -51,7 +51,7 @@ namespace engine::graphics::loader
             int rowCount = static_cast<int>(csvFile.GetRowCount());
             for (int row = 0; row < rowCount; ++row)
             {
-                math::geometry::RectF rect
+                engine::math::geometry::RectF rect
                 {
                     csvFile.GetValue<float>(row, 0), // left
                     csvFile.GetValue<float>(row, 1), // top

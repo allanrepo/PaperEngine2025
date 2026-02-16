@@ -19,9 +19,9 @@ bool engine::graphics::renderable::ImageSurface::Initialize(const wchar_t* fileN
 	return true;
 }
 
-math::geometry::RectF engine::graphics::renderable::ImageSurface::GetUVRect() const
+engine::math::geometry::RectF engine::graphics::renderable::ImageSurface::GetUVRect() const
 {
-	return math::geometry::RectF{ 0, 0, 1, 1 };
+	return engine::math::geometry::RectF{ 0, 0, 1, 1 };
 }
 
 void engine::graphics::renderable::ImageSurface::Bind() const
@@ -44,7 +44,7 @@ float engine::graphics::renderable::ImageSurface::GetHeight() const
 	return static_cast<float>(texture->GetHeight());
 }
 
-spatial::SizeF engine::graphics::renderable::ImageSurface::GetSize() const
+engine::spatial::SizeF engine::graphics::renderable::ImageSurface::GetSize() const
 {
 	return spatial::SizeF
 	{

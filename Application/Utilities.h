@@ -68,9 +68,9 @@ namespace app::utilities
 
 	namespace graphics
 	{
-		static std::vector<math::geometry::RectF> CalcUV(int row, int col, int fileWidth, int fileHeight)
+		static std::vector<engine::math::geometry::RectF> CalcUV(int row, int col, int fileWidth, int fileHeight)
 		{
-			std::vector<math::geometry::RectF> uvs;
+			std::vector<engine::math::geometry::RectF> uvs;
 			float width = static_cast<float>(fileWidth / col);
 			float height = static_cast<float>(fileHeight / row);
 			float left = 0;
@@ -92,7 +92,7 @@ namespace app::utilities
 					right /= fileWidth;
 					bottom /= fileHeight;
 
-					uvs.push_back(math::geometry::RectF{ left, top, right, bottom });
+					uvs.push_back(engine::math::geometry::RectF{ left, top, right, bottom });
 
 					//LOG(std::to_string(left) << ", " << std::to_string(top) << ", " << std::to_string(right) << ", " << std::to_string(bottom));
 				}

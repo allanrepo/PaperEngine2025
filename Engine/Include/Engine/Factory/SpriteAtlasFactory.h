@@ -17,7 +17,7 @@ namespace engine::graphics::factory
     {
     private:
         // helper function to calculate UV 
-        static std::vector<math::geometry::RectF> CalcUV(size_t row, size_t col, float fileWidth, float fileHeight);
+        static std::vector<engine::math::geometry::RectF> CalcUV(size_t row, size_t col, float fileWidth, float fileHeight);
 
     public:
         // create and return an uninitialized sprite atlas object
@@ -26,14 +26,14 @@ namespace engine::graphics::factory
         // create and return an initialized sprite atlas object
         static std::unique_ptr<engine::graphics::resource::ISpriteAtlas> Create(
             const std::wstring& filepath,
-            const std::vector<math::geometry::RectF>& uvs
+            const std::vector<engine::math::geometry::RectF>& uvs
         );
 
         // creates an initialized sprite atlas object but store in registry with the given key name
         static bool Create(
             const std::string& name,
             const std::wstring& filepath,
-            const std::vector<math::geometry::RectF>& uvs
+            const std::vector<engine::math::geometry::RectF>& uvs
         );
 
         static bool Create(

@@ -10,7 +10,7 @@ namespace demo
 	class LoadTileMapState : public state::State<Demo>
 	{
 	private:
-		performance::FrameRateMonitor m_frameRateMonitor;
+		engine::performance::FrameRateMonitor m_frameRateMonitor;
 		bool m_isFinished;
 		std::string m_mapFileName;
 
@@ -27,8 +27,8 @@ namespace demo
 	class RenderTileMapState : public state::State<Demo>
 	{
 	private:
-		performance::FrameRateMonitor m_frameRateMonitor;
-		spatial::SizeF m_viewportSize;
+		engine::performance::FrameRateMonitor m_frameRateMonitor;
+		engine::spatial::SizeF m_viewportSize;
 
 		void OnResize(size_t width, size_t height);
 
