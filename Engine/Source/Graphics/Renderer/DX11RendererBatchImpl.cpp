@@ -1,7 +1,7 @@
 #include <Graphics/Renderer/DX11RendererBatchImpl.h>
 #include <Utilities/Utilities.h>
 
-using namespace engine;
+//using namespace engine;
 
 #pragma region // renderer::DX11RendererBatchImpl
 graphics::dx11::renderer::DX11RendererBatchImpl::DX11RendererBatchImpl()
@@ -248,7 +248,7 @@ bool graphics::dx11::renderer::DX11RendererBatchImpl::Initialize()
 	};
 
 	// vertex array is destroyed when this function goes out of scope
-	utilities::OnOutOfScope cleanup([=]
+	engine::utilities::OnOutOfScope cleanup([=]
 		{
 			delete[] pVertices;
 		});

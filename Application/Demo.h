@@ -20,12 +20,18 @@
 #include <Graphics/Renderable/FontAtlas.h>
 #include <Engine/Manager/TileMapManager.h>
 #include <Engine/Manager/TileSetManager.h>
+#include <Graphics/Animation/Animation.h>
+#include <Math/Vector.h>
+#include <Engine/Manager/AnimatedTileSetManager.h>
+#include <Engine/Factory/AnimationFactory.h>
+#include <Spatial/Camera.h>
 
-using namespace engine;
+//using namespace engine;
 
 namespace demo
 {
 	class LoadTileLayerState;
+	template<typename T>
 	class DrawTileMapCommand;
 	class DrawTileRegionCommand;
 };
@@ -33,22 +39,28 @@ namespace demo
 namespace demo
 {
 	std::vector<math::geometry::RectF> CalcUV(int row, int col, int fileWidth, int fileHeight);
-
-
+	
 	class RenderableTile
 	{
 	private:
 		graphics::renderable::Sprite m_sprite;
 		bool m_walkable;
+		graphics::animation::Animator<graphics::renderable::Sprite>* m_animator;
 
 	public:
-		RenderableTile(const graphics::renderable::Sprite& sprite, bool walkable) :
+		RenderableTile(const graphics::renderable::Sprite& sprite, bool walkable, graphics::animation::Animator<graphics::renderable::Sprite>* animator = nullptr) :
 			m_sprite(sprite),
-			m_walkable(walkable)
+			m_walkable(walkable),
+			m_animator(animator)
 		{
 		}
+
 		const graphics::renderable::Sprite& GetSprite() const
 		{
+			if (m_animator)
+			{
+				return m_animator->GetCurrentFrame().element;
+			}
 			return m_sprite;
 		}
 		bool IsWalkable() const
@@ -57,29 +69,39 @@ namespace demo
 		}
 	};
 
-	class DrawTileMapCommand : public command::graphics::renderer::DrawCommandBase
+	template<typename T>
+	class DrawTileMapCommand : public engine::command::graphics::renderer::DrawCommandBase
 	{
 	private:
 		spatial::PositionF m_pos;
-		component::tile::TileMap<RenderableTile> m_tilemap;
+		engine::component::tile::TileMap<T> m_tilemap;
+		spatial::SizeF m_tilesize;
+		float m_alpha;
+		math::VecF m_scale;
+		math::VecF m_offset;
 
 	public:
 		DrawTileMapCommand(
 			::graphics::renderer::IRenderer& renderer,
-			component::tile::TileMap<RenderableTile> tilemap,
-			spatial::PositionF pos,
+			engine::component::tile::TileMap<T> tilemap,
+			spatial::PositionF pos = {50.0f, 50.0f},
+			spatial::SizeF tilesize = { 8.0f, 8.0f },
+			math::VecF offset = {0,0},
+			math::VecF scale = {1,1},
 			float alpha = 1.0f
 		) :
 			DrawCommandBase(renderer),
 			m_tilemap(tilemap),
-			m_pos(pos)
+			m_pos(pos),
+			m_tilesize(tilesize),
+			m_alpha(alpha),
+			m_scale(scale),
+			m_offset(offset)
 		{
 		}
 
 		void Execute() override
 		{
-			spatial::SizeF tileSize{ 8.0f, 8.0f };
-
 			for (int row = 0; row <= m_tilemap->GetHeight(); ++row)
 			{
 				for (int col = 0; col <= m_tilemap->GetWidth(); ++col)
@@ -89,207 +111,143 @@ namespace demo
 						continue;
 					}
 
-					const component::tile::Tile<RenderableTile>& tile = m_tilemap->Get(row, col);
+					const engine::component::tile::Tile<T>& tile = m_tilemap->Get(row, col);
 					if (tile.isValid())
 					{
 						spatial::PositionF pos =
 						{
-							col * tileSize.width,
-							row * tileSize.height
+							col * m_tilesize.width,
+							row * m_tilesize.height
 						};
 
-						pos += m_pos;
+						pos += m_pos + m_offset;
 
-						m_renderer.DrawRenderable(tile->GetSprite(), pos, tileSize, graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
+						spatial::SizeF tilesize =
+						{
+							m_tilesize.width * m_scale.x,
+							m_tilesize.height * m_scale.y
+						};
+												
+						m_renderer.DrawRenderable(tile->GetSprite(), pos, tilesize, graphics::ColorF{ 1.0f, 1.0f, 1.0f, m_alpha }, 0.0f);
 					}
 				}
 			}
 		}
 	};
 
-	class Demo1
+	template<typename T>
+	class DrawTileMapOnViewPortCommand : public engine::command::graphics::renderer::DrawCommandBase
 	{
 	private:
-		engine::Engine m_engine;
-		std::unique_ptr<graphics::renderable::IFontAtlas> m_fontAtlas;
-		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
-		//std::unique_ptr<component::tile::Tileset<RenderableTile>> m_tileset;
-
-		engine::manager::TileSetManager<RenderableTile> m_tileSetManager;
-		engine::manager::TileMapManager<RenderableTile> m_tileMapManager;
-
-		int stage = 0;
+		spatial::PositionF m_pos;
+		engine::component::tile::TileMap<T> m_tilemap;
+		spatial::SizeF m_tilesize;
+		float m_alpha;
+		math::VecF m_scale;
+		math::VecF m_offset;
+		spatial::CameraF& m_camera;
 
 	public:
-		Demo1() :
-			m_engine("Test State Machine", "DirectX11", "Batch", 1000)
+		DrawTileMapOnViewPortCommand(
+			::graphics::renderer::IRenderer& renderer,
+			engine::component::tile::TileMap<T> tilemap,
+			spatial::CameraF& camera,
+			spatial::PositionF pos = { 50.0f, 50.0f },
+			spatial::SizeF tilesize = { 8.0f, 8.0f },
+			math::VecF offset = { 0,0 },
+			math::VecF scale = { 1,1 },
+			float alpha = 1.0f
+		) :
+			DrawCommandBase(renderer),
+			m_tilemap(tilemap),
+			m_pos(pos),
+			m_tilesize(tilesize),
+			m_alpha(alpha),
+			m_scale(scale),
+			m_offset(offset),
+			m_camera(camera)
 		{
-			// subscribe to start event of the engine. we do all initialization of our components here e.g. state machine
-			m_engine.StartEvent += event::Handler(this, &Demo1::OnStart);
-
-			// subscribe our OnUpdate() to engine's scheduler. the scheduler runs on engine's main loop. 
-			// the scheduler is updated by engine's main loop elapsed time per frame. 
-			// the scheduler fires up event that is registered at specific interval.
-			// we subscribe to be notified every x elapsed time so we can update ourselves at consistent frame rate
-			// in our demo this is where we update our state machine
-			m_engine.Scheduler() += timer::Schedule(1.0f / 6000.0, this, &Demo1::OnUpdate, true, 1);
-
-			// let the engine run!
-			m_engine.Run();
-		}
-		virtual ~Demo1() {}
-		void OnStart()
-		{
-			// create font atlas for rendering text we will use fore demo
-			m_fontAtlas = std::make_unique<graphics::renderable::FontAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
-			m_fontAtlas->Initialize("Terminal", 12);
-			LOG("[Demo] Font atlas created and initialized...");
-
-			// create sprite atlas to be used by tilemap
-			m_spriteAtlas = std::make_unique<graphics::renderable::SpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
-
-			// load sprite atlas from file manually for demo purpose
-			m_spriteAtlas->Initialize(L"../Assets/4x1_128x32_tile.png");
-
-			// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 1 rows and 4 columns
-			// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-			std::vector<math::geometry::RectF> uvs = demo::CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
-			for (math::geometry::RectF& rect : uvs)
-			{
-				m_spriteAtlas->AddUVRect(rect);
-			}
-			LOG("Sprite atlas created...");
-
-			// create tileset for tilemap and register tiles
-			m_tileSetManager.Create("debugTileSet");
-			m_tileSetManager.Register("debugTileSet", 0, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(0), true));		// walkable
-			m_tileSetManager.Register("debugTileSet", 1, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(1), false));	// obstacle
-			m_tileSetManager.Register("debugTileSet", 2, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(2), false));	// obstacle
-			m_tileSetManager.Register("debugTileSet", 3, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(3), false));	// obstacle	
-			LOG("Tilesets generated...");
 		}
 
-		void OnUpdate(double delta)
+		void Execute() override
 		{
-			if (stage == 0)
+			math::geometry::RectF vp = m_camera.GetViewport();
+			spatial::PositionF camPos = m_camera.GetPosition();
+
+			// the whole tilemap might be bigger than viewport. so we may not need to draw all the tiles as some are outside viewport
+			// calculate the start and end tile row and column that is visible in viewport and we will only render them
+			int left = (int)(camPos.x / m_tilesize.width);
+			int top = (int)(camPos.y / m_tilesize.height);
+
+			// add 1 tile as we need to draw 1 tile bigger than viewport to handle offst
+			int right = (int)((camPos.x + vp.GetWidth()) / m_tilesize.width);
+			int bottom = (int)((camPos.y + vp.GetHeight()) / m_tilesize.height);
+
+			for (int row = top; row <= bottom; ++row)
 			{
-				m_tileMapManager.Load(
-					"debugMap",
-					"..\\Assets\\256x256.csv",
-					[this](const int& cell) -> component::tile::Tile<RenderableTile>
+				for (int col = left; col <= right; ++col)
+				{
+					// defensive. just in case we have tile that is out of bounds, skip it.
+					if (!m_tilemap->IsInBounds(row, col))
 					{
-						return m_tileSetManager.MakeTile("debugTileSet", cell);
-					},
-					m_engine.JobQueue());
-				stage = 1;
-			}
+						continue;
+					}
 
-			if (m_tileMapManager.GetState("debugMap") == engine::manager::TileMapManager<RenderableTile>::MapState::Loaded && stage == 1)
-			{
-				stage = 2;
-			}
+					// get the tile
+					const engine::component::tile::Tile<T>& tile = m_tilemap->Get(row, col);
 
-			// flush the draw commands on queue. we will queue new ones 
-			m_engine.CommandQueue().Clear(engine::command::Type::Render);
-
-			if (stage == 1)
-			{
-				DrawTextCommand("Loading Map..." + std::to_string(m_tileMapManager.GetProgress("debugMap")), { 50, 300 }, { 1,1,1,1 });
-			}
-			if (stage == 2)
-			{
-				//DrawTextCommand("Map loaded!", { 50, 300 }, { 1,1,1,1 });
-
-				RenderTileMapCommand(m_tileMapManager.GetTileMap("debugMap"));
-			}
-
-
-			// draw statistics via command
-			std::list<std::string> logs;
-			DrawStatisticsCommand(logs);
-		}
-
-		void DrawStatisticsCommand(const std::list<std::string>& logs)
-		{
-			float tab = 15.0f;
-
-			// get engine performance statistics
-			engine::Engine::Statistics stats = m_engine.GetStatistics();
-
-			std::list<std::string> statLogs;
-			statLogs.insert(statLogs.end(), logs.begin(), logs.end());
-			statLogs.push_back("Render FPS: " + std::to_string(static_cast<int>(stats.renderAverageFPS)));
-			statLogs.push_back("Main Loop Ave FPS: " + std::to_string(static_cast<int>(stats.mainLoopAverageFPS)));
-			statLogs.push_back("Main Loop Last FPS: " + std::to_string(static_cast<int>(stats.mainLoopLastFPS)));
-
-			for (const std::string& str : statLogs)
-			{
-				DrawTextCommandTopRightScreen(str, tab);
-				tab += 20;
-			}
-		}
-
-		// helper function to draw text at top-right screen. this is for showing statistics like FPS
-		void DrawTextCommandTopRightScreen(const std::string& text, float y)
-		{
-			// render text showing which state are we in
-			float width = m_fontAtlas->GetWidth(text);
-			float height = m_fontAtlas->GetHeight();
-
-			std::unique_ptr<engine::command::graphics::renderer::DrawTextCommand> drawTextCmd =
-				std::make_unique<engine::command::graphics::renderer::DrawTextCommand>(
-					m_engine.Renderer(),
-					*m_fontAtlas,
-					text,
-					spatial::PositionF
+					// defensive. we're never sure if the tile has valid sprite, so do check
+					if (tile.isValid())
 					{
-						m_engine.GetViewPort().GetWidth() - width - 10.0f,
-						y
-					},
-					graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }
-				);
-			m_engine.CommandQueue().Enqueue(std::move(drawTextCmd));
-		}
+						// this will be the top-left position of this tile in map coordinate.
+						spatial::PositionF pos =
+						{
+							col * m_tilesize.width,
+							row * m_tilesize.height
+						};
 
-		void DrawTextCommand(const std::string& text, spatial::PositionF pos, graphics::ColorF color)
-		{
-			// render text showing which state are we in
-			float width = m_fontAtlas->GetWidth(text);
-			float height = m_fontAtlas->GetHeight();
+						// m_pos is the position of map in the world coordinate. it is the top-left position of map in the world
+						// typically, it is 0,0 as the map itself is the world. but in this function, we are not assuming it.
+						// we will take give m_pos as the top-left position of the map in the world
+						// so we translate this tile's top-left position with m_pos
+						pos += m_pos;
 
-			std::unique_ptr<engine::command::graphics::renderer::DrawTextCommand> drawTextCmd =
-				std::make_unique<engine::command::graphics::renderer::DrawTextCommand>(
-					m_engine.Renderer(),
-					*m_fontAtlas,
-					text,
-					pos,
-					color
-				);
-			m_engine.CommandQueue().Enqueue(std::move(drawTextCmd));
-		}
+						pos += m_offset;
 
-		void RenderTileMapCommand(component::tile::TileMap<RenderableTile> map, float alpha = 1.0f)
-		{
-			std::unique_ptr<DrawTileMapCommand> cmd =
-				std::make_unique<DrawTileMapCommand>(
-					m_engine.Renderer(),
-					map,
-					spatial::PositionF{ 50,50 }
-				);
-			m_engine.CommandQueue().Enqueue(std::move(cmd));
+						spatial::SizeF tilesize =
+						{
+							m_tilesize.width * m_scale.x,
+							m_tilesize.height * m_scale.y
+						};
+
+						m_renderer.DrawRenderable(
+							tile->GetSprite(),
+							m_camera.WorldToScreen(pos),
+							tilesize,
+							graphics::ColorF{ 1.0f, 1.0f, 1.0f, m_alpha },
+							0.0f
+						);
+					}
+				}
+			}
+
+
 		}
 	};
 
 	class Demo
 	{
 	private:
+		using AnimatedTile = engine::component::tile::AnimatedTile;
+		using AnimatedTileSetManager = engine::manager::AnimatedTileSetManager;
+
 		engine::Engine m_engine;
 		state::StateMachine<Demo> m_stateMachine;
 		std::unique_ptr<graphics::renderable::IFontAtlas> m_fontAtlas;
 		std::unique_ptr<state::State<Demo>> m_state;
 
-		engine::manager::TileSetManager<RenderableTile> m_tileSetManager;
-		engine::manager::TileMapManager<RenderableTile> m_tileMapManager;
+		AnimatedTileSetManager m_tileSetManager;
+		engine::manager::TileMapManager<AnimatedTile> m_tileMapManager;
 
 	public:
 		Demo(std::unique_ptr<state::State<Demo>> state);
@@ -297,37 +255,83 @@ namespace demo
 		void OnStart();
 		void OnUpdate(double delta);
 
-		engine::Engine& Engine()
-		{
-			return m_engine;
-		}
+		engine::Engine& Engine(){ return m_engine; }
+		AnimatedTileSetManager& TileSetManager() { return m_tileSetManager; }
+		engine::manager::TileMapManager<AnimatedTile>& TileMapManager() { return m_tileMapManager; }
 
 		void DrawTextCommandTopRightScreen(const std::string& text, float y);
 		void DrawProgressBarCommand(spatial::PositionF pos, spatial::SizeF size, float current, float total);
 		void DrawTextCommand(const std::string& text, spatial::PositionF pos, graphics::ColorF color);
 		void DrawStatisticsCommand(const std::list<std::string>& logs);
 
-		void RenderTileGridCommand(component::tile::TileGrid<RenderableTile>& tilegrid, float alpha = 1.0f);
-		void RenderTileRegionCommand(component::tile::TileRegion<RenderableTile>& tilegrid, float alpha = 1.0f);
-		void RenderTileLayerCommand(component::tile::TileLayer<RenderableTile>& tilegrid, float alpha = 1.0f);
+		template<typename T>
+		void RenderTileMapCommand(
+			engine::component::tile::TileMap<T> map,
+			spatial::PositionF pos = { 50.0f, 50.0f },
+			spatial::SizeF tilesize = { 8.0f, 8.0f },
+			math::VecF offset = { 0,0 },
+			math::VecF scale = { 1,1 },
+			float alpha = 1.0f)
+		{
+			std::unique_ptr<DrawTileMapCommand<T>> cmd =
+				std::make_unique<DrawTileMapCommand<T>>(
+					m_engine.Renderer(),
+					map,
+					pos,
+					tilesize,
+					offset,
+					scale,
+					alpha
+				);
+			m_engine.CommandQueue().Enqueue(std::move(cmd));
+		}
+
+		template<typename T>
+		void RenderTileMapOnViewPortCommand(
+			engine::component::tile::TileMap<T> map,
+			spatial::CameraF& camera,
+			spatial::PositionF pos = { 50.0f, 50.0f },
+			spatial::SizeF tilesize = { 8.0f, 8.0f },
+			math::VecF offset = { 0,0 },
+			math::VecF scale = { 1,1 },
+			float alpha = 1.0f)
+		{
+			std::unique_ptr<DrawTileMapOnViewPortCommand<T>> cmd =
+				std::make_unique<DrawTileMapOnViewPortCommand<T>>(
+					m_engine.Renderer(),
+					map,
+					camera,
+					pos,
+					tilesize,
+					offset,
+					scale,
+					alpha
+				);
+			m_engine.CommandQueue().Enqueue(std::move(cmd));
+		}
+
+		void RenderTileGridCommand(engine::component::tile::TileGrid<RenderableTile>& tilegrid, float alpha = 1.0f);
+		void RenderTileRegionCommand(engine::component::tile::TileRegion<RenderableTile>& tilegrid, float alpha = 1.0f);
+		void RenderTileLayerCommand(engine::component::tile::TileLayer<RenderableTile>& tilegrid, float alpha = 1.0f);
 
 		void SetState(std::unique_ptr<state::State<Demo>> state);
 		void QueueState(std::unique_ptr<state::State<Demo>> state);
 
 		bool LoadMap(const std::string& filename);
 
+
 	};
 
-	class DrawTileGridCommand : public command::graphics::renderer::DrawCommandBase
+	class DrawTileGridCommand : public engine::command::graphics::renderer::DrawCommandBase
 	{
 	private:
 		spatial::PositionF m_pos;
-		component::tile::TileGrid<RenderableTile>& m_tilegrid;
+		engine::component::tile::TileGrid<RenderableTile>& m_tilegrid;
 
 	public:
 		DrawTileGridCommand(
 			::graphics::renderer::IRenderer& renderer,
-			component::tile::TileGrid<RenderableTile>& tilegrid, 
+			engine::component::tile::TileGrid<RenderableTile>& tilegrid,
 			spatial::PositionF pos,
 			float alpha = 1.0f
 			) :
@@ -350,7 +354,7 @@ namespace demo
 						continue;
 					}
 
-					const component::tile::Tile<RenderableTile>& tile = m_tilegrid.Get(row, col);
+					const engine::component::tile::Tile<RenderableTile>& tile = m_tilegrid.Get(row, col);
 					if (tile.isValid())
 					{
 						spatial::PositionF pos =
@@ -368,18 +372,16 @@ namespace demo
 		}
 	};
 
-
-
-	class DrawTileRegionCommand : public command::graphics::renderer::DrawCommandBase
+	class DrawTileRegionCommand : public engine::command::graphics::renderer::DrawCommandBase
 	{
 	private:
 		spatial::PositionF m_pos;
-		component::tile::TileRegion<RenderableTile>& m_region;
+		engine::component::tile::TileRegion<RenderableTile>& m_region;
 
 	public:
 		DrawTileRegionCommand(
 			::graphics::renderer::IRenderer& renderer,
-			component::tile::TileRegion<RenderableTile>& region,
+			engine::component::tile::TileRegion<RenderableTile>& region,
 			spatial::PositionF pos,
 			float alpha = 1.0f
 		) :
@@ -402,7 +404,7 @@ namespace demo
 						continue;
 					}
 
-					const component::tile::Tile<RenderableTile>& tile = m_region.Get(row, col);
+					const engine::component::tile::Tile<RenderableTile>& tile = m_region.Get(row, col);
 					if (tile.isValid())
 					{
 						spatial::PositionF pos =
@@ -420,16 +422,16 @@ namespace demo
 		}
 	};
 
-	class DrawTileLayerCommand : public command::graphics::renderer::DrawCommandBase
+	class DrawTileLayerCommand : public engine::command::graphics::renderer::DrawCommandBase
 	{
 	private:
 		spatial::PositionF m_pos;
-		component::tile::TileLayer<RenderableTile>& m_layer;
+		engine::component::tile::TileLayer<RenderableTile>& m_layer;
 
 	public:
 		DrawTileLayerCommand(
 			::graphics::renderer::IRenderer& renderer,
-			component::tile::TileLayer<RenderableTile>& layer,
+			engine::component::tile::TileLayer<RenderableTile>& layer,
 			spatial::PositionF pos,
 			float alpha = 1.0f
 		) :
@@ -452,7 +454,7 @@ namespace demo
 				size_t regionPosX = 0;
 				for (int currRegionCol = 0; currRegionCol < regionCols; currRegionCol++)
 				{
-					component::tile::TileRegion<RenderableTile>& region = m_layer.Get(currRegionRow, currRegionCol);
+					engine::component::tile::TileRegion<RenderableTile>& region = m_layer.Get(currRegionRow, currRegionCol);
 
 					size_t regionCols = region.GetWidth();
 					size_t regionRows = region.GetHeight();
@@ -467,7 +469,7 @@ namespace demo
 								continue;
 							}
 
-							const component::tile::Tile<RenderableTile>& tile = region.Get(currTileRow, currTileCol);
+							const engine::component::tile::Tile<RenderableTile>& tile = region.Get(currTileRow, currTileCol);
 							if (!tile.isValid())
 							{
 								continue;
@@ -495,41 +497,17 @@ namespace demo
 		}
 	};
 
-	class LoadSequentialState : public state::State<Demo>
+	class DemoState : public state::State<Demo>
 	{
 	private:
-		performance::FrameRateMonitor m_frameRateMonitor;
-		io::AsyncFileReader m_fileReader;
-		std::deque<std::string> m_files;
-		std::string m_currFile;
-		int m_readSize;
-		bool m_isFinished;
+		using AnimatedTile = engine::component::tile::AnimatedTile;
 
-	public:
-		LoadSequentialState();
-		virtual ~LoadSequentialState();
-
-		virtual void Enter(Demo& owner) override;
-		virtual void Exit(Demo& owner) override;
-		virtual void Update(Demo& owner, double delta) override;
-		virtual bool IsFinished(Demo& owner) override;
-
-		void OnMouseDown(int btn, int x, int y);
-	};
-
-	class LoadSimultaneousState : public state::State<Demo>
-	{
-	private:
 		performance::FrameRateMonitor m_frameRateMonitor;
 		bool m_isFinished;
-		io::AsyncFileReader m_fileReader0;
-		io::AsyncFileReader m_fileReader1;
-		io::AsyncFileReader m_fileReader2;
-		int m_nFilesInProgress;
 
 	public:
-		LoadSimultaneousState();
-		virtual ~LoadSimultaneousState();
+		DemoState();
+		virtual ~DemoState();
 
 		virtual void Enter(Demo& owner) override;
 		virtual void Exit(Demo& owner) override;
@@ -539,58 +517,65 @@ namespace demo
 		void OnMouseDown(int btn, int x, int y);
 	};
 
-	class LoadTileRegionState : public state::State<Demo>
+	class DemoStateCameraMap : public state::State<Demo>
 	{
 	private:
-		performance::FrameRateMonitor m_frameRateMonitor;
-		io::AsyncFileReader m_fileReader;
-		engine::utilities::parser::CSVParser m_csvParser;
-		engine::container::Table<std::string> m_table;
-		engine::loader::tile::AsyncTileRegionLoader<RenderableTile, int> m_tileRegionLoader;
+		using AnimatedTile = engine::component::tile::AnimatedTile;
 
+		performance::FrameRateMonitor m_frameRateMonitor;
 		bool m_isFinished;
-		bool m_csvTableLoaded;
-		bool m_tileRegionLoaded;
 
-		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
-		std::unique_ptr<component::tile::Tileset<RenderableTile>> m_tileset;
-		std::unique_ptr<component::tile::TileRegion<RenderableTile>> m_region;
+		spatial::CameraF m_camera;
+		spatial::PositionF m_lastMousePos;
+		bool m_isPanning;
+		spatial::PositionF m_focusPos;
+		spatial::SizeF m_tileSize;
+
 
 	public:
-		LoadTileRegionState();
-		virtual ~LoadTileRegionState();
+		DemoStateCameraMap();
+		virtual ~DemoStateCameraMap();
 
 		virtual void Enter(Demo& owner) override;
 		virtual void Exit(Demo& owner) override;
 		virtual void Update(Demo& owner, double delta) override;
 		virtual bool IsFinished(Demo& owner) override;
 
+		void OnMouseMove(int x, int y);
 		void OnMouseDown(int btn, int x, int y);
+		void OnMouseUp(int btn, int x, int y);
 	};
 
-	class RenderTileRegionState : public state::State<Demo>
+	class DemoStateActor : public state::State<Demo>
 	{
 	private:
+		using AnimatedTile = engine::component::tile::AnimatedTile;
+		using Sprite = graphics::renderable::Sprite;
+		using Animator = graphics::animation::Animator<Sprite>;
+		using Animation = graphics::animation::Animation<Sprite>;
+
 		performance::FrameRateMonitor m_frameRateMonitor;
-		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
-		std::unique_ptr<component::tile::Tileset<RenderableTile>> m_tileSet;
-		std::unique_ptr<component::tile::TileRegion<RenderableTile>> m_region;
+		bool m_isFinished;
+
+		spatial::CameraF m_camera;
+		spatial::PositionF m_lastMousePos;
+		bool m_isPanning;
+		spatial::PositionF m_focusPos;
+		spatial::SizeF m_tileSize;
+
 
 	public:
-		RenderTileRegionState(
-			std::unique_ptr<component::tile::TileRegion<RenderableTile>> region,
-			std::unique_ptr<graphics::renderable::ISpriteAtlas> spriteAtlas,
-			std::unique_ptr<component::tile::Tileset<RenderableTile>> tileSet
-		);
-		virtual ~RenderTileRegionState();
+		DemoStateActor();
+		virtual ~DemoStateActor();
 
 		virtual void Enter(Demo& owner) override;
-		virtual void Update(Demo& owner, double delta) override;
 		virtual void Exit(Demo& owner) override;
+		virtual void Update(Demo& owner, double delta) override;
 		virtual bool IsFinished(Demo& owner) override;
 
+		void OnMouseMove(int x, int y);
 		void OnMouseDown(int btn, int x, int y);
+		void OnMouseUp(int btn, int x, int y);
 	};
-
 
 }

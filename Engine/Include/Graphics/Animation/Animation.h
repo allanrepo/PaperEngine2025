@@ -1,5 +1,6 @@
 #pragma once
 #include <Core/Event.h>
+#include <Core/View.h>
 #include <Utilities/Logger.h>
 #include <Timer/StopWatch.h>
 #include <vector>
@@ -37,6 +38,31 @@ namespace graphics::animation
 		double m_elapsedTimeAccumulator = 0.0;	// accumulated time since last frame change.
 		Animation<T>* m_animation;				// pointer to the current animation being played.
 		int m_currFrame = -1;					// index of the current frame in the animation.
+		std::unordered_map<std::string, graphics::animation::Animation<T>> m_animations;
+
+		// starts playing the specified animation from the beginning.
+		void Play(graphics::animation::Animation<T>* animation) noexcept
+		{
+			// guard against invalid animations
+			if (!animation || animation->frames.empty())
+			{
+				return;
+			}
+
+			// validate animation
+			m_animation = animation;
+
+			// if animation is valid and we can store it
+			m_running = true;
+
+			// reset to first frame
+			m_currFrame = 0;
+
+			OnPlay(m_animation);
+
+			// trigger first frame event
+			OnFrame(m_currFrame, m_animation->frames[m_currFrame]);
+		}
 
 	public:
 		// event fired when the frame changes. provides the new frame index and frame data.
@@ -57,30 +83,13 @@ namespace graphics::animation
 		{
 		}
 
-		// starts playing the specified animation from the beginning.
-		void Play(graphics::animation::Animation<T>* animation) noexcept
+		bool IsRunning() const
 		{
-			// guard against invalid animations
-			if (!animation || animation->frames.empty())
-			{
-				return;
-			}
-				
-			// validate animation
-			m_animation = animation;
-
-			// if animation is valid and we can store it
-			m_running = true;
-
-			// reset to first frame
-			m_currFrame = 0;
-
-			OnPlay(m_animation);
-
-			// trigger first frame event
-			OnFrame(m_currFrame, m_animation->frames[m_currFrame]);
+			return m_animation && !m_animation->frames.empty() && m_running;
 		}
-		 
+
+		virtual ~Animator() = default;
+				 
 		// updates the animator by the specified delta time.
 		void Update(double delta) noexcept
 		{
@@ -126,9 +135,23 @@ namespace graphics::animation
 			}
 		}
 
-		graphics::animation::Frame<T>* GetCurrentFrame() const noexcept
+		const graphics::animation::Frame<T>& GetCurrentFrame() const
+		{			
+			if (!IsRunning())
+			{
+				throw std::runtime_error("No current frame available");
+			}
+			//return m_animation? &m_animation->frames[m_currFrame] : nullptr;
+			return m_animation->frames[m_currFrame];
+		}
+
+		const T& GetCurrent() const
 		{
-			return m_animation? &m_animation->frames[m_currFrame] : nullptr;
+			if (!IsRunning())
+			{
+				throw std::runtime_error("No current frame available");
+			}
+			return m_animation->frames[m_currFrame].element;
 		}
 
 		const int GetCurrentFrameIndex() const noexcept
@@ -146,6 +169,59 @@ namespace graphics::animation
 			return m_animation;
 		}
 
+		// Add a new animation by name 
+		void Add(const std::string& name, const Animation<T>& anim) 
+		{ 
+			m_animations[name] = anim; 
+		} 
+		
+		// Remove an animation by name 
+		void Remove(const std::string& name) 
+		{ 
+			auto it = m_animations.find(name); 
+			if (it != m_animations.end()) 
+			{ 
+				// If currently playing this animation, stop it 
+				if (m_animation == &it->second) 
+				{ 
+					m_running = false; 
+					m_animation = nullptr; 
+					m_currFrame = -1; 
+				} 
+				m_animations.erase(it); 
+			} 
+		}
+
+		// Set and play an animation by name 
+		bool Play(const std::string& name) 
+		{ 
+			auto it = m_animations.find(name); 
+			if (it == m_animations.end()) 
+			{ 
+				return false;
+			} 
+
+			Play(&it->second);
+			return true;			
+		}
+
+		bool Has(const std::string& name) const
+		{
+			auto it = m_animations.find(name);
+			return it != m_animations.end();
+		}
+
+
+		void Clear() noexcept 
+		{
+			m_running = false; 
+			m_elapsedTimeAccumulator = 0.0; 
+			m_animation = nullptr; 
+			m_currFrame = -1; 
+	
+			// releases all stored animations 
+			m_animations.clear();			
+		}
 	};
 
 
@@ -192,7 +268,8 @@ namespace graphics::animation
 					},
 					true // loop
 				};
-				animator.Play(&animation);
+				animator.Add("default", animation);
+				animator.Play("default");
 
 				animator.OnFrame += event::Handler(this, &TestClass::OnFrame);
 

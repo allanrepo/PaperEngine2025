@@ -10,15 +10,15 @@ namespace demo
 	{
 	private:
 		performance::FrameRateMonitor m_frameRateMonitor;
-		loader::IAsyncLoader* m_currentLoader;
+		engine::loader::IAsyncLoader* m_currentLoader;
 
 		engine::loader::tile::AsyncTileMapLoader<RenderableTile, int> m_tileMapLoader;
 
 		bool m_isFinished;
 
 		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
-		std::unique_ptr<component::tile::Tileset<RenderableTile>> m_tileset;
-		std::unique_ptr<component::tile::TileLayer<RenderableTile>> m_layer;
+		std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> m_tileset;
+		std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> m_layer;
 
 	public:
 		LoadTileLayerState();
@@ -35,17 +35,17 @@ namespace demo
 	private:
 		performance::FrameRateMonitor m_frameRateMonitor;
 		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
-		std::unique_ptr<component::tile::Tileset<RenderableTile>> m_tileSet;
-		std::unique_ptr<component::tile::TileLayer<RenderableTile>> m_layer;
+		std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> m_tileSet;
+		std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> m_layer;
 		spatial::SizeF m_viewportSize;
 
 		void OnResize(size_t width, size_t height);
 
 	public:
 		RenderTileLayerState(
-			std::unique_ptr<component::tile::TileLayer<RenderableTile>> layer,
+			std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> layer,
 			std::unique_ptr<graphics::renderable::ISpriteAtlas> spriteAtlas,
-			std::unique_ptr<component::tile::Tileset<RenderableTile>> tileSet
+			std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> tileSet
 		);
 		virtual ~RenderTileLayerState();
 

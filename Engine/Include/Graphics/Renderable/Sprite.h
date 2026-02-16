@@ -37,7 +37,7 @@ namespace graphics::renderable
 	// is renderable
 	// has pointer to sprite atlas 
 	// has source rect (normalized rectangular coordinates or UV)
-	class Sprite : public graphics::renderable::IRenderable, public spatial::ISizeable<float>, core::View<graphics::renderable::ISpriteAtlas>
+	class Sprite : public graphics::renderable::IRenderable, public spatial::ISizeable<float>, public core::View<graphics::renderable::ISpriteAtlas>
 	{
 	private:
 		math::geometry::RectF m_rect;

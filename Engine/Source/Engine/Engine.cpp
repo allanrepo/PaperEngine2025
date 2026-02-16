@@ -8,7 +8,7 @@
 #include <Core/Input.h>
 #include <iomanip>
 
-using namespace engine;
+//using namespace engine;
 
 engine::Engine::Engine(
 	std::string title,

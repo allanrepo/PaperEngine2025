@@ -17,18 +17,17 @@
 
 int main()
 {
+	//TestTile testTile;
 
 	//graphics::animation::Test::Test();
-
 	//TestTimer testTimer;
 	//TestInput testInput;
-	//TestActorStateBehavior testActorStateBehavior;
+	TestActorStateBehavior testActorStateBehavior;
 	//TestSaveTextureToFile testSaveTextureToFile;
 	//testPathFinder::TestPathFinder testPathFinder;
 	//test::TestFootprintResolver testFootprintResolver;
 	//test::TestPinchBlock testPinchBlock;
 	//test::TestGridScaling testGridScaling;
-	TestTile testTile;
 	//TestSprite testSprite;
 	//TestRendererVisualComparison test;
 	//StressTestRenderer str;

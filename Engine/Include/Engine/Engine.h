@@ -21,12 +21,14 @@
 #include <Win32/Window.h>
 #include <Performance/FrameRateMonitor.h>
 #include <Timer/FrameRateController.h>
+#include <Graphics/Renderable/Sprite.h>
 #include <Job/IJob.h>
 #include <Job/Job.h>
 #include <memory>
 #include <deque>
 #include <vector>
 #include <list>
+#include <algorithm>
 
 namespace engine
 {
@@ -35,8 +37,8 @@ namespace engine
 	{
 	private:
 		std::unique_ptr<Win32::Window> m_window;
-		std::unique_ptr<graphics::ICanvas> m_canvas;
-		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
+		std::unique_ptr<::graphics::ICanvas> m_canvas;
+		std::unique_ptr<::graphics::renderer::IRenderer> m_renderer;
 		timer::StopWatch m_stopwatch;
 		command::CommandQueue m_commandQueue;
 		performance::FrameRateMonitor m_mainLoopMonitor;
@@ -86,7 +88,7 @@ namespace engine
 			return m_stopwatch;
 		}
 
-		graphics::renderer::IRenderer& Renderer()
+		::graphics::renderer::IRenderer& Renderer()
 		{
 			return *m_renderer;
 		}
@@ -129,6 +131,24 @@ namespace engine
 			};
 		}
 
+		void QueueEnableClipRegionCommand(math::geometry::RectF region)
+		{
+			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::SetClipRegionCommand>(*m_renderer, region, true));
+		}
+
+		void QueueDisableClipRegionCommand()
+		{
+			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::SetClipRegionCommand>(*m_renderer, math::geometry::RectF{}, false));
+		}
+
+		void QueueDrawQuadCommand(spatial::PositionF pos, spatial::SizeF size, ::graphics::ColorF color, float rot)
+		{
+			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::DrawQuadCommand>(*m_renderer, pos, size, color, rot));
+		}
+		void QueueDrawSpriteCommand(::graphics::renderable::Sprite sprite, spatial::PositionF pos, spatial::SizeF size, ::graphics::ColorF color, float rot)
+		{
+			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::DrawSpriteCommand>(*m_renderer, sprite, pos, size, color, rot));
+		}
 
 	};
 }

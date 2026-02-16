@@ -154,19 +154,22 @@ int main()
 	//test::TestCanvas testCanvas;
 	//test::TestEngine testEngine;
 	//TestAsyncFileReader::Test testAsyncFileReader;
-    demo::Demo demoInstance(std::make_unique<demo::LoadTileLayerState>());
+    //demo::Demo demoInstance(std::make_unique<demo::LoadTileLayerState>());
     //testFrameRate::Test::Instance().Run();
 
     // OK
     //TestCamera::Test testCamera;
     //TestTile::Test testTile;
     //test::TestFileReader testFileReader;
-    //TestLargeMap::Test testLargeMap;
     //test::TestSprite testSprite;
     //test::TestAnimation testAnimation;
     //demo::Demo demoInstance(std::make_unique<demo::LoadAsyncLoaderState>("..\\Assets\\256x256.csv"));
     //demo::Demo1 demoTest;
     //demo::Demo demoInstance(std::make_unique<demo::LoadTileMapState>("..\\Assets\\256x256.csv"));
+    //demo::Demo demoInstance(std::make_unique<demo::DemoState>());
+    //demo::Demo demoInstance(std::make_unique<demo::DemoStateCameraMap>());
+    demo::Demo demoInstance(std::make_unique<demo::DemoStateActor>());
+    //TestLargeMap::Test testLargeMap;
 
 
 	return 0;

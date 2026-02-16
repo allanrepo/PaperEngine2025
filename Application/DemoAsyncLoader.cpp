@@ -23,37 +23,24 @@ demo::LoadAsyncLoaderState::~LoadAsyncLoaderState()
 
 void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 {
-	{
-		cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Register("atlas1", std::make_unique<graphics::renderable::SpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>()));
-		graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("atlas1");
-		atlas.Initialize(L"../Assets/4x1_128x32_tile.png");
-		std::vector<math::geometry::RectF> uvs = demo::CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
-		atlas.AddUVRects(uvs);
-	}
-
-
-
 	// create sprite atlas to be used by tilemap
-	m_spriteAtlas = std::make_unique<graphics::renderable::SpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
+	cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Register("atlasForDemo", std::make_unique<graphics::renderable::SpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>()));
+
 
 	// load sprite atlas from file manually for demo purpose
-	m_spriteAtlas->Initialize(L"../Assets/4x1_128x32_tile.png");
+	graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("atlasForDemo");
+	atlas.Initialize(L"../Assets/4x1_128x32_tile.png");
 
 	// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 1 rows and 4 columns
-	// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-	std::vector<math::geometry::RectF> uvs = demo::CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
-	for (math::geometry::RectF& rect : uvs)
-	{
-		m_spriteAtlas->AddUVRect(rect);
-	}
+	atlas.AddUVRects(demo::CalcUV(1, 4, (int)atlas.GetWidth(), (int)atlas.GetHeight()));
 	LOG("Sprite atlas created...");
 
 	// create tileset for tilemap and register tiles
-	m_tileset = std::make_unique<component::tile::Tileset<RenderableTile>>();
-	m_tileset->Register(0, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(0), true)); // walkable
-	m_tileset->Register(1, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(1), false)); // obstacle
-	m_tileset->Register(2, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(2), false)); // obstacle
-	m_tileset->Register(3, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(3), false)); // obstacle
+	m_tileset = std::make_unique<engine::component::tile::Tileset<RenderableTile>>();
+	m_tileset->Register(0, std::make_unique<RenderableTile>(atlas.MakeSprite(0), true)); // walkable
+	m_tileset->Register(1, std::make_unique<RenderableTile>(atlas.MakeSprite(1), false)); // obstacle
+	m_tileset->Register(2, std::make_unique<RenderableTile>(atlas.MakeSprite(2), false)); // obstacle
+	m_tileset->Register(3, std::make_unique<RenderableTile>(atlas.MakeSprite(3), false)); // obstacle
 	LOG("Tilesets generated...");
 
 	// specify the tilemap file to read. it must be csv file
@@ -65,13 +52,14 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 	m_fileReader.EndOfFileFoundEvent += event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
 
 	// chain CSV table to CSV parser to acquire row of data from CSV Parser when it parse chunk of data and extracts rows of CSV data
-	m_csvParser.ParseRowEvent += event::Handler(&m_table, &container::Table<std::string>::AddRow);
-	m_csvParser.ParseRemainingEvent += event::Handler(&m_table, &container::Table<std::string>::AddRange);
+	m_csvParser.ParseRowEvent += event::Handler(&m_table, &engine::container::Table<std::string>::AddRow);
+	m_csvParser.ParseRemainingEvent += event::Handler(&m_table, &engine::container::Table<std::string>::AddRange);
 
 	// create our tile objects
-	m_layer = std::make_unique <component::tile::TileLayer<RenderableTile>>();
-	m_grid = std::make_unique <component::tile::TileGrid<RenderableTile>>();
-	m_region = std::make_unique <component::tile::TileRegion<RenderableTile>>();
+	m_layer = std::make_unique <engine::component::tile::TileLayer<RenderableTile>>();
+	m_grid = std::make_unique <engine::component::tile::TileGrid<RenderableTile>>();
+	m_region = std::make_unique <engine::component::tile::TileRegion<RenderableTile>>();
+
 
 	// define job to read map file in chunks
 	std::unique_ptr<engine::job::Job> readTileMapFileJob = std::make_unique<engine::job::Job>(
@@ -89,7 +77,7 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 			[this]()
 			{
 				m_tileGridLoader.Begin("Loading TileGrid", *m_grid.get(), m_table,  
-					[this](const int& cell) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
 					{						
 						return m_tileset->MakeTile(cell);
 					});
@@ -107,7 +95,7 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 			[this]()
 			{
 				m_tileRegionLoader.Begin("Loading TileRegion", *m_region.get(), m_table, 
-					[this](const int& cell) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
 					{
 						return m_tileset->MakeTile(cell);
 					});
@@ -125,7 +113,7 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 			[this]()
 			{
 				m_tileLayerLoader.Begin("Loading TileLayer", *m_layer.get(), m_table, { 32, 32 },
-					[this](const int& cell) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
 					{
 						return m_tileset->MakeTile(cell);
 					});
@@ -190,7 +178,7 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 				m_tileMapLoader.Open(
 					m_filePath,
 					{ 128, 128 },
-					[this](const int& cell) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
 					{
 						return m_tileset->MakeTile(cell);
 					},
@@ -207,7 +195,7 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 			[this, &owner]() 
 			{
 				m_isFinished = true;
-				owner.QueueState(std::make_unique<RenderAsyncLoaderState>(std::move(m_layer), std::move(m_spriteAtlas), std::move(m_tileset)));
+				owner.QueueState(std::make_unique<RenderAsyncLoaderState>(std::move(m_layer), std::move(m_tileset)));
 			}
 		));
 
@@ -232,7 +220,7 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 			{
 				m_asyncCSVMapToTileRegionLoader.Open(
 					m_filePath,
-					[this](const int& cell) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
 					{
 						return m_tileset->MakeTile(cell);
 					},
@@ -264,7 +252,7 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 	//jobChain->AddJob(std::move(unloadTileGridJob));
 	//jobChain->AddJob(std::move(unloadTileRegionJob));
 	//jobChain->AddJob(std::move(unloadTileLayerJob));
-	//jobChain->AddJob(std::move(loadTileMapJob));
+	jobChain->AddJob(std::move(loadTileMapJob));
 	owner.Engine().SubmitJob(std::move(jobChain));
 }
 
@@ -300,8 +288,8 @@ void demo::LoadAsyncLoaderState::Exit(Demo& owner)
 	m_fileReader.ProcessChunkEvent -= event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
 	m_fileReader.EndOfFileFoundEvent -= event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
 
-	m_csvParser.ParseRowEvent -= event::Handler(&m_table, &container::Table<std::string>::AddRow);
-	m_csvParser.ParseRemainingEvent -= event::Handler(&m_table, &container::Table<std::string>::AddRange);
+	m_csvParser.ParseRowEvent -= event::Handler(&m_table, &engine::container::Table<std::string>::AddRow);
+	m_csvParser.ParseRemainingEvent -= event::Handler(&m_table, &engine::container::Table<std::string>::AddRange);
 }
 
 bool demo::LoadAsyncLoaderState::IsFinished(Demo& owner)
@@ -313,12 +301,10 @@ bool demo::LoadAsyncLoaderState::IsFinished(Demo& owner)
 
 #pragma region RenderAsyncLoaderState
 demo::RenderAsyncLoaderState::RenderAsyncLoaderState(
-	std::unique_ptr<component::tile::TileLayer<RenderableTile>> layer,
-	std::unique_ptr<graphics::renderable::ISpriteAtlas> spriteAtlas,
-	std::unique_ptr<component::tile::Tileset<RenderableTile>> tileSet
+	std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> layer,
+	std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> tileSet
 ) :
 	m_layer(std::move(layer)),
-	m_spriteAtlas(std::move(spriteAtlas)),
 	m_tileSet(std::move(tileSet))
 {
 }

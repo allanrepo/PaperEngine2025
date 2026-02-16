@@ -13,6 +13,17 @@ namespace engine::container
 		Dictionary() = default;
 		~Dictionary() = default;
 
+        using iterator = typename std::unordered_map<Key, Value>::iterator;
+        using const_iterator = typename std::unordered_map<Key, Value>::const_iterator;
+
+        // Iterator access
+        iterator begin() { return registry.begin(); }
+        iterator end() { return registry.end(); }
+        const_iterator begin() const { return registry.begin(); }
+        const_iterator end() const { return registry.end(); }
+        const_iterator cbegin() const { return registry.cbegin(); }
+        const_iterator cend() const { return registry.cend(); }
+
         // Registers a value with a key. Returns true if inserted, false if key already exists.
         bool Register(const Key& key, Value value) 
         {

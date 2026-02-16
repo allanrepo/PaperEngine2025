@@ -54,7 +54,6 @@ namespace test
 		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
 		std::unique_ptr<MockSpriteAtlas> m_spriteAtlas;
 		std::unique_ptr<graphics::animation::Animator<graphics::renderable::Sprite>> m_animator;
-		std::unique_ptr<graphics::animation::Animation<graphics::renderable::Sprite>> m_animation;
 		timer::StopWatch m_stopwatch;
 
 	public:
@@ -109,19 +108,20 @@ namespace test
 			}
 
 			// create animation manually and make it loop
-			m_animation = std::make_unique<graphics::animation::Animation<graphics::renderable::Sprite>>();
-			m_animation->loop = true;
+			graphics::animation::Animation<graphics::renderable::Sprite> anim;
+			anim.loop = true;
 
 			// load with walking animation frames manually
 			for (int i = 12; i < 18; i++)
 			{
 				graphics::renderable::Sprite sprite = m_spriteAtlas->MakeSprite(i);
-				m_animation->frames.push_back({ sprite, 100.0f });
+				anim.frames.push_back({ sprite, 100.0f });
 			}
 
 			// create animator and load the animation
 			m_animator = std::make_unique<graphics::animation::Animator<graphics::renderable::Sprite>>();
-			m_animator->Play(m_animation.get());
+			m_animator->Add("default", anim);
+			m_animator->Play("default");
 
 			// setup stopwatch to manage timing and start it
 			m_stopwatch.OnLap += event::Handler(this, &TestAnimation::OnLap);
@@ -148,11 +148,11 @@ namespace test
 				m_renderer->Begin();
 				{
 					m_renderer->DrawRenderable(
-						m_animator->GetCurrentFrame()->element,				// get the sprite from animator's current frame
+						m_animator->GetCurrentFrame().element,				// get the sprite from animator's current frame
 						spatial::PositionF {
 						100.0f, 100.0f
 					},				// position
-						m_animator->GetCurrentFrame()->element.GetSize(),	// get the sprite size from animator's current frame
+						m_animator->GetCurrentFrame().element.GetSize(),	// get the sprite size from animator's current frame
 						graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f },			// color
 						0.0f
 					);

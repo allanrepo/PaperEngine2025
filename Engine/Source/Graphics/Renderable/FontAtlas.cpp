@@ -21,7 +21,7 @@ bool graphics::renderable::FontAtlas::Initialize(const std::string& fontName, co
 	unsigned int* srcData = nullptr;
 	//std::vector<std::array<float, 4>> glyphNormalizedCoords;
 	// ensure HDC is cleaned up when it goes out of scope
-	utilities::OnOutOfScope cleanupHDC([=]
+	engine::utilities::OnOutOfScope cleanupHDC([=]
 		{
 			if (srcData != nullptr) delete[] srcData;
 		});

@@ -29,7 +29,7 @@
 #include <stdexcept>
 #include <Containers/Table.h>
 
-using namespace engine;
+#include <Graphics/Renderable/Sprite.h>
 
 // forward declare
 namespace engine::component::tile
@@ -82,7 +82,7 @@ namespace engine::component::tile
 	private:
 		// only tileset and TileGrid can create tile instances
 		friend class Tileset<T>;
-		friend class TileGrid<T>;
+		//friend class TileGrid<T>;
 
 		// private constructor used by Tileset to create tile instances. defaults to invalid tile if no data provided
 		Tile(T* data = nullptr) :
@@ -103,7 +103,7 @@ namespace engine::component::tile
 	template<typename T>
 	class Tileset 
 	{
-	private:
+	protected:
 		container::Dictionary<int, std::unique_ptr<T>> m_registry;
 
 	public:
@@ -134,6 +134,18 @@ namespace engine::component::tile
 		{ 
 			return m_registry.Has(id) ? Tile<T>(m_registry.Get(id).get()) : Tile<T>();
 		}
+
+		// define iterator for our container
+		using iterator = typename container::Dictionary<int, std::unique_ptr<T>>::iterator;
+		using const_iterator = typename container::Dictionary<int, std::unique_ptr<T>>::const_iterator;
+
+		// iterator access
+		iterator begin() { return m_registry.begin(); }
+		iterator end() { return m_registry.end(); }
+		const_iterator begin() const { return m_registry.begin(); }
+		const_iterator end() const { return m_registry.end(); }
+		const_iterator cbegin() const { return m_registry.cbegin(); }
+		const_iterator cend() const { return m_registry.cend(); }
 	};
 
 	// tile layer represents a 2d grid of tile instances
@@ -703,5 +715,20 @@ namespace engine::component::tile
 	public:
 		virtual ~TileMap() = default;
 	};
+
+
+
+	class ITile 
+	{
+	public:
+
+		virtual void Update(double) = 0;
+		virtual bool IsWalkable() const = 0;
+		virtual const ::graphics::renderable::Sprite& GetSprite() const = 0;
+	};
+
+
+
+
 }
 

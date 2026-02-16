@@ -7,7 +7,7 @@
 #include <memory>
 #include <array>
 
-using namespace engine;
+//using namespace engine;
 
 namespace Win32
 {
@@ -34,7 +34,7 @@ namespace Win32
 			HFONT hOldFont = (HFONT)SelectObject(hDC, hFont);
 
 			// ensure we restore the old font when we're done
-			utilities::OnOutOfScope cleanup([&] 
+			engine::utilities::OnOutOfScope cleanup([&]
 			{
 				SelectObject(hDC, hOldFont);
 			});
@@ -168,7 +168,7 @@ namespace Win32
 			HDC hDC = CreateCompatibleDC(NULL);
 
 			// ensure HDC is cleaned up when it goes out of scope
-			utilities::OnOutOfScope cleanupHDC([=]
+			engine::utilities::OnOutOfScope cleanupHDC([=]
 				{
 					if(hDC) DeleteDC(hDC);
 				});
@@ -195,7 +195,7 @@ namespace Win32
 			HFONT hFont = ::CreateFont(nFontHeight, 0, 0, 0, bold ? 600 : 0, italic, underline, strike, DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, VARIABLE_PITCH, wname.c_str());
 
 			// ensure HFONT is cleaned up when it goes out of scope
-			utilities::OnOutOfScope cleanupHFONT([=]
+			engine::utilities::OnOutOfScope cleanupHFONT([=]
 				{
 					if (hFont) DeleteObject(hFont);
 				});
@@ -221,7 +221,7 @@ namespace Win32
 #pragma region create GDI bitmap resource 
 			// Select the font into the DC so it will use that font
 			HFONT hOldFont = (HFONT)SelectObject(hDC, hFont);
-			utilities::OnOutOfScope restoreHDC([=]
+			engine::utilities::OnOutOfScope restoreHDC([=]
 				{
 					if(hOldFont)SelectObject(hDC, hOldFont);
 				});
@@ -247,7 +247,7 @@ namespace Win32
 			HBITMAP hBitmap = CreateDIBSection(hDC, &BitmapInfo, DIB_RGB_COLORS, (void**)&pBitmapBits, NULL, 0);
 
 			// ensure HBITMAP is cleaned up when it goes out of scope
-			utilities::OnOutOfScope cleanupHBITMAP([=]
+			engine::utilities::OnOutOfScope cleanupHBITMAP([=]
 				{
 					if (hBitmap) DeleteObject(hBitmap);
 				});
@@ -264,7 +264,7 @@ namespace Win32
 			// Select the new bitmap into the DC.
 			HBITMAP hOldBitmap = (HBITMAP)SelectObject(hDC, hBitmap);
 
-			utilities::OnOutOfScope restoreHBITMAP([=]
+			engine::utilities::OnOutOfScope restoreHBITMAP([=]
 				{
 					if(hOldBitmap) SelectObject(hDC, hOldBitmap);
 				});

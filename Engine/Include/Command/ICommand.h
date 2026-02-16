@@ -1,5 +1,6 @@
 #pragma once
 #include <Graphics/Renderer/IRenderer.h>
+#include <Graphics/Renderable/Sprite.h>
 #include <unordered_map>
 
 namespace engine
@@ -185,6 +186,67 @@ namespace engine
 					void Execute() override
 					{
 						m_renderer.DrawRenderable(m_renderable, m_pos, m_size, m_color, m_rotation);
+					}
+				};
+
+				class DrawSpriteCommand : public DrawCommandBase
+				{
+				private:
+					const ::graphics::renderable::Sprite m_sprite;
+					spatial::PositionF m_pos;
+					spatial::SizeF m_size;
+					::graphics::ColorF m_color;
+					float m_rotation;
+				public:
+					DrawSpriteCommand(
+						::graphics::renderer::IRenderer& renderer,
+						const ::graphics::renderable::Sprite& sprite,
+						spatial::PositionF pos,
+						spatial::SizeF size,
+						::graphics::ColorF color,
+						float rotation
+					) :
+						DrawCommandBase(renderer),
+						m_sprite(sprite),
+						m_pos(pos),
+						m_size(size),
+						m_color(color),
+						m_rotation(rotation)
+					{
+					}
+					void Execute() override
+					{
+						m_renderer.DrawRenderable(m_sprite, m_pos, m_size, m_color, m_rotation);
+					}
+				};
+
+
+
+				class SetClipRegionCommand : public DrawCommandBase
+				{
+				private:
+					const math::geometry::RectF m_region;
+					bool m_enable;
+
+				public:
+					SetClipRegionCommand(
+						::graphics::renderer::IRenderer& renderer,
+						const math::geometry::RectF& region,
+						bool enable
+					) :
+						DrawCommandBase(renderer),
+						m_region(region),
+						m_enable(enable)
+					{
+					}
+
+					void Execute() override
+					{
+						if (m_enable)
+						{
+							m_renderer.SetClipRegion(m_region);
+						}
+						m_renderer.EnableClipping(m_enable);
 					}
 				};
 			};

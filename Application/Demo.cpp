@@ -9,12 +9,14 @@
 #include <Graphics/Renderable/SpriteAtlas.h>
 #include "Utilities.h"
 #include <Containers/Table.h>
+#include <Engine/Factory/SpriteAtlasFactory.h>
+#include <Cache/Registry.h>
 
-
-using namespace engine;
+//using namespace engine;
 using namespace app;
 
-#pragma region demo methods
+#pragma region demo
+
 std::vector<math::geometry::RectF> demo::CalcUV(int row, int col, int fileWidth, int fileHeight)
 {
 	std::vector<math::geometry::RectF> uvs;
@@ -44,9 +46,7 @@ std::vector<math::geometry::RectF> demo::CalcUV(int row, int col, int fileWidth,
 	}
 	return uvs;
 }
-#pragma endregion
 
-#pragma region demo
 demo::Demo::Demo(std::unique_ptr<state::State<Demo>> state) :
 	m_engine("Test State Machine", "DirectX11", "Batch", 1000),
 	m_stateMachine(this),
@@ -60,7 +60,7 @@ demo::Demo::Demo(std::unique_ptr<state::State<Demo>> state) :
 	// the scheduler fires up event that is registered at specific interval.
 	// we subscribe to be notified every x elapsed time so we can update ourselves at consistent frame rate
 	// in our demo this is where we update our state machine
-	m_engine.Scheduler() += timer::Schedule(1.0f / 6000.0, this, &Demo::OnUpdate, true, 1);
+	m_engine.Scheduler() += timer::Schedule(1.0f / 100.0f, this, &Demo::OnUpdate, true, 1);
 
 	// let the engine run!
 	m_engine.Run();
@@ -172,13 +172,6 @@ void demo::Demo::DrawTextCommand(const std::string& text, spatial::PositionF pos
 void demo::Demo::DrawStatisticsCommand(const std::list<std::string> &logs)
 {
 	float tab = 15.0f;
-	//for(const std::string& str : logs)
-	//{
-	//	DrawTextCommandTopRightScreen(str, tab);
-	//	tab += 20;
-	//}
-
-	// get engine performance statistics
 	engine::Engine::Statistics stats = m_engine.GetStatistics();
 
 	std::list<std::string> statLogs;
@@ -194,7 +187,7 @@ void demo::Demo::DrawStatisticsCommand(const std::list<std::string> &logs)
 	}
 }
 
-void demo::Demo::RenderTileGridCommand(component::tile::TileGrid<RenderableTile>& tilegrid, float alpha)
+void demo::Demo::RenderTileGridCommand(engine::component::tile::TileGrid<RenderableTile>& tilegrid, float alpha)
 {
 	std::unique_ptr<DrawTileGridCommand> cmd =
 		std::make_unique<DrawTileGridCommand>(
@@ -225,7 +218,7 @@ void demo::Demo::RenderTileGridCommand(component::tile::TileGrid<RenderableTile>
 				continue;
 			}
 
-			const component::tile::Tile<RenderableTile>& tile = tilegrid.Get(row, col);
+			const engine::component::tile::Tile<RenderableTile>& tile = tilegrid.Get(row, col);
 			if (tile.isValid())
 			{
 				spatial::PositionF pos =
@@ -249,7 +242,7 @@ void demo::Demo::RenderTileGridCommand(component::tile::TileGrid<RenderableTile>
 	}
 }
 
-void demo::Demo::RenderTileRegionCommand(component::tile::TileRegion<RenderableTile>& region, float alpha)
+void demo::Demo::RenderTileRegionCommand(engine::component::tile::TileRegion<RenderableTile>& region, float alpha)
 {
 	std::unique_ptr<DrawTileRegionCommand> cmd =
 		std::make_unique<DrawTileRegionCommand>(
@@ -260,7 +253,7 @@ void demo::Demo::RenderTileRegionCommand(component::tile::TileRegion<RenderableT
 	Engine().CommandQueue().Enqueue(std::move(cmd));
 }
 
-void demo::Demo::RenderTileLayerCommand(component::tile::TileLayer<RenderableTile>& layer, float alpha)
+void demo::Demo::RenderTileLayerCommand(engine::component::tile::TileLayer<RenderableTile>& layer, float alpha)
 {
 	std::unique_ptr<DrawTileLayerCommand> cmd =
 		std::make_unique<DrawTileLayerCommand>(
@@ -273,537 +266,466 @@ void demo::Demo::RenderTileLayerCommand(component::tile::TileLayer<RenderableTil
 
 #pragma endregion
 
-#pragma region LoadSequentialState 
-demo::LoadSequentialState::LoadSequentialState() :
+#pragma region DemoState 
+demo::DemoState::DemoState() :
+	m_isFinished(false),
+	m_frameRateMonitor(1.0f)
+{
+	LOG("[DemoState] created");
+}
+
+demo::DemoState::~DemoState()
+{
+	LOG("[DemoState] destroyed");
+}
+
+void demo::DemoState::Enter(Demo& owner)
+{
+	// create map tileset and load tiles into it
+	{
+		// create sprite atlas for tilemap (grass, wall, etc...)
+		graphics::factory::SpriteAtlasFactory::Create("576x384TileSet", L"../Assets/576x384px_6x9tile_TileMap.png", 6, 9);
+		graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("576x384TileSet");
+
+		// create animated tileset for tilemap (grass, wall, etc...)
+		owner.TileSetManager().Create("576x384TileSet");
+
+		// each sprite from atlas is a static tile (single frame), so we create tile from each sprite
+		for (int i = 0; i < atlas.GetUVRectCount(); i++)
+		{
+			// create animation. these tilemaps are static. so their animations are 1 frame only
+			graphics::animation::Animation<graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, { i }, 0.1f, true);
+
+			// when instancing AnimatedTile, it sets the animation passed in constructor as current animation
+			owner.TileSetManager().Register("576x384TileSet", i, std::make_unique<AnimatedTile>(true, "default", anim));
+		}
+	}
+
+	// create water splash tile animation
+	{
+		// create sprite atlas for the water splash animation
+		graphics::factory::SpriteAtlasFactory::Create("3072x192TileSet", L"../Assets/3072x192px_1x17tile_waterfoam.png", 1, 16);
+		graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("3072x192TileSet");
+
+		// load all sprite atlas's sprites into animation object
+		graphics::animation::Animation<graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
+
+		// create tileset
+		owner.TileSetManager().Create("splashTileset");
+
+		// add our splash animation to tile index 1 and set it as default animation
+		owner.TileSetManager().Register("splashTileset", 1, std::make_unique<AnimatedTile>(true, "splash", anim));
+	}
+
+	// create tilemap with animated tiles
+	{
+		owner.TileMapManager().LoadImmediate(
+			"map_splashAnim",
+			"..\\Assets\\16x16_2.csv",
+			[&owner](const int& cell) -> engine::component::tile::Tile<AnimatedTile>
+			{
+				return owner.TileSetManager().MakeTile("splashTileset", cell);
+			});
+
+		owner.TileMapManager().LoadImmediate(
+			"demoTileMap",
+			"..\\Assets\\16x16Map.csv",
+			[&owner](const int& cell) -> engine::component::tile::Tile<AnimatedTile>
+			{
+				return owner.TileSetManager().MakeTile("576x384TileSet", cell);
+			});
+
+		owner.TileMapManager().LoadImmediate(
+			"map_1",
+			"..\\Assets\\16x16_1.csv",
+			[&owner](const int& cell) -> engine::component::tile::Tile<AnimatedTile>
+			{
+				return owner.TileSetManager().MakeTile("576x384TileSet", cell);
+			});
+	}
+}
+
+
+void demo::DemoState::Update(Demo& owner, double delta)
+{
+	// monitor frame rate
+	m_frameRateMonitor.OnFrameCompleted(delta);
+	
+	// update animations of tiles
+	owner.TileSetManager().Update(delta);
+
+	// flush the draw commands on queue. we will queue new ones 
+	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
+
+
+	//graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("576x384TileSet");
+	//{
+	//	std::unique_ptr<engine::command::graphics::renderer::DrawRenderableCommand> drawRenderableCmd =
+	//		std::make_unique<engine::command::graphics::renderer::DrawRenderableCommand>(
+	//			owner.Engine().Renderer(),
+	//			atlas,
+	//			spatial::PositionF{ 50.0f, 50.0f },
+	//			spatial::SizeF{ 576.0f,384.0f },
+	//			::graphics::ColorF{ 1.0f,1.0f,1.0f,1.0f },
+	//			0.0f
+	//		);
+	//	owner.Engine().CommandQueue().Enqueue(std::move(drawRenderableCmd));
+	//}
+
+
+	// draw the tilemap via command
+	owner.RenderTileMapCommand<AnimatedTile>(owner.TileMapManager().GetTileMap("map_splashAnim"), { 50, 50 }, { 32, 32 }, { -32,-34 }, { 3,3 }, 1.0f);
+	owner.RenderTileMapCommand<AnimatedTile>(owner.TileMapManager().GetTileMap("demoTileMap"), { 50, 50 }, { 32, 32 }, { 0,0 }, { 1,1 }, 1.0f);
+	owner.RenderTileMapCommand<AnimatedTile>(owner.TileMapManager().GetTileMap("map_1"), { 50, 50 }, { 32, 32 }, { 0,0 }, { 1,1 }, 1.0f);
+
+	// render statistics
+	std::list<std::string> logs;
+	logs.push_back("State: DemoState");
+	logs.push_back("State FPS: " + std::to_string(static_cast<int>(m_frameRateMonitor.GetAverageFrameRate())));
+	owner.DrawStatisticsCommand(logs);
+}
+
+void demo::DemoState::Exit(Demo& owner)
+{
+	input::Input::Instance().MouseDownEvent -= event::Handler(this, &DemoState::OnMouseDown);
+}
+
+
+bool demo::DemoState::IsFinished(Demo& owner)
+{
+	return m_isFinished;
+}
+
+
+void demo::DemoState::OnMouseDown(int btn, int x, int y)
+{
+	m_isFinished = true;
+}
+
+#pragma endregion
+
+#pragma region DemoStateCameraMap 
+demo::DemoStateCameraMap::DemoStateCameraMap() :
 	m_isFinished(false),
 	m_frameRateMonitor(1.0f),
-	m_readSize(0)
+	m_camera({ 100, 100, 800, 600 }),
+	m_isPanning(false),
+	m_focusPos({}),
+	m_lastMousePos({}),
+	m_tileSize({ 64, 64 })
 {
-
+	LOG("[DemoStateCameraMap] created");
 }
 
-demo::LoadSequentialState::~LoadSequentialState()
+demo::DemoStateCameraMap::~DemoStateCameraMap()
 {
-	LOG("[LoadSequentialState] destroyed");
+	LOG("[DemoStateCameraMap] destroyed");
 }
 
-void demo::LoadSequentialState::Enter(Demo& owner)
+void  demo::DemoStateCameraMap::OnMouseMove(int x, int y)
 {
-	// specify list of files to load and read
-	m_files.push_back("small.csv");
-	m_files.push_back("big.csv");
-	m_files.push_back("huge.csv");
+	// is we're holding down left mouse button and dragging it, pan the map
+	if (m_isPanning)
+	{
+		// get the change in position and move camera position by that
+		math::VecF delta = math::VecF((float)x, (float)y) - m_lastMousePos;
+		m_camera.MoveBy(delta);
 
-	// set starting read size
-	m_readSize = 0;
-
-	owner.QueueState(std::make_unique<LoadSimultaneousState>());
+		// remember the last mouse position
+		m_lastMousePos = { (float)x, (float)y };
+	}
 }
 
-void demo::LoadSequentialState::Update(Demo& owner, double delta)
+void  demo::DemoStateCameraMap::OnMouseDown(int btn, int x, int y)
+{
+	// this button is for panning the camera
+	if (btn == 1)
+	{
+		m_isPanning = true;
+		m_lastMousePos = { (float)x, (float)y };
+	}
+	// if this button is clicked, move our focus object in this position
+	if (btn == 2)
+	{
+		// this is screen position and convert it to world position
+		spatial::PositionF pos((float)x, (float)y);
+		pos = m_camera.ScreenToWorld(pos);
+		m_focusPos = pos;
+
+		// pan the camera such that the focus object is at center of the viewport, if possible
+		m_camera.CenterOn(m_focusPos);
+	}
+}
+
+void  demo::DemoStateCameraMap::OnMouseUp(int btn, int x, int y)
+{
+	m_isPanning = false;
+}
+
+void demo::DemoStateCameraMap::Enter(Demo& owner)
+{
+	// subscribe to mouse input for camera control
+	{
+		input::Input::Instance().MouseDownEvent += event::Handler(this, &DemoStateCameraMap::OnMouseDown);
+		input::Input::Instance().MouseMoveEvent += event::Handler(this, &DemoStateCameraMap::OnMouseMove);
+		input::Input::Instance().MouseUpEvent += event::Handler(this, &DemoStateCameraMap::OnMouseUp);
+	}
+
+	// create map tileset and load tiles into it
+	{
+		// create sprite atlas for tilemap (grass, wall, etc...)
+		graphics::factory::SpriteAtlasFactory::Create("576x384TileSet", L"../Assets/576x384px_6x9tile_TileMap.png", 6, 9);
+		graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("576x384TileSet");
+
+		// create animated tileset for tilemap (grass, wall, etc...)
+		owner.TileSetManager().Create("576x384TileSet");
+
+		// each sprite from atlas is a static tile (single frame), so we create tile from each sprite
+		for (int i = 0; i < atlas.GetUVRectCount(); i++)
+		{
+			// create animation. these tilemaps are static. so their animations are 1 frame only
+			graphics::animation::Animation<graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, { i }, 0.1f, true);
+
+			// when instancing AnimatedTile, it sets the animation passed in constructor as current animation
+			owner.TileSetManager().Register("576x384TileSet", i, std::make_unique<AnimatedTile>(true, "default", anim));
+		}
+	}
+
+	// create water splash tile animation
+	{
+		// create sprite atlas for the water splash animation
+		graphics::factory::SpriteAtlasFactory::Create("3072x192TileSet", L"../Assets/3072x192px_1x17tile_waterfoam.png", 1, 16);
+		graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("3072x192TileSet");
+
+		// load all sprite atlas's sprites into animation object
+		graphics::animation::Animation<graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
+
+		// create tileset
+		owner.TileSetManager().Create("splashTileset");
+
+		// add our splash animation to tile index 1 and set it as default animation
+		owner.TileSetManager().Register("splashTileset", 1, std::make_unique<AnimatedTile>(true, "splash", anim));
+	}
+
+	// create tilemap with animated tiles
+	{
+		owner.TileMapManager().LoadImmediate(
+			"map_splashAnim",
+			"..\\Assets\\16x16_2.csv",
+			[&owner](const int& cell) -> engine::component::tile::Tile<AnimatedTile>
+			{
+				return owner.TileSetManager().MakeTile("splashTileset", cell);
+			});
+
+		owner.TileMapManager().LoadImmediate(
+			"demoTileMap",
+			"..\\Assets\\16x16Map.csv",
+			[&owner](const int& cell) -> engine::component::tile::Tile<AnimatedTile>
+			{
+				return owner.TileSetManager().MakeTile("576x384TileSet", cell);
+			});
+
+		owner.TileMapManager().LoadImmediate(
+			"map_1",
+			"..\\Assets\\16x16_1.csv",
+			[&owner](const int& cell) -> engine::component::tile::Tile<AnimatedTile>
+			{
+				return owner.TileSetManager().MakeTile("576x384TileSet", cell);
+			});
+	}
+
+	// configure camera 
+	{
+		// tell camera the size of the world. this will be the tile map
+		m_camera.SetWorldSize(
+			owner.TileMapManager().GetTileMap("demoTileMap")->GetWidth() * m_tileSize.width,
+			owner.TileMapManager().GetTileMap("demoTileMap")->GetHeight() * m_tileSize.height
+		);
+	}
+}
+
+
+void demo::DemoStateCameraMap::Update(Demo& owner, double delta)
 {
 	// monitor frame rate
 	m_frameRateMonitor.OnFrameCompleted(delta);
 
-	// in this state, we want to keep loading/reading file data from our list of the files we specified until all of them are loaded/read
-	if (m_fileReader.IsDone() ||	// file reader reached EOF of the current file it is reading
-		!m_fileReader.IsOpen()			// file reader has yet to read any file from the list
-		)
-	{
-		// if we still have files in our list to read, we fetch one of them and queue job to read them
-		if (!m_files.empty())
-		{
-			// open first file available from the list and remove it from the list since it will now be processed
-			m_fileReader.Open(m_files.front());
-			LOG("Loading " << m_files.front());
-			m_currFile = m_files.front();
-			m_files.pop_front();
+	// update input
+	input::Input::Instance().Update();
 
-			// increment read size so succeeding files will be read faster
-			m_readSize += 0x1FFF;
-
-			// queue a job in the engine to read this file. 
-			// it will be persistent so this job will be executed repeatedly until reader reach EOF
-			// the beauty of using JobQueue is that even though the state requests this job, it is not going to do it.
-			// the engine itself will do it so it will not affect the frame rate of this state.
-			owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
-				engine::job::Job(
-				nullptr,
-				[this]()
-				{
-					m_fileReader.Update(0.01);
-
-					// delay per read to slow it down 
-					timer::StopWatch sw;
-					sw.Start();
-					while (sw.Peek<timer::milliseconds>() < 1)
-					{
-						// busy wait
-					}
-					sw.Stop();
-				},
-				true,
-				[this]()
-				{
-					return m_fileReader.IsDone();
-				},
-				[this]()
-				{
-					// if we done with reading this file and there are no more files on queue to read, we are done!
-					if (m_files.empty())
-					{
-						// subscribe to input controller so we can accept mouse clicks to switch state
-						input::Input::Instance().MouseDownEvent += event::Handler(this, &LoadSequentialState::OnMouseDown);
-					}
-				}
-			)));
-		}
-	}
+	// update animations of tiles
+	owner.TileSetManager().Update(delta);
 
 	// flush the draw commands on queue. we will queue new ones 
 	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
 
-	std::string loadMessage = m_files.empty() && m_fileReader.IsDone() ? "All files done loading. Click screen to switch to next demo.": "Loading  " + m_currFile + " ...";
-	owner.DrawTextCommand(loadMessage, { 50, 260 }, { 1,1,1,1 });
+	// set camera viewport as clip region.
+	owner.Engine().QueueEnableClipRegionCommand(m_camera.GetViewport());
 
-	// let's draw progress bar to show how much file reader has read compared to total size of the file
-	owner.DrawProgressBarCommand({ 50, 300 }, { 400, 40 }, static_cast<float>(m_fileReader.GetCurrent()), static_cast<float>(m_fileReader.GetTotal()));
+	// draw dark background in viewport so we know the boundaries of viewport
+	math::geometry::RectF vp = m_camera.GetViewport();
+	owner.Engine().QueueDrawQuadCommand(vp.GetTopLeft(), vp.GetSize(), ::graphics::ColorF{ 0.2f,0.2f,0.2f,1 }, 0.0f);
 
-	// get engine performance statistics
-	engine::Engine::Statistics stats = owner.Engine().GetStatistics();
+	// this is the position of map's top-left in the world.
+	spatial::PositionF pos = {0,0};
 
-	// show FPS on top-right of screen
-	owner.DrawTextCommandTopRightScreen("State: LoadSequentialState", 10.0f);
-	std::string text = "State FPS: " + std::to_string(static_cast<int>(m_frameRateMonitor.GetAverageFrameRate()));
-	owner.DrawTextCommandTopRightScreen(text, 40.0f);
-	text = "Render FPS: " + std::to_string(static_cast<int>(stats.renderAverageFPS));
-	owner.DrawTextCommandTopRightScreen(text, 70.0f);
-	text = "Main Loop Ave FPS: " + std::to_string(static_cast<int>(stats.mainLoopAverageFPS));
-	owner.DrawTextCommandTopRightScreen(text, 100.0f);
-	text = "Main Loop Last FPS: " + std::to_string(static_cast<int>(stats.mainLoopLastFPS));
-	owner.DrawTextCommandTopRightScreen(text, 130.0f);
+	// draw the tilemap via command
+	owner.RenderTileMapOnViewPortCommand<AnimatedTile>(owner.TileMapManager().GetTileMap("map_splashAnim"), m_camera, pos, m_tileSize, { -64,-68 }, { 3,3 }, 1.0f);
+	owner.RenderTileMapOnViewPortCommand<AnimatedTile>(owner.TileMapManager().GetTileMap("demoTileMap"), m_camera, pos, m_tileSize, { 0,0 }, { 1,1 }, 1.0f);
+	owner.RenderTileMapOnViewPortCommand<AnimatedTile>(owner.TileMapManager().GetTileMap("map_1"), m_camera, pos, m_tileSize, { 0,0 }, { 1,1 }, 1.0f);
+
+	// disable clip region so we can render anywhere again
+	owner.Engine().QueueDisableClipRegionCommand();
+
+	// render statistics
+	std::list<std::string> logs;
+	logs.push_back("State: DemoStateCameraMap");
+	logs.push_back("State FPS: " + std::to_string(static_cast<int>(m_frameRateMonitor.GetAverageFrameRate())));
+	owner.DrawStatisticsCommand(logs);
+
 }
 
-void demo::LoadSequentialState::Exit(Demo& owner)
+void demo::DemoStateCameraMap::Exit(Demo& owner)
 {
-	input::Input::Instance().MouseDownEvent -= event::Handler(this, &LoadSequentialState::OnMouseDown);
+	{
+		input::Input::Instance().MouseDownEvent -= event::Handler(this, &DemoStateCameraMap::OnMouseDown);
+		input::Input::Instance().MouseMoveEvent -= event::Handler(this, &DemoStateCameraMap::OnMouseMove);
+		input::Input::Instance().MouseUpEvent -= event::Handler(this, &DemoStateCameraMap::OnMouseUp);
+	}
 }
 
 
-bool demo::LoadSequentialState::IsFinished(Demo& owner)
+bool demo::DemoStateCameraMap::IsFinished(Demo& owner)
 {
 	return m_isFinished;
 }
 
-
-void demo::LoadSequentialState::OnMouseDown(int btn, int x, int y)
-{
-	m_isFinished = true;
-}
-
 #pragma endregion
 
-#pragma region LoadSimultaneousState
-demo::LoadSimultaneousState::LoadSimultaneousState():
+#pragma region DemoStateActor 
+demo::DemoStateActor::DemoStateActor() :
 	m_isFinished(false),
-	m_nFilesInProgress(0)
+	m_frameRateMonitor(1.0f),
+	m_camera({ 100, 100, 800, 600 }),
+	m_isPanning(false),
+	m_focusPos({}),
+	m_lastMousePos({}),
+	m_tileSize({ 64, 64 })
 {
+	LOG("[DemoStateActor] created");
 }
 
-demo::LoadSimultaneousState::~LoadSimultaneousState()
+demo::DemoStateActor::~DemoStateActor()
 {
-	LOG("[LoadSimultaneousState] destroyed");
+	LOG("[DemoStateActor] destroyed");
 }
 
-void demo::LoadSimultaneousState::Enter(Demo& owner)
+void  demo::DemoStateActor::OnMouseMove(int x, int y)
 {
-
-	//in entry point, we will open all files for reading simultaneously. we also queue job to read them simultaneously as well
-	m_nFilesInProgress = 3;
-	int readSize = 0xFFF;
-	m_fileReader0.Open("small.csv");
-	LOG("Loading small.csv");
-	owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
-		engine::job::Job(
-			nullptr,
-			[this, readSize]()
-			{
-				m_fileReader0.Update(0.01);
-
-				// delay per read to slow it down 
-				timer::StopWatch sw;
-				sw.Start();
-				while (sw.Peek<timer::milliseconds>() < 0.2)
-				{
-					// busy wait
-				}
-				sw.Stop();
-			},
-			true,
-			[this]()
-			{
-				return m_fileReader0.IsDone();
-			},
-			[this]()
-			{
-				m_nFilesInProgress--;
-				if (!m_nFilesInProgress)
-				{
-					// subscribe to input controller so we can accept mouse clicks to switch state
-					input::Input::Instance().MouseDownEvent += event::Handler(this, &LoadSimultaneousState::OnMouseDown);
-				}
-			}
-		)));
-
-	m_fileReader1.Open("big.csv");
-	LOG("Loading big.csv");
-	readSize += 0xFFF;
-	owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
-		engine::job::Job(
-			nullptr,
-			[this, readSize]()
-			{
-				m_fileReader1.Update(0.01);
-
-				// delay per read to slow it down 
-				timer::StopWatch sw;
-				sw.Start();
-				while (sw.Peek<timer::milliseconds>() < 0.2)
-				{
-					// busy wait
-				}
-				sw.Stop();
-			},
-			true,
-			[this]()
-			{
-				return m_fileReader1.IsDone();
-			},
-			[this]()
-			{
-				m_nFilesInProgress--;
-				if (!m_nFilesInProgress)
-				{
-					// subscribe to input controller so we can accept mouse clicks to switch state
-					input::Input::Instance().MouseDownEvent += event::Handler(this, &LoadSimultaneousState::OnMouseDown);
-				}
-			}
-		)));
-
-	m_fileReader2.Open("huge.csv");
-	LOG("Loading huge.csv");
-	readSize += 0xFFF;
-	owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
-		engine::job::Job(
-			nullptr,
-			[this, readSize]()
-			{
-				m_fileReader2.Update(0.01);
-
-				// delay per read to slow it down 
-				timer::StopWatch sw;
-				sw.Start();
-				while (sw.Peek<timer::milliseconds>() < 0.2)
-				{
-					// busy wait
-				}
-				sw.Stop();
-			},
-			true,
-			[this]()
-			{
-				return m_fileReader2.IsDone();
-			},
-			[this]()
-			{
-				m_nFilesInProgress--;
-				if (!m_nFilesInProgress)
-				{
-					// subscribe to input controller so we can accept mouse clicks to switch state
-					input::Input::Instance().MouseDownEvent += event::Handler(this, &LoadSimultaneousState::OnMouseDown);
-				}
-			}
-		)));
-
-	owner.QueueState(std::make_unique<LoadSequentialState>());
-}
-
-void demo::LoadSimultaneousState::Update(Demo& owner, double delta)
-{
-	// flush the draw commands on queue. we will queue new ones 
-	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
-
-	std::string loadMessage = m_nFilesInProgress ? "Loading  " + std::to_string(m_nFilesInProgress) + " file" + (m_nFilesInProgress > 1? "s":"") + "..." : "All files loaded.";
-	owner.DrawTextCommand(loadMessage, { 50, 260 }, { 1,1,1,1 });
-
-	// let's draw progress bar to show how much file reader has read compared to total size of the file
-	owner.DrawProgressBarCommand({ 50, 300 }, { 400, 40 }, static_cast<float>(m_fileReader0.GetCurrent()), static_cast<float>(m_fileReader0.GetTotal()));
-	owner.DrawProgressBarCommand({ 50, 360 }, { 400, 40 }, static_cast<float>(m_fileReader1.GetCurrent()), static_cast<float>(m_fileReader1.GetTotal()));
-	owner.DrawProgressBarCommand({ 50, 420 }, { 400, 40 }, static_cast<float>(m_fileReader2.GetCurrent()), static_cast<float>(m_fileReader2.GetTotal()));
-
-	// get engine performance statistics
-	engine::Engine::Statistics stats = owner.Engine().GetStatistics();
-
-	// show FPS on top-right of screen
-	owner.DrawTextCommandTopRightScreen("State: LoadSimultaneousState", 10.0f);
-	std::string text = "State FPS: " + std::to_string(static_cast<int>(m_frameRateMonitor.GetAverageFrameRate()));
-	owner.DrawTextCommandTopRightScreen(text, 40.0f);
-	text = "Render FPS: " + std::to_string(static_cast<int>(stats.renderAverageFPS));
-	owner.DrawTextCommandTopRightScreen(text, 70.0f);
-	text = "Main Loop Ave FPS: " + std::to_string(static_cast<int>(stats.mainLoopAverageFPS));
-	owner.DrawTextCommandTopRightScreen(text, 100.0f);
-	text = "Main Loop Last FPS: " + std::to_string(static_cast<int>(stats.mainLoopLastFPS));
-	owner.DrawTextCommandTopRightScreen(text, 130.0f);
-}
-
-void demo::LoadSimultaneousState::Exit(Demo& owner)
-{
-	input::Input::Instance().MouseDownEvent -= event::Handler(this, &LoadSimultaneousState::OnMouseDown);
-}
-
-bool demo::LoadSimultaneousState::IsFinished(Demo& owner)
-{
-	return m_isFinished;
-}
-
-void demo::LoadSimultaneousState::OnMouseDown(int btn, int x, int y)
-{
-	m_isFinished = true;
-}
-#pragma endregion
-
-#pragma region LoadTileRegionState
-demo::LoadTileRegionState::LoadTileRegionState() :
-	m_isFinished(false),
-	m_csvTableLoaded(false),
-	m_tileRegionLoaded(false)
-{
-}
-
-demo::LoadTileRegionState::~LoadTileRegionState()
-{
-}
-
-void demo::LoadTileRegionState::Enter(Demo& owner)
-{
-	// create sprite atlas to be used by tilemap
-	m_spriteAtlas = std::make_unique<graphics::renderable::SpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
-
-	// load sprite atlas from file manually for demo purpose
-	m_spriteAtlas->Initialize(L"../Assets/4x1_128x32_tile.png");
-
-	// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 1 rows and 4 columns
-	// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-	std::vector<math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
-	for (math::geometry::RectF& rect : uvs)
+	// is we're holding down left mouse button and dragging it, pan the map
+	if (m_isPanning)
 	{
-		m_spriteAtlas->AddUVRect(rect);
+		// get the change in position and move camera position by that
+		math::VecF delta = math::VecF((float)x, (float)y) - m_lastMousePos;
+		m_camera.MoveBy(delta);
+
+		// remember the last mouse position
+		m_lastMousePos = { (float)x, (float)y };
+	}
+}
+
+void  demo::DemoStateActor::OnMouseDown(int btn, int x, int y)
+{
+	// this button is for panning the camera
+	if (btn == 1)
+	{
+		m_isPanning = true;
+		m_lastMousePos = { (float)x, (float)y };
+	}
+	// if this button is clicked, move our focus object in this position
+	if (btn == 2)
+	{
+		// this is screen position and convert it to world position
+		spatial::PositionF pos((float)x, (float)y);
+		pos = m_camera.ScreenToWorld(pos);
+		m_focusPos = pos;
+
+		// pan the camera such that the focus object is at center of the viewport, if possible
+		m_camera.CenterOn(m_focusPos);
+	}
+}
+
+void  demo::DemoStateActor::OnMouseUp(int btn, int x, int y)
+{
+	m_isPanning = false;
+}
+
+void demo::DemoStateActor::Enter(Demo& owner)
+{
+	// subscribe to mouse input for camera control
+	{
+		input::Input::Instance().MouseDownEvent += event::Handler(this, &DemoStateActor::OnMouseDown);
+		input::Input::Instance().MouseMoveEvent += event::Handler(this, &DemoStateActor::OnMouseMove);
+		input::Input::Instance().MouseUpEvent += event::Handler(this, &DemoStateActor::OnMouseUp);
 	}
 
-	// create tileset for tilemap and register tiles
-	m_tileset = std::make_unique<component::tile::Tileset<RenderableTile>>();
-	m_tileset->Register(0, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(0), true)); // walkable
-	m_tileset->Register(1, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(1), false)); // obstacle
-	m_tileset->Register(2, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(2), false)); // obstacle
-	m_tileset->Register(3, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(3), false)); // obstacle
+	{
+		// create sprite atlas for tilemap (grass, wall, etc...)
+		graphics::factory::SpriteAtlasFactory::Create("Character", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12);
+		graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("Character");
 
-	// specify the tilemap file to read. it must be csv file
-	//m_fileReader.Open("..\\Assets\\128x128Map.csv");
-	//LOG("Loading ..\\Assets\\128x128Map.csv");
-	m_fileReader.Open("..\\Assets\\69x71Map.csv");
-	LOG("Loading ..\\Assets\\69x71Map.csv");
-
-	m_fileReader.ProcessChunkEvent += event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
-	m_fileReader.EndOfFileFoundEvent += event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
-
-	// chain CSV table to CSV parser to acquire row of data from CSV Parser when it parse chunk of data and extracts rows of CSV data
-	m_csvParser.ParseRowEvent += event::Handler(&m_table, &container::Table<std::string>::AddRow);
-	m_csvParser.ParseRemainingEvent += event::Handler(&m_table, &container::Table<std::string>::AddRange);
+		// create animated tileset for tilemap (grass, wall, etc...)
+		owner.TileSetManager().Create("Character");
 
 
-	// create our region object
-	m_region = std::make_unique <component::tile::TileRegion<RenderableTile>>();
+		cache::Registry<Animator>::Instance().Register("Character", std::make_unique<Animator>());
+		Animator& animator = cache::Registry<Animator>::Instance().Get("Character");
 
-	// queue job to read the file
-	owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
-		engine::job::Job(
-			nullptr,
-			[this]()
-			{
-				m_fileReader.Update(0.01);
-			},
-			true,
-			[this]()
-			{
-				return m_fileReader.IsDone();
-			},
-			[this, &owner]()
-			{
-				m_csvTableLoaded = true;
-
-				m_tileRegionLoader.Begin(
-					"TileRegion",
-					*m_region.get(),
-					m_table,
-					[this](const int& cell) -> component::tile::Tile<RenderableTile>
-					{
-						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
-						return m_tileset->MakeTile(cell);
-					});
-
-				// in the job's done event, queue another job to create a tilemap object and load the csv data into it
-				owner.Engine().SubmitJob(std::make_unique<engine::job::Job>(
-					engine::job::Job(
-						nullptr,
-						[this]()
-						{
-							m_tileRegionLoader.Update(0.01);
-
-							// force 1ms delay here for simulation to slow down reading so we can observe
-							timer::StopWatch sw;
-							sw.Start();
-							while (sw.Peek<timer::milliseconds>() < 0.1)
-							{
-								// busy wait
-							}
-							sw.Stop();
-						},
-						true,
-						[this]()
-						{
-							return m_tileRegionLoader.IsDone();
-						},
-						[this]()
-						{
-							m_tileRegionLoaded = true;
-						}
-					)
-				));
-			}
-		)));
+		animator.Add("idle right face", engine::graphics::factory::AnimationFactory::Create(atlas, { 0, 1, 2, 3, 4, 5 }, 0.1f, true));
+		animator.Play("idle right face");
+	}
 }
 
-void demo::LoadTileRegionState::Update(Demo& owner, double delta)
+
+void demo::DemoStateActor::Update(Demo& owner, double delta)
 {
 	// monitor frame rate
 	m_frameRateMonitor.OnFrameCompleted(delta);
 
+	// update input
+	input::Input::Instance().Update();
+
+	// update animator
+	Animator& animator = cache::Registry<Animator>::Instance().Get("Character");
+	animator.Update(delta);
+
 	// flush the draw commands on queue. we will queue new ones 
 	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
 
-	if (!m_tileRegionLoaded)
-	{
-		if (m_csvTableLoaded)
-		{
-			std::string message = std::to_string(m_tileRegionLoader.GetCurrent()) + "/" + std::to_string(m_tileRegionLoader.GetTotal());
-			owner.DrawTextCommand(message, { 50, 260 }, { 1,1,1,1 });
+	owner.Engine().QueueDrawSpriteCommand(animator.GetCurrent(), spatial::PositionF{ 50.0f, 50.0f }, animator.GetCurrent().GetSize(), ::graphics::ColorF{ 1.0f,1.0f,1.0f,1.0f }, 0.0f);
 
-			// let's draw progress bar to show how much file reader has read compared to total size of the file
-			owner.DrawProgressBarCommand(
-				{ 50, 300 }, { 400, 40 },
-				static_cast<float>(m_tileRegionLoader.GetCurrent()),
-				static_cast<float>(m_tileRegionLoader.GetTotal())
-			);
-		}
-		else
-		{
-			std::string message = m_fileReader.IsDone() ? "" : "Reading data from file " + m_fileReader.GetLabel() + "...";
-			owner.DrawTextCommand(message, { 50, 260 }, { 1,1,1,1 });
 
-			// let's draw progress bar to show how much file reader has read compared to total size of the file
-			owner.DrawProgressBarCommand({ 50, 300 }, { 400, 40 }, static_cast<float>(m_fileReader.GetCurrent()), static_cast<float>(m_fileReader.GetTotal()));
-		}
-	}
-	else
-	{
-		owner.SetState(std::make_unique<RenderTileRegionState>(std::move(m_region), std::move(m_spriteAtlas), std::move(m_tileset)));
-	}
+	// render statistics
+	std::list<std::string> logs;
+	logs.push_back("State: DemoStateActor");
+	logs.push_back("State FPS: " + std::to_string(static_cast<int>(m_frameRateMonitor.GetAverageFrameRate())));
+	owner.DrawStatisticsCommand(logs);
 
-	// get engine performance statistics
-	engine::Engine::Statistics stats = owner.Engine().GetStatistics();
-
-	// show FPS on top-right of screen
-	owner.DrawTextCommandTopRightScreen("State: LoadTileRegionState", 10.0f);
-	std::string text = "State FPS: " + std::to_string(static_cast<int>(m_frameRateMonitor.GetAverageFrameRate()));
-	owner.DrawTextCommandTopRightScreen(text, 40.0f);
-	text = "Render FPS: " + std::to_string(static_cast<int>(stats.renderAverageFPS));
-	owner.DrawTextCommandTopRightScreen(text, 70.0f);
-	text = "Main Loop Ave FPS: " + std::to_string(static_cast<int>(stats.mainLoopAverageFPS));
-	owner.DrawTextCommandTopRightScreen(text, 100.0f);
-	text = "Main Loop Last FPS: " + std::to_string(static_cast<int>(stats.mainLoopLastFPS));
-	owner.DrawTextCommandTopRightScreen(text, 130.0f);
 }
 
-void demo::LoadTileRegionState::Exit(Demo& owner)
+void demo::DemoStateActor::Exit(Demo& owner)
 {
-	m_fileReader.ProcessChunkEvent -= event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
-	m_fileReader.EndOfFileFoundEvent -= event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
-
-	m_csvParser.ParseRowEvent -= event::Handler(&m_table, &container::Table<std::string>::AddRow);
-	m_csvParser.ParseRemainingEvent -= event::Handler(&m_table, &container::Table<std::string>::AddRange);
+	{
+		input::Input::Instance().MouseDownEvent -= event::Handler(this, &DemoStateActor::OnMouseDown);
+		input::Input::Instance().MouseMoveEvent -= event::Handler(this, &DemoStateActor::OnMouseMove);
+		input::Input::Instance().MouseUpEvent -= event::Handler(this, &DemoStateActor::OnMouseUp);
+	}
 }
 
-bool demo::LoadTileRegionState::IsFinished(Demo& owner)
+
+bool demo::DemoStateActor::IsFinished(Demo& owner)
 {
 	return m_isFinished;
 }
 
 #pragma endregion
-
-#pragma region RenderTileRegionState
-demo::RenderTileRegionState::RenderTileRegionState(
-	std::unique_ptr<component::tile::TileRegion<RenderableTile>> region,
-	std::unique_ptr<graphics::renderable::ISpriteAtlas> spriteAtlas,
-	std::unique_ptr<component::tile::Tileset<RenderableTile>> tileSet
-) :
-	m_region(std::move(region)),
-	m_spriteAtlas(std::move(spriteAtlas)),
-	m_tileSet(std::move(tileSet))
-{
-}
-
-demo::RenderTileRegionState::~RenderTileRegionState()
-{
-}
-
-void demo::RenderTileRegionState::Enter(Demo& owner)
-{
-}
-
-void demo::RenderTileRegionState::Update(Demo& owner, double delta)
-{
-	// monitor frame rate
-	m_frameRateMonitor.OnFrameCompleted(delta);
-
-	// flush the draw commands on queue. we will queue new ones 
-	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
-
-	owner.RenderTileRegionCommand(*m_region.get(), 1.0f);
-
-	// get engine performance statistics
-	engine::Engine::Statistics stats = owner.Engine().GetStatistics();
-
-	// show FPS on top-right of screen
-	owner.DrawTextCommandTopRightScreen("State: RenderTileRegionState", 10.0f);
-	std::string text = "State FPS: " + std::to_string(static_cast<int>(m_frameRateMonitor.GetAverageFrameRate()));
-	owner.DrawTextCommandTopRightScreen(text, 40.0f);
-	text = "Render FPS: " + std::to_string(static_cast<int>(stats.renderAverageFPS));
-	owner.DrawTextCommandTopRightScreen(text, 70.0f);
-	text = "Main Loop Ave FPS: " + std::to_string(static_cast<int>(stats.mainLoopAverageFPS));
-	owner.DrawTextCommandTopRightScreen(text, 100.0f);
-	text = "Main Loop Last FPS: " + std::to_string(static_cast<int>(stats.mainLoopLastFPS));
-	owner.DrawTextCommandTopRightScreen(text, 130.0f);
-}
-
-void demo::RenderTileRegionState::Exit(Demo& owner)
-{
-}
-
-bool demo::RenderTileRegionState::IsFinished(Demo& owner)
-{
-	return false;
-}
-
-#pragma endregion
-
-

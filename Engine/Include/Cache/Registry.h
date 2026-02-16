@@ -6,7 +6,7 @@
 #include <memory>
 #include <string>
 
-using namespace engine;
+//using namespace engine;
 
 namespace cache
 {
@@ -35,7 +35,7 @@ namespace cache
 		friend class core::Singleton<Registry<T, K>>;
 
 	private:
-		container::Dictionary<K, std::unique_ptr<T>> registry;
+		engine::container::Dictionary<K, std::unique_ptr<T>> registry;
 
 	public:
 		Registry() = default;

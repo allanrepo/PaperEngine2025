@@ -33,12 +33,14 @@
     <ClInclude Include="Include\Core\Singleton.h" />
     <ClInclude Include="Include\Core\View.h" />
     <ClInclude Include="Include\Engine\Engine.h" />
+    <ClInclude Include="Include\Engine\Factory\AnimationFactory.h" />
     <ClInclude Include="Include\Engine\Factory\CanvasFactory.h" />
     <ClInclude Include="Include\Engine\Factory\RendererFactory.h" />
     <ClInclude Include="Include\Engine\Factory\SpriteAtlasFactory.h" />
     <ClInclude Include="Include\Engine\Factory\TextureFactory.h" />
     <ClInclude Include="Include\Engine\Loader\AsyncLoader.h" />
     <ClInclude Include="Include\Engine\Loader\SpriteAtlasLoader.h" />
+    <ClInclude Include="Include\Engine\Manager\AnimatedTileSetManager.h" />
     <ClInclude Include="Include\Engine\Manager\TileMapManager.h" />
     <ClInclude Include="Include\Engine\Manager\TileSetManager.h" />
     <ClInclude Include="Include\Graphics\Animation\Animation.h" />

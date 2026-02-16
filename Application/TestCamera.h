@@ -59,8 +59,8 @@ namespace TestCamera
 		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
 		std::unique_ptr<graphics::renderable::ISpriteAtlas> m_spriteAtlas;
 		timer::StopWatch m_stopwatch;
-		component::tile::Tileset<RenderableTile> m_tileset;
-		component::tile::TileGrid<RenderableTile> m_tilegrid;
+		engine::component::tile::Tileset<RenderableTile> m_tileset;
+		engine::component::tile::TileGrid<RenderableTile> m_tilegrid;
 		spatial::SizeF m_tileSize{ 32.0f, 32.0f };
 		spatial::CameraF m_camera;
 		spatial::PositionF m_lastMousePos;
@@ -180,10 +180,10 @@ namespace TestCamera
 				engine::utilities::parser::CSVParser csvParser;
 				fileReader.ProcessChunkEvent += event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
 				fileReader.EndOfFileFoundEvent += event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
-				container::Table<std::string> table;
+				engine::container::Table<std::string> table;
 
-				csvParser.ParseRowEvent += event::Handler(&table, &container::Table<std::string>::AddRow);
-				csvParser.ParseRemainingEvent += event::Handler(&table, &container::Table<std::string>::AddRange);
+				csvParser.ParseRowEvent += event::Handler(&table, &engine::container::Table<std::string>::AddRow);
+				csvParser.ParseRemainingEvent += event::Handler(&table, &engine::container::Table<std::string>::AddRange);
 
 				fileReader.SyncReadAll(0xFF, 5.0);
 
@@ -191,7 +191,7 @@ namespace TestCamera
 				tileLoader.SyncLoadAll(
 					m_tilegrid,
 					table,
-					[this](const int& cell) -> component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
 					{
 						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
 						return m_tileset.MakeTile(cell);
@@ -202,8 +202,8 @@ namespace TestCamera
 
 				fileReader.ProcessChunkEvent -= event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
 				fileReader.EndOfFileFoundEvent -= event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
-				csvParser.ParseRowEvent -= event::Handler(&table, &container::Table<std::string>::AddRow);
-				csvParser.ParseRemainingEvent -= event::Handler(&table, &container::Table<std::string>::AddRange);
+				csvParser.ParseRowEvent -= event::Handler(&table, &engine::container::Table<std::string>::AddRow);
+				csvParser.ParseRemainingEvent -= event::Handler(&table, &engine::container::Table<std::string>::AddRange);
 			}
 
 
@@ -313,7 +313,7 @@ namespace TestCamera
 		}
 
 
-		void RenderTiles(component::tile::TileGrid<RenderableTile>& tilegrid, float alpha = 1.0f)
+		void RenderTiles(engine::component::tile::TileGrid<RenderableTile>& tilegrid, float alpha = 1.0f)
 		{
 			math::geometry::RectF vp = m_camera.GetViewport();
 			spatial::PositionF camPos = m_camera.GetPosition();
@@ -332,7 +332,7 @@ namespace TestCamera
 						continue;
 					}
 
-					const component::tile::Tile<RenderableTile>& tile = tilegrid.Get(row, col);
+					const engine::component::tile::Tile<RenderableTile>& tile = tilegrid.Get(row, col);
 					if (tile.isValid())
 					{
 						spatial::PositionF pos =

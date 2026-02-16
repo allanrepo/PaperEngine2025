@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <Graphics/Resource/DX11TextureImpl.h>
+#include <Engine/Factory/SpriteAtlasFactory.h>
+#include <Cache/Registry.h>
+#include <Engine/Manager/TileMapManager.h>
 
 #pragma region LoadTileMapState
 demo::LoadTileMapState::LoadTileMapState(const std::string& filePath) :
@@ -10,13 +13,15 @@ demo::LoadTileMapState::LoadTileMapState(const std::string& filePath) :
 {
 }
 
-demo::LoadTileMapState::~LoadTileMapState()
-{
-}
-
 void demo::LoadTileMapState::Enter(Demo& owner)
 {
-	// access  
+	// using factory, create sprite atlas
+	graphics::factory::SpriteAtlasFactory::Create("demoTileMapAtlas", L"../Assets/4x1_128x32_tile.png", std::vector<math::geometry::RectF>());
+
+	// add UV rects on our sprite atlas
+	graphics::renderable::ISpriteAtlas& atlas = cache::Registry<graphics::renderable::ISpriteAtlas>::Instance().Get("demoTileMapAtlas");
+	atlas.AddUVRects(demo::CalcUV(1, 4, (int)atlas.GetWidth(), (int)atlas.GetHeight()));
+
 }
 
 void demo::LoadTileMapState::Update(Demo& owner, double delta)
@@ -46,12 +51,8 @@ bool demo::LoadTileMapState::IsFinished(Demo& owner)
 #pragma endregion 
 
 #pragma region RenderTileMapState
-demo::RenderTileMapState::RenderTileMapState(
-) 
-{
-}
-
-demo::RenderTileMapState::~RenderTileMapState()
+demo::RenderTileMapState::RenderTileMapState() :
+	m_viewportSize({})
 {
 }
 

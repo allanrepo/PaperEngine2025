@@ -315,6 +315,12 @@
     <ClInclude Include="Include\Engine\Manager\TileSetManager.h">
       <Filter>Engine\Manager</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Engine\Manager\AnimatedTileSetManager.h">
+      <Filter>Engine\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Engine\Factory\AnimationFactory.h">
+      <Filter>Engine\Factory</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">

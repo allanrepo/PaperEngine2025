@@ -11,10 +11,10 @@ namespace app::utilities
 		template<typename T, typename U>
 		class TileGridLoader {
 		public:
-			static component::tile::TileGrid<T> LoadFromCSV(
+			static engine::component::tile::TileGrid<T> LoadFromCSV(
 				const std::string& filename,
-				const component::tile::Tileset<T>& tileset,
-				std::function<component::tile::Tile<T>(int, int, const U&, const component::tile::Tileset<T>&)> tileLoader
+				const engine::component::tile::Tileset<T>& tileset,
+				std::function<engine::component::tile::Tile<T>(int, int, const U&, const engine::component::tile::Tileset<T>&)> tileLoader
 			)
 			{
 				engine::utilities::fileio::CSVFile csvFile(filename, ',');
@@ -26,7 +26,7 @@ namespace app::utilities
 				int height = static_cast<int>(csvFile.GetRowCount());
 				int width = static_cast<int>(csvFile.GetColCount(0)); // assume uniform width
 
-				component::tile::TileGrid<T> layer;
+				engine::component::tile::TileGrid<T> layer;
 				//layer.SetSize({ width, height });
 
 				for (int row = 0; row < height; ++row)
@@ -41,7 +41,7 @@ namespace app::utilities
 
 						U cell = csvFile.GetValue<U>(row, col);
 
-						component::tile::Tile<T> tile = tileLoader(row, col, cell, tileset);
+						engine::component::tile::Tile<T> tile = tileLoader(row, col, cell, tileset);
 
 						//layer.SetTile(row, col, tile);
 					}
@@ -55,10 +55,10 @@ namespace app::utilities
 		class TileLayerLoader
 		{
 		public:
-			static component::tile::TileLayer<T> LoadFromCSV(
+			static engine::component::tile::TileLayer<T> LoadFromCSV(
 				const std::string& filename,
-				const component::tile::Tileset<T>& tileset,
-				std::function<component::tile::Tile<T>(int, int, const U&, const component::tile::Tileset<T>&)> tileLoader
+				const engine::component::tile::Tileset<T>& tileset,
+				std::function<engine::component::tile::Tile<T>(int, int, const U&, const engine::component::tile::Tileset<T>&)> tileLoader
 			)
 			{
 

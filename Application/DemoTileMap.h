@@ -16,7 +16,7 @@ namespace demo
 
 	public:
 		LoadTileMapState(const std::string& filePath);
-		virtual ~LoadTileMapState();
+		virtual ~LoadTileMapState() = default;
 
 		virtual void Enter(Demo& owner) override;
 		virtual void Exit(Demo& owner) override;
@@ -34,7 +34,7 @@ namespace demo
 
 	public:
 		RenderTileMapState();
-		virtual ~RenderTileMapState();
+		virtual ~RenderTileMapState() = default;
 
 		virtual void Enter(Demo& owner) override;
 		virtual void Update(Demo& owner, double delta) override;

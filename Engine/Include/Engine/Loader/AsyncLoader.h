@@ -9,7 +9,7 @@
 #include <Math/Rect.h>
 #include <queue>
 
-using namespace engine;
+//using namespace engine;
 
 // forward declare
 namespace engine
@@ -1090,6 +1090,25 @@ namespace engine
 				virtual bool IsDone() const
 				{
 					return m_isFinished;
+				}
+			
+				bool LoadImmediate(
+					const std::string& filename,
+					std::function<component::tile::Tile<T>(const U&)> tileLoader,
+					component::tile::TileRegion<T>& region
+				)
+				{
+					if (!Open(filename, tileLoader, region))
+					{
+						return false;
+					}
+
+					while (!IsDone())
+					{
+						Update(1000.0);
+					}
+
+					return true;
 				}
 			};
 		}

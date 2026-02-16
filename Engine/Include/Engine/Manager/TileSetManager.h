@@ -1,3 +1,4 @@
+#pragma once
 #include <Components/Tile.h>
 #include <Containers/Dictionary.h>
 
@@ -8,7 +9,7 @@ namespace engine
 		template<typename T>
 		class TileSetManager
 		{
-		private:
+		protected:
 			engine::container::Dictionary<std::string, std::unique_ptr<engine::component::tile::Tileset<T>>> m_tilesets;
 
 		public:
@@ -41,6 +42,8 @@ namespace engine
 				}
 				return m_tilesets[name]->MakeTile(id);
 			}
+
+
 		};
 	}
 }

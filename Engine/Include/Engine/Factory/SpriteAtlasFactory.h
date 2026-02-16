@@ -15,6 +15,10 @@ namespace graphics::factory
 {
     class SpriteAtlasFactory
     {
+    private:
+        // helper function to calculate UV 
+        static std::vector<math::geometry::RectF> CalcUV(size_t row, size_t col, float fileWidth, float fileHeight);
+
     public:
         // create and return an uninitialized sprite atlas object
         static std::unique_ptr<graphics::renderable::ISpriteAtlas> Create();
@@ -26,10 +30,16 @@ namespace graphics::factory
         );
 
         // creates an initialized sprite atlas object but store in registry with the given key name
-        bool Create(
+        static bool Create(
             const std::string& name,
             const std::wstring& filepath,
             const std::vector<math::geometry::RectF>& uvs
+        );
+
+        static bool Create(
+            const std::string& name,
+            const std::wstring& filepath,
+            const size_t row, const size_t col
         );
     };
 }
