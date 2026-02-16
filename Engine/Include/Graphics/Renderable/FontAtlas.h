@@ -4,27 +4,31 @@
 #include <memory>
 #include <vector>
 
-namespace graphics
+namespace engine
 {
-	namespace resource
+	namespace graphics
 	{
-		class ITexture;
+		namespace resource
+		{
+			class ITexture;
+		}
 	}
 }
 
-namespace graphics::renderable
+
+namespace engine::graphics::renderable
 {
-	class FontAtlas : public graphics::renderable::IFontAtlas
+	class FontAtlas : public engine::graphics::renderable::IFontAtlas
 	{
 	private:
-		std::unique_ptr<graphics::resource::ITexture> texture;
+		std::unique_ptr<engine::graphics::resource::ITexture> texture;
 
 		// TODO: glyphs are not populated yet. it is also not defined yet. its data structure is defined in Text/Glyph.h but it may not be final
 		std::vector<text::Glyph> glyphs;
 		std::vector<std::array<float, 4>> m_textNormalizedCoords;
 
 	public:
-		FontAtlas(std::unique_ptr<graphics::resource::ITexture> tex);
+		FontAtlas(std::unique_ptr<engine::graphics::resource::ITexture> tex);
 
 		FontAtlas() = default;
 		virtual ~FontAtlas() = default;

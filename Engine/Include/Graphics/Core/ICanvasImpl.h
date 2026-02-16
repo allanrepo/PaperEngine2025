@@ -2,7 +2,7 @@
 
 #include <Graphics/Core/ICanvas.h>
 
-namespace graphics
+namespace engine::graphics
 {
     // Interface for platform-specific renderer implementations
     class ICanvasImpl: public ICanvas

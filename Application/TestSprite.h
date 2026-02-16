@@ -32,10 +32,10 @@ namespace test
 	{
 	private:
 		//// we are mocking the sprite class here for demo purpose so we can create sprite directly without using factory
-		//class MockSprite : public graphics::renderable::Sprite
+		//class MockSprite : public engine::graphics::renderable::Sprite
 		//{
 		//public:
-		//	MockSprite(graphics::resource::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect) :
+		//	MockSprite(engine::graphics::resource::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect) :
 		//		Sprite(spriteAtlas, rect)
 		//	{
 		//	}
@@ -43,10 +43,10 @@ namespace test
 
 	private:
 		std::unique_ptr<Win32::Window> m_window;
-		std::unique_ptr<graphics::ICanvas> m_canvas;
-		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
-		std::unique_ptr<graphics::resource::ISpriteAtlas> m_spriteAtlas;
-		std::unique_ptr<graphics::renderable::Sprite> m_sprite;
+		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
+		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
+		std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
+		std::unique_ptr<engine::graphics::renderable::Sprite> m_sprite;
 		spatial::SizeF m_spriteSize{};
 		input::Input m_input;
 
@@ -80,18 +80,18 @@ namespace test
 			LOG("Window created...");
 
 			// create dx11 canvas
-			m_canvas = std::make_unique<graphics::Canvas>(std::make_unique<graphics::dx11::DX11CanvasImpl>());
+			m_canvas = std::make_unique<engine::graphics::Canvas>(std::make_unique<engine::graphics::dx11::DX11CanvasImpl>());
 			m_canvas->Initialize(hWnd);
 			m_canvas->SetViewPort();
 			LOG("Canvas (DX11) created...");
 
 			// create dx11 renderer batched
-			m_renderer = std::make_unique<graphics::renderer::Renderer>(std::make_unique<graphics::dx11::renderer::DX11RendererBatchImpl>());
+			m_renderer = std::make_unique<engine::graphics::renderer::Renderer>(std::make_unique<engine::graphics::dx11::renderer::DX11RendererBatchImpl>());
 			m_renderer->Initialize();
 			LOG("Renderer (DX11) created...");
 
 			// create sprite atlas manually for demo purpose
-			m_spriteAtlas = std::make_unique<MockSpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
+			m_spriteAtlas = std::make_unique<MockSpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
 
 			// load sprite atlas from file manually for demo purpose
 			m_spriteAtlas->Initialize(L"../Assets/CharacterTest_2304x1536_12x8.png");
@@ -109,7 +109,7 @@ namespace test
 			m_spriteSize.height = m_spriteAtlas->GetHeight() / 8; // assuming 8 rows
 			
 			// create sprite
-			m_sprite = std::make_unique<graphics::renderable::Sprite>(m_spriteAtlas->MakeSprite(0));
+			m_sprite = std::make_unique<engine::graphics::renderable::Sprite>(m_spriteAtlas->MakeSprite(0));
 		}
 
 		void OnMouseMove(int x, int y)
@@ -126,7 +126,7 @@ namespace test
 			// recreate sprite with new UV rect
 			if (index < m_spriteAtlas->GetUVRectCount())
 			{
-				m_sprite = std::make_unique<graphics::renderable::Sprite>(m_spriteAtlas->MakeSprite(index));
+				m_sprite = std::make_unique<engine::graphics::renderable::Sprite>(m_spriteAtlas->MakeSprite(index));
 			}
 		}
 
@@ -146,7 +146,7 @@ namespace test
 					m_renderer->DrawRenderable(m_spriteAtlas->GetSprite(),
 						spatial::PositionF{ 0, 0 },
 						spatial::SizeF{ m_spriteAtlas->GetWidth()/2, m_spriteAtlas->GetHeight()/2},
-						graphics::ColorF{ 1,1,1,1 },
+						engine::graphics::ColorF{ 1,1,1,1 },
 						0
 					);
 
@@ -154,7 +154,7 @@ namespace test
 					m_renderer->DrawRenderable(*m_sprite,
 						spatial::PositionF{ m_spriteAtlas->GetWidth() / 2 + 10, 0 },
 						spatial::SizeF{ m_sprite->GetWidth(), m_sprite->GetHeight() },
-						graphics::ColorF{ 1,1,1,1 },
+						engine::graphics::ColorF{ 1,1,1,1 },
 						0
 					);
 				}

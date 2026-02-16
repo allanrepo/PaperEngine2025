@@ -21,14 +21,14 @@
 #include <string>
 #include <memory>
 
-namespace graphics::loader
+namespace engine::graphics::loader
 {
     class SpriteAtlasLoader
     {
     public:
         // Load atlas image + UV rects from metadata
         static bool Load(
-            graphics::resource::ISpriteAtlas& atlas,
+            engine::graphics::resource::ISpriteAtlas& atlas,
             const std::string& imageFilePath,
             const std::string& uvCsvFilePath
         )

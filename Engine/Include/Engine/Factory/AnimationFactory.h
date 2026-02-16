@@ -9,9 +9,9 @@ namespace engine
 	{
 		namespace factory
 		{
-			using Sprite = ::graphics::renderable::Sprite;
-			using Animation = ::graphics::animation::Animation<Sprite>;
-			using ISpriteAtlas = ::graphics::resource::ISpriteAtlas;
+			using Sprite = ::engine::graphics::renderable::Sprite;
+			using Animation = ::engine::graphics::animation::Animation<Sprite>;
+			using ISpriteAtlas = ::engine::graphics::resource::ISpriteAtlas;
 
 			class AnimationFactory
 			{

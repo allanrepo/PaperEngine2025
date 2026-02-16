@@ -9,7 +9,7 @@
 
 
 
-namespace graphics::dx11::imageio
+namespace engine::graphics::dx11::imageio
 {
 	namespace png
 	{

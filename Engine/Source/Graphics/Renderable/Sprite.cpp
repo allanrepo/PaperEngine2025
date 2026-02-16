@@ -3,38 +3,38 @@
 #include <Graphics/Resource/SpriteAtlas.h>
 
 
-graphics::renderable::Sprite::Sprite(const graphics::resource::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect) :
-	View<graphics::resource::ISpriteAtlas>(spriteAtlas),
+engine::graphics::renderable::Sprite::Sprite(const engine::graphics::resource::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect) :
+	View<engine::graphics::resource::ISpriteAtlas>(spriteAtlas),
 	m_rect(rect)
 {
 }
 
-void graphics::renderable::Sprite::Bind() const
+void engine::graphics::renderable::Sprite::Bind() const
 {
 	m_data->Bind();
 }
 
-bool graphics::renderable::Sprite::CanBind() const
+bool engine::graphics::renderable::Sprite::CanBind() const
 {
 	return m_data->CanBind();
 }
 
-math::geometry::RectF graphics::renderable::Sprite::GetUVRect() const
+math::geometry::RectF engine::graphics::renderable::Sprite::GetUVRect() const
 {
 	return m_rect;
 }
 
-float graphics::renderable::Sprite::GetWidth() const
+float engine::graphics::renderable::Sprite::GetWidth() const
 {
 	return m_data->GetWidth()*(m_rect.right - m_rect.left);
 }
 
-float graphics::renderable::Sprite::GetHeight() const
+float engine::graphics::renderable::Sprite::GetHeight() const
 {
 	return m_data->GetHeight()*(m_rect.bottom - m_rect.top);
 }
 
-spatial::SizeF graphics::renderable::Sprite::GetSize() const
+spatial::SizeF engine::graphics::renderable::Sprite::GetSize() const
 {
 	return spatial::SizeF{
 		m_data->GetWidth()* (m_rect.right - m_rect.left),

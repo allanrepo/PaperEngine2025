@@ -43,19 +43,19 @@ namespace demo
 	class RenderableTile
 	{
 	private:
-		graphics::renderable::Sprite m_sprite;
+		engine::graphics::renderable::Sprite m_sprite;
 		bool m_walkable;
-		graphics::animation::Animator<graphics::renderable::Sprite>* m_animator;
+		engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>* m_animator;
 
 	public:
-		RenderableTile(const graphics::renderable::Sprite& sprite, bool walkable, graphics::animation::Animator<graphics::renderable::Sprite>* animator = nullptr) :
+		RenderableTile(const engine::graphics::renderable::Sprite& sprite, bool walkable, engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>* animator = nullptr) :
 			m_sprite(sprite),
 			m_walkable(walkable),
 			m_animator(animator)
 		{
 		}
 
-		const graphics::renderable::Sprite& GetSprite() const
+		const engine::graphics::renderable::Sprite& GetSprite() const
 		{
 			if (m_animator)
 			{
@@ -82,7 +82,7 @@ namespace demo
 
 	public:
 		DrawTileMapCommand(
-			::graphics::renderer::IRenderer& renderer,
+			engine::graphics::renderer::IRenderer& renderer,
 			engine::component::tile::TileMap<T> tilemap,
 			spatial::PositionF pos = {50.0f, 50.0f},
 			spatial::SizeF tilesize = { 8.0f, 8.0f },
@@ -128,7 +128,7 @@ namespace demo
 							m_tilesize.height * m_scale.y
 						};
 												
-						m_renderer.DrawRenderable(tile->GetSprite(), pos, tilesize, graphics::ColorF{ 1.0f, 1.0f, 1.0f, m_alpha }, 0.0f);
+						m_renderer.DrawRenderable(tile->GetSprite(), pos, tilesize, engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, m_alpha }, 0.0f);
 					}
 				}
 			}
@@ -149,7 +149,7 @@ namespace demo
 
 	public:
 		DrawTileMapOnViewPortCommand(
-			::graphics::renderer::IRenderer& renderer,
+			engine::graphics::renderer::IRenderer& renderer,
 			engine::component::tile::TileMap<T> tilemap,
 			spatial::CameraF& camera,
 			spatial::PositionF pos = { 50.0f, 50.0f },
@@ -224,7 +224,7 @@ namespace demo
 							tile->GetSprite(),
 							m_camera.WorldToScreen(pos),
 							tilesize,
-							graphics::ColorF{ 1.0f, 1.0f, 1.0f, m_alpha },
+							engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, m_alpha },
 							0.0f
 						);
 					}
@@ -243,7 +243,7 @@ namespace demo
 
 		engine::Engine m_engine;
 		state::StateMachine<Demo> m_stateMachine;
-		std::unique_ptr<graphics::renderable::IFontAtlas> m_fontAtlas;
+		std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
 		std::unique_ptr<state::State<Demo>> m_state;
 
 		AnimatedTileSetManager m_tileSetManager;
@@ -261,7 +261,7 @@ namespace demo
 
 		void DrawTextCommandTopRightScreen(const std::string& text, float y);
 		void DrawProgressBarCommand(spatial::PositionF pos, spatial::SizeF size, float current, float total);
-		void DrawTextCommand(const std::string& text, spatial::PositionF pos, graphics::ColorF color);
+		void DrawTextCommand(const std::string& text, spatial::PositionF pos, engine::graphics::ColorF color);
 		void DrawStatisticsCommand(const std::list<std::string>& logs);
 
 		template<typename T>
@@ -330,7 +330,7 @@ namespace demo
 
 	public:
 		DrawTileGridCommand(
-			::graphics::renderer::IRenderer& renderer,
+			engine::graphics::renderer::IRenderer& renderer,
 			engine::component::tile::TileGrid<RenderableTile>& tilegrid,
 			spatial::PositionF pos,
 			float alpha = 1.0f
@@ -365,7 +365,7 @@ namespace demo
 
 						pos += m_pos;
 
-						m_renderer.DrawRenderable(tile->GetSprite(), pos, tileSize, graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
+						m_renderer.DrawRenderable(tile->GetSprite(), pos, tileSize, engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
 					}
 				}
 			}
@@ -380,7 +380,7 @@ namespace demo
 
 	public:
 		DrawTileRegionCommand(
-			::graphics::renderer::IRenderer& renderer,
+			engine::graphics::renderer::IRenderer& renderer,
 			engine::component::tile::TileRegion<RenderableTile>& region,
 			spatial::PositionF pos,
 			float alpha = 1.0f
@@ -415,7 +415,7 @@ namespace demo
 
 						pos += m_pos;
 
-						m_renderer.DrawRenderable(tile->GetSprite(), pos, tileSize, graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
+						m_renderer.DrawRenderable(tile->GetSprite(), pos, tileSize, engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
 					}
 				}
 			}
@@ -430,7 +430,7 @@ namespace demo
 
 	public:
 		DrawTileLayerCommand(
-			::graphics::renderer::IRenderer& renderer,
+			engine::graphics::renderer::IRenderer& renderer,
 			engine::component::tile::TileLayer<RenderableTile>& layer,
 			spatial::PositionF pos,
 			float alpha = 1.0f
@@ -483,7 +483,7 @@ namespace demo
 
 							pos += m_pos;
 
-							m_renderer.DrawRenderable(tile->GetSprite(), pos, tileSize, graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
+							m_renderer.DrawRenderable(tile->GetSprite(), pos, tileSize, engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
 						}
 					}
 
@@ -550,9 +550,9 @@ namespace demo
 	{
 	private:
 		using AnimatedTile = engine::component::tile::AnimatedTile;
-		using Sprite = graphics::renderable::Sprite;
-		using Animator = graphics::animation::Animator<Sprite>;
-		using Animation = graphics::animation::Animation<Sprite>;
+		using Sprite = engine::graphics::renderable::Sprite;
+		using Animator = engine::graphics::animation::Animator<Sprite>;
+		using Animation = engine::graphics::animation::Animation<Sprite>;
 
 		performance::FrameRateMonitor m_frameRateMonitor;
 		bool m_isFinished;

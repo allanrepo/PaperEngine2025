@@ -86,7 +86,7 @@ void engine::Engine::WindowCreate(void* hWnd)
 {
 
 	// create canvas
-	m_canvas = graphics::CanvasFactory::Create();
+	m_canvas = engine::graphics::CanvasFactory::Create();
 	if(!m_canvas)
 	{
 		throw std::exception("Failed to create canvas.");
@@ -99,7 +99,7 @@ void engine::Engine::WindowCreate(void* hWnd)
 	LOG("[ENGINE] Using canvas type: " << m_canvas->GetTypeName());
 	
 	// create sprite renderer
-	m_renderer = graphics::factory::RendererFactory::Create();
+	m_renderer = engine::graphics::factory::RendererFactory::Create();
 	if (!m_renderer)
 	{
 		throw std::exception("Failed to create sprite renderer.");

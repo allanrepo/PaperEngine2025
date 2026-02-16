@@ -9,8 +9,6 @@
 #include <Math/Rect.h>
 #include <queue>
 
-//using namespace engine;
-
 // forward declare
 namespace engine
 {

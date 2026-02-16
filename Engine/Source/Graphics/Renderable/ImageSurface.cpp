@@ -2,13 +2,13 @@
 #include <Utilities/Logger.h>
 #include <Graphics/Resource/ITexture.h>
 
-graphics::renderable::ImageSurface::ImageSurface(std::unique_ptr<graphics::resource::ITexture> tex)
+engine::graphics::renderable::ImageSurface::ImageSurface(std::unique_ptr<engine::graphics::resource::ITexture> tex)
 	:texture(std::move(tex))
 {
 }
 
 // initialize methods
-bool graphics::renderable::ImageSurface::Initialize(const wchar_t* fileNamePath)
+bool engine::graphics::renderable::ImageSurface::Initialize(const wchar_t* fileNamePath)
 {
 	if (!texture->Initialize(fileNamePath))
 	{
@@ -19,32 +19,32 @@ bool graphics::renderable::ImageSurface::Initialize(const wchar_t* fileNamePath)
 	return true;
 }
 
-math::geometry::RectF graphics::renderable::ImageSurface::GetUVRect() const
+math::geometry::RectF engine::graphics::renderable::ImageSurface::GetUVRect() const
 {
 	return math::geometry::RectF{ 0, 0, 1, 1 };
 }
 
-void graphics::renderable::ImageSurface::Bind() const
+void engine::graphics::renderable::ImageSurface::Bind() const
 {
 	texture->Bind();
 }
 
-bool graphics::renderable::ImageSurface::CanBind() const
+bool engine::graphics::renderable::ImageSurface::CanBind() const
 {
 	return texture->CanBind();
 }
 
-float graphics::renderable::ImageSurface::GetWidth() const
+float engine::graphics::renderable::ImageSurface::GetWidth() const
 {
 	return static_cast<float>(texture->GetWidth());
 }
 
-float graphics::renderable::ImageSurface::GetHeight() const
+float engine::graphics::renderable::ImageSurface::GetHeight() const
 {
 	return static_cast<float>(texture->GetHeight());
 }
 
-spatial::SizeF graphics::renderable::ImageSurface::GetSize() const
+spatial::SizeF engine::graphics::renderable::ImageSurface::GetSize() const
 {
 	return spatial::SizeF
 	{
@@ -53,7 +53,7 @@ spatial::SizeF graphics::renderable::ImageSurface::GetSize() const
 	};
 }
 
-void graphics::renderable::ImageSurface::Reset()
+void engine::graphics::renderable::ImageSurface::Reset()
 {
 	texture->Reset();
 }

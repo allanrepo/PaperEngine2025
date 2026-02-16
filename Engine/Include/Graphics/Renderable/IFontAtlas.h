@@ -4,7 +4,7 @@
 #include <Spatial/Size.h>
 #include <string>
 
-namespace graphics
+namespace engine::graphics
 {
 	namespace text
 	{
@@ -17,7 +17,7 @@ namespace graphics
 	}
 	namespace renderable
 	{
-		class IFontAtlas : public graphics::renderable::IRenderable, public spatial::ISizeable<float>
+		class IFontAtlas : public engine::graphics::renderable::IRenderable, public spatial::ISizeable<float>
 		{
 		protected:
 

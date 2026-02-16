@@ -724,7 +724,7 @@ namespace engine::component::tile
 
 		virtual void Update(double) = 0;
 		virtual bool IsWalkable() const = 0;
-		virtual const ::graphics::renderable::Sprite& GetSprite() const = 0;
+		virtual const ::engine::graphics::renderable::Sprite& GetSprite() const = 0;
 	};
 
 

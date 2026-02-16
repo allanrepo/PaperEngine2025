@@ -4,9 +4,9 @@
 #include <d3d11.h>
 #include <dxgi.h>
 
-namespace graphics::dx11::resource
+namespace engine::graphics::dx11::resource
 {
-	class DX11TextureImpl : public graphics::resource::ITextureImpl
+	class DX11TextureImpl : public engine::graphics::resource::ITextureImpl
 	{
 	protected:
 		// DX11 resources

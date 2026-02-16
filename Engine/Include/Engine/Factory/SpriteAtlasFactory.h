@@ -6,12 +6,12 @@
 
 // this is the right way to forward declare a class like ISpriteAtlas because in SpriteAtlasFactory, we are using it on std::unique_ptr
 // it wants it like this
-namespace graphics::resource
+namespace engine::graphics::resource
 {
     class ISpriteAtlas;
 }
 
-namespace graphics::factory
+namespace engine::graphics::factory
 {
     class SpriteAtlasFactory
     {
@@ -21,10 +21,10 @@ namespace graphics::factory
 
     public:
         // create and return an uninitialized sprite atlas object
-        static std::unique_ptr<graphics::resource::ISpriteAtlas> Create();
+        static std::unique_ptr<engine::graphics::resource::ISpriteAtlas> Create();
 
         // create and return an initialized sprite atlas object
-        static std::unique_ptr<graphics::resource::ISpriteAtlas> Create(
+        static std::unique_ptr<engine::graphics::resource::ISpriteAtlas> Create(
             const std::wstring& filepath,
             const std::vector<math::geometry::RectF>& uvs
         );

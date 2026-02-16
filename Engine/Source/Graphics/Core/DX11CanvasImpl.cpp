@@ -3,16 +3,16 @@
 #include <Windows.h>
 
 // Constructor: no initialization needed here
-graphics::dx11::DX11CanvasImpl::DX11CanvasImpl() {}
+engine::graphics::dx11::DX11CanvasImpl::DX11CanvasImpl() {}
 
 // Destructor: ensure resources are released
-graphics::dx11::DX11CanvasImpl::~DX11CanvasImpl()
+engine::graphics::dx11::DX11CanvasImpl::~DX11CanvasImpl()
 {
     ShutDown();
 }
 
 // Creates a render target view from the swap chain's back buffer
-bool graphics::dx11::DX11CanvasImpl::createRenderTargetView()
+bool engine::graphics::dx11::DX11CanvasImpl::createRenderTargetView()
 {
     DX11Core& core = DX11Core::Instance();
 
@@ -38,9 +38,9 @@ bool graphics::dx11::DX11CanvasImpl::createRenderTargetView()
 }
 
 // Initializes the swap chain and render target view
-bool graphics::dx11::DX11CanvasImpl::Initialize(void* windowHandle)
+bool engine::graphics::dx11::DX11CanvasImpl::Initialize(void* windowHandle)
 {
-    graphics::dx11::DX11Core& core = graphics::dx11::DX11Core::Instance();
+    engine::graphics::dx11::DX11Core& core = engine::graphics::dx11::DX11Core::Instance();
 
     // Describe swap chain parameters
     DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
@@ -78,7 +78,7 @@ bool graphics::dx11::DX11CanvasImpl::Initialize(void* windowHandle)
 }
 
 // Resizes the swap chain buffers and recreates the render target view
-void graphics::dx11::DX11CanvasImpl::Resize(const spatial::Size<uint32_t>& size)
+void engine::graphics::dx11::DX11CanvasImpl::Resize(const spatial::Size<uint32_t>& size)
 {
     if (!swapChain)
         return;
@@ -109,14 +109,14 @@ void graphics::dx11::DX11CanvasImpl::Resize(const spatial::Size<uint32_t>& size)
 }
 
 // Releases all rendering resources
-void graphics::dx11::DX11CanvasImpl::ShutDown()
+void engine::graphics::dx11::DX11CanvasImpl::ShutDown()
 {
     renderTargetView.Reset(); // Release render target view
     swapChain.Reset();        // Release swap chain
 }
 
 // Begins a new frame by binding the render target view
-void graphics::dx11::DX11CanvasImpl::Begin()
+void engine::graphics::dx11::DX11CanvasImpl::Begin()
 {
     DX11Core& core = DX11Core::Instance();
 
@@ -125,7 +125,7 @@ void graphics::dx11::DX11CanvasImpl::Begin()
 }
 
 // Ends the frame by presenting the swap chain
-void graphics::dx11::DX11CanvasImpl::End()
+void engine::graphics::dx11::DX11CanvasImpl::End()
 {
     if (!swapChain)
         return;
@@ -135,7 +135,7 @@ void graphics::dx11::DX11CanvasImpl::End()
 }
 
 //// Clears the render target view with the specified color
-//void graphics::dx11::DX11CanvasImpl::Clear(float red, float green, float blue, float alpha)
+//void engine::graphics::dx11::DX11CanvasImpl::Clear(float red, float green, float blue, float alpha)
 //{
 //    DX11Core& core = DX11Core::Instance();
 //
@@ -146,7 +146,7 @@ void graphics::dx11::DX11CanvasImpl::End()
 //    core.GetContext()->ClearRenderTargetView(renderTargetView.Get(), clearColor);
 //}
 
-void graphics::dx11::DX11CanvasImpl::Clear(const graphics::ColorF& color)
+void engine::graphics::dx11::DX11CanvasImpl::Clear(const engine::graphics::ColorF& color)
 {
     float clearColor[] = { color.red, color.green, color.blue, color.alpha };
 
@@ -154,7 +154,7 @@ void graphics::dx11::DX11CanvasImpl::Clear(const graphics::ColorF& color)
 }
 
 //// Sets a custom viewport rectangle
-//void graphics::dx11::DX11CanvasImpl::SetViewPort(float x, float y, float width, float height)
+//void engine::graphics::dx11::DX11CanvasImpl::SetViewPort(float x, float y, float width, float height)
 //{
 //    DX11Core& core = DX11Core::Instance();
 //
@@ -171,7 +171,7 @@ void graphics::dx11::DX11CanvasImpl::Clear(const graphics::ColorF& color)
 //    core.GetContext()->RSSetViewports(1, &viewport);
 //}
 
-void graphics::dx11::DX11CanvasImpl::SetViewPort(const math::geometry::RectF& rect)
+void engine::graphics::dx11::DX11CanvasImpl::SetViewPort(const math::geometry::RectF& rect)
 {
     DX11Core& core = DX11Core::Instance();
 
@@ -189,7 +189,7 @@ void graphics::dx11::DX11CanvasImpl::SetViewPort(const math::geometry::RectF& re
 }
 
 // Sets the viewport to match the full swap chain buffer size
-void graphics::dx11::DX11CanvasImpl::SetViewPort()
+void engine::graphics::dx11::DX11CanvasImpl::SetViewPort()
 {
     DXGI_SWAP_CHAIN_DESC desc = {};
     if (SUCCEEDED(swapChain->GetDesc(&desc)))
@@ -199,7 +199,7 @@ void graphics::dx11::DX11CanvasImpl::SetViewPort()
     }
 }
 
-math::geometry::RectF graphics::dx11::DX11CanvasImpl::GetViewPort() const
+math::geometry::RectF engine::graphics::dx11::DX11CanvasImpl::GetViewPort() const
 {
     D3D11_VIEWPORT viewport{};
 	unsigned int numViewports = 1;

@@ -73,7 +73,7 @@ demo::Demo::~Demo()
 void demo::Demo::OnStart()
 {
 	// create font atlas for rendering text we will use fore demo
-	m_fontAtlas = std::make_unique<graphics::renderable::FontAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
+	m_fontAtlas = std::make_unique<engine::graphics::renderable::FontAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
 	m_fontAtlas->Initialize("Terminal", 12);
 	LOG("[Demo] Font atlas created and initialized...");
 
@@ -119,7 +119,7 @@ void demo::Demo::DrawTextCommandTopRightScreen(const std::string& text, float y)
 				Engine().GetViewPort().GetWidth() - width - 10.0f,
 				y
 			},
-			graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }
+			engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }
 		);
 	Engine().CommandQueue().Enqueue(std::move(drawTextCmd));
 }
@@ -132,7 +132,7 @@ void demo::Demo::DrawProgressBarCommand(spatial::PositionF pos, spatial::SizeF s
 			m_engine.Renderer(),
 			pos,
 			size,
-			graphics::ColorF{ 1.0f, 0.0f, 0.0f, 1.0f },
+			engine::graphics::ColorF{ 1.0f, 0.0f, 0.0f, 1.0f },
 			0.0f
 		);
 	m_engine.CommandQueue().Enqueue(std::move(drawQuadCmd));
@@ -146,13 +146,13 @@ void demo::Demo::DrawProgressBarCommand(spatial::PositionF pos, spatial::SizeF s
 				size.width * current / total,
 				size.height
 			},
-			graphics::ColorF{ 0.0f, 1.0f, 0.0f, 1.0f },
+			engine::graphics::ColorF{ 0.0f, 1.0f, 0.0f, 1.0f },
 			0.0f
 		);
 	m_engine.CommandQueue().Enqueue(std::move(drawQuadCmd));
 }
 
-void demo::Demo::DrawTextCommand(const std::string& text, spatial::PositionF pos, graphics::ColorF color)
+void demo::Demo::DrawTextCommand(const std::string& text, spatial::PositionF pos, engine::graphics::ColorF color)
 {
 	// render text showing which state are we in
 	float width = m_fontAtlas->GetWidth(text);
@@ -233,7 +233,7 @@ void demo::Demo::RenderTileGridCommand(engine::component::tile::TileGrid<Rendera
 						tile->GetSprite(),						
 						pos,
 						tileSize,
-						graphics::ColorF{ 1.0f, 1.0f, 1.0f, alpha },
+						engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, alpha },
 						0.0f
 					);
 				Engine().CommandQueue().Enqueue(std::move(cmd));
@@ -284,8 +284,8 @@ void demo::DemoState::Enter(Demo& owner)
 	// create map tileset and load tiles into it
 	{
 		// create sprite atlas for tilemap (grass, wall, etc...)
-		graphics::factory::SpriteAtlasFactory::Create("576x384TileSet", L"../Assets/576x384px_6x9tile_TileMap.png", 6, 9);
-		graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
+		engine::graphics::factory::SpriteAtlasFactory::Create("576x384TileSet", L"../Assets/576x384px_6x9tile_TileMap.png", 6, 9);
+		engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
 
 		// create animated tileset for tilemap (grass, wall, etc...)
 		owner.TileSetManager().Create("576x384TileSet");
@@ -294,7 +294,7 @@ void demo::DemoState::Enter(Demo& owner)
 		for (int i = 0; i < atlas.GetUVRectCount(); i++)
 		{
 			// create animation. these tilemaps are static. so their animations are 1 frame only
-			graphics::animation::Animation<graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, { i }, 0.1f, true);
+			engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, { i }, 0.1f, true);
 
 			// when instancing AnimatedTile, it sets the animation passed in constructor as current animation
 			owner.TileSetManager().Register("576x384TileSet", i, std::make_unique<AnimatedTile>(true, "default", anim));
@@ -304,11 +304,11 @@ void demo::DemoState::Enter(Demo& owner)
 	// create water splash tile animation
 	{
 		// create sprite atlas for the water splash animation
-		graphics::factory::SpriteAtlasFactory::Create("3072x192TileSet", L"../Assets/3072x192px_1x17tile_waterfoam.png", 1, 16);
-		graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("3072x192TileSet");
+		engine::graphics::factory::SpriteAtlasFactory::Create("3072x192TileSet", L"../Assets/3072x192px_1x17tile_waterfoam.png", 1, 16);
+		engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("3072x192TileSet");
 
 		// load all sprite atlas's sprites into animation object
-		graphics::animation::Animation<graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
+		engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
 
 		// create tileset
 		owner.TileSetManager().Create("splashTileset");
@@ -358,7 +358,7 @@ void demo::DemoState::Update(Demo& owner, double delta)
 	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
 
 
-	//graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
+	//engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
 	//{
 	//	std::unique_ptr<engine::command::graphics::renderer::DrawRenderableCommand> drawRenderableCmd =
 	//		std::make_unique<engine::command::graphics::renderer::DrawRenderableCommand>(
@@ -474,8 +474,8 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 	// create map tileset and load tiles into it
 	{
 		// create sprite atlas for tilemap (grass, wall, etc...)
-		graphics::factory::SpriteAtlasFactory::Create("576x384TileSet", L"../Assets/576x384px_6x9tile_TileMap.png", 6, 9);
-		graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
+		engine::graphics::factory::SpriteAtlasFactory::Create("576x384TileSet", L"../Assets/576x384px_6x9tile_TileMap.png", 6, 9);
+		engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
 
 		// create animated tileset for tilemap (grass, wall, etc...)
 		owner.TileSetManager().Create("576x384TileSet");
@@ -484,7 +484,7 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 		for (int i = 0; i < atlas.GetUVRectCount(); i++)
 		{
 			// create animation. these tilemaps are static. so their animations are 1 frame only
-			graphics::animation::Animation<graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, { i }, 0.1f, true);
+			engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, { i }, 0.1f, true);
 
 			// when instancing AnimatedTile, it sets the animation passed in constructor as current animation
 			owner.TileSetManager().Register("576x384TileSet", i, std::make_unique<AnimatedTile>(true, "default", anim));
@@ -494,11 +494,11 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 	// create water splash tile animation
 	{
 		// create sprite atlas for the water splash animation
-		graphics::factory::SpriteAtlasFactory::Create("3072x192TileSet", L"../Assets/3072x192px_1x17tile_waterfoam.png", 1, 16);
-		graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("3072x192TileSet");
+		engine::graphics::factory::SpriteAtlasFactory::Create("3072x192TileSet", L"../Assets/3072x192px_1x17tile_waterfoam.png", 1, 16);
+		engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("3072x192TileSet");
 
 		// load all sprite atlas's sprites into animation object
-		graphics::animation::Animation<graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
+		engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
 
 		// create tileset
 		owner.TileSetManager().Create("splashTileset");
@@ -564,7 +564,7 @@ void demo::DemoStateCameraMap::Update(Demo& owner, double delta)
 
 	// draw dark background in viewport so we know the boundaries of viewport
 	math::geometry::RectF vp = m_camera.GetViewport();
-	owner.Engine().QueueDrawQuadCommand(vp.GetTopLeft(), vp.GetSize(), ::graphics::ColorF{ 0.2f,0.2f,0.2f,1 }, 0.0f);
+	owner.Engine().QueueDrawQuadCommand(vp.GetTopLeft(), vp.GetSize(), engine::graphics::ColorF{ 0.2f,0.2f,0.2f,1 }, 0.0f);
 
 	// this is the position of map's top-left in the world.
 	spatial::PositionF pos = {0,0};
@@ -671,8 +671,8 @@ void demo::DemoStateActor::Enter(Demo& owner)
 
 	{
 		// create sprite atlas for tilemap (grass, wall, etc...)
-		graphics::factory::SpriteAtlasFactory::Create("Character", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12);
-		graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("Character");
+		engine::graphics::factory::SpriteAtlasFactory::Create("Character", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12);
+		engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("Character");
 
 		// create animated tileset for tilemap (grass, wall, etc...)
 		owner.TileSetManager().Create("Character");
@@ -702,7 +702,7 @@ void demo::DemoStateActor::Update(Demo& owner, double delta)
 	// flush the draw commands on queue. we will queue new ones 
 	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
 
-	owner.Engine().QueueDrawSpriteCommand(animator.GetCurrent(), spatial::PositionF{ 50.0f, 50.0f }, animator.GetCurrent().GetSize(), ::graphics::ColorF{ 1.0f,1.0f,1.0f,1.0f }, 0.0f);
+	owner.Engine().QueueDrawSpriteCommand(animator.GetCurrent(), spatial::PositionF{ 50.0f, 50.0f }, animator.GetCurrent().GetSize(), engine::graphics::ColorF{ 1.0f,1.0f,1.0f,1.0f }, 0.0f);
 
 
 	// render statistics

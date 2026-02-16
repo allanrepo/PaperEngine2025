@@ -3,12 +3,12 @@
 #include <Graphics/Core/ICanvasImpl.h>
 #include <memory>
 
-namespace graphics
+namespace engine::graphics
 {
-    class Canvas : public graphics::ICanvas
+    class Canvas : public engine::graphics::ICanvas
     {
     public:
-        explicit Canvas(std::unique_ptr<graphics::ICanvasImpl> pImpl);
+        explicit Canvas(std::unique_ptr<engine::graphics::ICanvasImpl> pImpl);
 
         virtual bool Initialize(void* pWindowHandle) override final;
         virtual void Resize(const spatial::Size<uint32_t>& size) override final;
@@ -21,13 +21,13 @@ namespace graphics
         //virtual void SetViewPort(float uiX, float uiY, float uiWidth, float uiHeight) override final;
         virtual void SetViewPort() override final;
         virtual void SetViewPort(const math::geometry::RectF& rect) override final;
-        virtual void Clear(const graphics::ColorF& color) override final;
+        virtual void Clear(const engine::graphics::ColorF& color) override final;
         virtual math::geometry::RectF GetViewPort() const override final;
 
         virtual std::string GetTypeName() const override final;
 
     private:
-        std::unique_ptr<graphics::ICanvasImpl> impl;
+        std::unique_ptr<engine::graphics::ICanvasImpl> impl;
     };
 }
 

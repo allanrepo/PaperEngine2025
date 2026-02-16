@@ -4,7 +4,7 @@
 #include <Graphics/Resource/ISpriteAtlas.h>
 
 // forward declare
-namespace graphics
+namespace engine::graphics
 {
 	namespace factory
 	{
@@ -17,18 +17,18 @@ namespace graphics
 	}
 }
 
-namespace graphics::resource
+namespace engine::graphics::resource
 {
-	class SpriteAtlas : public graphics::resource::ISpriteAtlas
+	class SpriteAtlas : public engine::graphics::resource::ISpriteAtlas
 	{
 	private:
-		friend class ::graphics::factory::SpriteAtlasFactory;
+		friend class ::engine::graphics::factory::SpriteAtlasFactory;
 
-		std::shared_ptr<::graphics::resource::ITexture> m_texture;
+		std::shared_ptr<::engine::graphics::resource::ITexture> m_texture;
 		std::vector<math::geometry::RectF> m_nUVs;
 
 	public:
-		SpriteAtlas(std::unique_ptr<::graphics::resource::ITexture> tex);
+		SpriteAtlas(std::unique_ptr<::engine::graphics::resource::ITexture> tex);
 		virtual ~SpriteAtlas() = default;
 
 		// ISpriteAtlas methods implementation
@@ -37,8 +37,8 @@ namespace graphics::resource
 		virtual void AddUVRects(const std::vector<math::geometry::RectF>& rects) override final;
 		virtual const inline math::geometry::RectF GetUVRect(int index) const override final;
 		virtual inline size_t GetUVRectCount() const override final;
-		virtual graphics::renderable::Sprite MakeSprite(int index) const override final;
-		virtual graphics::renderable::Sprite GetSprite() const override final;
+		virtual engine::graphics::renderable::Sprite MakeSprite(int index) const override final;
+		virtual engine::graphics::renderable::Sprite GetSprite() const override final;
 
 		// ISizeable methods implementation
 		virtual float GetWidth() const override final;

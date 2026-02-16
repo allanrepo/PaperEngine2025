@@ -2,9 +2,9 @@
 #include <Graphics/Renderable/IRenderable.h>
 #include <Spatial/ISizeable.h>
 
-namespace graphics::renderable
+namespace engine::graphics::renderable
 {
-	class IDrawableSurface: public graphics::renderable::IRenderable, public spatial::ISizeable<float>
+	class IDrawableSurface: public engine::graphics::renderable::IRenderable, public spatial::ISizeable<float>
 	{
 	protected:
 	public:

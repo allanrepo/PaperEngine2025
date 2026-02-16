@@ -25,10 +25,10 @@ namespace testFrameRate
 		friend class core::Singleton<Test>;
 
 		std::unique_ptr<Win32::Window> m_window;
-		std::unique_ptr<graphics::ICanvas> m_canvas;
-		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
+		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
+		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		timer::StopWatch m_stopwatch;
-		std::unique_ptr<graphics::renderable::IFontAtlas> m_fontAtlas;
+		std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
 		timer::Scheduler m_scheduler;
 		performance::FrameRateMonitor m_frameRateMonitor1;
 		performance::FrameRateMonitor m_frameRateMonitor2;
@@ -67,18 +67,18 @@ namespace testFrameRate
 			LOG("Window created...");
 
 			// create dx11 canvas
-			m_canvas = std::make_unique<graphics::Canvas>(std::make_unique<graphics::dx11::DX11CanvasImpl>());
+			m_canvas = std::make_unique<engine::graphics::Canvas>(std::make_unique<engine::graphics::dx11::DX11CanvasImpl>());
 			m_canvas->Initialize(hWnd);
 			m_canvas->SetViewPort();
 			LOG("Canvas (DX11) created...");
 
 			// create dx11 renderer batched
-			m_renderer = std::make_unique<graphics::renderer::Renderer>(std::make_unique<graphics::dx11::renderer::DX11RendererBatchImpl>());
+			m_renderer = std::make_unique<engine::graphics::renderer::Renderer>(std::make_unique<engine::graphics::dx11::renderer::DX11RendererBatchImpl>());
 			m_renderer->Initialize();
 			LOG("Renderer (DX11) created...");
 
 			// create font atlas
-			m_fontAtlas = std::make_unique<graphics::renderable::FontAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
+			m_fontAtlas = std::make_unique<engine::graphics::renderable::FontAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
 			m_fontAtlas->Initialize("Arial", 24);
 			LOG("Font atlas created and initialized...");
 

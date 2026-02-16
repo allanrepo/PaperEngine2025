@@ -85,10 +85,10 @@ namespace engine
 				class DrawCommandBase : public ICommand
 				{
 				protected:
-					::graphics::renderer::IRenderer& m_renderer;
+					::engine::graphics::renderer::IRenderer& m_renderer;
 
 				public:
-					DrawCommandBase(::graphics::renderer::IRenderer& renderer) :
+					DrawCommandBase(::engine::graphics::renderer::IRenderer& renderer) :
 						m_renderer(renderer)
 					{
 					}
@@ -104,15 +104,15 @@ namespace engine
 				private:
 					spatial::PositionF m_pos;
 					spatial::SizeF m_size;
-					::graphics::ColorF m_color;
+					::engine::graphics::ColorF m_color;
 					float m_rotation;
 
 				public:
 					DrawQuadCommand(
-						::graphics::renderer::IRenderer& renderer,
+						::engine::graphics::renderer::IRenderer& renderer,
 						spatial::PositionF pos,
 						spatial::SizeF size,
-						::graphics::ColorF color,
+						::engine::graphics::ColorF color,
 						float rotation
 					): 
 						DrawCommandBase(renderer),
@@ -132,17 +132,17 @@ namespace engine
 				class DrawTextCommand : public DrawCommandBase
 				{
 				private:
-					const ::graphics::renderable::IFontAtlas& m_font;
+					const ::engine::graphics::renderable::IFontAtlas& m_font;
 					std::string m_text;
 					spatial::PositionF m_pos;
-					::graphics::ColorF m_color;
+					::engine::graphics::ColorF m_color;
 				public:
 					DrawTextCommand(
-						::graphics::renderer::IRenderer& renderer,
-						const ::graphics::renderable::IFontAtlas& font,
+						::engine::graphics::renderer::IRenderer& renderer,
+						const ::engine::graphics::renderable::IFontAtlas& font,
 						const std::string& text,
 						spatial::PositionF pos,
-						::graphics::ColorF color
+						::engine::graphics::ColorF color
 					) :
 						DrawCommandBase(renderer),
 						m_font(font),
@@ -161,18 +161,18 @@ namespace engine
 				class DrawRenderableCommand : public DrawCommandBase
 				{
 				private:
-					const ::graphics::renderable::IRenderable& m_renderable;
+					const ::engine::graphics::renderable::IRenderable& m_renderable;
 					spatial::PositionF m_pos;
 					spatial::SizeF m_size;
-					::graphics::ColorF m_color;
+					::engine::graphics::ColorF m_color;
 					float m_rotation;
 				public:
 					DrawRenderableCommand(
-						::graphics::renderer::IRenderer& renderer,
-						const ::graphics::renderable::IRenderable& renderable,
+						::engine::graphics::renderer::IRenderer& renderer,
+						const ::engine::graphics::renderable::IRenderable& renderable,
 						spatial::PositionF pos,
 						spatial::SizeF size,
-						::graphics::ColorF color,
+						::engine::graphics::ColorF color,
 						float rotation
 					) :
 						DrawCommandBase(renderer),
@@ -192,18 +192,18 @@ namespace engine
 				class DrawSpriteCommand : public DrawCommandBase
 				{
 				private:
-					const ::graphics::renderable::Sprite m_sprite;
+					const ::engine::graphics::renderable::Sprite m_sprite;
 					spatial::PositionF m_pos;
 					spatial::SizeF m_size;
-					::graphics::ColorF m_color;
+					::engine::graphics::ColorF m_color;
 					float m_rotation;
 				public:
 					DrawSpriteCommand(
-						::graphics::renderer::IRenderer& renderer,
-						const ::graphics::renderable::Sprite& sprite,
+						::engine::graphics::renderer::IRenderer& renderer,
+						const ::engine::graphics::renderable::Sprite& sprite,
 						spatial::PositionF pos,
 						spatial::SizeF size,
-						::graphics::ColorF color,
+						::engine::graphics::ColorF color,
 						float rotation
 					) :
 						DrawCommandBase(renderer),
@@ -230,7 +230,7 @@ namespace engine
 
 				public:
 					SetClipRegionCommand(
-						::graphics::renderer::IRenderer& renderer,
+						::engine::graphics::renderer::IRenderer& renderer,
 						const math::geometry::RectF& region,
 						bool enable
 					) :

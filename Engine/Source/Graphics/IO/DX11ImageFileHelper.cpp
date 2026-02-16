@@ -3,7 +3,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-namespace graphics::dx11::imageio
+namespace engine::graphics::dx11::imageio
 {
     HRESULT LoadTextureFromFile(
         ID3D11Device* device,

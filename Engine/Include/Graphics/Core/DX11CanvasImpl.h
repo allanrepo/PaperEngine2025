@@ -8,10 +8,10 @@
 // Abstract renderer interface
 #include <Graphics/Core/ICanvasImpl.h>
 
-namespace graphics::dx11
+namespace engine::graphics::dx11
 {
     // DX11-specific implementation of the ICanvasImpl interface
-    class DX11CanvasImpl : public graphics::ICanvasImpl
+    class DX11CanvasImpl : public engine::graphics::ICanvasImpl
     {
     private:
         // Swap chain for presenting rendered frames to the window
@@ -51,7 +51,7 @@ namespace graphics::dx11
 
         // Clears the render target with the specified color
         //void Clear(float red, float green, float blue, float alpha) override;
-        void Clear(const graphics::ColorF& color) override;
+        void Clear(const engine::graphics::ColorF& color) override;
 
         // Sets a custom viewport rectangle
         //void SetViewPort(float x, float y, float width, float height) override;

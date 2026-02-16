@@ -37,10 +37,10 @@ using namespace app;
 namespace test
 {
 	// we are mocking the sprite atlas class here for demo purpose so we can create sprite directly without using factory
-	class MockSpriteAtlas : public graphics::resource::SpriteAtlas
+	class MockSpriteAtlas : public engine::graphics::resource::SpriteAtlas
 	{
 	public:
-		MockSpriteAtlas(std::unique_ptr<graphics::resource::ITexture> tex) :
+		MockSpriteAtlas(std::unique_ptr<engine::graphics::resource::ITexture> tex) :
 			SpriteAtlas(std::move(tex))
 		{
 		}
@@ -50,10 +50,10 @@ namespace test
 	{
 	private:
 		std::unique_ptr<Win32::Window> m_window;
-		std::unique_ptr<graphics::ICanvas> m_canvas;
-		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
+		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
+		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		std::unique_ptr<MockSpriteAtlas> m_spriteAtlas;
-		std::unique_ptr<graphics::animation::Animator<graphics::renderable::Sprite>> m_animator;
+		std::unique_ptr<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>> m_animator;
 		timer::StopWatch m_stopwatch;
 
 	public:
@@ -83,18 +83,18 @@ namespace test
 			LOG("Window created...");
 
 			// create dx11 canvas
-			m_canvas = std::make_unique<graphics::Canvas>(std::make_unique<graphics::dx11::DX11CanvasImpl>());
+			m_canvas = std::make_unique<engine::graphics::Canvas>(std::make_unique<engine::graphics::dx11::DX11CanvasImpl>());
 			m_canvas->Initialize(hWnd);
 			m_canvas->SetViewPort();
 			LOG("Canvas (DX11) created...");
 
 			// create dx11 renderer batched
-			m_renderer = std::make_unique<graphics::renderer::Renderer>(std::make_unique<graphics::dx11::renderer::DX11RendererBatchImpl>());
+			m_renderer = std::make_unique<engine::graphics::renderer::Renderer>(std::make_unique<engine::graphics::dx11::renderer::DX11RendererBatchImpl>());
 			m_renderer->Initialize();
 			LOG("Renderer (DX11) created...");
 
 			// create sprite atlas manually for demo purpose
-			m_spriteAtlas = std::make_unique<MockSpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
+			m_spriteAtlas = std::make_unique<MockSpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
 
 			// load sprite atlas from file manually for demo purpose
 			m_spriteAtlas->Initialize(L"../Assets/CharacterTest_2304x1536_12x8.png");
@@ -108,18 +108,18 @@ namespace test
 			}
 
 			// create animation manually and make it loop
-			graphics::animation::Animation<graphics::renderable::Sprite> anim;
+			engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> anim;
 			anim.loop = true;
 
 			// load with walking animation frames manually
 			for (int i = 12; i < 18; i++)
 			{
-				graphics::renderable::Sprite sprite = m_spriteAtlas->MakeSprite(i);
+				engine::graphics::renderable::Sprite sprite = m_spriteAtlas->MakeSprite(i);
 				anim.frames.push_back({ sprite, 100.0f });
 			}
 
 			// create animator and load the animation
-			m_animator = std::make_unique<graphics::animation::Animator<graphics::renderable::Sprite>>();
+			m_animator = std::make_unique<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>();
 			m_animator->Add("default", anim);
 			m_animator->Play("default");
 
@@ -153,7 +153,7 @@ namespace test
 						100.0f, 100.0f
 					},				// position
 						m_animator->GetCurrentFrame().element.GetSize(),	// get the sprite size from animator's current frame
-						graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f },			// color
+						engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f },			// color
 						0.0f
 					);
 				}

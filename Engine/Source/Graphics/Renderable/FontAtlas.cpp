@@ -2,19 +2,19 @@
 #include <Graphics/Resource/ITexture.h>
 #include <Graphics/Renderable/FontAtlas.h>
 
-graphics::renderable::FontAtlas::FontAtlas(std::unique_ptr<graphics::resource::ITexture> tex)
+engine::graphics::renderable::FontAtlas::FontAtlas(std::unique_ptr<engine::graphics::resource::ITexture> tex)
 	: texture(std::move(tex))
 {
 }
 
-void graphics::renderable::FontAtlas::Reset()
+void engine::graphics::renderable::FontAtlas::Reset()
 {
 	texture->Reset();
 	// TODO: glyphs are not populated yet
 	glyphs.clear();
 }
 
-bool graphics::renderable::FontAtlas::Initialize(const std::string& fontName, const unsigned int fontSize)
+bool engine::graphics::renderable::FontAtlas::Initialize(const std::string& fontName, const unsigned int fontSize)
 {
 	// generate font atlas bitmap data
 	unsigned int width, height;
@@ -55,7 +55,7 @@ bool graphics::renderable::FontAtlas::Initialize(const std::string& fontName, co
 }
 
 // TODO: glyphs need to be populated during Initialize
-const graphics::text::Glyph* graphics::renderable::FontAtlas::GetGlyph(const unsigned char character) const
+const engine::graphics::text::Glyph* engine::graphics::renderable::FontAtlas::GetGlyph(const unsigned char character) const
 {
 	if (character < 32 || character > 127)
 	{
@@ -68,7 +68,7 @@ const graphics::text::Glyph* graphics::renderable::FontAtlas::GetGlyph(const uns
 	return &glyphs[character - 32];
 }
 
-bool graphics::renderable::FontAtlas::GetNormalizedTexCoord(const unsigned char character, float& u0, float& v0, float& u1, float& v1) const
+bool engine::graphics::renderable::FontAtlas::GetNormalizedTexCoord(const unsigned char character, float& u0, float& v0, float& u1, float& v1) const
 {
 	if (character < 32 || character > 127)
 	{
@@ -82,22 +82,22 @@ bool graphics::renderable::FontAtlas::GetNormalizedTexCoord(const unsigned char 
 	return true;
 }
 
-math::geometry::RectF graphics::renderable::FontAtlas::GetUVRect() const
+math::geometry::RectF engine::graphics::renderable::FontAtlas::GetUVRect() const
 {
 	return math::geometry::RectF{ 0, 0, 1, 1 };
 }
 
-void graphics::renderable::FontAtlas::Bind() const
+void engine::graphics::renderable::FontAtlas::Bind() const
 {
 	texture->Bind();
 }
 
-bool graphics::renderable::FontAtlas::CanBind() const
+bool engine::graphics::renderable::FontAtlas::CanBind() const
 {
 	return texture->CanBind();
 }
 
-const float graphics::renderable::FontAtlas::GetWidth(const unsigned char character) const
+const float engine::graphics::renderable::FontAtlas::GetWidth(const unsigned char character) const
 {
 	if (character < 32 || character > 127)
 	{
@@ -110,7 +110,7 @@ const float graphics::renderable::FontAtlas::GetWidth(const unsigned char charac
 	return texture->GetWidth() * (u1 - u0);
 }
 
-const float graphics::renderable::FontAtlas::GetHeight(const unsigned char character) const
+const float engine::graphics::renderable::FontAtlas::GetHeight(const unsigned char character) const
 {
 	if (character < 32 || character > 127)
 	{
@@ -124,7 +124,7 @@ const float graphics::renderable::FontAtlas::GetHeight(const unsigned char chara
 	return texture->GetHeight() * (v1 - v0);
 }
 
-const float graphics::renderable::FontAtlas::GetWidth(const std::string& text) const
+const float engine::graphics::renderable::FontAtlas::GetWidth(const std::string& text) const
 {
 	float total = 0.0f;
 	for (unsigned char c : text)
@@ -138,17 +138,17 @@ const float graphics::renderable::FontAtlas::GetWidth(const std::string& text) c
 	return total;
 }
 
-float graphics::renderable::FontAtlas::GetWidth() const
+float engine::graphics::renderable::FontAtlas::GetWidth() const
 {
 	return static_cast<float>(texture->GetWidth());
 }
 
-float graphics::renderable::FontAtlas::GetHeight() const
+float engine::graphics::renderable::FontAtlas::GetHeight() const
 {
 	return static_cast<float>(texture->GetHeight());
 }
 
-spatial::SizeF graphics::renderable::FontAtlas::GetSize() const
+spatial::SizeF engine::graphics::renderable::FontAtlas::GetSize() const
 {
 	return spatial::SizeF
 	{

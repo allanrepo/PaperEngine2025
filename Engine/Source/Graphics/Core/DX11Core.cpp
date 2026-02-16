@@ -3,7 +3,7 @@
 
 #include <stdexcept>
 
-graphics::dx11::DX11Core::DX11Core()
+engine::graphics::dx11::DX11Core::DX11Core()
     : device(nullptr)
     , context(nullptr)
     , factory(nullptr)
@@ -15,12 +15,12 @@ graphics::dx11::DX11Core::DX11Core()
     }
 }
 
-graphics::dx11::DX11Core::~DX11Core()
+engine::graphics::dx11::DX11Core::~DX11Core()
 {
     ShutDown();
 }
 
-bool graphics::dx11::DX11Core::Initialize()
+bool engine::graphics::dx11::DX11Core::Initialize()
 {
     CoInitialize(NULL);
 
@@ -69,7 +69,7 @@ bool graphics::dx11::DX11Core::Initialize()
     return true;
 }
 
-void graphics::dx11::DX11Core::ShutDown()
+void engine::graphics::dx11::DX11Core::ShutDown()
 {
     context.Reset();
     device.Reset();

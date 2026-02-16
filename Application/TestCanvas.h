@@ -24,11 +24,11 @@ namespace test
 	{
 	private:
 		std::unique_ptr<Win32::Window> m_window;
-		std::unique_ptr<graphics::ICanvas> m_canvas;
-		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
-		std::unique_ptr<graphics::renderable::IDrawableSurface> m_drawableSurface;
-		std::unique_ptr<graphics::renderable::IFontAtlas> m_fontAtlas;
-		std::unique_ptr<graphics::renderable::IImageSurface> m_imageSurface;
+		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
+		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
+		std::unique_ptr<engine::graphics::renderable::IDrawableSurface> m_drawableSurface;
+		std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
+		std::unique_ptr<engine::graphics::renderable::IImageSurface> m_imageSurface;
 
 	public:
 		TestCanvas()
@@ -57,17 +57,17 @@ namespace test
 			LOG("Window created...");
 
 			// create dx11 canvas
-			m_canvas = std::make_unique<graphics::Canvas>(std::make_unique<graphics::dx11::DX11CanvasImpl>());
+			m_canvas = std::make_unique<engine::graphics::Canvas>(std::make_unique<engine::graphics::dx11::DX11CanvasImpl>());
 			m_canvas->Initialize(hWnd);
 			m_canvas->SetViewPort();
 
 			// create dx11 renderer batched
-			m_renderer = std::make_unique<graphics::renderer::Renderer>(std::make_unique<graphics::dx11::renderer::DX11RendererBatchImpl>());
+			m_renderer = std::make_unique<engine::graphics::renderer::Renderer>(std::make_unique<engine::graphics::dx11::renderer::DX11RendererBatchImpl>());
 			m_renderer->Initialize();
 
 			// create dx11 texture and use on drawable surface
-			m_drawableSurface = std::make_unique<graphics::renderable::DrawableSurface>(std::make_unique<graphics::resource::Texture>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>()));
-			//m_drawableSurface = std::make_unique<graphics::renderable::DrawableSurface>(std::make_unique<graphics::dx11::resource::DX11Texture>());
+			m_drawableSurface = std::make_unique<engine::graphics::renderable::DrawableSurface>(std::make_unique<engine::graphics::resource::Texture>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>()));
+			//m_drawableSurface = std::make_unique<engine::graphics::renderable::DrawableSurface>(std::make_unique<graphics::dx11::resource::DX11Texture>());
 
 			// draw stuff on the drawable surface
 			m_drawableSurface->Initialize(128, 128);
@@ -76,19 +76,19 @@ namespace test
 				m_drawableSurface->Clear(0, 0.5f, 0, 1);
 				m_drawableSurface->Begin();
 				{
-					m_renderer->Draw(spatial::PositionF{ 32, 32 }, spatial::SizeF{ 64, 64 }, graphics::ColorF{ 0.5f,0,0,1 }, 0);
-					m_renderer->Draw(spatial::PositionF{ 48, 56 }, spatial::SizeF{ 64, 48 }, graphics::ColorF{ 0,0,0.5f,1 }, 0);
+					m_renderer->Draw(spatial::PositionF{ 32, 32 }, spatial::SizeF{ 64, 64 }, engine::graphics::ColorF{ 0.5f,0,0,1 }, 0);
+					m_renderer->Draw(spatial::PositionF{ 48, 56 }, spatial::SizeF{ 64, 48 }, engine::graphics::ColorF{ 0,0,0.5f,1 }, 0);
 				}
 				m_drawableSurface->End();
 			}
 			m_drawableSurface->End();
 
 			// create font atlas
-			m_fontAtlas = std::make_unique<graphics::renderable::FontAtlas>(std::make_unique<graphics::resource::Texture>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>()));
+			m_fontAtlas = std::make_unique<engine::graphics::renderable::FontAtlas>(std::make_unique<engine::graphics::resource::Texture>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>()));
 			m_fontAtlas->Initialize("Comic Sans", 32);
 
 			// create image surface
-			m_imageSurface = std::make_unique<graphics::renderable::ImageSurface>(std::make_unique<graphics::resource::Texture>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>()));
+			m_imageSurface = std::make_unique<engine::graphics::renderable::ImageSurface>(std::make_unique<engine::graphics::resource::Texture>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>()));
 			m_imageSurface->Initialize(L"../Assets/256x256.bmp");
 		}
 
@@ -103,16 +103,16 @@ namespace test
 				m_renderer->Begin();
 				{
 					// draw a rectangle fill
-					m_renderer->Draw(spatial::PositionF{ 100, 100 }, spatial::SizeF{ 100, 100 }, graphics::ColorF{ 1,1,0,1 }, 0);
+					m_renderer->Draw(spatial::PositionF{ 100, 100 }, spatial::SizeF{ 100, 100 }, engine::graphics::ColorF{ 1,1,0,1 }, 0);
 
 					// draw the drawable surface
-					m_renderer->DrawRenderable(*m_drawableSurface, spatial::PositionF{ 250, 250 }, m_drawableSurface->GetSize(), graphics::ColorF{ 1,1,1,1 }, 0);
+					m_renderer->DrawRenderable(*m_drawableSurface, spatial::PositionF{ 250, 250 }, m_drawableSurface->GetSize(), engine::graphics::ColorF{ 1,1,1,1 }, 0);
 
 					// draw text
-					m_renderer->DrawText(*m_fontAtlas, "Hello World", spatial::PositionF{ 250, 200 }, graphics::ColorF{ 0,1,1,1 });
+					m_renderer->DrawText(*m_fontAtlas, "Hello World", spatial::PositionF{ 250, 200 }, engine::graphics::ColorF{ 0,1,1,1 });
 
 					// draw image surface
-					m_renderer->DrawRenderable(*m_imageSurface, spatial::PositionF{ 400, 250 }, m_imageSurface->GetSize(), graphics::ColorF{ 1,1,1,1 }, 0);
+					m_renderer->DrawRenderable(*m_imageSurface, spatial::PositionF{ 400, 250 }, m_imageSurface->GetSize(), engine::graphics::ColorF{ 1,1,1,1 }, 0);
 				}
 				m_renderer->End();
 			}

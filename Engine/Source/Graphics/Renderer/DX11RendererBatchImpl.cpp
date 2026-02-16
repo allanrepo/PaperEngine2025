@@ -4,7 +4,7 @@
 //using namespace engine;
 
 #pragma region // renderer::DX11RendererBatchImpl
-graphics::dx11::renderer::DX11RendererBatchImpl::DX11RendererBatchImpl()
+engine::graphics::dx11::renderer::DX11RendererBatchImpl::DX11RendererBatchImpl()
 {
 #pragma region // define shader code view clip 
 	m_VSCodeWithView = R"(
@@ -218,21 +218,21 @@ float4 main(VSOUT vso) : SV_TARGET
 #pragma endregion
 }
 
-graphics::dx11::renderer::DX11RendererBatchImpl::~DX11RendererBatchImpl()
+engine::graphics::dx11::renderer::DX11RendererBatchImpl::~DX11RendererBatchImpl()
 {
 }
 
-std::string graphics::dx11::renderer::DX11RendererBatchImpl::GetTypeName() const
+std::string engine::graphics::dx11::renderer::DX11RendererBatchImpl::GetTypeName() const
 {
 	return TypeName;
 }
 
-void graphics::dx11::renderer::DX11RendererBatchImpl::ShutDown()
+void engine::graphics::dx11::renderer::DX11RendererBatchImpl::ShutDown()
 {
 	DX11RendererBase::ShutDown();
 }
 
-bool graphics::dx11::renderer::DX11RendererBatchImpl::Initialize()
+bool engine::graphics::dx11::renderer::DX11RendererBatchImpl::Initialize()
 {
 	ShutDown();
 
@@ -328,7 +328,7 @@ bool graphics::dx11::renderer::DX11RendererBatchImpl::Initialize()
 	return true;
 }
 
-void graphics::dx11::renderer::DX11RendererBatchImpl::Begin()
+void engine::graphics::dx11::renderer::DX11RendererBatchImpl::Begin()
 {
 	DX11Core& rCore = DX11Core::Instance();
 
@@ -377,7 +377,7 @@ void graphics::dx11::renderer::DX11RendererBatchImpl::Begin()
 #pragma endregion
 }
 
-void graphics::dx11::renderer::DX11RendererBatchImpl::End()
+void engine::graphics::dx11::renderer::DX11RendererBatchImpl::End()
 {
 	// batch draw any remaining draw requests on queue
 	if (m_nCurrSpriteCount > 0)
@@ -387,20 +387,20 @@ void graphics::dx11::renderer::DX11RendererBatchImpl::End()
 	}
 }
 
-void graphics::dx11::renderer::DX11RendererBatchImpl::SetClipRegion(const math::geometry::RectF& region)
+void engine::graphics::dx11::renderer::DX11RendererBatchImpl::SetClipRegion(const math::geometry::RectF& region)
 {
 	m_clipRegion = region;
 }
 
-void graphics::dx11::renderer::DX11RendererBatchImpl::EnableClipping(const bool enable)
+void engine::graphics::dx11::renderer::DX11RendererBatchImpl::EnableClipping(const bool enable)
 {
 	m_clippingEnabled = enable;
 }
 
-void graphics::dx11::renderer::DX11RendererBatchImpl::Draw(
+void engine::graphics::dx11::renderer::DX11RendererBatchImpl::Draw(
 	const spatial::PositionF pos, 
 	const spatial::SizeF size, 
-	const graphics::ColorF color, 
+	const engine::graphics::ColorF color, 
 	const float rotation
 )
 {
@@ -461,11 +461,11 @@ void graphics::dx11::renderer::DX11RendererBatchImpl::Draw(
 }
 
 // Draws a string using a font atlas at the specified position and color
-void graphics::dx11::renderer::DX11RendererBatchImpl::DrawText(
-	const graphics::renderable::IFontAtlas& font, // Font atlas
+void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawText(
+	const engine::graphics::renderable::IFontAtlas& font, // Font atlas
 	const std::string& text,                    // Text to render
 	const spatial::PositionF pos,                                 // Top-left screen position
-	const graphics::ColorF color                                   // RGBA color tint
+	const engine::graphics::ColorF color                                   // RGBA color tint
 )
 {
 	float xCurr = pos.x;
@@ -480,11 +480,11 @@ void graphics::dx11::renderer::DX11RendererBatchImpl::DrawText(
 }
 
 // Draws a single character using a font atlas with color and rotation
-void graphics::dx11::renderer::DX11RendererBatchImpl::DrawChar(
-	const graphics::renderable::IFontAtlas& font, // Font atlas
+void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawChar(
+	const engine::graphics::renderable::IFontAtlas& font, // Font atlas
 	const unsigned char character,            // Character to render
 	const spatial::PositionF pos,                                 // Top-left screen position
-	const graphics::ColorF color,                                   // RGBA color tint
+	const engine::graphics::ColorF color,                                   // RGBA color tint
 	const float rotation                      // Rotation in radians
 )
 {
@@ -562,11 +562,11 @@ void graphics::dx11::renderer::DX11RendererBatchImpl::DrawChar(
 #pragma endregion
 }
 
-void graphics::dx11::renderer::DX11RendererBatchImpl::DrawRenderable(
-	const graphics::renderable::IRenderable& renderable, 
+void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawRenderable(
+	const engine::graphics::renderable::IRenderable& renderable, 
 	const spatial::PositionF pos, 
 	const spatial::SizeF size, 
-	const graphics::ColorF color, 
+	const engine::graphics::ColorF color, 
 	const float rotation
 )
 {
@@ -641,7 +641,7 @@ void graphics::dx11::renderer::DX11RendererBatchImpl::DrawRenderable(
 #pragma endregion
 }
 
-void graphics::dx11::renderer::DX11RendererBatchImpl::DrawBatch()
+void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawBatch()
 {
 	DX11Core& rCore = DX11Core::Instance();
 

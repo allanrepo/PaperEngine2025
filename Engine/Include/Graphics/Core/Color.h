@@ -1,6 +1,6 @@
 #pragma once
 
-namespace graphics
+namespace engine::graphics
 {
 	template<typename T>
 	struct Color

@@ -13,11 +13,11 @@ namespace engine
 			class AnimatedTile
 			{
 			private:
-				graphics::animation::Animator<graphics::renderable::Sprite> m_animator;
+				engine::graphics::animation::Animator<engine::graphics::renderable::Sprite> m_animator;
 				bool m_walkable;
 
 			public:
-				AnimatedTile(bool walkable, const std::string& name, const graphics::animation::Animation<graphics::renderable::Sprite>& anim) :
+				AnimatedTile(bool walkable, const std::string& name, const engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>& anim) :
 					m_walkable(walkable)
 				{
 					m_animator.Add(name, anim);
@@ -29,7 +29,7 @@ namespace engine
 					return m_animator.IsRunning();
 				}
 
-				const graphics::renderable::Sprite& GetSprite() const
+				const engine::graphics::renderable::Sprite& GetSprite() const
 				{
 					return m_animator.GetCurrent();
 				}
@@ -39,7 +39,7 @@ namespace engine
 					m_animator.Update(delta);
 				}
 
-				void Add(const std::string& name, const graphics::animation::Animation<graphics::renderable::Sprite>& anim, bool play = false)
+				void Add(const std::string& name, const engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>& anim, bool play = false)
 				{
 					m_animator.Add(name, anim);
 					if (play) m_animator.Play(name);

@@ -5,7 +5,7 @@
 #pragma comment(lib, "d3dcompiler.lib")
 
 #pragma region // DX11SpriteBase
-void graphics::dx11::renderer::DX11RendererBase::ShutDown()
+void engine::graphics::dx11::renderer::DX11RendererBase::ShutDown()
 {
 	m_pd3dConstantBufferUpdate.Reset();
 	m_pd3dConstantBufferProjection.Reset();
@@ -17,7 +17,7 @@ void graphics::dx11::renderer::DX11RendererBase::ShutDown()
 	m_pd3dSamplerState.Reset();
 }
 
-HRESULT graphics::dx11::renderer::DX11RendererBase::CreateVertexBuffer(
+HRESULT engine::graphics::dx11::renderer::DX11RendererBase::CreateVertexBuffer(
 	const void* pVertices,
 	size_t vertexCount, 
 	size_t vertexSize, 
@@ -33,10 +33,10 @@ HRESULT graphics::dx11::renderer::DX11RendererBase::CreateVertexBuffer(
 	bd.CPUAccessFlags = 0;
 	bd.MiscFlags = 0;
 	bd.StructureByteStride = static_cast<UINT>(vertexSize);
-	return graphics::dx11::DX11Core::Instance().GetDevice()->CreateBuffer(&bd, &srd, pd3dVertexBuffer.GetAddressOf());
+	return engine::graphics::dx11::DX11Core::Instance().GetDevice()->CreateBuffer(&bd, &srd, pd3dVertexBuffer.GetAddressOf());
 }
 
-HRESULT graphics::dx11::renderer::DX11RendererBase::CompileShader(
+HRESULT engine::graphics::dx11::renderer::DX11RendererBase::CompileShader(
 	const char* code, 
 	const char* sourceName, 
 	const char* entryPoint, 
@@ -47,7 +47,7 @@ HRESULT graphics::dx11::renderer::DX11RendererBase::CompileShader(
 	Microsoft::WRL::ComPtr<ID3DBlob> pd3dErrorBlob;
 	return D3DCompile(code, strlen(code), sourceName, nullptr, nullptr, entryPoint, shaderModel, 0, 0, pd3dShaderBlob.GetAddressOf(), pd3dErrorBlob.GetAddressOf());
 }
-HRESULT graphics::dx11::renderer::DX11RendererBase::CreateShadersAndInputLayout(
+HRESULT engine::graphics::dx11::renderer::DX11RendererBase::CreateShadersAndInputLayout(
 	const char* vsCode, const char* vsEntryPoint,
 	const char* psCode, const char* psEntryPoint,
 	const D3D11_INPUT_ELEMENT_DESC* ied, const unsigned int iedCount,
@@ -56,7 +56,7 @@ HRESULT graphics::dx11::renderer::DX11RendererBase::CreateShadersAndInputLayout(
 	Microsoft::WRL::ComPtr<ID3D11InputLayout>& pd3dInputLayout
 )
 {
-	graphics::dx11::DX11Core& rCore = graphics::dx11::DX11Core::Instance();
+	engine::graphics::dx11::DX11Core& rCore = engine::graphics::dx11::DX11Core::Instance();
 
 	Microsoft::WRL::ComPtr<ID3DBlob> pd3dVSBlob2D;
 	HRESULT hr = CompileShader(vsCode, "VSQuadBatch", vsEntryPoint, "vs_5_0", pd3dVSBlob2D);
@@ -98,12 +98,12 @@ HRESULT graphics::dx11::renderer::DX11RendererBase::CreateShadersAndInputLayout(
 	return hr;
 }
 
-HRESULT graphics::dx11::renderer::DX11RendererBase::CreateBlendState(
+HRESULT engine::graphics::dx11::renderer::DX11RendererBase::CreateBlendState(
 	Microsoft::WRL::ComPtr<ID3D11BlendState>& pd3dBlendState, 
 	D3D11_BLEND_DESC* pBlendDesc
 )
 {
-	graphics::dx11::DX11Core& rCore = graphics::dx11::DX11Core::Instance();
+	engine::graphics::dx11::DX11Core& rCore = engine::graphics::dx11::DX11Core::Instance();
 
 	D3D11_BLEND_DESC blendDesc = {};
 	if (!pBlendDesc)
@@ -153,7 +153,7 @@ HRESULT graphics::dx11::renderer::DX11RendererBase::CreateBlendState(
 	return rCore.GetDevice()->CreateBlendState(pBlendDesc, pd3dBlendState.GetAddressOf());
 }
 
-HRESULT graphics::dx11::renderer::DX11RendererBase::CreateConstantBuffer(
+HRESULT engine::graphics::dx11::renderer::DX11RendererBase::CreateConstantBuffer(
 	const void* pData,
 	unsigned int byteWidth,
 	Microsoft::WRL::ComPtr<ID3D11Buffer>& pd3dConstantBuffer
@@ -168,10 +168,10 @@ HRESULT graphics::dx11::renderer::DX11RendererBase::CreateConstantBuffer(
 	D3D11_SUBRESOURCE_DATA cbsd = {};
 	cbsd.pSysMem = pData;
 
-	return graphics::dx11::DX11Core::Instance().GetDevice()->CreateBuffer(&cbd, &cbsd, pd3dConstantBuffer.GetAddressOf());
+	return engine::graphics::dx11::DX11Core::Instance().GetDevice()->CreateBuffer(&cbd, &cbsd, pd3dConstantBuffer.GetAddressOf());
 }
 
-HRESULT graphics::dx11::renderer::DX11RendererBase::CreateSamplerState(Microsoft::WRL::ComPtr<ID3D11SamplerState>& pd3dSamplerState)
+HRESULT engine::graphics::dx11::renderer::DX11RendererBase::CreateSamplerState(Microsoft::WRL::ComPtr<ID3D11SamplerState>& pd3dSamplerState)
 {
 	D3D11_SAMPLER_DESC sd = {};
 	sd.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;

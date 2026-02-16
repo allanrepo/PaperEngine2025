@@ -2,9 +2,9 @@
 
 #include <Graphics/Renderer/IRenderer.h>
 
-namespace graphics::renderer
+namespace engine::graphics::renderer
 {
-    class IRendererImpl: public graphics::renderer::IRenderer
+    class IRendererImpl: public engine::graphics::renderer::IRenderer
     {
     public:
         // Virtual destructor for safe polymorphic cleanup

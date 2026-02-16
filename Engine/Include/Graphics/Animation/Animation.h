@@ -7,7 +7,7 @@
 #include <memory>
 #include <cassert>
 
-namespace graphics::animation
+namespace engine::graphics::animation
 {
 	// represents a single frame in an animation sequence.
 	// holds the payload element T and the duration to display this frame.
@@ -38,10 +38,10 @@ namespace graphics::animation
 		double m_elapsedTimeAccumulator = 0.0;	// accumulated time since last frame change.
 		Animation<T>* m_animation;				// pointer to the current animation being played.
 		int m_currFrame = -1;					// index of the current frame in the animation.
-		std::unordered_map<std::string, graphics::animation::Animation<T>> m_animations;
+		std::unordered_map<std::string, engine::graphics::animation::Animation<T>> m_animations;
 
 		// starts playing the specified animation from the beginning.
-		void Play(graphics::animation::Animation<T>* animation) noexcept
+		void Play(engine::graphics::animation::Animation<T>* animation) noexcept
 		{
 			// guard against invalid animations
 			if (!animation || animation->frames.empty())
@@ -66,13 +66,13 @@ namespace graphics::animation
 
 	public:
 		// event fired when the frame changes. provides the new frame index and frame data.
-		event::Event<int, graphics::animation::Frame<T>> OnFrame;
+		event::Event<int, engine::graphics::animation::Frame<T>> OnFrame;
 
 		// event fired when the animation ends.
 		event::Event<> OnEnd;
 
 		// event fired when a new animation starts playing. provides pointer to the animation.
-		event::Event<graphics::animation::Animation<T>*> OnPlay;
+		event::Event<engine::graphics::animation::Animation<T>*> OnPlay;
 
 		// constructs a new Animator instance with no animation playing.
 		Animator():
@@ -135,7 +135,7 @@ namespace graphics::animation
 			}
 		}
 
-		const graphics::animation::Frame<T>& GetCurrentFrame() const
+		const engine::graphics::animation::Frame<T>& GetCurrentFrame() const
 		{			
 			if (!IsRunning())
 			{
@@ -240,7 +240,7 @@ namespace graphics::animation
 				animator.Update(delta);
 			}
 
-			void OnFrame(int index, graphics::animation::Frame<int> frame)
+			void OnFrame(int index, engine::graphics::animation::Frame<int> frame)
 			{
 				//LOG("[" << std::to_string(stopwatch.Peek<timer::milliseconds>()) << "] <" << std::to_string(index) << 
 				//	">  index: " << std::to_string(frame.index) << " duration: " << std::to_string(frame.duration));

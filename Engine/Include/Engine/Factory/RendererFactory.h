@@ -11,7 +11,7 @@
 
 using namespace engine;
 
-namespace graphics::factory
+namespace engine::graphics::factory
 {
     class RendererFactory
     {
@@ -27,15 +27,15 @@ namespace graphics::factory
         };
 
     public:
-        static std::unique_ptr<graphics::renderer::IRenderer> Create()
+        static std::unique_ptr<engine::graphics::renderer::IRenderer> Create()
         {
             // get environment config from cache
             std::string typeName =
                 cache::Registry<container::Dictionary<>>::Instance().Has("EnvironmentConfig") ?                     // do we have environment config?
                 cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig").Has("API") ?          // do we have API field in environment config?
                 cache::Registry<container::Dictionary<>>::Instance().Get("EnvironmentConfig").Get("API") :          // yes we have API field. let's get it
-                graphics::dx11::renderer::DX11RendererBatchImpl::TypeName :                                     // no API field in environment config, fallback to DX11
-                graphics::dx11::renderer::DX11RendererBatchImpl::TypeName;                                      // no config, fallback to DX11
+                engine::graphics::dx11::renderer::DX11RendererBatchImpl::TypeName :                                     // no API field in environment config, fallback to DX11
+                engine::graphics::dx11::renderer::DX11RendererBatchImpl::TypeName;                                      // no config, fallback to DX11
 
             std::string renderMode =
                 cache::Registry<container::Dictionary<>>::Instance().Has("EnvironmentConfig") ?                     // do we have environment config?
@@ -51,21 +51,21 @@ namespace graphics::factory
                 std::pair<std::string, std::string> key;
 
                 // register type for renderer = directx 11, batch
-                key.first = graphics::dx11::renderer::DX11RendererBatchImpl::TypeName;  // directx 11 renderer
+                key.first = engine::graphics::dx11::renderer::DX11RendererBatchImpl::TypeName;  // directx 11 renderer
                 key.second = "Batch";                                                   // batch sprite renderer
-                core::Factory<std::pair<std::string, std::string>, graphics::renderer::IRenderer, PairHasher>::Instance().Register(
+                core::Factory<std::pair<std::string, std::string>, engine::graphics::renderer::IRenderer, PairHasher>::Instance().Register(
                     key, []()
                     {
-                        return std::make_unique<graphics::renderer::Renderer>(std::make_unique<graphics::dx11::renderer::DX11RendererBatchImpl>());
+                        return std::make_unique<engine::graphics::renderer::Renderer>(std::make_unique<engine::graphics::dx11::renderer::DX11RendererBatchImpl>());
                     });
 
                 // register type for renderer = directx 11, immediate
-                key.first = graphics::dx11::renderer::DX11RendererImmediateImpl::TypeName;          // directx 11 renderer
+                key.first = engine::graphics::dx11::renderer::DX11RendererImmediateImpl::TypeName;          // directx 11 renderer
                 key.second = "Immediate";                                                           // immediate sprite renderer
-                core::Factory<std::pair<std::string, std::string>, graphics::renderer::IRenderer, PairHasher>::Instance().Register(
+                core::Factory<std::pair<std::string, std::string>, engine::graphics::renderer::IRenderer, PairHasher>::Instance().Register(
                     key, []()
                     {
-                        return std::make_unique<graphics::renderer::Renderer>(std::make_unique<graphics::dx11::renderer::DX11RendererImmediateImpl>());
+                        return std::make_unique<engine::graphics::renderer::Renderer>(std::make_unique<engine::graphics::dx11::renderer::DX11RendererImmediateImpl>());
                     });
 
                 // set to true so we never load again
@@ -77,7 +77,7 @@ namespace graphics::factory
             key.first = typeName;    // renderer mode
             key.second = renderMode; // sprite renderer mode
 
-            std::unique_ptr<graphics::renderer::IRenderer> Renderer = core::Factory<std::pair<std::string, std::string>, graphics::renderer::IRenderer, PairHasher>::Instance().Create(key);
+            std::unique_ptr<engine::graphics::renderer::IRenderer> Renderer = core::Factory<std::pair<std::string, std::string>, engine::graphics::renderer::IRenderer, PairHasher>::Instance().Create(key);
             if (Renderer == nullptr)
             {
                 LOGERROR("Failed to create Renderer. Renderer type is invalid. Renderer Type: " << renderMode);

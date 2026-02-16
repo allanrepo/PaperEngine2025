@@ -330,14 +330,14 @@ namespace TestAsyncFileReader
 	{
 	private:
 		std::unique_ptr<Win32::Window> m_window;
-		std::unique_ptr<graphics::ICanvas> m_canvas;
-		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
+		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
+		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		timer::StopWatch m_stopwatch;
 		AsyncFileReader m_fileReader;
 		AsyncFileReader m_fileReader1;
 		AsyncFileReader m_fileReader2;
 		std::deque<std::string> m_files;
-		std::unique_ptr<graphics::renderable::IFontAtlas> m_fontAtlas;
+		std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
 
 		performance::FrameRateMonitor m_frameRateMonitor;
 		performance::FrameRateMonitor m_stateFrameRateMonitor;
@@ -388,18 +388,18 @@ namespace TestAsyncFileReader
 			LOG("Window created...");
 
 			// create dx11 canvas
-			m_canvas = std::make_unique<graphics::Canvas>(std::make_unique<graphics::dx11::DX11CanvasImpl>());
+			m_canvas = std::make_unique<engine::graphics::Canvas>(std::make_unique<engine::graphics::dx11::DX11CanvasImpl>());
 			m_canvas->Initialize(hWnd);
 			m_canvas->SetViewPort();
 			LOG("Canvas (DX11) created...");
 
 			// create dx11 renderer batched
-			m_renderer = std::make_unique<graphics::renderer::Renderer>(std::make_unique<graphics::dx11::renderer::DX11RendererBatchImpl>());
+			m_renderer = std::make_unique<engine::graphics::renderer::Renderer>(std::make_unique<engine::graphics::dx11::renderer::DX11RendererBatchImpl>());
 			m_renderer->Initialize();
 			LOG("Renderer (DX11) created...");
 
 			// create font atlas
-			m_fontAtlas = std::make_unique<graphics::renderable::FontAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
+			m_fontAtlas = std::make_unique<engine::graphics::renderable::FontAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
 			m_fontAtlas->Initialize("Arial", 24);
 			LOG("Font atlas created and initialized...");
 
@@ -430,7 +430,7 @@ namespace TestAsyncFileReader
 					*m_renderer,
 					pos,
 					size,
-					graphics::ColorF{ 1.0f, 0.0f, 0.0f, 1.0f },
+					engine::graphics::ColorF{ 1.0f, 0.0f, 0.0f, 1.0f },
 					0.0f
 				);
 			m_commandQueue.Enqueue(std::move(drawQuadCmd));
@@ -444,7 +444,7 @@ namespace TestAsyncFileReader
 						size.width * current / total,
 						size.height
 					},
-					graphics::ColorF{ 0.0f, 1.0f, 0.0f, 1.0f },
+					engine::graphics::ColorF{ 0.0f, 1.0f, 0.0f, 1.0f },
 					0.0f
 				);
 			m_commandQueue.Enqueue(std::move(drawQuadCmd));
@@ -467,17 +467,17 @@ namespace TestAsyncFileReader
 						m_canvas->GetViewPort().GetWidth() - width - 10.0f,
 						y
 					},
-					graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }
+					engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }
 				);
 			m_commandQueue.Enqueue(std::move(drawTextCmd));
 		}
 
-		graphics::renderer::IRenderer& GetRenderer() const
+		engine::graphics::renderer::IRenderer& GetRenderer() const
 		{
 			return *m_renderer;
 		}
 
-		graphics::renderable::IFontAtlas& GetFontAtlas() const
+		engine::graphics::renderable::IFontAtlas& GetFontAtlas() const
 		{
 			return *m_fontAtlas;
 		}
@@ -487,7 +487,7 @@ namespace TestAsyncFileReader
 			return m_commandQueue;
 		}
 
-		graphics::ICanvas& GetCanvas() const
+		engine::graphics::ICanvas& GetCanvas() const
 		{
 			return *m_canvas;
 		}
@@ -650,7 +650,7 @@ namespace TestAsyncFileReader
 	{
 	private:
 		//std::deque<std::string> m_files;
-		//std::unique_ptr<graphics::renderable::IFontAtlas> m_fontAtlas;
+		//std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
 		//performance::FrameRateMonitor m_frameRateMonitor;
 		//AsyncFileReader m_fileReader;
 
@@ -668,7 +668,7 @@ namespace TestAsyncFileReader
 			//m_files.push_back("huge.csv");
 
 			//// we're going to render some text here so we create font resource
-			//m_fontAtlas = std::make_unique<graphics::renderable::FontAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
+			//m_fontAtlas = std::make_unique<engine::graphics::renderable::FontAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
 			//m_fontAtlas->Initialize("Arial", 24);
 			//LOG("Font atlas created and initialized...");
 		}

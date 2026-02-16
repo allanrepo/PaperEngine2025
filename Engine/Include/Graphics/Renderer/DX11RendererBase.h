@@ -3,7 +3,7 @@
 #include <wrl/client.h>
 #include <d3d11.h>
 
-namespace graphics::dx11::renderer
+namespace engine::graphics::dx11::renderer
 {
 	class DX11RendererBase
 	{

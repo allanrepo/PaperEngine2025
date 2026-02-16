@@ -15,8 +15,8 @@ namespace component
 		std::string m_name;
 		spatial::TransformF m_transform;
 		spatial::MotionF m_motion;
-		graphics::animation::Animator<graphics::renderable::ISprite> m_animator;
-		cache::Dictionary <std::string, std::unique_ptr<graphics::animation::Animation<graphics::renderable::ISprite>>> m_animations;
+		engine::graphics::animation::Animator<engine::graphics::renderable::ISprite> m_animator;
+		cache::Dictionary <std::string, std::unique_ptr<engine::graphics::animation::Animation<engine::graphics::renderable::ISprite>>> m_animations;
 		state::StateMachine<component::Actor> m_stateMachine;
 
 		// TODO: can change this as enum instead of vector. unless i want to use its granularity e.g. specific angle orientation
@@ -73,7 +73,7 @@ namespace component
 			m_stateMachine.Queue(std::move(state));
 		}
 
-		void AddAnimation(const std::string& name, std::unique_ptr<graphics::animation::Animation<graphics::resource::Sprite>> animation)
+		void AddAnimation(const std::string& name, std::unique_ptr<engine::graphics::animation::Animation<engine::graphics::resource::Sprite>> animation)
 		{
 			m_animations.Register(name, std::move(animation));
 		}
@@ -83,12 +83,12 @@ namespace component
 			m_animator.Play(m_animations.Has(key) ? m_animations.Get(key).get() : nullptr);
 		}
 
-		graphics::animation::Animator<graphics::resource::Sprite>& GetAnimator()
+		engine::graphics::animation::Animator<engine::graphics::resource::Sprite>& GetAnimator()
 		{
 			return m_animator;
 		}
 
-		virtual const graphics::animation::Animator<graphics::resource::Sprite>& GetAnimator() const
+		virtual const engine::graphics::animation::Animator<engine::graphics::resource::Sprite>& GetAnimator() const
 		{
 			return m_animator;
 		}

@@ -4,13 +4,13 @@
 #include <string>
 #include <memory>
 
-namespace graphics::resource
+namespace engine::graphics::resource
 {
-	class Texture: public graphics::resource::ITexture
+	class Texture: public engine::graphics::resource::ITexture
 	{
 
 	public:
-		explicit Texture(std::unique_ptr<graphics::resource::ITextureImpl> pImpl);
+		explicit Texture(std::unique_ptr<engine::graphics::resource::ITextureImpl> pImpl);
 
 		virtual ~Texture() = default;
 		virtual std::string GetTypeName() const override final;
@@ -51,7 +51,7 @@ namespace graphics::resource
 		virtual bool SaveToFile(const wchar_t* filename) override final;
 
 	private:
-		std::unique_ptr<graphics::resource::ITextureImpl> m_impl;
+		std::unique_ptr<engine::graphics::resource::ITextureImpl> m_impl;
 	};
 }
 

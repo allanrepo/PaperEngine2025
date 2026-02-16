@@ -32,16 +32,16 @@ namespace TestCamera
 	class RenderableTile
 	{
 	private:
-		graphics::renderable::Sprite m_sprite;
+		engine::graphics::renderable::Sprite m_sprite;
 		bool m_walkable;
 
 	public:
-		RenderableTile(const graphics::renderable::Sprite& sprite, bool walkable) :
+		RenderableTile(const engine::graphics::renderable::Sprite& sprite, bool walkable) :
 			m_sprite(sprite),
 			m_walkable(walkable)
 		{
 		}
-		const graphics::renderable::Sprite& GetSprite() const
+		const engine::graphics::renderable::Sprite& GetSprite() const
 		{
 			return m_sprite;
 		}
@@ -55,9 +55,9 @@ namespace TestCamera
 	{
 	private:
 		std::unique_ptr<Win32::Window> m_window;
-		std::unique_ptr<graphics::ICanvas> m_canvas;
-		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
-		std::unique_ptr<graphics::resource::ISpriteAtlas> m_spriteAtlas;
+		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
+		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
+		std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
 		timer::StopWatch m_stopwatch;
 		engine::component::tile::Tileset<RenderableTile> m_tileset;
 		engine::component::tile::TileGrid<RenderableTile> m_tilegrid;
@@ -144,18 +144,18 @@ namespace TestCamera
 			LOG("Window created...");
 
 			// create dx11 canvas
-			m_canvas = std::make_unique<graphics::Canvas>(std::make_unique<graphics::dx11::DX11CanvasImpl>());
+			m_canvas = std::make_unique<engine::graphics::Canvas>(std::make_unique<engine::graphics::dx11::DX11CanvasImpl>());
 			m_canvas->Initialize(hWnd);
 			m_canvas->SetViewPort();
 			LOG("Canvas (DX11) created...");
 
 			// create dx11 renderer batched
-			m_renderer = std::make_unique<graphics::renderer::Renderer>(std::make_unique<graphics::dx11::renderer::DX11RendererBatchImpl>());
+			m_renderer = std::make_unique<engine::graphics::renderer::Renderer>(std::make_unique<engine::graphics::dx11::renderer::DX11RendererBatchImpl>());
 			m_renderer->Initialize();
 			LOG("Renderer (DX11) created...");
 
 			// create sprite atlas manually for demo purpose
-			m_spriteAtlas = std::make_unique<graphics::resource::SpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
+			m_spriteAtlas = std::make_unique<engine::graphics::resource::SpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
 
 			// load sprite atlas from file manually for demo purpose
 			m_spriteAtlas->Initialize(L"../Assets/4x1_128x32_tile.png");
@@ -345,7 +345,7 @@ namespace TestCamera
 							tile->GetSprite(),
 							m_camera.WorldToScreen(pos),
 							m_tileSize,
-							graphics::ColorF{ 1.0f, 1.0f, 1.0f, alpha },
+							engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, alpha },
 							0.0f
 						);
 					}

@@ -2,7 +2,7 @@
 #include <string>
 #include <Core/Bindable.h>
 
-namespace graphics::resource
+namespace engine::graphics::resource
 {
 	class ITexture: public core::IBindable
 	{

@@ -16,10 +16,10 @@ demo::LoadTileMapState::LoadTileMapState(const std::string& filePath) :
 void demo::LoadTileMapState::Enter(Demo& owner)
 {
 	// using factory, create sprite atlas
-	graphics::factory::SpriteAtlasFactory::Create("demoTileMapAtlas", L"../Assets/4x1_128x32_tile.png", std::vector<math::geometry::RectF>());
+	engine::graphics::factory::SpriteAtlasFactory::Create("demoTileMapAtlas", L"../Assets/4x1_128x32_tile.png", std::vector<math::geometry::RectF>());
 
 	// add UV rects on our sprite atlas
-	graphics::resource::ISpriteAtlas& atlas = cache::Registry<graphics::resource::ISpriteAtlas>::Instance().Get("demoTileMapAtlas");
+	engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("demoTileMapAtlas");
 	atlas.AddUVRects(demo::CalcUV(1, 4, (int)atlas.GetWidth(), (int)atlas.GetHeight()));
 
 }

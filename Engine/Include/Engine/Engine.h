@@ -37,8 +37,8 @@ namespace engine
 	{
 	private:
 		std::unique_ptr<Win32::Window> m_window;
-		std::unique_ptr<::graphics::ICanvas> m_canvas;
-		std::unique_ptr<::graphics::renderer::IRenderer> m_renderer;
+		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
+		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		timer::StopWatch m_stopwatch;
 		command::CommandQueue m_commandQueue;
 		performance::FrameRateMonitor m_mainLoopMonitor;
@@ -88,7 +88,7 @@ namespace engine
 			return m_stopwatch;
 		}
 
-		::graphics::renderer::IRenderer& Renderer()
+		::engine::graphics::renderer::IRenderer& Renderer()
 		{
 			return *m_renderer;
 		}
@@ -141,11 +141,11 @@ namespace engine
 			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::SetClipRegionCommand>(*m_renderer, math::geometry::RectF{}, false));
 		}
 
-		void QueueDrawQuadCommand(spatial::PositionF pos, spatial::SizeF size, ::graphics::ColorF color, float rot)
+		void QueueDrawQuadCommand(spatial::PositionF pos, spatial::SizeF size, ::engine::graphics::ColorF color, float rot)
 		{
 			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::DrawQuadCommand>(*m_renderer, pos, size, color, rot));
 		}
-		void QueueDrawSpriteCommand(::graphics::renderable::Sprite sprite, spatial::PositionF pos, spatial::SizeF size, ::graphics::ColorF color, float rot)
+		void QueueDrawSpriteCommand(::engine::graphics::renderable::Sprite sprite, spatial::PositionF pos, spatial::SizeF size, ::engine::graphics::ColorF color, float rot)
 		{
 			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::DrawSpriteCommand>(*m_renderer, sprite, pos, size, color, rot));
 		}

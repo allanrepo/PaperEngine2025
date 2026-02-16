@@ -2,13 +2,13 @@
 #include <Graphics/Resource/ITexture.h>
 #include <Utilities/Logger.h>
 
-graphics::renderable::DrawableSurface::DrawableSurface(std::unique_ptr<graphics::resource::ITexture> tex)
+engine::graphics::renderable::DrawableSurface::DrawableSurface(std::unique_ptr<engine::graphics::resource::ITexture> tex)
 	:texture(std::move(tex))
 {
 }
 
 // initialize methods
-bool graphics::renderable::DrawableSurface::Initialize(unsigned int width, unsigned int height) 
+bool engine::graphics::renderable::DrawableSurface::Initialize(unsigned int width, unsigned int height) 
 {
 	if (!texture->Initialize(width, height))
 	{
@@ -19,48 +19,48 @@ bool graphics::renderable::DrawableSurface::Initialize(unsigned int width, unsig
 	return true;
 }
 
-math::geometry::RectF graphics::renderable::DrawableSurface::GetUVRect() const
+math::geometry::RectF engine::graphics::renderable::DrawableSurface::GetUVRect() const
 {
 	return math::geometry::RectF{ 0, 0, 1, 1 };
 }
 
-void graphics::renderable::DrawableSurface::Bind() const
+void engine::graphics::renderable::DrawableSurface::Bind() const
 {
 	texture->Bind();
 }
 
-bool graphics::renderable::DrawableSurface::CanBind() const
+bool engine::graphics::renderable::DrawableSurface::CanBind() const
 {
 	return texture->CanBind();
 }
 
 // drawing methods
-void graphics::renderable::DrawableSurface::Begin()
+void engine::graphics::renderable::DrawableSurface::Begin()
 {
 	texture->BeginDraw();
 }
 
-void graphics::renderable::DrawableSurface::Clear(float red, float green, float blue, float alpha)
+void engine::graphics::renderable::DrawableSurface::Clear(float red, float green, float blue, float alpha)
 {
 	texture->Clear(red, green, blue, alpha);
 }
 
-void graphics::renderable::DrawableSurface::End()
+void engine::graphics::renderable::DrawableSurface::End()
 {
 	texture->EndDraw();
 }
 
-float graphics::renderable::DrawableSurface::GetWidth() const
+float engine::graphics::renderable::DrawableSurface::GetWidth() const
 {
 	return static_cast<float>(texture->GetWidth());
 }
 
-float graphics::renderable::DrawableSurface::GetHeight() const
+float engine::graphics::renderable::DrawableSurface::GetHeight() const
 {
 	return static_cast<float>(texture->GetHeight());
 }
 
-spatial::SizeF graphics::renderable::DrawableSurface::GetSize() const
+spatial::SizeF engine::graphics::renderable::DrawableSurface::GetSize() const
 {
 	return spatial::SizeF
 	{
@@ -69,7 +69,7 @@ spatial::SizeF graphics::renderable::DrawableSurface::GetSize() const
 	};
 }
 
-void graphics::renderable::DrawableSurface::Reset()
+void engine::graphics::renderable::DrawableSurface::Reset()
 {
 	texture->Reset();
 }

@@ -9,7 +9,7 @@
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 
-namespace graphics::dx11
+namespace engine::graphics::dx11
 {
     class DX11Core : public core::Singleton<DX11Core>
     {

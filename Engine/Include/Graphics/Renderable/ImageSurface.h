@@ -3,23 +3,27 @@
 #include <Graphics/Renderable/IImageSurface.h>
 
 // forward declare
-namespace graphics
+namespace engine
 {
-	namespace resource
+	namespace graphics
 	{
-		class ITexture;
+		namespace resource
+		{
+			class ITexture;
+		}
 	}
 }
 
-namespace graphics::renderable
+
+namespace engine::graphics::renderable
 {
-	class ImageSurface : public graphics::renderable::IImageSurface
+	class ImageSurface : public engine::graphics::renderable::IImageSurface
 	{
 	private:
-		std::shared_ptr<graphics::resource::ITexture> texture;
+		std::shared_ptr<engine::graphics::resource::ITexture> texture;
 
 	public:
-		ImageSurface(std::unique_ptr<graphics::resource::ITexture> tex);
+		ImageSurface(std::unique_ptr<engine::graphics::resource::ITexture> tex);
 		virtual ~ImageSurface() = default;
 
 		// cannot be copied

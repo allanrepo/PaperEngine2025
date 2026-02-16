@@ -1,7 +1,7 @@
 #pragma once
 #include <Math/Rect.h>
 
-namespace graphics::renderable
+namespace engine::graphics::renderable
 {
 	class IRenderable
 	{

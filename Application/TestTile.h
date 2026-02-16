@@ -39,10 +39,10 @@
 namespace TestTile
 {	
 	// we are mocking the sprite atlas class here for demo purpose so we can create sprite directly without using factory
-	class MockSpriteAtlas : public graphics::resource::SpriteAtlas
+	class MockSpriteAtlas : public engine::graphics::resource::SpriteAtlas
 	{
 	public:
-		MockSpriteAtlas(std::unique_ptr<graphics::resource::ITexture> tex) :
+		MockSpriteAtlas(std::unique_ptr<engine::graphics::resource::ITexture> tex) :
 			SpriteAtlas(std::move(tex))
 		{
 		}
@@ -51,16 +51,16 @@ namespace TestTile
 	class RenderableTile
 	{
 	private:
-		graphics::renderable::Sprite m_sprite;
+		engine::graphics::renderable::Sprite m_sprite;
 		bool m_walkable;
 
 	public:
-		RenderableTile(const graphics::renderable::Sprite& sprite, bool walkable) :
+		RenderableTile(const engine::graphics::renderable::Sprite& sprite, bool walkable) :
 			m_sprite(sprite),
 			m_walkable(walkable)
 		{
 		}
-		const graphics::renderable::Sprite& GetSprite() const
+		const engine::graphics::renderable::Sprite& GetSprite() const
 		{
 			return m_sprite;
 		}
@@ -74,8 +74,8 @@ namespace TestTile
 	{
 	private:
 		std::unique_ptr<Win32::Window> m_window;
-		std::unique_ptr<graphics::ICanvas> m_canvas;
-		std::unique_ptr<graphics::renderer::IRenderer> m_renderer;
+		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
+		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		std::unique_ptr<MockSpriteAtlas> m_spriteAtlas;
 		timer::StopWatch m_stopwatch;
 		engine::component::tile::Tileset<RenderableTile> m_tileset;
@@ -109,18 +109,18 @@ namespace TestTile
 			LOG("Window created...");
 
 			// create dx11 canvas
-			m_canvas = std::make_unique<graphics::Canvas>(std::make_unique<graphics::dx11::DX11CanvasImpl>());
+			m_canvas = std::make_unique<engine::graphics::Canvas>(std::make_unique<engine::graphics::dx11::DX11CanvasImpl>());
 			m_canvas->Initialize(hWnd);
 			m_canvas->SetViewPort();
 			LOG("Canvas (DX11) created...");
 
 			// create dx11 renderer batched
-			m_renderer = std::make_unique<graphics::renderer::Renderer>(std::make_unique<graphics::dx11::renderer::DX11RendererBatchImpl>());
+			m_renderer = std::make_unique<engine::graphics::renderer::Renderer>(std::make_unique<engine::graphics::dx11::renderer::DX11RendererBatchImpl>());
 			m_renderer->Initialize();
 			LOG("Renderer (DX11) created...");
 
 			// create sprite atlas manually for demo purpose
-			m_spriteAtlas = std::make_unique<MockSpriteAtlas>(std::make_unique<graphics::dx11::resource::DX11TextureImpl>());
+			m_spriteAtlas = std::make_unique<MockSpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
 
 			// load sprite atlas from file manually for demo purpose
 			m_spriteAtlas->Initialize(L"../Assets/4x1_128x32_tile.png");
@@ -261,7 +261,7 @@ namespace TestTile
 							tile->GetSprite(),
 							spatial::PositionF{ 50.0f + col * m_tileSize.width, 50.0f + row * m_tileSize.height },
 							m_tileSize,
-							graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f },
+							engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f },
 							0.0f
 						);
 					}

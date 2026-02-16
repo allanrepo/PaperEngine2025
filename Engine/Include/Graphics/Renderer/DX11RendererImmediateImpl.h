@@ -19,9 +19,9 @@ namespace graphics
 	}
 }
 
-namespace graphics::dx11::renderer
+namespace engine::graphics::dx11::renderer
 {
-	class DX11RendererImmediateImpl : protected graphics::dx11::renderer::DX11RendererBase, public graphics::renderer::IRendererImpl
+	class DX11RendererImmediateImpl : protected engine::graphics::dx11::renderer::DX11RendererBase, public engine::graphics::renderer::IRendererImpl
 	{
 	private:
 		// clipping region for rendering
@@ -116,33 +116,33 @@ namespace graphics::dx11::renderer
 		virtual void Draw(
 			const spatial::PositionF pos,                                 // Top-left screen position
 			const spatial::SizeF size,                               // Sprite dimensions
-			const graphics::ColorF color,                                   // RGBA color tint
+			const engine::graphics::ColorF color,                                   // RGBA color tint
 			const float rotation                                                    // Rotation in radians
 		) override final;
 
 		// Draws a string using a font atlas at the specified position and color
 		virtual void DrawText(
-			const graphics::renderable::IFontAtlas& font, // Font atlas
+			const engine::graphics::renderable::IFontAtlas& font, // Font atlas
 			const std::string& text,                    // Text to render
 			const spatial::PositionF pos,                                 // Top-left screen position
-			const graphics::ColorF color                                   // RGBA color tint
+			const engine::graphics::ColorF color                                   // RGBA color tint
 		) override final;
 
 		// Draws a single character using a font atlas with color and rotation
 		virtual void DrawChar(
-			const graphics::renderable::IFontAtlas& font, // Font atlas
+			const engine::graphics::renderable::IFontAtlas& font, // Font atlas
 			const unsigned char character,            // Character to render
 			const spatial::PositionF pos,                                 // Top-left screen position
-			const graphics::ColorF color,                                   // RGBA color tint
+			const engine::graphics::ColorF color,                                   // RGBA color tint
 			const float rotation                      // Rotation in radians
 		) override final;
 
 		// Draws a renderable quad with color tint and rotation
 		virtual void DrawRenderable(
-			const graphics::renderable::IRenderable& renderable,                    // renderable object
+			const engine::graphics::renderable::IRenderable& renderable,                    // renderable object
 			const spatial::PositionF pos,                                 // Top-left screen position
 			const spatial::SizeF size,                               // Sprite dimensions
-			const graphics::ColorF color,                                   // RGBA color tint
+			const engine::graphics::ColorF color,                                   // RGBA color tint
 			const float rotation                                                    // Rotation in radians
 		) override final;
 	};

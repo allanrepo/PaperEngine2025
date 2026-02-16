@@ -4,28 +4,28 @@
 //using namespace engine;
 
 #pragma region // DX11RendererImmediateImpl
-graphics::dx11::renderer::DX11RendererImmediateImpl::DX11RendererImmediateImpl()
+engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DX11RendererImmediateImpl()
 {
 
 }
 
-graphics::dx11::renderer::DX11RendererImmediateImpl::~DX11RendererImmediateImpl()
+engine::graphics::dx11::renderer::DX11RendererImmediateImpl::~DX11RendererImmediateImpl()
 {
 }
 
-std::string graphics::dx11::renderer::DX11RendererImmediateImpl::GetTypeName() const
+std::string engine::graphics::dx11::renderer::DX11RendererImmediateImpl::GetTypeName() const
 {
 	return TypeName;
 }
 
-void graphics::dx11::renderer::DX11RendererImmediateImpl::ShutDown()
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::ShutDown()
 {
 	DX11RendererBase::ShutDown();
 }
 
-bool graphics::dx11::renderer::DX11RendererImmediateImpl::Initialize()
+bool engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Initialize()
 {
-	graphics::dx11::DX11Core& rCore = graphics::dx11::DX11Core::Instance();
+	engine::graphics::dx11::DX11Core& rCore = engine::graphics::dx11::DX11Core::Instance();
 
 #pragma region // create vertex buffer single instance
 	Vertex2D* pVertices = new Vertex2D[4]
@@ -215,7 +215,7 @@ float4 main(VSOUT vso) : SV_TARGET
 	return true;
 }
 
-void graphics::dx11::renderer::DX11RendererImmediateImpl::Begin()
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Begin()
 {
 	DX11Core& rCore = DX11Core::Instance();
 
@@ -260,24 +260,24 @@ void graphics::dx11::renderer::DX11RendererImmediateImpl::Begin()
 #pragma endregion
 }
 
-void graphics::dx11::renderer::DX11RendererImmediateImpl::End()
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::End()
 {
 }
 
-void graphics::dx11::renderer::DX11RendererImmediateImpl::SetClipRegion(const math::geometry::RectF& region)
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::SetClipRegion(const math::geometry::RectF& region)
 {
 	m_clipRegion = region;
 }
 
-void graphics::dx11::renderer::DX11RendererImmediateImpl::EnableClipping(const bool enable)
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::EnableClipping(const bool enable)
 {
 	m_clippingEnabled = enable;
 }
 
-void graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
 	const spatial::PositionF pos, 
 	const spatial::SizeF size, 
-	const graphics::ColorF color, 
+	const engine::graphics::ColorF color, 
 	const float rotation
 )
 {
@@ -330,11 +330,11 @@ void graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
 }
 
 // Draws a string using a font atlas at the specified position and color
-void graphics::dx11::renderer::DX11RendererImmediateImpl::DrawText(
-	const graphics::renderable::IFontAtlas& font, // Font atlas
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawText(
+	const engine::graphics::renderable::IFontAtlas& font, // Font atlas
 	const std::string& text,                    // Text to render
 	const spatial::PositionF pos,                                 // Top-left screen position
-	const graphics::ColorF color                                   // RGBA color tint
+	const engine::graphics::ColorF color                                   // RGBA color tint
 )
 {
 	float xCurr = pos.x;
@@ -349,11 +349,11 @@ void graphics::dx11::renderer::DX11RendererImmediateImpl::DrawText(
 }
 
 // Draws a single character using a font atlas with color and rotation
-void graphics::dx11::renderer::DX11RendererImmediateImpl::DrawChar(
-	const graphics::renderable::IFontAtlas& font, // Font atlas
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawChar(
+	const engine::graphics::renderable::IFontAtlas& font, // Font atlas
 	const unsigned char character,            // Character to render
 	const spatial::PositionF pos,                                 // Top-left screen position
-	const graphics::ColorF color,                                   // RGBA color tint
+	const engine::graphics::ColorF color,                                   // RGBA color tint
 	const float rotation                      // Rotation in radians
 )
 {
@@ -402,19 +402,19 @@ void graphics::dx11::renderer::DX11RendererImmediateImpl::DrawChar(
 #pragma endregion
 
 #pragma region // update transform, color, texture transform in shader
-	graphics::dx11::DX11Core::Instance().GetContext()->UpdateSubresource(m_pd3dConstantBufferUpdate.Get(), 0, NULL, &m_UpdateConstantBuffer, 0, 0);
+	engine::graphics::dx11::DX11Core::Instance().GetContext()->UpdateSubresource(m_pd3dConstantBufferUpdate.Get(), 0, NULL, &m_UpdateConstantBuffer, 0, 0);
 #pragma endregion
 
 #pragma region //draw
-	graphics::dx11::DX11Core::Instance().GetContext()->Draw(4, 0);
+	engine::graphics::dx11::DX11Core::Instance().GetContext()->Draw(4, 0);
 #pragma endregion
 }
 
-void graphics::dx11::renderer::DX11RendererImmediateImpl::DrawRenderable(
-	const graphics::renderable::IRenderable& renderable, 
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawRenderable(
+	const engine::graphics::renderable::IRenderable& renderable, 
 	const spatial::PositionF pos, 
 	const spatial::SizeF size, 
-	const graphics::ColorF color, 
+	const engine::graphics::ColorF color, 
 	const float rotation
 )
 {
@@ -456,10 +456,10 @@ void graphics::dx11::renderer::DX11RendererImmediateImpl::DrawRenderable(
 #pragma endregion
 
 #pragma region // update transform, color, texture transform in shader
-	graphics::dx11::DX11Core::Instance().GetContext()->UpdateSubresource(m_pd3dConstantBufferUpdate.Get(), 0, NULL, &m_UpdateConstantBuffer, 0, 0);
+	engine::graphics::dx11::DX11Core::Instance().GetContext()->UpdateSubresource(m_pd3dConstantBufferUpdate.Get(), 0, NULL, &m_UpdateConstantBuffer, 0, 0);
 #pragma endregion
 
 #pragma region //draw
-	graphics::dx11::DX11Core::Instance().GetContext()->Draw(4, 0);
+	engine::graphics::dx11::DX11Core::Instance().GetContext()->Draw(4, 0);
 #pragma endregion
 }

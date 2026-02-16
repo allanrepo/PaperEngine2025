@@ -23,31 +23,35 @@
 #include <memory>
 
 // forward declare
-namespace graphics
+namespace engine
 {
-	namespace resource
+	namespace graphics
 	{
-		class ISpriteAtlas;
-		class SpriteAtlas;
+		namespace resource
+		{
+			class ISpriteAtlas;
+			class SpriteAtlas;
+		}
 	}
 }
 
-namespace graphics::renderable
+
+namespace engine::graphics::renderable
 {
 	// is renderable
 	// has pointer to sprite atlas 
 	// has source rect (normalized rectangular coordinates or UV)
-	class Sprite : public graphics::renderable::IRenderable, public spatial::ISizeable<float>, public core::View<graphics::resource::ISpriteAtlas>
+	class Sprite : public engine::graphics::renderable::IRenderable, public spatial::ISizeable<float>, public core::View<engine::graphics::resource::ISpriteAtlas>
 	{
 	private:
 		math::geometry::RectF m_rect;
 
-		friend class graphics::resource::SpriteAtlas;
-		friend class graphics::resource::ISpriteAtlas;
+		friend class engine::graphics::resource::SpriteAtlas;
+		friend class engine::graphics::resource::ISpriteAtlas;
 
 	protected:
 		// use this constructor if you have the sprite atlas and the source rect
-		Sprite(const graphics::resource::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect);
+		Sprite(const engine::graphics::resource::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect);
 
 	public:
 		~Sprite() = default;
