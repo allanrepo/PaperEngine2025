@@ -352,7 +352,7 @@ namespace TestAsyncFileReader
 		engine::command::CommandQueue m_commandQueue;
 
 		// application state machine
-		state::StateMachine<TestAsyncFileReader::Test> m_stateMachine;
+		engine::state::StateMachine<TestAsyncFileReader::Test> m_stateMachine;
 
 	public:
 		Test():
@@ -418,7 +418,7 @@ namespace TestAsyncFileReader
 
 		}
 
-		void SetState(std::unique_ptr<state::State<TestAsyncFileReader::Test>> state)
+		void SetState(std::unique_ptr<engine::state::State<TestAsyncFileReader::Test>> state)
 		{
 			m_stateMachine.Set(std::move(state));
 		}
@@ -646,7 +646,7 @@ namespace TestAsyncFileReader
 		}
 	};
 
-	class LoadState : public state::State<TestAsyncFileReader::Test>
+	class LoadState : public engine::state::State<TestAsyncFileReader::Test>
 	{
 	private:
 		//std::deque<std::string> m_files;
@@ -727,7 +727,7 @@ namespace TestAsyncFileReader
 
 
 
-	class LoadResourcesState : public state::State<Test>
+	class LoadResourcesState : public engine::state::State<Test>
 	{
 	private:
 	public:
@@ -752,7 +752,7 @@ namespace TestAsyncFileReader
 	};
 
 
-	class IdleState : public state::State<Test>
+	class IdleState : public engine::state::State<Test>
 	{
 	private:
 	public:
@@ -771,7 +771,7 @@ namespace TestAsyncFileReader
 		}
 	};
 
-	class ExitState : public state::State<Test>
+	class ExitState : public engine::state::State<Test>
 	{
 	private:
 	public:

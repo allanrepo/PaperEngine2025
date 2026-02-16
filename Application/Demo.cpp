@@ -47,7 +47,7 @@ std::vector<engine::math::geometry::RectF> demo::CalcUV(int row, int col, int fi
 	return uvs;
 }
 
-demo::Demo::Demo(std::unique_ptr<state::State<Demo>> state) :
+demo::Demo::Demo(std::unique_ptr<engine::state::State<Demo>> state) :
 	m_engine("Test State Machine", "DirectX11", "Batch", 1000),
 	m_stateMachine(this),
 	m_state(std::move(state))
@@ -87,12 +87,12 @@ void demo::Demo::OnUpdate(double delta)
 	m_stateMachine.Update(delta);
 }
 
-void demo::Demo::SetState(std::unique_ptr<state::State<Demo>> state)
+void demo::Demo::SetState(std::unique_ptr<engine::state::State<Demo>> state)
 {
 	m_stateMachine.Set(std::move(state));
 }
 
-void demo::Demo::QueueState(std::unique_ptr<state::State<Demo>> state)
+void demo::Demo::QueueState(std::unique_ptr<engine::state::State<Demo>> state)
 {
 	m_stateMachine.Queue(std::move(state));
 }

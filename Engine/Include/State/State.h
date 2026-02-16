@@ -7,7 +7,7 @@ design notes:
 -	state machine is a component of the owner that manages the states. hence, states have reference to owner when Enter, Exit, Update, IsFinished are called.
 */
 
-namespace state
+namespace engine::state
 {
 	template<typename T>
 	class State

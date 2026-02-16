@@ -7,7 +7,7 @@
 
 namespace demo
 {
-	class LoadAsyncLoaderState : public state::State<Demo>
+	class LoadAsyncLoaderState : public engine::state::State<Demo>
 	{
 	private:
 		engine::performance::FrameRateMonitor m_frameRateMonitor;
@@ -51,7 +51,7 @@ namespace demo
 		virtual bool IsFinished(Demo& owner) override;
 	};
 
-	class RenderAsyncLoaderState : public state::State<Demo>
+	class RenderAsyncLoaderState : public engine::state::State<Demo>
 	{
 	private:
 		engine::performance::FrameRateMonitor m_frameRateMonitor;

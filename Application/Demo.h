@@ -242,15 +242,15 @@ namespace demo
 		using AnimatedTileSetManager = engine::manager::AnimatedTileSetManager;
 
 		engine::Engine m_engine;
-		state::StateMachine<Demo> m_stateMachine;
+		engine::state::StateMachine<Demo> m_stateMachine;
 		std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
-		std::unique_ptr<state::State<Demo>> m_state;
+		std::unique_ptr<engine::state::State<Demo>> m_state;
 
 		AnimatedTileSetManager m_tileSetManager;
 		engine::manager::TileMapManager<AnimatedTile> m_tileMapManager;
 
 	public:
-		Demo(std::unique_ptr<state::State<Demo>> state);
+		Demo(std::unique_ptr<engine::state::State<Demo>> state);
 		virtual ~Demo();
 		void OnStart();
 		void OnUpdate(double delta);
@@ -314,8 +314,8 @@ namespace demo
 		void RenderTileRegionCommand(engine::component::tile::TileRegion<RenderableTile>& tilegrid, float alpha = 1.0f);
 		void RenderTileLayerCommand(engine::component::tile::TileLayer<RenderableTile>& tilegrid, float alpha = 1.0f);
 
-		void SetState(std::unique_ptr<state::State<Demo>> state);
-		void QueueState(std::unique_ptr<state::State<Demo>> state);
+		void SetState(std::unique_ptr<engine::state::State<Demo>> state);
+		void QueueState(std::unique_ptr<engine::state::State<Demo>> state);
 
 		bool LoadMap(const std::string& filename);
 
@@ -497,7 +497,7 @@ namespace demo
 		}
 	};
 
-	class DemoState : public state::State<Demo>
+	class DemoState : public engine::state::State<Demo>
 	{
 	private:
 		using AnimatedTile = engine::component::tile::AnimatedTile;
@@ -517,7 +517,7 @@ namespace demo
 		void OnMouseDown(int btn, int x, int y);
 	};
 
-	class DemoStateCameraMap : public state::State<Demo>
+	class DemoStateCameraMap : public engine::state::State<Demo>
 	{
 	private:
 		using AnimatedTile = engine::component::tile::AnimatedTile;
@@ -546,7 +546,7 @@ namespace demo
 		void OnMouseUp(int btn, int x, int y);
 	};
 
-	class DemoStateActor : public state::State<Demo>
+	class DemoStateActor : public engine::state::State<Demo>
 	{
 	private:
 		using AnimatedTile = engine::component::tile::AnimatedTile;

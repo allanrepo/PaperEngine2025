@@ -7,7 +7,7 @@
 namespace state
 {
 
-	class ActorAttackState : public state::State<component::IActor>
+	class ActorAttackState : public engine::state::State<component::IActor>
 	{
 	private:
 		std::string m_name = "idle";
@@ -41,7 +41,7 @@ namespace state
 		}
 	};
 
-	class ActorWalkToState : public state::State<component::IActor>
+	class ActorWalkToState : public engine::state::State<component::IActor>
 	{
 	private:
 		std::string m_name = "walk";
@@ -103,7 +103,7 @@ namespace state
 
 	// it can loop
 
-	class ActorIdleState : public state::State<component::IActor>
+	class ActorIdleState : public engine::state::State<component::IActor>
 	{
 	private:
 		std::string m_name = "idle";
@@ -141,7 +141,7 @@ namespace state
 		}
 	};
 
-	class ActorPatrolIdleState : public state::State<component::IActor>
+	class ActorPatrolIdleState : public engine::state::State<component::IActor>
 	{
 	private:
 		std::string m_name = "patrol_idle";
@@ -219,7 +219,7 @@ namespace state
 		}
 	};
 
-	class ActorPursueTargetState : public state::State<component::IActor>
+	class ActorPursueTargetState : public engine::state::State<component::IActor>
 	{
 	private:
 		component::IActor* m_target;
@@ -370,7 +370,7 @@ namespace state
 	// state needs to subscribe to this actor's attackable state change event
 	// state needs to determine the best position to be to attack the target. there are 2 positions - left and right
 	// state needs to know the interval at which it will check if the target is still in the same position. if not, it needs to recalculate the position it needs to go before attacking
-	class ActorAttackTargetState : public state::State<component::IActor>
+	class ActorAttackTargetState : public engine::state::State<component::IActor>
 	{
 	private:
 		std::string m_name = "idle";

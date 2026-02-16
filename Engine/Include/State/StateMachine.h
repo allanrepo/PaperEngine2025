@@ -12,7 +12,7 @@ design notes:
 	the overhead is negligible compared to the flexibility and safety it provides.
 */
 
-namespace state
+namespace engine::state
 {
 	template<typename T>
 	class StateMachine

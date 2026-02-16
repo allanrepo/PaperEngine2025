@@ -6,7 +6,7 @@
 
 namespace demo
 {
-	class LoadTileLayerState : public state::State<Demo>
+	class LoadTileLayerState : public engine::state::State<Demo>
 	{
 	private:
 		engine::performance::FrameRateMonitor m_frameRateMonitor;
@@ -30,7 +30,7 @@ namespace demo
 		virtual bool IsFinished(Demo& owner) override;
 	};
 
-	class RenderTileLayerState : public state::State<Demo>
+	class RenderTileLayerState : public engine::state::State<Demo>
 	{
 	private:
 		engine::performance::FrameRateMonitor m_frameRateMonitor;

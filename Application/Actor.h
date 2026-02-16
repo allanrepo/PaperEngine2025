@@ -17,7 +17,7 @@ namespace component
 		spatial::MotionF m_motion;
 		engine::graphics::animation::Animator<engine::graphics::renderable::ISprite> m_animator;
 		cache::Dictionary <std::string, std::unique_ptr<engine::graphics::animation::Animation<engine::graphics::renderable::ISprite>>> m_animations;
-		state::StateMachine<component::Actor> m_stateMachine;
+		engine::state::StateMachine<component::Actor> m_stateMachine;
 
 		// TODO: can change this as enum instead of vector. unless i want to use its granularity e.g. specific angle orientation
 		math::VecF m_faceDirection;
@@ -63,12 +63,12 @@ namespace component
 			m_stateMachine.Update(delta);
 		}
 
-		void SetState(std::unique_ptr<state::State<component::IActor>> state)
+		void SetState(std::unique_ptr<engine::state::State<component::IActor>> state)
 		{
 			m_stateMachine.Set(std::move(state));
 		}
 
-		void QueueState(std::unique_ptr<state::State<component::IActor>> state)
+		void QueueState(std::unique_ptr<engine::state::State<component::IActor>> state)
 		{
 			m_stateMachine.Queue(std::move(state));
 		}
@@ -93,7 +93,7 @@ namespace component
 			return m_animator;
 		}
 
-		virtual state::StateMachine<component::IActor>& GetStateMachine()
+		virtual engine::state::StateMachine<component::IActor>& GetStateMachine()
 		{
 			return m_stateMachine;
 		}
