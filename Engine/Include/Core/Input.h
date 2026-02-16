@@ -6,7 +6,7 @@
 #include <Windows.h>
 #include "Singleton.h"
 
-namespace input
+namespace engine::input
 {
 	// Represent every kind of input your game cares about
 	enum class InputType
@@ -39,11 +39,11 @@ namespace input
 		Input() = default;
 		virtual ~Input() = default;
 
-		event::Event<int> KeyDownEvent;
-		event::Event<int> KeyUpEvent;
-		event::Event<int, int, int> MouseDownEvent;
-		event::Event<int, int, int> MouseUpEvent;
-		event::Event<int, int> MouseMoveEvent;
+		engine::event::Event<int> KeyDownEvent;
+		engine::event::Event<int> KeyUpEvent;
+		engine::event::Event<int, int, int> MouseDownEvent;
+		engine::event::Event<int, int, int> MouseUpEvent;
+		engine::event::Event<int, int> MouseMoveEvent;
 
 
 		virtual void HandleMouseMove(int x, int y) noexcept

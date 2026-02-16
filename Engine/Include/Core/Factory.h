@@ -3,7 +3,7 @@
 #include <functional>
 #include <Core/Singleton.h>
 
-namespace core
+namespace engine::core
 {
     template<typename K, typename T, typename H = std::hash<K>, typename... Args>
     class Factory : public Singleton<Factory<K, T, H, Args...>>

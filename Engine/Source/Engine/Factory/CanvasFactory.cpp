@@ -16,7 +16,7 @@ std::unique_ptr<engine::graphics::ICanvas> engine::graphics::CanvasFactory::Crea
 	// TODO: we can improve this by registering all canvas types during engine initialization instead of doing it here
     if (!loaded)
     {
-        core::Factory<std::string, engine::graphics::Canvas>::Instance().Register(
+        engine::core::Factory<std::string, engine::graphics::Canvas>::Instance().Register(
             engine::graphics::dx11::DX11CanvasImpl::TypeName, []()
             {
                 return std::make_unique<engine::graphics::Canvas>(std::make_unique<engine::graphics::dx11::DX11CanvasImpl>());
@@ -24,5 +24,5 @@ std::unique_ptr<engine::graphics::ICanvas> engine::graphics::CanvasFactory::Crea
 
         loaded = true;
     }
-    return core::Factory <std::string, engine::graphics::Canvas> ::Instance().Create(typeName);
+    return engine::core::Factory <std::string, engine::graphics::Canvas> ::Instance().Create(typeName);
 }

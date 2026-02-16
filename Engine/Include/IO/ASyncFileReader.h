@@ -53,8 +53,8 @@ namespace engine
 				}
 			}
 
-			event::Event<const char*, size_t> ProcessChunkEvent;
-			event::Event<> EndOfFileFoundEvent;
+			engine::event::Event<const char*, size_t> ProcessChunkEvent;
+			engine::event::Event<> EndOfFileFoundEvent;
 
 			// this method is to read the file in one shot
 			bool SyncReadAll(size_t maxBytesPerRead = 0xFF, double maxTimeToReadMS = 1.0)

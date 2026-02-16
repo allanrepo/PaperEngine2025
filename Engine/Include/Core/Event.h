@@ -6,7 +6,7 @@
 #include <functional>
 
 
-namespace event
+namespace engine::event
 {
     // delegate interface
     template <typename R, typename... Args>
@@ -197,7 +197,7 @@ namespace event
     };
 
     /*
-    * the deduction guide is a fix suggested by chatgpt on an issue where if i create an instance of event::Handler with a regular function, i must explicitly specify the template parameters
+    * the deduction guide is a fix suggested by chatgpt on an issue where if i create an instance of engine::event::Handler with a regular function, i must explicitly specify the template parameters
     * root cause: 
     * The compiler must deduce template parameters for Handler<R, void, Args...> from the constructor argument.
     * BUT — class template argument deduction (CTAD) does not apply to partial specializations.
@@ -458,10 +458,10 @@ namespace event
                 TestClass tc;
                 Event<int> evtOneArgInt;
 
-                evtOneArgInt += event::Handler(&FuncNoReturnOneArgInt);
-                evtOneArgInt += event::Handler(&FuncNoReturnOneArgConstInt);
-                evtOneArgInt += event::Handler(&tc, &TestClass::MethodNoReturnOneArgInt);
-                evtOneArgInt += event::Handler(&tc, &TestClass::MethodNoReturnOneArgConstInt);
+                evtOneArgInt += engine::event::Handler(&FuncNoReturnOneArgInt);
+                evtOneArgInt += engine::event::Handler(&FuncNoReturnOneArgConstInt);
+                evtOneArgInt += engine::event::Handler(&tc, &TestClass::MethodNoReturnOneArgInt);
+                evtOneArgInt += engine::event::Handler(&tc, &TestClass::MethodNoReturnOneArgConstInt);
                 std::cout << "Added 4 listeners to event. Number of listers in event : " << evtOneArgInt.Size() << std::endl;
 
                 evtOneArgInt(4);
@@ -473,31 +473,31 @@ namespace event
             {
                 TestClass tc;
                 Event evtNoArgs;
-                evtNoArgs += event::Handler(&FuncNoReturnNoArgs);
-                evtNoArgs += event::Handler(&tc, &TestClass::MethodNoReturnNoArgs);
+                evtNoArgs += engine::event::Handler(&FuncNoReturnNoArgs);
+                evtNoArgs += engine::event::Handler(&tc, &TestClass::MethodNoReturnNoArgs);
                 std::cout << "Created another event Added 2 listeners. Number of listers in event : " << evtNoArgs.Size() << ". Is this correct?" << std::endl;
 
                 evtNoArgs();
                 std::cout << "event has been fired. check how many lines were printed. are there " << evtNoArgs.Size() << "?" << std::endl;
 
-                evtNoArgs += event::Handler(&FuncNoReturnNoArgs);
-                evtNoArgs -= event::Handler(&tc, &TestClass::MethodNoReturnNoArgs);
+                evtNoArgs += engine::event::Handler(&FuncNoReturnNoArgs);
+                evtNoArgs -= engine::event::Handler(&tc, &TestClass::MethodNoReturnNoArgs);
                 std::cout << "Remove 2 listeners from event. Number of listers in event : " << evtNoArgs.Size() << ". Are there 0 listeners?" << std::endl;
             }
             {
                 TestClass tc;
                 Event<std::string, double> evtTwoArgsStringDouble;
 
-                evtTwoArgsStringDouble += event::Handler(&FuncNoReturnTwoArgsStringDouble);
-                evtTwoArgsStringDouble += event::Handler(&FuncNoReturnTwoArgsConstStringConstDouble);
-                evtTwoArgsStringDouble += event::Handler(&tc, &TestClass::MethodNoReturnTwoArgsStringDouble);
-                evtTwoArgsStringDouble += event::Handler(&tc, &TestClass::MethodNoReturnTwoArgsConstStringConstDouble);
+                evtTwoArgsStringDouble += engine::event::Handler(&FuncNoReturnTwoArgsStringDouble);
+                evtTwoArgsStringDouble += engine::event::Handler(&FuncNoReturnTwoArgsConstStringConstDouble);
+                evtTwoArgsStringDouble += engine::event::Handler(&tc, &TestClass::MethodNoReturnTwoArgsStringDouble);
+                evtTwoArgsStringDouble += engine::event::Handler(&tc, &TestClass::MethodNoReturnTwoArgsConstStringConstDouble);
                 std::cout << "Added 4 listeners to event. Number of listers in event : " << evtTwoArgsStringDouble.Size() << std::endl;
 
                 evtTwoArgsStringDouble("Hello", 1.7);
                 std::cout << "event has been fired. check how many lines were printed. are there " << evtTwoArgsStringDouble.Size() << "?" << std::endl;
 
-                evtTwoArgsStringDouble -= event::Handler(&FuncNoReturnTwoArgsConstStringConstDouble);
+                evtTwoArgsStringDouble -= engine::event::Handler(&FuncNoReturnTwoArgsConstStringConstDouble);
                 std::cout << "Remove 1 listener from event. Number of listers in event : " << evtTwoArgsStringDouble.Size() << ". Are there 3 listeners?" << std::endl;
 
                 evtTwoArgsStringDouble.Clear();

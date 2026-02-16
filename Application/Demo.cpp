@@ -53,7 +53,7 @@ demo::Demo::Demo(std::unique_ptr<engine::state::State<Demo>> state) :
 	m_state(std::move(state))
 {
 	// subscribe to start event of the engine. we do all initialization of our components here e.g. state machine
-	m_engine.StartEvent += event::Handler(this, &Demo::OnStart);
+	m_engine.StartEvent += engine::event::Handler(this, &Demo::OnStart);
 
 	// subscribe our OnUpdate() to engine's scheduler. the scheduler runs on engine's main loop. 
 	// the scheduler is updated by engine's main loop elapsed time per frame. 
@@ -387,7 +387,7 @@ void demo::DemoState::Update(Demo& owner, double delta)
 
 void demo::DemoState::Exit(Demo& owner)
 {
-	input::Input::Instance().MouseDownEvent -= event::Handler(this, &DemoState::OnMouseDown);
+	engine::input::Input::Instance().MouseDownEvent -= engine::event::Handler(this, &DemoState::OnMouseDown);
 }
 
 
@@ -466,9 +466,9 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 {
 	// subscribe to mouse input for camera control
 	{
-		input::Input::Instance().MouseDownEvent += event::Handler(this, &DemoStateCameraMap::OnMouseDown);
-		input::Input::Instance().MouseMoveEvent += event::Handler(this, &DemoStateCameraMap::OnMouseMove);
-		input::Input::Instance().MouseUpEvent += event::Handler(this, &DemoStateCameraMap::OnMouseUp);
+		engine::input::Input::Instance().MouseDownEvent += engine::event::Handler(this, &DemoStateCameraMap::OnMouseDown);
+		engine::input::Input::Instance().MouseMoveEvent += engine::event::Handler(this, &DemoStateCameraMap::OnMouseMove);
+		engine::input::Input::Instance().MouseUpEvent += engine::event::Handler(this, &DemoStateCameraMap::OnMouseUp);
 	}
 
 	// create map tileset and load tiles into it
@@ -551,7 +551,7 @@ void demo::DemoStateCameraMap::Update(Demo& owner, double delta)
 	m_frameRateMonitor.OnFrameCompleted(delta);
 
 	// update input
-	input::Input::Instance().Update();
+	engine::input::Input::Instance().Update();
 
 	// update animations of tiles
 	owner.TileSetManager().Update(delta);
@@ -588,9 +588,9 @@ void demo::DemoStateCameraMap::Update(Demo& owner, double delta)
 void demo::DemoStateCameraMap::Exit(Demo& owner)
 {
 	{
-		input::Input::Instance().MouseDownEvent -= event::Handler(this, &DemoStateCameraMap::OnMouseDown);
-		input::Input::Instance().MouseMoveEvent -= event::Handler(this, &DemoStateCameraMap::OnMouseMove);
-		input::Input::Instance().MouseUpEvent -= event::Handler(this, &DemoStateCameraMap::OnMouseUp);
+		engine::input::Input::Instance().MouseDownEvent -= engine::event::Handler(this, &DemoStateCameraMap::OnMouseDown);
+		engine::input::Input::Instance().MouseMoveEvent -= engine::event::Handler(this, &DemoStateCameraMap::OnMouseMove);
+		engine::input::Input::Instance().MouseUpEvent -= engine::event::Handler(this, &DemoStateCameraMap::OnMouseUp);
 	}
 }
 
@@ -664,9 +664,9 @@ void demo::DemoStateActor::Enter(Demo& owner)
 {
 	// subscribe to mouse input for camera control
 	{
-		input::Input::Instance().MouseDownEvent += event::Handler(this, &DemoStateActor::OnMouseDown);
-		input::Input::Instance().MouseMoveEvent += event::Handler(this, &DemoStateActor::OnMouseMove);
-		input::Input::Instance().MouseUpEvent += event::Handler(this, &DemoStateActor::OnMouseUp);
+		engine::input::Input::Instance().MouseDownEvent += engine::event::Handler(this, &DemoStateActor::OnMouseDown);
+		engine::input::Input::Instance().MouseMoveEvent += engine::event::Handler(this, &DemoStateActor::OnMouseMove);
+		engine::input::Input::Instance().MouseUpEvent += engine::event::Handler(this, &DemoStateActor::OnMouseUp);
 	}
 
 	{
@@ -693,7 +693,7 @@ void demo::DemoStateActor::Update(Demo& owner, double delta)
 	m_frameRateMonitor.OnFrameCompleted(delta);
 
 	// update input
-	input::Input::Instance().Update();
+	engine::input::Input::Instance().Update();
 
 	// update animator
 	Animator& animator = engine::cache::Registry<Animator>::Instance().Get("Character");
@@ -716,9 +716,9 @@ void demo::DemoStateActor::Update(Demo& owner, double delta)
 void demo::DemoStateActor::Exit(Demo& owner)
 {
 	{
-		input::Input::Instance().MouseDownEvent -= event::Handler(this, &DemoStateActor::OnMouseDown);
-		input::Input::Instance().MouseMoveEvent -= event::Handler(this, &DemoStateActor::OnMouseMove);
-		input::Input::Instance().MouseUpEvent -= event::Handler(this, &DemoStateActor::OnMouseUp);
+		engine::input::Input::Instance().MouseDownEvent -= engine::event::Handler(this, &DemoStateActor::OnMouseDown);
+		engine::input::Input::Instance().MouseMoveEvent -= engine::event::Handler(this, &DemoStateActor::OnMouseMove);
+		engine::input::Input::Instance().MouseUpEvent -= engine::event::Handler(this, &DemoStateActor::OnMouseUp);
 	}
 }
 

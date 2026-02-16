@@ -85,9 +85,9 @@ namespace TestTile
 	public:
 		Test()
 		{
-			engine::win32::Window::OnInitialize += event::Handler(this, &Test::OnInitialize);
-			engine::win32::Window::OnExit += event::Handler(this, &Test::OnExit);
-			engine::win32::Window::OnIdle += event::Handler(this, &Test::OnIdle);
+			engine::win32::Window::OnInitialize += engine::event::Handler(this, &Test::OnInitialize);
+			engine::win32::Window::OnExit += engine::event::Handler(this, &Test::OnExit);
+			engine::win32::Window::OnIdle += engine::event::Handler(this, &Test::OnIdle);
 
 			engine::win32::Window::Run();
 		}
@@ -97,9 +97,9 @@ namespace TestTile
 		{
 			// create our window here
 			m_window = std::make_unique<engine::win32::Window>();
-			m_window->OnClose += event::Handler(this, &Test::OnWindowClose);
-			m_window->OnCreate += event::Handler(this, &Test::OnWindowCreate);
-			m_window->OnSize += event::Handler(this, &Test::OnWindowSize);
+			m_window->OnClose += engine::event::Handler(this, &Test::OnWindowClose);
+			m_window->OnCreate += engine::event::Handler(this, &Test::OnWindowCreate);
+			m_window->OnSize += engine::event::Handler(this, &Test::OnWindowSize);
 			m_window->Create(L"Test Sprite", 1400, 900);
 		}
 
@@ -143,12 +143,12 @@ namespace TestTile
 				fileReader.Open("../Assets/PathFindingMap_24x16.csv");
 
 				engine::utilities::parser::CSVParser csvParser;
-				fileReader.ProcessChunkEvent += event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
-				fileReader.EndOfFileFoundEvent += event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
+				fileReader.ProcessChunkEvent += engine::event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
+				fileReader.EndOfFileFoundEvent += engine::event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
 				engine::container::Table<std::string> table;
 
-				csvParser.ParseRowEvent += event::Handler(&table, &engine::container::Table<std::string>::AddRow);
-				csvParser.ParseRemainingEvent += event::Handler(&table, &engine::container::Table<std::string>::AddRange);
+				csvParser.ParseRowEvent += engine::event::Handler(&table, &engine::container::Table<std::string>::AddRow);
+				csvParser.ParseRemainingEvent += engine::event::Handler(&table, &engine::container::Table<std::string>::AddRange);
 
 				fileReader.SyncReadAll(0xFF, 5.0);
 
@@ -165,14 +165,14 @@ namespace TestTile
 					5.0
 				);
 
-				fileReader.ProcessChunkEvent -= event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
-				fileReader.EndOfFileFoundEvent -= event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
-				csvParser.ParseRowEvent -= event::Handler(&table, &engine::container::Table<std::string>::AddRow);
-				csvParser.ParseRemainingEvent -= event::Handler(&table, &engine::container::Table<std::string>::AddRange);
+				fileReader.ProcessChunkEvent -= engine::event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
+				fileReader.EndOfFileFoundEvent -= engine::event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
+				csvParser.ParseRowEvent -= engine::event::Handler(&table, &engine::container::Table<std::string>::AddRow);
+				csvParser.ParseRemainingEvent -= engine::event::Handler(&table, &engine::container::Table<std::string>::AddRange);
 			}
 
 			// setup stopwatch to manage timing and start it
-			m_stopwatch.OnLap += event::Handler(this, &Test::OnLap);
+			m_stopwatch.OnLap += engine::event::Handler(this, &Test::OnLap);
 			m_stopwatch.Start();
 		}
 

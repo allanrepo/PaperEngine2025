@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-namespace core
+namespace engine::core
 {
 	// A lightweight, non-owning read-only view into an object of type T.
 	// 

@@ -40,22 +40,22 @@ namespace engine::timer
 
     public:
         // event that fires up when StopWatch starts 
-        event::Event<>OnStart;
+        engine::event::Event<>OnStart;
 
         // event that fires up when StopWatch stops
-        event::Event<double> OnStop;
+        engine::event::Event<double> OnStop;
 
         // event that fires up when StopWatch measure lap
-        event::Event<double> OnLap;
+        engine::event::Event<double> OnLap;
 
         // event that fires up when StopWatch peeks time since it started
-        event::Event<double> OnPeek;
+        engine::event::Event<double> OnPeek;
 
         // event that fires up when StopWatch is paused
-        event::Event<> OnPause;
+        engine::event::Event<> OnPause;
 
         // event that fires up when StopWatch is resumed
-        event::Event<> OnResume;
+        engine::event::Event<> OnResume;
 
     public:
         StopWatch() noexcept;

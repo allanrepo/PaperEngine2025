@@ -12,7 +12,7 @@ namespace engine::timer
 		// TODO: remove this once IsReady() is removed
 		double m_lastElapsedTime;
 
-		event::Event<double> FrameCompletedEvent;
+		engine::event::Event<double> FrameCompletedEvent;
 
 	public:
 		explicit FrameRateController(double targetFPS = 60.0f) :
@@ -35,39 +35,39 @@ namespace engine::timer
 		}
 
 		// subscribe as free function
-		void operator+=(event::Handler<void, void, double> handler)
+		void operator+=(engine::event::Handler<void, void, double> handler)
 		{
 			FrameCompletedEvent += handler;
 		}
 
 		// unsubscribe as free function
-		void operator-=(event::Handler<void, void, double> handler)
+		void operator-=(engine::event::Handler<void, void, double> handler)
 		{
 			FrameCompletedEvent -= handler;
 		}
 
 		// subscribe as class method
 		template <typename C>
-		void operator+=(event::Handler<void, C, double> handler)
+		void operator+=(engine::event::Handler<void, C, double> handler)
 		{
 			FrameCompletedEvent += handler;
 		}
 
 		// unsubscribe as class method
 		template <typename C>
-		void operator-=(event::Handler<void, C, double> handler)
+		void operator-=(engine::event::Handler<void, C, double> handler)
 		{
 			FrameCompletedEvent -= handler;
 		}
 
 		// subscribe as class lambda or std::function. TODO: test if this works
-		void operator+=(event::Handler<void, std::function<void(double)>, double> handler)
+		void operator+=(engine::event::Handler<void, std::function<void(double)>, double> handler)
 		{
 			FrameCompletedEvent += handler;
 		}
 
 		// unsubscribe as class lambda or std::function. TODO: test if this works
-		void operator-=(event::Handler<void, std::function<void(double)>, double> handler)
+		void operator-=(engine::event::Handler<void, std::function<void(double)>, double> handler)
 		{
 			FrameCompletedEvent -= handler;
 		}

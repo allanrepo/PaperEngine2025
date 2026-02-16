@@ -26,7 +26,7 @@ namespace graphics
             static bool loaded = false;
             if (!loaded)
             {
-                core::Factory<std::string, engine::graphics::resource::ITexture>::Instance().Register(
+                engine::core::Factory<std::string, engine::graphics::resource::ITexture>::Instance().Register(
                     engine::graphics::dx11::resource::DX11TextureImpl::TypeName, []()
                     {
                         return std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>();
@@ -34,7 +34,7 @@ namespace graphics
 
                 loaded = true;
             }
-            return core::Factory<std::string, engine::graphics::resource::ITexture>::Instance().Create(typeName);
+            return engine::core::Factory<std::string, engine::graphics::resource::ITexture>::Instance().Create(typeName);
         }
     };
 }

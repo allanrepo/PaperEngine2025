@@ -262,7 +262,7 @@ namespace state
 		virtual void Enter(component::IActor& owner) override final
 		{
 			// listen to target's targetable state event so we know if we can't target it anymore
-			m_target->OnTargetableChanged += event::Handler(this, &ActorPursueTargetState::HandleTargetableChange);
+			m_target->OnTargetableChanged += engine::event::Handler(this, &ActorPursueTargetState::HandleTargetableChange);
 
 			// set animation
 			std::string currAnim = owner.GetFaceDirection().x > 0 ? "walk_right" : "walk_left";
@@ -273,7 +273,7 @@ namespace state
 		virtual void Exit(component::IActor& owner) override final
 		{
 			// stop listening to targetable state change event
-			m_target->OnTargetableChanged -= event::Handler(this, &ActorPursueTargetState::HandleTargetableChange);
+			m_target->OnTargetableChanged -= engine::event::Handler(this, &ActorPursueTargetState::HandleTargetableChange);
 
 			// stop moving
 			owner.GetMotion().Stop();
@@ -406,7 +406,7 @@ namespace state
 		virtual void Enter(component::IActor& owner) override final
 		{
 			// listen to target's targetable state event so we know if we can't target it anymore
-			m_target->OnTargetableChanged += event::Handler(this, &ActorAttackTargetState::TargetableChange);
+			m_target->OnTargetableChanged += engine::event::Handler(this, &ActorAttackTargetState::TargetableChange);
 
 			// set animation
 			currAnim = owner.GetFaceDirection().x > 0 ? "attack_right" : "attack_left";
@@ -417,7 +417,7 @@ namespace state
 		virtual void Exit(component::IActor& owner) override final
 		{
 			// stop listening to targetable state change event
-			m_target->OnTargetableChanged -= event::Handler(this, &ActorAttackTargetState::TargetableChange);
+			m_target->OnTargetableChanged -= engine::event::Handler(this, &ActorAttackTargetState::TargetableChange);
 		}
 
 		virtual void Update(component::IActor& owner, float delta) override final

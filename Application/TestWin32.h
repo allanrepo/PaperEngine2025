@@ -14,9 +14,9 @@ namespace test
 	public:
 		TestWin32()
 		{
-			engine::win32::Window::OnInitialize += event::Handler(this, &TestWin32::OnInitialize);
-			engine::win32::Window::OnExit += event::Handler(this, &TestWin32::OnExit);
-			engine::win32::Window::OnIdle += event::Handler(this, &TestWin32::OnIdle);
+			engine::win32::Window::OnInitialize += engine::event::Handler(this, &TestWin32::OnInitialize);
+			engine::win32::Window::OnExit += engine::event::Handler(this, &TestWin32::OnExit);
+			engine::win32::Window::OnIdle += engine::event::Handler(this, &TestWin32::OnIdle);
 
 			engine::win32::Window::Run();
 		}
@@ -26,9 +26,9 @@ namespace test
 		{
 			// create our window here
 			window = std::make_unique<engine::win32::Window>();
-			window->OnClose += event::Handler(this, &TestWin32::OnWindowClose);
-			window->OnCreate += event::Handler(this, &TestWin32::OnWindowCreate);
-			window->OnSize += event::Handler(this, &TestWin32::OnWindowSize);
+			window->OnClose += engine::event::Handler(this, &TestWin32::OnWindowClose);
+			window->OnCreate += engine::event::Handler(this, &TestWin32::OnWindowCreate);
+			window->OnSize += engine::event::Handler(this, &TestWin32::OnWindowSize);
 			window->Create(L"Test Win32", 1400, 900);
 		}
 

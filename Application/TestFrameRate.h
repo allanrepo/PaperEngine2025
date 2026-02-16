@@ -19,10 +19,10 @@
 
 namespace testFrameRate
 {
-	class Test: public core::Singleton<Test>
+	class Test: public engine::core::Singleton<Test>
 	{
 	private:
-		friend class core::Singleton<Test>;
+		friend class engine::core::Singleton<Test>;
 
 		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
@@ -41,8 +41,8 @@ namespace testFrameRate
 			m_frameRateMonitor3(1.0f),
 			m_frameRateMonitor4(1.0f)
 		{
-			engine::win32::Window::OnInitialize += event::Handler(this, &Test::OnInitialize);
-			engine::win32::Window::OnIdle += event::Handler(this, &Test::OnIdle);
+			engine::win32::Window::OnInitialize += engine::event::Handler(this, &Test::OnInitialize);
+			engine::win32::Window::OnIdle += engine::event::Handler(this, &Test::OnIdle);
 		}
 
 	public:
@@ -56,8 +56,8 @@ namespace testFrameRate
 		{
 			// create our window here
 			m_window = std::make_unique<engine::win32::Window>();
-			m_window->OnCreate += event::Handler(this, &Test::OnWindowCreate);
-			m_window->OnSize += event::Handler(this, &Test::OnWindowSize);
+			m_window->OnCreate += engine::event::Handler(this, &Test::OnWindowCreate);
+			m_window->OnSize += engine::event::Handler(this, &Test::OnWindowSize);
 			m_window->Create(L"Test Frame Rate Monitor and Scheduler", 1400, 900);
 		}
 
@@ -95,7 +95,7 @@ namespace testFrameRate
 				}));
 
 			// setup stopwatch to manage timing and start it
-			m_stopwatch.OnLap += event::Handler(this, &Test::OnLap);
+			m_stopwatch.OnLap += engine::event::Handler(this, &Test::OnLap);
 			m_stopwatch.Start();
 			LOG("Stopwatch started...");	
 		}

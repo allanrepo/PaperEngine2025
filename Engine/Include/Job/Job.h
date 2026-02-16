@@ -83,7 +83,7 @@ namespace engine
 				return m_started;
 			}
 
-			event::Event<const Job&> DoneEvent;
+			engine::event::Event<const Job&> DoneEvent;
 
 		};
 
@@ -224,7 +224,7 @@ namespace engine
 				m_jobs.pop_front();
 
 				// attach event handler for when job is done
-				job->DoneEvent += event::Handler(this, &JobChain::OnJobDone);
+				job->DoneEvent += engine::event::Handler(this, &JobChain::OnJobDone);
 
 				// submit job to the queue
 				m_queue.Submit(std::move(job));

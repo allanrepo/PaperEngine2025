@@ -46,9 +46,9 @@ namespace engine::timer
             OneShot     // Fires OnTimeOut event once then stops until Reset() is called.
         };
 
-        event::Event<double> TimeOutEvent;
-        event::Event<double> IntervalEvent;
-        event::Event<Pulse&, double, size_t> OverflowReachedEvent;
+        engine::event::Event<double> TimeOutEvent;
+        engine::event::Event<double> IntervalEvent;
+        engine::event::Event<Pulse&, double, size_t> OverflowReachedEvent;
 
     private:
         double m_interval;      

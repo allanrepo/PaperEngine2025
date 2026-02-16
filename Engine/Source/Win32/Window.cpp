@@ -2,9 +2,9 @@
 
 std::unordered_map<std::wstring, int> engine::win32::Window::WindowClassManager::s_mapRefCount;
 
-event::Event<> engine::win32::Window::OnInitialize;
-event::Event<> engine::win32::Window::OnIdle;
-event::Event<> engine::win32::Window::OnExit;
+engine::event::Event<> engine::win32::Window::OnInitialize;
+engine::event::Event<> engine::win32::Window::OnIdle;
+engine::event::Event<> engine::win32::Window::OnExit;
 
 void engine::win32::Window::Run()
 {

@@ -25,7 +25,7 @@ namespace engine
 			//	-	highlights
 			//		-	incremental parsing: supports streaming input (e.g. network, async file reads). 
 			//		-	deferred completion: handles partial rows gracefully across chunk boundaries. 
-			//		-	decoupled output: uses event::Event<const std::vector<std::string>&> so multiple subscribers can react to parsed 
+			//		-	decoupled output: uses engine::event::Event<const std::vector<std::string>&> so multiple subscribers can react to parsed 
 			//			rows without tight coupling.
 			//	-	Limitations: 
 			//		-	no CSV quoting support: fields containing commas or newlines inside quotes are not handled. 
@@ -106,8 +106,8 @@ namespace engine
 					}
 				}
 
-				event::Event<const std::vector<std::string>&> ParseRowEvent;
-				event::Event<const std::vector<std::string>&> ParseRemainingEvent;
+				engine::event::Event<const std::vector<std::string>&> ParseRowEvent;
+				engine::event::Event<const std::vector<std::string>&> ParseRemainingEvent;
 			};
 		};
 	};

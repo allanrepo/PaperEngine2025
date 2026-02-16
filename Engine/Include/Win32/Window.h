@@ -32,25 +32,25 @@ namespace engine::win32
 	public:
 		Window(const std::wstring& wszClassName = L"WindowClass");
 
-		event::Event<UINT, WPARAM, LPARAM> OnWindowMessage;
-		event::Event<size_t, size_t> OnSize;
-		event::Event<> OnClose;
-		event::Event<> OnDestroy;
-		event::Event<void*> OnCreate;
-		event::Event<int> OnKeyDown;
-		event::Event<int> OnChar;
-		event::Event<int, int> OnMouseMove;
-		event::Event<> OnLeftClick;
-		event::Event<> OnRightClick;
-		event::Event<int, int> OnLeftMouseDown;
-		event::Event<int, int> OnLeftMouseUp;
-		event::Event<int, int> OnRightMouseDown;
-		event::Event<int, int> OnRightMouseUp;
-		event::Event<> OnShow;
+		engine::event::Event<UINT, WPARAM, LPARAM> OnWindowMessage;
+		engine::event::Event<size_t, size_t> OnSize;
+		engine::event::Event<> OnClose;
+		engine::event::Event<> OnDestroy;
+		engine::event::Event<void*> OnCreate;
+		engine::event::Event<int> OnKeyDown;
+		engine::event::Event<int> OnChar;
+		engine::event::Event<int, int> OnMouseMove;
+		engine::event::Event<> OnLeftClick;
+		engine::event::Event<> OnRightClick;
+		engine::event::Event<int, int> OnLeftMouseDown;
+		engine::event::Event<int, int> OnLeftMouseUp;
+		engine::event::Event<int, int> OnRightMouseDown;
+		engine::event::Event<int, int> OnRightMouseUp;
+		engine::event::Event<> OnShow;
 
 		static void Run();
-		static event::Event<> OnInitialize;
-		static event::Event<> OnIdle;
-		static event::Event<> OnExit;
+		static engine::event::Event<> OnInitialize;
+		static engine::event::Event<> OnIdle;
+		static engine::event::Event<> OnExit;
 	};
 };

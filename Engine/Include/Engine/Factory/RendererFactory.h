@@ -53,7 +53,7 @@ namespace engine::graphics::factory
                 // register type for renderer = directx 11, batch
                 key.first = engine::graphics::dx11::renderer::DX11RendererBatchImpl::TypeName;  // directx 11 renderer
                 key.second = "Batch";                                                   // batch sprite renderer
-                core::Factory<std::pair<std::string, std::string>, engine::graphics::renderer::IRenderer, PairHasher>::Instance().Register(
+                engine::core::Factory<std::pair<std::string, std::string>, engine::graphics::renderer::IRenderer, PairHasher>::Instance().Register(
                     key, []()
                     {
                         return std::make_unique<engine::graphics::renderer::Renderer>(std::make_unique<engine::graphics::dx11::renderer::DX11RendererBatchImpl>());
@@ -62,7 +62,7 @@ namespace engine::graphics::factory
                 // register type for renderer = directx 11, immediate
                 key.first = engine::graphics::dx11::renderer::DX11RendererImmediateImpl::TypeName;          // directx 11 renderer
                 key.second = "Immediate";                                                           // immediate sprite renderer
-                core::Factory<std::pair<std::string, std::string>, engine::graphics::renderer::IRenderer, PairHasher>::Instance().Register(
+                engine::core::Factory<std::pair<std::string, std::string>, engine::graphics::renderer::IRenderer, PairHasher>::Instance().Register(
                     key, []()
                     {
                         return std::make_unique<engine::graphics::renderer::Renderer>(std::make_unique<engine::graphics::dx11::renderer::DX11RendererImmediateImpl>());
@@ -77,7 +77,7 @@ namespace engine::graphics::factory
             key.first = typeName;    // renderer mode
             key.second = renderMode; // sprite renderer mode
 
-            std::unique_ptr<engine::graphics::renderer::IRenderer> Renderer = core::Factory<std::pair<std::string, std::string>, engine::graphics::renderer::IRenderer, PairHasher>::Instance().Create(key);
+            std::unique_ptr<engine::graphics::renderer::IRenderer> Renderer = engine::core::Factory<std::pair<std::string, std::string>, engine::graphics::renderer::IRenderer, PairHasher>::Instance().Create(key);
             if (Renderer == nullptr)
             {
                 LOGERROR("Failed to create Renderer. Renderer type is invalid. Renderer Type: " << renderMode);

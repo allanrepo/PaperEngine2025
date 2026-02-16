@@ -361,11 +361,11 @@ namespace TestAsyncFileReader
 			m_stateFrameRateMonitor(1.0),
 			m_frameRateController(60.0)
 		{
-			engine::win32::Window::OnInitialize += event::Handler(this, &Test::OnInitialize);
-			engine::win32::Window::OnExit += event::Handler(this, &Test::OnExit);
-			engine::win32::Window::OnIdle += event::Handler(this, &Test::OnIdle);
+			engine::win32::Window::OnInitialize += engine::event::Handler(this, &Test::OnInitialize);
+			engine::win32::Window::OnExit += engine::event::Handler(this, &Test::OnExit);
+			engine::win32::Window::OnIdle += engine::event::Handler(this, &Test::OnIdle);
 
-			input::Input::Instance().MouseDownEvent += event::Handler(this, &Test::OnMouseDown);
+			engine::input::Input::Instance().MouseDownEvent += engine::event::Handler(this, &Test::OnMouseDown);
 
 			engine::win32::Window::Run();
 		}
@@ -375,10 +375,10 @@ namespace TestAsyncFileReader
 		{
 			// create our window here
 			m_window = std::make_unique<engine::win32::Window>();
-			m_window->OnClose += event::Handler(this, &Test::OnWindowClose);
-			m_window->OnCreate += event::Handler(this, &Test::OnWindowCreate);
-			m_window->OnSize += event::Handler(this, &Test::OnWindowSize);
-			m_window->OnWindowMessage += event::Handler(&input::Input::Instance(), &input::Input::ProcessWin32Message);
+			m_window->OnClose += engine::event::Handler(this, &Test::OnWindowClose);
+			m_window->OnCreate += engine::event::Handler(this, &Test::OnWindowCreate);
+			m_window->OnSize += engine::event::Handler(this, &Test::OnWindowSize);
+			m_window->OnWindowMessage += engine::event::Handler(&engine::input::Input::Instance(), &engine::input::Input::ProcessWin32Message);
 			m_window->Create(L"Test Sprite", 1400, 900);
 		}
 
@@ -404,11 +404,11 @@ namespace TestAsyncFileReader
 			LOG("Font atlas created and initialized...");
 
 			// setup stopwatch to manage timing and start it
-			m_stopwatch.OnLap += event::Handler(this, &Test::OnLap);
+			m_stopwatch.OnLap += engine::event::Handler(this, &Test::OnLap);
 			m_stopwatch.Start();
 			LOG("Stopwatch started...");
 
-			m_frameRateController += event::Handler(this, &Test::OnUpdateFileReader);
+			m_frameRateController += engine::event::Handler(this, &Test::OnUpdateFileReader);
 
 			m_scheduler += engine::timer::Schedule(1.0/1000.0, this, &Test::OnUpdateFileReader, true, 1);
 
@@ -596,7 +596,7 @@ namespace TestAsyncFileReader
 		// fun stuff. this is called on each loop of the message loop. this is where we draw!
 		void OnIdle()
 		{
-			input::Input::Instance().Update();
+			engine::input::Input::Instance().Update();
 
 			// call lap to get elapsed time and trigger OnLap event
 			m_stopwatch.Lap<engine::timer::seconds>();

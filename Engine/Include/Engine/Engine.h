@@ -79,10 +79,10 @@ namespace engine
 		);
 		~Engine();
 
-		event::Event<> StartEvent;
-		event::Event<> EndEvent;
-		event::Event<size_t, size_t> ResizeEvent;
-		event::Event<UINT, WPARAM, LPARAM> ProcessWin32MessageEvent;
+		engine::event::Event<> StartEvent;
+		engine::event::Event<> EndEvent;
+		engine::event::Event<size_t, size_t> ResizeEvent;
+		engine::event::Event<UINT, WPARAM, LPARAM> ProcessWin32MessageEvent;
 
 		engine::timer::StopWatch& Timer()
 		{

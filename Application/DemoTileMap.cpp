@@ -58,7 +58,7 @@ demo::RenderTileMapState::RenderTileMapState() :
 
 void demo::RenderTileMapState::Enter(Demo& owner)
 {
-	owner.Engine().ResizeEvent += event::Handler(this, &RenderTileMapState::OnResize);
+	owner.Engine().ResizeEvent += engine::event::Handler(this, &RenderTileMapState::OnResize);
 }
 
 void demo::RenderTileMapState::Update(Demo& owner, double delta)
@@ -78,7 +78,7 @@ void demo::RenderTileMapState::Update(Demo& owner, double delta)
 
 void demo::RenderTileMapState::Exit(Demo& owner)
 {
-	owner.Engine().ResizeEvent -= event::Handler(this, &RenderTileMapState::OnResize);
+	owner.Engine().ResizeEvent -= engine::event::Handler(this, &RenderTileMapState::OnResize);
 }
 
 bool demo::RenderTileMapState::IsFinished(Demo& owner)

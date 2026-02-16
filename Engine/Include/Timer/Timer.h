@@ -263,14 +263,14 @@ namespace engine::timer
                 timerOneShot(2500, timer::IntervalTimer::Mode::OneShot)
             {          
                 // listen to stopwatch' Lap(). timers will be updated by this event listener
-                stopwatch.OnLap += event::Handler(this, &TestClass::OnLoop);
+                stopwatch.OnLap += engine::event::Handler(this, &TestClass::OnLoop);
 
                 // listen to persistent timer
-                timerPersistent.OnMaxIntervalPerUpdateReached += event::Handler(this, &TestClass::OnMaxIntervalPerUpdateReached);
-                timerPersistent.OnInterval += event::Handler(this, &TestClass::OnInterval);
+                timerPersistent.OnMaxIntervalPerUpdateReached += engine::event::Handler(this, &TestClass::OnMaxIntervalPerUpdateReached);
+                timerPersistent.OnInterval += engine::event::Handler(this, &TestClass::OnInterval);
 
                 // listen to one-shot timer
-                timerOneShot.OnTimeOut += event::Handler(this, &TestClass::OnTimeOut);
+                timerOneShot.OnTimeOut += engine::event::Handler(this, &TestClass::OnTimeOut);
 
                 // start the stopwatch
                 stopwatch.Start();

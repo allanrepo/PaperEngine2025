@@ -6,7 +6,7 @@
         ├── Nested WindowClassManager
         │   └── Manages Win32 class registration/unregistration
         ├── Static ref count
-        └── Uses core::event::Event<> for callbacks
+        └── Uses core::engine::event::Event<> for callbacks
             ├── OnWindowMessage
             ├── OnSize
             ├── OnClose / OnDestroy / OnCreate

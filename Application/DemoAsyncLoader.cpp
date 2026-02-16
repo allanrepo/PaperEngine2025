@@ -48,12 +48,12 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 	LOG("Loading ... " << m_filePath);
 
 	// chain our events where CSV parser listens to file reader when it extract chunk of data from file
-	m_fileReader.ProcessChunkEvent += event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
-	m_fileReader.EndOfFileFoundEvent += event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
+	m_fileReader.ProcessChunkEvent += engine::event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
+	m_fileReader.EndOfFileFoundEvent += engine::event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
 
 	// chain CSV table to CSV parser to acquire row of data from CSV Parser when it parse chunk of data and extracts rows of CSV data
-	m_csvParser.ParseRowEvent += event::Handler(&m_table, &engine::container::Table<std::string>::AddRow);
-	m_csvParser.ParseRemainingEvent += event::Handler(&m_table, &engine::container::Table<std::string>::AddRange);
+	m_csvParser.ParseRowEvent += engine::event::Handler(&m_table, &engine::container::Table<std::string>::AddRow);
+	m_csvParser.ParseRemainingEvent += engine::event::Handler(&m_table, &engine::container::Table<std::string>::AddRange);
 
 	// create our tile objects
 	m_layer = std::make_unique <engine::component::tile::TileLayer<RenderableTile>>();
@@ -285,11 +285,11 @@ void demo::LoadAsyncLoaderState::Update(Demo& owner, double delta)
 
 void demo::LoadAsyncLoaderState::Exit(Demo& owner)
 {
-	m_fileReader.ProcessChunkEvent -= event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
-	m_fileReader.EndOfFileFoundEvent -= event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
+	m_fileReader.ProcessChunkEvent -= engine::event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
+	m_fileReader.EndOfFileFoundEvent -= engine::event::Handler(&m_csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
 
-	m_csvParser.ParseRowEvent -= event::Handler(&m_table, &engine::container::Table<std::string>::AddRow);
-	m_csvParser.ParseRemainingEvent -= event::Handler(&m_table, &engine::container::Table<std::string>::AddRange);
+	m_csvParser.ParseRowEvent -= engine::event::Handler(&m_table, &engine::container::Table<std::string>::AddRow);
+	m_csvParser.ParseRemainingEvent -= engine::event::Handler(&m_table, &engine::container::Table<std::string>::AddRange);
 }
 
 bool demo::LoadAsyncLoaderState::IsFinished(Demo& owner)
@@ -315,7 +315,7 @@ demo::RenderAsyncLoaderState::~RenderAsyncLoaderState()
 
 void demo::RenderAsyncLoaderState::Enter(Demo& owner)
 {
-	owner.Engine().ResizeEvent += event::Handler(this, &RenderAsyncLoaderState::OnResize);
+	owner.Engine().ResizeEvent += engine::event::Handler(this, &RenderAsyncLoaderState::OnResize);
 }
 
 void demo::RenderAsyncLoaderState::Update(Demo& owner, double delta)
@@ -338,7 +338,7 @@ void demo::RenderAsyncLoaderState::Update(Demo& owner, double delta)
 
 void demo::RenderAsyncLoaderState::Exit(Demo& owner)
 {
-	owner.Engine().ResizeEvent -= event::Handler(this, &RenderAsyncLoaderState::OnResize);
+	owner.Engine().ResizeEvent -= engine::event::Handler(this, &RenderAsyncLoaderState::OnResize);
 }
 
 bool demo::RenderAsyncLoaderState::IsFinished(Demo& owner)

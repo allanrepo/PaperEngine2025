@@ -48,14 +48,14 @@ namespace test
 		std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
 		std::unique_ptr<engine::graphics::renderable::Sprite> m_sprite;
 		engine::spatial::SizeF m_spriteSize{};
-		input::Input m_input;
+		engine::input::Input m_input;
 
 	public:
 		TestSprite()
 		{
-			engine::win32::Window::OnInitialize += event::Handler(this, &TestSprite::OnInitialize);
-			engine::win32::Window::OnExit += event::Handler(this, &TestSprite::OnExit);
-			engine::win32::Window::OnIdle += event::Handler(this, &TestSprite::OnIdle);
+			engine::win32::Window::OnInitialize += engine::event::Handler(this, &TestSprite::OnInitialize);
+			engine::win32::Window::OnExit += engine::event::Handler(this, &TestSprite::OnExit);
+			engine::win32::Window::OnIdle += engine::event::Handler(this, &TestSprite::OnIdle);
 
 			engine::win32::Window::Run();
 		}
@@ -65,13 +65,13 @@ namespace test
 		{
 			// create our window here
 			m_window = std::make_unique<engine::win32::Window>();
-			m_window->OnClose += event::Handler(this, &TestSprite::OnWindowClose);
-			m_window->OnCreate += event::Handler(this, &TestSprite::OnWindowCreate);
-			m_window->OnSize += event::Handler(this, &TestSprite::OnWindowSize);
+			m_window->OnClose += engine::event::Handler(this, &TestSprite::OnWindowClose);
+			m_window->OnCreate += engine::event::Handler(this, &TestSprite::OnWindowCreate);
+			m_window->OnSize += engine::event::Handler(this, &TestSprite::OnWindowSize);
 			m_window->Create(L"Test Sprite", 1400, 900);
-			m_window->OnWindowMessage += event::Handler(&m_input, &input::Input::ProcessWin32Message);
+			m_window->OnWindowMessage += engine::event::Handler(&m_input, &engine::input::Input::ProcessWin32Message);
 
-			m_input.MouseMoveEvent += event::Handler(this, &TestSprite::OnMouseMove);
+			m_input.MouseMoveEvent += engine::event::Handler(this, &TestSprite::OnMouseMove);
 		}
 
 		// when window is created. we can now safely create resources dependent on window

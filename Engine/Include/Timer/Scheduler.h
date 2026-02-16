@@ -134,40 +134,40 @@ namespace engine::timer
 		void operator += (const Schedule<void>& sched) 
 		{
 			Pulse& pulse = GetOrCreatePulse(sched.m_interval, sched.m_resetOnOverflow, sched.m_maxTriggerPerUpdate);
-			pulse.IntervalEvent += event::Handler(sched.m_pFunc);		
+			pulse.IntervalEvent += engine::event::Handler(sched.m_pFunc);		
 		}
 
 		template <typename C>
 		void operator += (const Schedule<C>& sched) 
 		{
 			Pulse& pulse = GetOrCreatePulse(sched.m_interval, sched.m_resetOnOverflow, sched.m_maxTriggerPerUpdate);
-			pulse.IntervalEvent += event::Handler(sched.m_pInst, sched.m_pFunc);
+			pulse.IntervalEvent += engine::event::Handler(sched.m_pInst, sched.m_pFunc);
 		}
 
 		void operator += (const Schedule<std::function<void(double)>>& sched) 
 		{
 			Pulse& pulse = GetOrCreatePulse(sched.m_interval, sched.m_resetOnOverflow, sched.m_maxTriggerPerUpdate);
-			pulse.IntervalEvent += event::Handler(sched.m_func);
+			pulse.IntervalEvent += engine::event::Handler(sched.m_func);
 		}
 
 		void operator -= (const Schedule<std::function<void(double)>>& sched)
 		{
 			Pulse& pulse = GetOrCreatePulse(sched.m_interval, sched.m_resetOnOverflow, sched.m_maxTriggerPerUpdate);
-			pulse.IntervalEvent -= event::Handler(sched.m_func);
+			pulse.IntervalEvent -= engine::event::Handler(sched.m_func);
 		}
 
 		// symmetric -= for unsubscription
 		void operator -= (const Schedule<void>& sched) 
 		{
 			Pulse& pulse = GetOrCreatePulse(sched.m_interval, sched.m_resetOnOverflow, sched.m_maxTriggerPerUpdate);
-			pulse.IntervalEvent -= event::Handler(sched.m_pFunc);
+			pulse.IntervalEvent -= engine::event::Handler(sched.m_pFunc);
 		}
 
 		template <typename C>
 		void operator -= (const Schedule<C>& sched) 
 		{
 			Pulse& pulse = GetOrCreatePulse(sched.m_interval, sched.m_resetOnOverflow, sched.m_maxTriggerPerUpdate);
-			pulse.IntervalEvent -= event::Handler(sched.m_pInst, sched.m_pFunc);
+			pulse.IntervalEvent -= engine::event::Handler(sched.m_pInst, sched.m_pFunc);
 		}
 	};
 

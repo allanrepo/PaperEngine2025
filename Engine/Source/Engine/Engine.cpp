@@ -26,13 +26,13 @@ engine::Engine::Engine(
 	// now we can setup window event handlers...
 
 	// this event will fire up just before window application is created
-	engine::win32::Window::OnInitialize += event::Handler(this, &Engine::Initialize);
+	engine::win32::Window::OnInitialize += engine::event::Handler(this, &Engine::Initialize);
 
 	// this event will fire up after window application closes
-	engine::win32::Window::OnExit += event::Handler(this, &Engine::Exit);
+	engine::win32::Window::OnExit += engine::event::Handler(this, &Engine::Exit);
 
 	// this event will fire up on every windows message loop (main loop)
-	engine::win32::Window::OnIdle += event::Handler(this, &Engine::Idle);
+	engine::win32::Window::OnIdle += engine::event::Handler(this, &Engine::Idle);
 }
 
 engine::Engine::~Engine()
@@ -56,20 +56,20 @@ void engine::Engine::Initialize()
 	// subscribe the window application's events...
 
 	// this will fire up when window application closes
-	m_window->OnClose += event::Handler(this, &Engine::WindowClose);
+	m_window->OnClose += engine::event::Handler(this, &Engine::WindowClose);
 
 	// this will fire up after window application is created
-	m_window->OnCreate += event::Handler(this, &Engine::WindowCreate);
+	m_window->OnCreate += engine::event::Handler(this, &Engine::WindowCreate);
 
 	// this will fire up when window resizes
-	m_window->OnSize += event::Handler(this, &Engine::WindowSize);
+	m_window->OnSize += engine::event::Handler(this, &Engine::WindowSize);
 
 	// input controller subscribes to window messages 
-	m_window->OnWindowMessage += event::Handler(&input::Input::Instance(), &input::Input::ProcessWin32Message);
+	m_window->OnWindowMessage += engine::event::Handler(&input::Input::Instance(), &input::Input::ProcessWin32Message);
 
 	// this will fire up whenever there is a window message the window application needs to process
 	// stuff like keyboard and mouse inputs can be handled here
-	m_window->OnWindowMessage += event::Handler(this, &Engine::ProcessWin32Message);
+	m_window->OnWindowMessage += engine::event::Handler(this, &Engine::ProcessWin32Message);
 
 	// now let's create the window application
 	std::string title = cache::Registry<std::string>::Instance().Get("Title");
@@ -116,12 +116,12 @@ void engine::Engine::WindowCreate(void* hWnd)
 	LOG("[ENGINE] Start event happened...");
 
 	// setup stopwatch to manage timing
-	m_stopwatch.OnLap += event::Handler(this, &Engine::Lap);
+	m_stopwatch.OnLap += engine::event::Handler(this, &Engine::Lap);
 	m_stopwatch.Start();
 	LOG("[ENGINE] Timer started...");
 
 	// the OnRender performs rendering. control its execution's frame rate here 
-	m_renderController += event::Handler(this, &Engine::OnRender);
+	m_renderController += engine::event::Handler(this, &Engine::OnRender);
 	LOG("[ENGINE] OnRender subscribed to frame rate controller...");
 
 	//m_scheduler += timer::Schedule(1.0f, this, &Engine::DebugShowStatistics);	

@@ -72,13 +72,13 @@ namespace TestCamera
 		Test():
 			m_camera({ 250, 250, 720, 640 })
 		{
-			engine::win32::Window::OnInitialize += event::Handler(this, &Test::OnInitialize);
-			engine::win32::Window::OnExit += event::Handler(this, &Test::OnExit);
-			engine::win32::Window::OnIdle += event::Handler(this, &Test::OnIdle);
+			engine::win32::Window::OnInitialize += engine::event::Handler(this, &Test::OnInitialize);
+			engine::win32::Window::OnExit += engine::event::Handler(this, &Test::OnExit);
+			engine::win32::Window::OnIdle += engine::event::Handler(this, &Test::OnIdle);
 
-			input::Input::Instance().MouseDownEvent += event::Handler(this, &Test::OnMouseDown);
-			input::Input::Instance().MouseMoveEvent += event::Handler(this, &Test::OnMouseMove);
-			input::Input::Instance().MouseUpEvent += event::Handler(this, &Test::OnMouseUp);
+			engine::input::Input::Instance().MouseDownEvent += engine::event::Handler(this, &Test::OnMouseDown);
+			engine::input::Input::Instance().MouseMoveEvent += engine::event::Handler(this, &Test::OnMouseMove);
+			engine::input::Input::Instance().MouseUpEvent += engine::event::Handler(this, &Test::OnMouseUp);
 
 			engine::win32::Window::Run();
 		}
@@ -130,10 +130,10 @@ namespace TestCamera
 		{
 			// create our window here
 			m_window = std::make_unique<engine::win32::Window>();
-			m_window->OnClose += event::Handler(this, &Test::OnWindowClose);
-			m_window->OnCreate += event::Handler(this, &Test::OnWindowCreate);
-			m_window->OnSize += event::Handler(this, &Test::OnWindowSize);
-			m_window->OnWindowMessage += event::Handler(&input::Input::Instance(), &input::Input::ProcessWin32Message);
+			m_window->OnClose += engine::event::Handler(this, &Test::OnWindowClose);
+			m_window->OnCreate += engine::event::Handler(this, &Test::OnWindowCreate);
+			m_window->OnSize += engine::event::Handler(this, &Test::OnWindowSize);
+			m_window->OnWindowMessage += engine::event::Handler(&engine::input::Input::Instance(), &engine::input::Input::ProcessWin32Message);
 
 			m_window->Create(L"Test Camera", 1400, 1200);
 		}
@@ -178,12 +178,12 @@ namespace TestCamera
 				fileReader.Open("../Assets/32x32Map.csv");
 
 				engine::utilities::parser::CSVParser csvParser;
-				fileReader.ProcessChunkEvent += event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
-				fileReader.EndOfFileFoundEvent += event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
+				fileReader.ProcessChunkEvent += engine::event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
+				fileReader.EndOfFileFoundEvent += engine::event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
 				engine::container::Table<std::string> table;
 
-				csvParser.ParseRowEvent += event::Handler(&table, &engine::container::Table<std::string>::AddRow);
-				csvParser.ParseRemainingEvent += event::Handler(&table, &engine::container::Table<std::string>::AddRange);
+				csvParser.ParseRowEvent += engine::event::Handler(&table, &engine::container::Table<std::string>::AddRow);
+				csvParser.ParseRemainingEvent += engine::event::Handler(&table, &engine::container::Table<std::string>::AddRange);
 
 				fileReader.SyncReadAll(0xFF, 5.0);
 
@@ -200,10 +200,10 @@ namespace TestCamera
 					5.0
 				);
 
-				fileReader.ProcessChunkEvent -= event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
-				fileReader.EndOfFileFoundEvent -= event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
-				csvParser.ParseRowEvent -= event::Handler(&table, &engine::container::Table<std::string>::AddRow);
-				csvParser.ParseRemainingEvent -= event::Handler(&table, &engine::container::Table<std::string>::AddRange);
+				fileReader.ProcessChunkEvent -= engine::event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseChunk);
+				fileReader.EndOfFileFoundEvent -= engine::event::Handler(&csvParser, &engine::utilities::parser::CSVParser::ParseRemaining);
+				csvParser.ParseRowEvent -= engine::event::Handler(&table, &engine::container::Table<std::string>::AddRow);
+				csvParser.ParseRemainingEvent -= engine::event::Handler(&table, &engine::container::Table<std::string>::AddRange);
 			}
 
 
@@ -226,7 +226,7 @@ namespace TestCamera
 			);
 
 			// setup stopwatch to manage timing and start it
-			m_stopwatch.OnLap += event::Handler(this, &Test::OnLap);
+			m_stopwatch.OnLap += engine::event::Handler(this, &Test::OnLap);
 			m_stopwatch.Start();
 		}
 
@@ -238,7 +238,7 @@ namespace TestCamera
 		// fun stuff. this is called on each loop of the message loop. this is where we draw!
 		void OnIdle()
 		{
-			input::Input::Instance().Update();
+			engine::input::Input::Instance().Update();
 
 			// call lap to get elapsed time and trigger OnLap event
 			m_stopwatch.Lap<engine::timer::milliseconds>();

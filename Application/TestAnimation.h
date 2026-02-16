@@ -59,9 +59,9 @@ namespace test
 	public:
 		TestAnimation()
 		{
-			engine::win32::Window::OnInitialize += event::Handler(this, &TestAnimation::OnInitialize);
-			engine::win32::Window::OnExit += event::Handler(this, &TestAnimation::OnExit);
-			engine::win32::Window::OnIdle += event::Handler(this, &TestAnimation::OnIdle);
+			engine::win32::Window::OnInitialize += engine::event::Handler(this, &TestAnimation::OnInitialize);
+			engine::win32::Window::OnExit += engine::event::Handler(this, &TestAnimation::OnExit);
+			engine::win32::Window::OnIdle += engine::event::Handler(this, &TestAnimation::OnIdle);
 
 			engine::win32::Window::Run();
 		}
@@ -71,9 +71,9 @@ namespace test
 		{
 			// create our window here
 			m_window = std::make_unique<engine::win32::Window>();
-			m_window->OnClose += event::Handler(this, &TestAnimation::OnWindowClose);
-			m_window->OnCreate += event::Handler(this, &TestAnimation::OnWindowCreate);
-			m_window->OnSize += event::Handler(this, &TestAnimation::OnWindowSize);
+			m_window->OnClose += engine::event::Handler(this, &TestAnimation::OnWindowClose);
+			m_window->OnCreate += engine::event::Handler(this, &TestAnimation::OnWindowCreate);
+			m_window->OnSize += engine::event::Handler(this, &TestAnimation::OnWindowSize);
 			m_window->Create(L"Test Sprite", 1400, 900);
 		}
 
@@ -124,7 +124,7 @@ namespace test
 			m_animator->Play("default");
 
 			// setup stopwatch to manage timing and start it
-			m_stopwatch.OnLap += event::Handler(this, &TestAnimation::OnLap);
+			m_stopwatch.OnLap += engine::event::Handler(this, &TestAnimation::OnLap);
 			m_stopwatch.Start();
 		}
 

@@ -66,13 +66,13 @@ namespace engine::graphics::animation
 
 	public:
 		// event fired when the frame changes. provides the new frame index and frame data.
-		event::Event<int, engine::graphics::animation::Frame<T>> OnFrame;
+		engine::event::Event<int, engine::graphics::animation::Frame<T>> OnFrame;
 
 		// event fired when the animation ends.
-		event::Event<> OnEnd;
+		engine::event::Event<> OnEnd;
 
 		// event fired when a new animation starts playing. provides pointer to the animation.
-		event::Event<engine::graphics::animation::Animation<T>*> OnPlay;
+		engine::event::Event<engine::graphics::animation::Animation<T>*> OnPlay;
 
 		// constructs a new Animator instance with no animation playing.
 		Animator():
@@ -271,10 +271,10 @@ namespace engine::graphics::animation
 				animator.Add("default", animation);
 				animator.Play("default");
 
-				animator.OnFrame += event::Handler(this, &TestClass::OnFrame);
+				animator.OnFrame += engine::event::Handler(this, &TestClass::OnFrame);
 
 				// listen to stopwatch' Lap(). timers will be updated by this event listener
-				stopwatch.OnLap += event::Handler(this, &TestClass::OnLoop);
+				stopwatch.OnLap += engine::event::Handler(this, &TestClass::OnLoop);
 
 				// start the stopwatch
 				stopwatch.Start();

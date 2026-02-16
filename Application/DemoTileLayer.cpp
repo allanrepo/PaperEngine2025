@@ -162,7 +162,7 @@ demo::RenderTileLayerState::~RenderTileLayerState()
 
 void demo::RenderTileLayerState::Enter(Demo& owner)
 {
-	owner.Engine().ResizeEvent += event::Handler(this, &RenderTileLayerState::OnResize);
+	owner.Engine().ResizeEvent += engine::event::Handler(this, &RenderTileLayerState::OnResize);
 }
 
 void demo::RenderTileLayerState::Update(Demo& owner, double delta)
@@ -185,7 +185,7 @@ void demo::RenderTileLayerState::Update(Demo& owner, double delta)
 
 void demo::RenderTileLayerState::Exit(Demo& owner)
 {
-	owner.Engine().ResizeEvent -= event::Handler(this, &RenderTileLayerState::OnResize);
+	owner.Engine().ResizeEvent -= engine::event::Handler(this, &RenderTileLayerState::OnResize);
 }
 
 bool demo::RenderTileLayerState::IsFinished(Demo& owner)

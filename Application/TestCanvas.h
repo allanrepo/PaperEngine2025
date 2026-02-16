@@ -33,9 +33,9 @@ namespace test
 	public:
 		TestCanvas()
 		{
-			engine::win32::Window::OnInitialize += event::Handler(this, &TestCanvas::OnInitialize);
-			engine::win32::Window::OnExit += event::Handler(this, &TestCanvas::OnExit);
-			engine::win32::Window::OnIdle += event::Handler(this, &TestCanvas::OnIdle);
+			engine::win32::Window::OnInitialize += engine::event::Handler(this, &TestCanvas::OnInitialize);
+			engine::win32::Window::OnExit += engine::event::Handler(this, &TestCanvas::OnExit);
+			engine::win32::Window::OnIdle += engine::event::Handler(this, &TestCanvas::OnIdle);
 
 			engine::win32::Window::Run();
 		}
@@ -45,9 +45,9 @@ namespace test
 		{
 			// create our window here
 			m_window = std::make_unique<engine::win32::Window>();
-			m_window->OnClose += event::Handler(this, &TestCanvas::OnWindowClose);
-			m_window->OnCreate += event::Handler(this, &TestCanvas::OnWindowCreate);
-			m_window->OnSize += event::Handler(this, &TestCanvas::OnWindowSize);
+			m_window->OnClose += engine::event::Handler(this, &TestCanvas::OnWindowClose);
+			m_window->OnCreate += engine::event::Handler(this, &TestCanvas::OnWindowCreate);
+			m_window->OnSize += engine::event::Handler(this, &TestCanvas::OnWindowSize);
 			m_window->Create(L"Test Canvas", 1400, 900);
 		}
 

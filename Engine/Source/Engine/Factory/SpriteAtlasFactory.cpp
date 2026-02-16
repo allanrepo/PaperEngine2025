@@ -49,7 +49,7 @@ std::unique_ptr<engine::graphics::resource::ISpriteAtlas> engine::graphics::fact
     {
         // return value of our lambda create is an ISpriteAtlas. it doesn't matter what the flavor is created e.g. dx11,
         // we will return a pointer to a ISpriteAtlas regardless           
-        core::Factory<std::string, engine::graphics::resource::ISpriteAtlas>::Instance().Register(
+        engine::core::Factory<std::string, engine::graphics::resource::ISpriteAtlas>::Instance().Register(
             engine::graphics::dx11::resource::DX11TextureImpl::TypeName, []()
             {
                 // instead of using std::make_unique to create SpriteAtlas, we are doing it raw. then we just pass it on an instance of unique_ptr. it's the same
@@ -61,7 +61,7 @@ std::unique_ptr<engine::graphics::resource::ISpriteAtlas> engine::graphics::fact
 
         loaded = true;
     }
-    return core::Factory <std::string, engine::graphics::resource::ISpriteAtlas>::Instance().Create(typeName);
+    return engine::core::Factory <std::string, engine::graphics::resource::ISpriteAtlas>::Instance().Create(typeName);
 }
 
 bool engine::graphics::factory::SpriteAtlasFactory::Create(
