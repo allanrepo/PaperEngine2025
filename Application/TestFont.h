@@ -17,8 +17,6 @@
 #include <Core/Input.h>
 #include <Graphics/Resource/IFontAtlas.h>
 #include <Graphics/Resource/FontAtlas.h>
-#include <Graphics/Renderable/_IFontAtlas.h>
-#include <Graphics/Renderable/_FontAtlas.h>
 #include <Graphics/Resource/SpriteAtlas.h>
 
 
@@ -37,7 +35,6 @@ namespace TestFont
 
 		engine::input::Input m_input;
 		std::unique_ptr<engine::graphics::resource::IFontAtlas> m_FontAtlas;
-		std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
 		int m_toggleDraw = 0;
 		std::string m_text;
 
@@ -88,9 +85,6 @@ namespace TestFont
 			m_FontAtlas = std::make_unique<engine::graphics::resource::FontAtlas>(std::make_unique<engine::graphics::resource::SpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>()));
 			m_FontAtlas->Initialize("Terminal", 12);
 
-			m_fontAtlas = std::make_unique<engine::graphics::renderable::FontAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
-			m_fontAtlas->Initialize("Terminal", 12);
-
 			for (unsigned char c = 32; c <= 127; c++)
 			{
 				m_text += c;
@@ -111,22 +105,31 @@ namespace TestFont
 			m_canvas->Begin();
 			{
 				int repeat = 1;
+				std::string title;
 				engine::graphics::renderer::IRenderer* renderer;
 				switch (m_toggleDraw)
 				{
 				case 0: 
-					renderer = m_rendererImmediate.get();
+					title = "draw characters one at a time in batch 100 times";
+					repeat = 100;
+					renderer = m_rendererBatch.get();
 					m_canvas->Clear({ 0.2f, 0.2f, 1.0f, 1.0f }); 
 					break;
 				case 1: 
+					title = "draw characters one at a time in immediate 1 time";
+					repeat = 1;
 					renderer = m_rendererImmediate.get();
 					m_canvas->Clear({ 0.2f, 0.5f, 0.5f, 1.0f });
 					break;
 				case 2: 
-					renderer = m_rendererImmediate.get();
+					title = "draw full ASCII characters as one text in batch 100 times";
+					repeat = 100;
+					renderer = m_rendererBatch.get();
 					m_canvas->Clear({ 0.2f, 0.5f, 0.2f, 1.0f });
 					break;
 				case 3: 
+					title = "draw full ASCII characters as one text in immediate 1 time";
+					repeat = 1;
 					renderer = m_rendererImmediate.get();
 					m_canvas->Clear({ 0.5f, 0.5f, 1.0f, 0.2f });
 					break;
@@ -138,33 +141,20 @@ namespace TestFont
 
 				renderer->Begin();
 				{
-					std::string title;
+					renderer->DrawText(
+						*m_FontAtlas,
+						title,
+						engine::spatial::PositionF{ 650.0f, 10.0f },
+						engine::graphics::ColorF{ 1,1,1,1 }
+					);
+
 					for (int i = 0; i < repeat; i++)
 					{
 						switch (m_toggleDraw)
 						{
 						case 0:
-						{
-							title = "draw characters one at a time using old font";
-							unsigned char ch = 32;
-							for (int row = 0; row < 32; row++)
-							{
-								for (int col = 0; col < 96; col++)
-								{
-									renderer->DrawChar(*m_fontAtlas, ch,
-										engine::spatial::PositionF{ 50 + col * 12.0f, 50 + row * 25.0f },
-										engine::graphics::ColorF{ 1,1,1,1 },
-										0
-									);
-									ch++;
-									if (ch > 127) ch = 32;
-								}
-							}
-							break;
-						}
 						case 1:
 						{
-							title = "draw characters one at a time using new font";
 							unsigned char ch = 32;
 							for (int row = 0; row < 32; row++)
 							{
@@ -184,33 +174,18 @@ namespace TestFont
 							break;
 						}
 						case 2:
-						{
-							title = "draw ASCII characters in string using old font";
-							for (int row = 0; row < 32; row++)
-							{
-								renderer->DrawText(*m_fontAtlas, m_text, engine::spatial::PositionF{ 50, 50 + row * 25.0f }, engine::graphics::ColorF{ 1,1,1,1 });
-							}
-							break;
-						}
 						case 3:
 						{
-							title = "draw ASCII characters in string using new font";
 							for (int row = 0; row < 32; row++)
 							{
 								renderer->DrawText(*m_FontAtlas, m_text, engine::spatial::PositionF{ 50, 50 + row * 25.0f }, engine::graphics::ColorF{ 1,1,1,1 });
 							}
 							break;
-
 						}
 						}
 					}
 
-					renderer->DrawText(
-						*m_FontAtlas,
-						title,
-						engine::spatial::PositionF{ 650.0f, 10.0f },
-						engine::graphics::ColorF{ 1,1,1,1 }
-					);
+
 				}
 				renderer->End();
 			}

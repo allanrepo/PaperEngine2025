@@ -177,9 +177,6 @@
     <ClInclude Include="Include\Graphics\Renderable\IRenderable.h">
       <Filter>Graphics\Renderable</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\Renderable\_IFontAtlas.h">
-      <Filter>Graphics\Renderable</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Graphics\Renderer\DX11RendererBase.h">
       <Filter>Graphics\Renderer</Filter>
     </ClInclude>
@@ -215,9 +212,6 @@
     </ClInclude>
     <ClInclude Include="Include\Graphics\Resource\DX11TextureImpl.h">
       <Filter>Graphics\Resource</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Graphics\Renderable\_FontAtlas.h">
-      <Filter>Graphics\Renderable</Filter>
     </ClInclude>
     <ClInclude Include="Include\Engine\Factory\TextureFactory.h">
       <Filter>Engine\Factory</Filter>
@@ -385,9 +379,6 @@
     </ClCompile>
     <ClCompile Include="Source\Graphics\Resource\DX11TextureImpl.cpp">
       <Filter>Graphics\Resource</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Graphics\Renderable\_FontAtlas.cpp">
-      <Filter>Graphics\Renderable</Filter>
     </ClCompile>
     <ClCompile Include="Source\Win32\GDIUtility.cpp">
       <Filter>Win32</Filter>

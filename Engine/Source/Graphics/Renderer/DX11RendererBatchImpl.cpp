@@ -462,25 +462,6 @@ void engine::graphics::dx11::renderer::DX11RendererBatchImpl::Draw(
 
 // Draws a string using a font atlas at the specified position and color
 void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawText(
-	const engine::graphics::renderable::IFontAtlas& font, // Font atlas
-	const std::string& text,                    // Text to render
-	const engine::spatial::PositionF& pos,                                 // Top-left screen position
-	const engine::graphics::ColorF& color                                   // RGBA color tint
-)
-{
-	float xCurr = pos.x;
-	for (char c : text)
-	{
-		engine::spatial::PositionF _pos = { xCurr, pos.y };
-		// draw the char
-		DrawChar(font, c, _pos, color, 0);
-
-		xCurr += font.GetWidth(c);
-	}
-}
-
-// Draws a string using a font atlas at the specified position and color
-void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawText(
 	const engine::graphics::resource::IFontAtlas& font, // Font atlas
 	const std::string& text,                    // Text to render
 	const engine::spatial::PositionF& pos,                                 // Top-left screen position
@@ -501,89 +482,6 @@ void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawText(
 
 		xCurr += glyph.GetWidth();
 	}
-}
-
-// Draws a single character using a font atlas with color and rotation
-void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawChar(
-	const engine::graphics::renderable::IFontAtlas& font, // Font atlas
-	const unsigned char character,            // Character to render
-	const engine::spatial::PositionF& pos,                                 // Top-left screen position
-	const engine::graphics::ColorF& color,                                   // RGBA color tint
-	const float rotation                      // Rotation in radians
-)
-{
-#pragma region // if there's enough on queue to draw in batch, let's do it
-	if (m_nCurrSpriteCount >= MAXSPRITEBATCH)
-	{
-		DrawBatch();
-		m_nCurrSpriteCount = 0;
-	}
-#pragma endregion
-
-#pragma region // check if we need to bind texture. if current bound texture is same as what is needed for this draw call, then no need to bind this
-	if (font.CanBind())
-	{
-		// if there is any draw request on queue, flush it first
-		if (m_nCurrSpriteCount > 0)
-		{
-			DrawBatch();
-			m_nCurrSpriteCount = 0;
-		}
-		// then bind its texture
-		font.Bind();
-	}
-#pragma endregion
-
-#pragma region // set texture use flag
-	m_UpdateConstantBuffer.Misc[m_nCurrSpriteCount].useTexture = 1;
-#pragma endregion
-
-#pragma region // update texture transform for this draw request. since we are rendering the whole texture, we set the scale to 1 and translate to 0
-	float u0, v0, u1, v1;
-	font.GetNormalizedTexCoord(character, u0, v0, u1, v1);
-	m_UpdateConstantBuffer.texture[m_nCurrSpriteCount].scale.x = u1 - u0;
-	m_UpdateConstantBuffer.texture[m_nCurrSpriteCount].scale.y = v1 - v0;
-	m_UpdateConstantBuffer.texture[m_nCurrSpriteCount].translate.x = u0;
-	m_UpdateConstantBuffer.texture[m_nCurrSpriteCount].translate.y = v0;
-#pragma endregion
-
-#pragma region // calculate vertex scale tranform based on the size of the font. 
-	float width = font.GetWidth(character);
-	float height = font.GetHeight(character);
-	m_UpdateConstantBuffer.vertex[m_nCurrSpriteCount].scale.x = width;
-	m_UpdateConstantBuffer.vertex[m_nCurrSpriteCount].scale.y = height;
-#pragma endregion
-
-#pragma region // update vertex translate transform. this will be the position. 
-	m_UpdateConstantBuffer.vertex[m_nCurrSpriteCount].translate.x = (-m_D3DViewPort.Width + width) / 2 + pos.x;
-	m_UpdateConstantBuffer.vertex[m_nCurrSpriteCount].translate.y = (m_D3DViewPort.Height - height) / 2 + -pos.y;
-#pragma endregion
-
-#pragma region // update rotation
-	m_UpdateConstantBuffer.Misc[m_nCurrSpriteCount].rotate = rotation;
-#pragma endregion
-
-#pragma region // set color to white as it will be multiplied with texture color and we don't want to change the texture color
-	m_UpdateConstantBuffer.color[m_nCurrSpriteCount].r = color.red;
-	m_UpdateConstantBuffer.color[m_nCurrSpriteCount].g = color.green;
-	m_UpdateConstantBuffer.color[m_nCurrSpriteCount].b = color.blue;
-	m_UpdateConstantBuffer.color[m_nCurrSpriteCount].a = color.alpha;
-#pragma endregion
-
-#pragma region // set view clip
-#if SPRITEBATCH_USESHADERWITHRECTVIEW
-	m_UpdateConstantBuffer.Misc[m_nCurrSpriteCount].clippingEnabled = m_clippingEnabled ? 1 : 0;
-	// we are translating the clip region to be relative to D3D viewport top-left because it is possible the viewport is not at 0,0
-	m_UpdateConstantBuffer.view[m_nCurrSpriteCount].x = m_clipRegion.left + m_D3DViewPort.TopLeftX;
-	m_UpdateConstantBuffer.view[m_nCurrSpriteCount].y = m_clipRegion.top + m_D3DViewPort.TopLeftY;
-	m_UpdateConstantBuffer.view[m_nCurrSpriteCount].z = m_clipRegion.right + m_D3DViewPort.TopLeftX;
-	m_UpdateConstantBuffer.view[m_nCurrSpriteCount].w = m_clipRegion.bottom + m_D3DViewPort.TopLeftY;
-#endif
-#pragma endregion
-
-#pragma region // increment batch counter
-	m_nCurrSpriteCount++;
-#pragma endregion
 }
 
 void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawRenderable(

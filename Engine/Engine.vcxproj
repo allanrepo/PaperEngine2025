@@ -54,9 +54,7 @@
     <ClInclude Include="Include\Graphics\Core\ICanvasImpl.h" />
     <ClInclude Include="Include\Graphics\IO\DX11ImageFileHelper.h" />
     <ClInclude Include="Include\Graphics\Renderable\DrawableSurface.h" />
-    <ClInclude Include="Include\Graphics\Renderable\_FontAtlas.h" />
     <ClInclude Include="Include\Graphics\Renderable\IDrawableSurface.h" />
-    <ClInclude Include="Include\Graphics\Renderable\_IFontAtlas.h" />
     <ClInclude Include="Include\Graphics\Renderable\IImageSurface.h" />
     <ClInclude Include="Include\Graphics\Renderable\ImageSurface.h" />
     <ClInclude Include="Include\Graphics\Renderable\IRenderable.h" />
@@ -118,7 +116,6 @@
     <ClCompile Include="Source\Graphics\Core\DX11Core.cpp" />
     <ClCompile Include="Source\Graphics\IO\DX11ImageFileHelper.cpp" />
     <ClCompile Include="Source\Graphics\Renderable\DrawableSurface.cpp" />
-    <ClCompile Include="Source\Graphics\Renderable\_FontAtlas.cpp" />
     <ClCompile Include="Source\Graphics\Renderable\ImageSurface.cpp" />
     <ClCompile Include="Source\Graphics\Renderable\Sprite.cpp" />
     <ClCompile Include="Source\Graphics\Renderer\DX11RendererBase.cpp" />
