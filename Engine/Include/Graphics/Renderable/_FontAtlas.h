@@ -1,5 +1,6 @@
 #pragma once
-#include <Graphics/Renderable/IFontAtlas.h>
+#include <Graphics/Renderable/_IFontAtlas.h>
+#include <Math/Rect.h>
 #include <string>
 #include <memory>
 #include <vector>
@@ -25,7 +26,8 @@ namespace engine::graphics::renderable
 
 		// TODO: glyphs are not populated yet. it is also not defined yet. its data structure is defined in Text/Glyph.h but it may not be final
 		std::vector<text::Glyph> glyphs;
-		std::vector<std::array<float, 4>> m_textNormalizedCoords;
+		//std::vector<std::array<float, 4>> m_textNormalizedCoords;
+		std::vector<engine::math::geometry::RectF> m_textNormalizedCoords;
 
 	public:
 		FontAtlas(std::unique_ptr<engine::graphics::resource::ITexture> tex);

@@ -41,10 +41,18 @@ namespace engine::graphics::renderable
 	// is renderable
 	// has pointer to sprite atlas 
 	// has source rect (normalized rectangular coordinates or UV)
-	class Sprite : public engine::graphics::renderable::IRenderable, public spatial::ISizeable<float>, public core::View<engine::graphics::resource::ISpriteAtlas>
+	// Sprite is sprite. Is is NOT a SpriteAtlas.It has a View SpriteAtlas instead.
+	// 
+	// design consideration: 
+	// change View<T> as composition instead of inheritance. in inheritance, Sprite is behaving like SpriteAtlas
+	// View<T> -> operator allows Sprite to call SpriteAtlas methods. making View<T> protected prevents that but it is visible in intellisense
+	// that is confusing. Sprite is sprite. Is is NOT a SpriteAtlas.It has a View SpriteAtlas instead.
+	class Sprite : public engine::graphics::renderable::IRenderable, public spatial::ISizeable<float>//, private core::View<engine::graphics::resource::ISpriteAtlas>
 	{
 	private:
 		engine::math::geometry::RectF m_rect;
+		engine::spatial::SizeF m_size;
+		core::View<engine::graphics::resource::ISpriteAtlas> m_view;
 
 		friend class engine::graphics::resource::SpriteAtlas;
 		friend class engine::graphics::resource::ISpriteAtlas;
@@ -55,6 +63,12 @@ namespace engine::graphics::renderable
 
 	public:
 		~Sprite() = default;
+
+		inline bool isValid() const
+		{
+			return m_view.isValid();
+			//return core::View<engine::graphics::resource::ISpriteAtlas>::isValid();
+		}
 
 		// ISizeable methods implementation
 		virtual float GetWidth() const override final;

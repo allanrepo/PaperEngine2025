@@ -2,6 +2,7 @@
 #include "TestTile.h"
 #include "TestAnimation.h"
 #include "TestSprite.h"
+#include "TestFont.h"
 #include "TestCanvas.h"
 #include "TestEngine.h"
 #include "TestWin32.h"
@@ -151,17 +152,15 @@ int main()
     //GenerateOrganicTilemapCSV("256x256.csv", 256, 256, 32, 16);
 
 	//test::TestWin32 testWin32;
-	//test::TestCanvas testCanvas;
 	//test::TestEngine testEngine;
 	//TestAsyncFileReader::Test testAsyncFileReader;
     //demo::Demo demoInstance(std::make_unique<demo::LoadTileLayerState>());
-    //testFrameRate::Test::Instance().Run();
 
     // OK
     //TestCamera::Test testCamera;
     //TestTile::Test testTile;
     //test::TestFileReader testFileReader;
-    test::TestSprite testSprite;
+    //test::TestSprite testSprite;
     //test::TestAnimation testAnimation;
     //demo::Demo demoInstance(std::make_unique<demo::LoadAsyncLoaderState>("..\\Assets\\256x256.csv"));
     //demo::Demo1 demoTest;
@@ -170,6 +169,9 @@ int main()
     //demo::Demo demoInstance(std::make_unique<demo::DemoStateCameraMap>());
     //demo::Demo demoInstance(std::make_unique<demo::DemoStateActor>());
     //TestLargeMap::Test testLargeMap;
+    //testFrameRate::Test::Instance().Run();
+    //test::TestCanvas testCanvas;
+    TestFont::Test testFont;
 
 
 	return 0;

@@ -32,8 +32,6 @@ on map rendering state
 #include <Timer/Pulse.h>
 #include <State/State.h>
 #include <State/StateMachine.h>	
-#include <Graphics/Renderable/IFontAtlas.h>
-#include <Graphics/Renderable/FontAtlas.h>
 #include <Command/CommandQueue.h>
 #include <Command/ICommand.h>
 #include <Command/DrawCommand.h>
@@ -337,7 +335,7 @@ namespace TestAsyncFileReader
 		AsyncFileReader m_fileReader1;
 		AsyncFileReader m_fileReader2;
 		std::deque<std::string> m_files;
-		std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
+		std::unique_ptr<engine::graphics::resource::IFontAtlas> m_fontAtlas;
 
 		engine::performance::FrameRateMonitor m_frameRateMonitor;
 		engine::performance::FrameRateMonitor m_stateFrameRateMonitor;
@@ -399,7 +397,7 @@ namespace TestAsyncFileReader
 			LOG("Renderer (DX11) created...");
 
 			// create font atlas
-			m_fontAtlas = std::make_unique<engine::graphics::renderable::FontAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
+			m_fontAtlas = std::make_unique<engine::graphics::resource::FontAtlas>(std::make_unique<engine::graphics::resource::SpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>()));
 			m_fontAtlas->Initialize("Arial", 24);
 			LOG("Font atlas created and initialized...");
 
@@ -477,7 +475,7 @@ namespace TestAsyncFileReader
 			return *m_renderer;
 		}
 
-		engine::graphics::renderable::IFontAtlas& GetFontAtlas() const
+		engine::graphics::resource::IFontAtlas& GetFontAtlas() const
 		{
 			return *m_fontAtlas;
 		}
@@ -649,11 +647,6 @@ namespace TestAsyncFileReader
 	class LoadState : public engine::state::State<TestAsyncFileReader::Test>
 	{
 	private:
-		//std::deque<std::string> m_files;
-		//std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
-		//performance::FrameRateMonitor m_frameRateMonitor;
-		//AsyncFileReader m_fileReader;
-
 	public:
 		LoadState()
 		{

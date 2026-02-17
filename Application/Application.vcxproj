@@ -144,6 +144,7 @@
     <ClInclude Include="TestCanvas.h" />
     <ClInclude Include="TestEngine.h" />
     <ClInclude Include="TestFileReader.h" />
+    <ClInclude Include="TestFont.h" />
     <ClInclude Include="TestFrameRate.h" />
     <ClInclude Include="TestLargeMap.h" />
     <ClInclude Include="TestSprite.h" />

@@ -46,9 +46,9 @@ void engine::graphics::renderer::Renderer::EnableClipping(const bool enable)
 
 // Draws a colored quad at the specified position, size, and rotation
 void engine::graphics::renderer::Renderer::Draw(
-    const engine::spatial::PositionF pos, 
-    const spatial::SizeF size, 
-    const engine::graphics::ColorF color, 
+    const engine::spatial::PositionF& pos,
+    const spatial::SizeF& size,
+    const engine::graphics::ColorF& color,
     const float rotation
 )
 {
@@ -59,8 +59,19 @@ void engine::graphics::renderer::Renderer::Draw(
 void engine::graphics::renderer::Renderer::DrawText(
     const engine::graphics::renderable::IFontAtlas& font, // Font atlas
     const std::string& text,                    // Text to render
-    const engine::spatial::PositionF pos,                                 // Top-left screen position
-    const engine::graphics::ColorF color
+    const engine::spatial::PositionF& pos,                                 // Top-left screen position
+    const engine::graphics::ColorF& color
+)
+{
+    impl->DrawText(font, text, pos, color);
+}
+
+// Draws a string using a font atlas at the specified position and color
+void engine::graphics::renderer::Renderer::DrawText(
+    const engine::graphics::resource::IFontAtlas& font, // Font atlas
+    const std::string& text,                    // Text to render
+    const engine::spatial::PositionF& pos,                                 // Top-left screen position
+    const engine::graphics::ColorF& color
 )
 {
     impl->DrawText(font, text, pos, color);
@@ -70,8 +81,8 @@ void engine::graphics::renderer::Renderer::DrawText(
 void engine::graphics::renderer::Renderer::DrawChar(
     const engine::graphics::renderable::IFontAtlas& font, // Font atlas
     const unsigned char character,              // Character to render
-    const engine::spatial::PositionF pos,               // Top-left screen position
-    const engine::graphics::ColorF color,               // RGBA color tint
+    const engine::spatial::PositionF& pos,               // Top-left screen position
+    const engine::graphics::ColorF& color,               // RGBA color tint
     const float rotation                        // Rotation in radians
 )
 {
@@ -80,9 +91,9 @@ void engine::graphics::renderer::Renderer::DrawChar(
 
 void engine::graphics::renderer::Renderer::DrawRenderable(
     const engine::graphics::renderable::IRenderable& renderable,                    // renderable object
-    const engine::spatial::PositionF pos,                                 // Top-left screen position
-    const spatial::SizeF size,                               // Sprite dimensions
-    const engine::graphics::ColorF color,                                   // RGBA color tint
+    const engine::spatial::PositionF& pos,                                 // Top-left screen position
+    const spatial::SizeF& size,                               // Sprite dimensions
+    const engine::graphics::ColorF& color,                                   // RGBA color tint
     const float rotation                                                    // Rotation in radians
 )
 {

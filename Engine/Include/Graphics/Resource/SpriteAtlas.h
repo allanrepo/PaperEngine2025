@@ -33,6 +33,7 @@ namespace engine::graphics::resource
 
 		// ISpriteAtlas methods implementation
 		virtual bool Initialize(const wchar_t* fileNamePath) override final;
+		bool Initialize(unsigned int width, unsigned int height, const void* srcData, unsigned int bytesPerRow) override final;
 		virtual void AddUVRect(const engine::math::geometry::RectF& rect) override final;
 		virtual void AddUVRects(const std::vector<engine::math::geometry::RectF>& rects) override final;
 		virtual const inline engine::math::geometry::RectF GetUVRect(int index) const override final;

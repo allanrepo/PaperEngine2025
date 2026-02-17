@@ -1,5 +1,6 @@
 #pragma once
-#include <Graphics/Renderable/IFontAtlas.h>
+#include <Graphics/Renderable/_IFontAtlas.h>
+#include <Graphics/Resource/IFontAtlas.h>
 #include <Math/Rect.h>
 #include <Spatial/Position.h>
 #include <Spatial/Size.h>
@@ -36,9 +37,9 @@ namespace engine::graphics::renderer
 
         // Draws a colored quad at the specified position, size, and rotation
         virtual void Draw(
-            const engine::spatial::PositionF pos,                                 // Top-left screen position
-            const spatial::SizeF size,                               // Sprite dimensions
-            const engine::graphics::ColorF color,                                   // RGBA color tint
+            const engine::spatial::PositionF& pos,                                 // Top-left screen position
+            const spatial::SizeF& size,                               // Sprite dimensions
+            const engine::graphics::ColorF& color,                                   // RGBA color tint
             const float rotation                                                    // Rotation in radians
         ) = 0;
 
@@ -46,25 +47,33 @@ namespace engine::graphics::renderer
         virtual void DrawText(
             const engine::graphics::renderable::IFontAtlas& font, // Font atlas
             const std::string& text,                    // Text to render
-            const engine::spatial::PositionF pos,                                 // Top-left screen position
-            const engine::graphics::ColorF color                                   // RGBA color tint
+            const engine::spatial::PositionF& pos,                                 // Top-left screen position
+            const engine::graphics::ColorF& color                                   // RGBA color tint
+        ) = 0;
+
+        // Draws a string using a font atlas at the specified position and color
+        virtual void DrawText(
+            const engine::graphics::resource::IFontAtlas& font, // Font atlas
+            const std::string& text,                    // Text to render
+            const engine::spatial::PositionF& pos,                                 // Top-left screen position
+            const engine::graphics::ColorF& color                                   // RGBA color tint
         ) = 0;
 
         // Draws a single character using a font atlas with color and rotation
         virtual void DrawChar(
             const engine::graphics::renderable::IFontAtlas& font, // Font atlas
             const unsigned char character,              // Character to render
-            const engine::spatial::PositionF pos,               // Top-left screen position
-            const engine::graphics::ColorF color,               // RGBA color tint
+            const engine::spatial::PositionF& pos,               // Top-left screen position
+            const engine::graphics::ColorF& color,               // RGBA color tint
             const float rotation                        // Rotation in radians
         ) = 0;
 
         // Draws a renderable quad with color tint and rotation
         virtual void DrawRenderable(
             const engine::graphics::renderable::IRenderable& renderable,                    // renderable object
-            const engine::spatial::PositionF pos,                                 // Top-left screen position
-            const spatial::SizeF size,                               // Sprite dimensions
-            const engine::graphics::ColorF color,                                   // RGBA color tint
+            const engine::spatial::PositionF& pos,                                 // Top-left screen position
+            const spatial::SizeF& size,                               // Sprite dimensions
+            const engine::graphics::ColorF& color,                                   // RGBA color tint
             const float rotation                                                    // Rotation in radians
         ) = 0;
     };

@@ -54,9 +54,9 @@
     <ClInclude Include="Include\Graphics\Core\ICanvasImpl.h" />
     <ClInclude Include="Include\Graphics\IO\DX11ImageFileHelper.h" />
     <ClInclude Include="Include\Graphics\Renderable\DrawableSurface.h" />
-    <ClInclude Include="Include\Graphics\Renderable\FontAtlas.h" />
+    <ClInclude Include="Include\Graphics\Renderable\_FontAtlas.h" />
     <ClInclude Include="Include\Graphics\Renderable\IDrawableSurface.h" />
-    <ClInclude Include="Include\Graphics\Renderable\IFontAtlas.h" />
+    <ClInclude Include="Include\Graphics\Renderable\_IFontAtlas.h" />
     <ClInclude Include="Include\Graphics\Renderable\IImageSurface.h" />
     <ClInclude Include="Include\Graphics\Renderable\ImageSurface.h" />
     <ClInclude Include="Include\Graphics\Renderable\IRenderable.h" />
@@ -68,6 +68,8 @@
     <ClInclude Include="Include\Graphics\Renderer\IRendererImpl.h" />
     <ClInclude Include="Include\Graphics\Renderer\Renderer.h" />
     <ClInclude Include="Include\Graphics\Resource\DX11TextureImpl.h" />
+    <ClInclude Include="Include\Graphics\Resource\FontAtlas.h" />
+    <ClInclude Include="Include\Graphics\Resource\IFontAtlas.h" />
     <ClInclude Include="Include\Graphics\Resource\ISpriteAtlas.h" />
     <ClInclude Include="Include\Graphics\Resource\ITexture.h" />
     <ClInclude Include="Include\Graphics\Resource\ITextureImpl.h" />
@@ -116,7 +118,7 @@
     <ClCompile Include="Source\Graphics\Core\DX11Core.cpp" />
     <ClCompile Include="Source\Graphics\IO\DX11ImageFileHelper.cpp" />
     <ClCompile Include="Source\Graphics\Renderable\DrawableSurface.cpp" />
-    <ClCompile Include="Source\Graphics\Renderable\FontAtlas.cpp" />
+    <ClCompile Include="Source\Graphics\Renderable\_FontAtlas.cpp" />
     <ClCompile Include="Source\Graphics\Renderable\ImageSurface.cpp" />
     <ClCompile Include="Source\Graphics\Renderable\Sprite.cpp" />
     <ClCompile Include="Source\Graphics\Renderer\DX11RendererBase.cpp" />
@@ -124,6 +126,7 @@
     <ClCompile Include="Source\Graphics\Renderer\DX11RendererImmediateImpl.cpp" />
     <ClCompile Include="Source\Graphics\Renderer\Renderer.cpp" />
     <ClCompile Include="Source\Graphics\Resource\DX11TextureImpl.cpp" />
+    <ClCompile Include="Source\Graphics\Resource\FontAtlas.cpp" />
     <ClCompile Include="Source\Graphics\Resource\SpriteAtlas.cpp" />
     <ClCompile Include="Source\Graphics\Resource\Texture.cpp" />
     <ClCompile Include="Source\IO\ASyncFileReader.cpp" />

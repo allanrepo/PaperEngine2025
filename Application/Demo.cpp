@@ -1,4 +1,4 @@
-#include <Graphics/Renderable/FontAtlas.h>
+#include <Graphics/Resource/FontAtlas.h>
 #include <Graphics/Resource/DX11TextureImpl.h>
 #include <Utilities/Logger.h>
 #include <algorithm>
@@ -73,7 +73,7 @@ demo::Demo::~Demo()
 void demo::Demo::OnStart()
 {
 	// create font atlas for rendering text we will use fore demo
-	m_fontAtlas = std::make_unique<engine::graphics::renderable::FontAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
+	m_fontAtlas = std::make_unique<engine::graphics::resource::FontAtlas>(std::make_unique<engine::graphics::resource::SpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>()));
 	m_fontAtlas->Initialize("Terminal", 12);
 	LOG("[Demo] Font atlas created and initialized...");
 

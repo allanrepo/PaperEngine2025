@@ -17,7 +17,7 @@
 #include <IO/ASyncFileReader.h>
 #include <unordered_map>
 #include <Graphics/Resource/DX11TextureImpl.h>
-#include <Graphics/Renderable/FontAtlas.h>
+#include <Graphics/Resource/FontAtlas.h>
 #include <Engine/Manager/TileMapManager.h>
 #include <Engine/Manager/TileSetManager.h>
 #include <Graphics/Animation/Animation.h>
@@ -243,7 +243,7 @@ namespace demo
 
 		engine::Engine m_engine;
 		engine::state::StateMachine<Demo> m_stateMachine;
-		std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
+		std::unique_ptr<engine::graphics::resource::IFontAtlas> m_fontAtlas;
 		std::unique_ptr<engine::state::State<Demo>> m_state;
 
 		AnimatedTileSetManager m_tileSetManager;

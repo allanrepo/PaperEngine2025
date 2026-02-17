@@ -275,9 +275,9 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::EnableClipping
 }
 
 void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
-	const engine::spatial::PositionF pos, 
-	const spatial::SizeF size, 
-	const engine::graphics::ColorF color, 
+	const engine::spatial::PositionF& pos,
+	const spatial::SizeF& size,
+	const engine::graphics::ColorF& color,
 	const float rotation
 )
 {
@@ -331,10 +331,34 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
 
 // Draws a string using a font atlas at the specified position and color
 void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawText(
+	const engine::graphics::resource::IFontAtlas& font, // Font atlas
+	const std::string& text,                    // Text to render
+	const engine::spatial::PositionF& pos,                                 // Top-left screen position
+	const engine::graphics::ColorF& color
+)
+{
+	// this will be the horizontal position of the current character (first char at this point)
+	float xCurr = pos.x;
+
+	for (char c : text)
+	{
+		engine::spatial::PositionF _pos = { xCurr, pos.y };
+
+		engine::graphics::renderable::Sprite glyph = font.GetGlyph(c);
+
+		// draw the char
+		DrawRenderable(glyph, _pos, glyph.GetSize(), color, 0);
+
+		xCurr += glyph.GetWidth();
+	}
+}
+
+// Draws a string using a font atlas at the specified position and color
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawText(
 	const engine::graphics::renderable::IFontAtlas& font, // Font atlas
 	const std::string& text,                    // Text to render
-	const engine::spatial::PositionF pos,                                 // Top-left screen position
-	const engine::graphics::ColorF color                                   // RGBA color tint
+	const engine::spatial::PositionF& pos,                                 // Top-left screen position
+	const engine::graphics::ColorF& color                                   // RGBA color tint
 )
 {
 	float xCurr = pos.x;
@@ -352,8 +376,8 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawText(
 void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawChar(
 	const engine::graphics::renderable::IFontAtlas& font, // Font atlas
 	const unsigned char character,            // Character to render
-	const engine::spatial::PositionF pos,                                 // Top-left screen position
-	const engine::graphics::ColorF color,                                   // RGBA color tint
+	const engine::spatial::PositionF& pos,                                 // Top-left screen position
+	const engine::graphics::ColorF& color,                                   // RGBA color tint
 	const float rotation                      // Rotation in radians
 )
 {
@@ -412,9 +436,9 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawChar(
 
 void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawRenderable(
 	const engine::graphics::renderable::IRenderable& renderable, 
-	const engine::spatial::PositionF pos, 
-	const spatial::SizeF size, 
-	const engine::graphics::ColorF color, 
+	const engine::spatial::PositionF& pos, 
+	const spatial::SizeF& size, 
+	const engine::graphics::ColorF& color, 
 	const float rotation
 )
 {

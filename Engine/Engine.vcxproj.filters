@@ -177,7 +177,7 @@
     <ClInclude Include="Include\Graphics\Renderable\IRenderable.h">
       <Filter>Graphics\Renderable</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\Renderable\IFontAtlas.h">
+    <ClInclude Include="Include\Graphics\Renderable\_IFontAtlas.h">
       <Filter>Graphics\Renderable</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\Renderer\DX11RendererBase.h">
@@ -216,7 +216,7 @@
     <ClInclude Include="Include\Graphics\Resource\DX11TextureImpl.h">
       <Filter>Graphics\Resource</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\Renderable\FontAtlas.h">
+    <ClInclude Include="Include\Graphics\Renderable\_FontAtlas.h">
       <Filter>Graphics\Renderable</Filter>
     </ClInclude>
     <ClInclude Include="Include\Engine\Factory\TextureFactory.h">
@@ -327,6 +327,12 @@
     <ClInclude Include="Include\Command\DrawCommand.h">
       <Filter>Command</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Graphics\Resource\FontAtlas.h">
+      <Filter>Graphics\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Resource\IFontAtlas.h">
+      <Filter>Graphics\Resource</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">
@@ -380,7 +386,7 @@
     <ClCompile Include="Source\Graphics\Resource\DX11TextureImpl.cpp">
       <Filter>Graphics\Resource</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\Renderable\FontAtlas.cpp">
+    <ClCompile Include="Source\Graphics\Renderable\_FontAtlas.cpp">
       <Filter>Graphics\Renderable</Filter>
     </ClCompile>
     <ClCompile Include="Source\Win32\GDIUtility.cpp">
@@ -429,6 +435,9 @@
       <Filter>Engine\Loader</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\Resource\SpriteAtlas.cpp">
+      <Filter>Graphics\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Resource\FontAtlas.cpp">
       <Filter>Graphics\Resource</Filter>
     </ClCompile>
   </ItemGroup>

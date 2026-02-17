@@ -1,6 +1,6 @@
 #include <Win32/GDIUtility.h>
 #include <Graphics/Resource/ITexture.h>
-#include <Graphics/Renderable/FontAtlas.h>
+#include <Graphics/Renderable/_FontAtlas.h>
 
 engine::graphics::renderable::FontAtlas::FontAtlas(std::unique_ptr<engine::graphics::resource::ITexture> tex)
 	: texture(std::move(tex))
@@ -75,10 +75,15 @@ bool engine::graphics::renderable::FontAtlas::GetNormalizedTexCoord(const unsign
 		LOGERROR("Invalid character specified in getting texture coordinates. Integer value must be between 33 to 127. Specified value is " << std::to_string(character));
 		return false;
 	}
-	u0 = m_textNormalizedCoords[character - 32][0]; // left
-	v0 = m_textNormalizedCoords[character - 32][1]; // top
-	u1 = m_textNormalizedCoords[character - 32][2]; // right 
-	v1 = m_textNormalizedCoords[character - 32][3]; // bottom
+	u0 = m_textNormalizedCoords[character - 32].left; // left
+	v0 = m_textNormalizedCoords[character - 32].top; // top
+	u1 = m_textNormalizedCoords[character - 32].right; // right 
+	v1 = m_textNormalizedCoords[character - 32].bottom; // bottom
+
+	//u0 = m_textNormalizedCoords[character - 32][0]; // left
+	//v0 = m_textNormalizedCoords[character - 32][1]; // top
+	//u1 = m_textNormalizedCoords[character - 32][2]; // right 
+	//v1 = m_textNormalizedCoords[character - 32][3]; // bottom
 	return true;
 }
 
@@ -104,8 +109,8 @@ const float engine::graphics::renderable::FontAtlas::GetWidth(const unsigned cha
 		LOGERROR("Invalid character specified in getting texture coordinates. Integer value must be between 33 to 127. Specified value is " << std::to_string(character));
 		throw std::exception("Invalid character specified in getting texture coordinates. Integer value must be between 33 to 127.");
 	}
-	float u0 = m_textNormalizedCoords[character - 32][0]; // left
-	float u1 = m_textNormalizedCoords[character - 32][2]; // right 
+	float u0 = m_textNormalizedCoords[character - 32].left; // left
+	float u1 = m_textNormalizedCoords[character - 32].right; // right 
 
 	return texture->GetWidth() * (u1 - u0);
 }
@@ -118,8 +123,8 @@ const float engine::graphics::renderable::FontAtlas::GetHeight(const unsigned ch
 		throw std::exception("Invalid character specified in getting texture coordinates. Integer value must be between 33 to 127.");
 	}
 
-	float v0 = m_textNormalizedCoords[character - 32][1]; // top
-	float v1 = m_textNormalizedCoords[character - 32][3]; // bottom
+	float v0 = m_textNormalizedCoords[character - 32].top; // top
+	float v1 = m_textNormalizedCoords[character - 32].bottom; // bottom
 
 	return texture->GetHeight() * (v1 - v0);
 }

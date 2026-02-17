@@ -16,7 +16,7 @@ namespace engine
 				class DrawCommandBase : public ICommand
 				{
 				protected:
-					::engine::graphics::renderer::IRenderer& m_renderer;
+					engine::graphics::renderer::IRenderer& m_renderer;
 
 				public:
 					DrawCommandBase(::engine::graphics::renderer::IRenderer& renderer) :
@@ -63,17 +63,17 @@ namespace engine
 				class DrawTextCommand : public DrawCommandBase
 				{
 				private:
-					const ::engine::graphics::renderable::IFontAtlas& m_font;
+					const engine::graphics::resource::IFontAtlas& m_font;
 					std::string m_text;
 					engine::spatial::PositionF m_pos;
-					::engine::graphics::ColorF m_color;
+					engine::graphics::ColorF m_color;
 				public:
 					DrawTextCommand(
-						::engine::graphics::renderer::IRenderer& renderer,
-						const ::engine::graphics::renderable::IFontAtlas& font,
+						engine::graphics::renderer::IRenderer& renderer,
+						const engine::graphics::resource::IFontAtlas& font,
 						const std::string& text,
 						engine::spatial::PositionF pos,
-						::engine::graphics::ColorF color
+						engine::graphics::ColorF color
 					) :
 						DrawCommandBase(renderer),
 						m_font(font),

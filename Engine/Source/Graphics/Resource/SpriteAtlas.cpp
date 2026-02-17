@@ -12,10 +12,20 @@ bool engine::graphics::resource::SpriteAtlas::Initialize(const wchar_t* fileName
 {
 	if (!m_texture->Initialize(fileNamePath))
 	{
-		LOGERROR("Failed to initialize SpriteSheet' texture resource.");
+		LOGERROR("Failed to initialize SpriteAtlas' texture resource.");
 		return false;
 	}
 
+	return true;
+}
+
+bool engine::graphics::resource::SpriteAtlas::Initialize(unsigned int width, unsigned int height, const void* srcData, unsigned int bytesPerRow)
+{
+	if (!m_texture->Initialize(width, height, srcData, bytesPerRow))
+	{
+		LOGERROR("Failed to initialize SpriteAtlas' texture resource.");
+		return false;
+	}
 	return true;
 }
 

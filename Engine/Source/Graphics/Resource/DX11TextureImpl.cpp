@@ -161,10 +161,6 @@ bool engine::graphics::dx11::resource::DX11TextureImpl::CanBind() const
 
 void engine::graphics::dx11::resource::DX11TextureImpl::Bind() const
 {
-	cache::BindCache<engine::graphics::resource::ITexture>::Instance().Get();
-	cache::BindCache<engine::graphics::resource::ITexture>::Instance().Reset();
-
-
 	cache::BindCache<engine::graphics::resource::ITexture>::Instance().Bind(
 		this, // pointer to texture to bind if needed
 		[this](const engine::graphics::resource::ITexture* tex) // lambda to perform if bind happens

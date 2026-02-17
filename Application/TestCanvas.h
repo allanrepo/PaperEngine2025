@@ -13,8 +13,8 @@
 #include <Graphics/Resource/Texture.h>
 #include <Graphics/Resource/DX11TextureImpl.h>
 #include <Engine/Factory/TextureFactory.h>
-#include <Graphics/Renderable/IFontAtlas.h>
-#include <Graphics/Renderable/FontAtlas.h>
+#include <Graphics/Resource/IFontAtlas.h>
+#include <Graphics/Resource/FontAtlas.h>
 #include <Graphics/Renderable/IImageSurface.h>
 #include <Graphics/Renderable/ImageSurface.h>
 
@@ -27,7 +27,7 @@ namespace test
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		std::unique_ptr<engine::graphics::renderable::IDrawableSurface> m_drawableSurface;
-		std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
+		std::unique_ptr<engine::graphics::resource::IFontAtlas> m_fontAtlas;
 		std::unique_ptr<engine::graphics::renderable::IImageSurface> m_imageSurface;
 
 	public:
@@ -84,7 +84,7 @@ namespace test
 			m_drawableSurface->End();
 
 			// create font atlas
-			m_fontAtlas = std::make_unique<engine::graphics::renderable::FontAtlas>(std::make_unique<engine::graphics::resource::Texture>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>()));
+			m_fontAtlas = std::make_unique<engine::graphics::resource::FontAtlas>(std::make_unique<engine::graphics::resource::SpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>()));
 			m_fontAtlas->Initialize("Comic Sans", 32);
 
 			// create image surface

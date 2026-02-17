@@ -9,8 +9,8 @@
 #include <Graphics/Renderer/DX11RendererBatchImpl.h>
 #include <Graphics/Renderer/Renderer.h>
 #include <limits.h>
-#include <Graphics/Renderable/IFontAtlas.h>
-#include <Graphics/Renderable/FontAtlas.h>
+#include <Graphics/Resource/IFontAtlas.h>
+#include <Graphics/Resource/FontAtlas.h>
 #include <Timer/StopWatch.h>
 #include <Timer/Scheduler.h>
 #include <Performance/FrameRateMonitor.h>
@@ -28,7 +28,7 @@ namespace testFrameRate
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		engine::timer::StopWatch m_stopwatch;
-		std::unique_ptr<engine::graphics::renderable::IFontAtlas> m_fontAtlas;
+		std::unique_ptr<engine::graphics::resource::IFontAtlas> m_fontAtlas;
 		engine::timer::Scheduler m_scheduler;
 		engine::performance::FrameRateMonitor m_frameRateMonitor1;
 		engine::performance::FrameRateMonitor m_frameRateMonitor2;
@@ -78,7 +78,7 @@ namespace testFrameRate
 			LOG("Renderer (DX11) created...");
 
 			// create font atlas
-			m_fontAtlas = std::make_unique<engine::graphics::renderable::FontAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
+			m_fontAtlas = std::make_unique<engine::graphics::resource::FontAtlas>(std::make_unique<engine::graphics::resource::SpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>()));
 			m_fontAtlas->Initialize("Arial", 24);
 			LOG("Font atlas created and initialized...");
 

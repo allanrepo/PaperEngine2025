@@ -4,19 +4,26 @@
 
 
 engine::graphics::renderable::Sprite::Sprite(const engine::graphics::resource::ISpriteAtlas* spriteAtlas, engine::math::geometry::RectF rect) :
-	View<engine::graphics::resource::ISpriteAtlas>(spriteAtlas),
+	//View<engine::graphics::resource::ISpriteAtlas>(spriteAtlas),
+	m_view(spriteAtlas),
 	m_rect(rect)
 {
+	// precompute size relative to spriteatlas size. it is a lot faster than trying to compute it repeatedly on GetSize()
+	// performance hit accumulates as more sprites are rendered
+	m_size = spatial::SizeF{
+		m_view->GetWidth() * (m_rect.right - m_rect.left),
+		m_view->GetHeight() * (m_rect.bottom - m_rect.top)
+	};
 }
 
 void engine::graphics::renderable::Sprite::Bind() const
 {
-	m_data->Bind();
+	m_view->Bind();
 }
 
 bool engine::graphics::renderable::Sprite::CanBind() const
 {
-	return m_data->CanBind();
+	return m_view->CanBind();
 }
 
 engine::math::geometry::RectF engine::graphics::renderable::Sprite::GetUVRect() const
@@ -26,19 +33,22 @@ engine::math::geometry::RectF engine::graphics::renderable::Sprite::GetUVRect() 
 
 float engine::graphics::renderable::Sprite::GetWidth() const
 {
-	return m_data->GetWidth()*(m_rect.right - m_rect.left);
+	return m_size.width;
+	//return m_data->GetWidth()*(m_rect.right - m_rect.left);
 }
 
 float engine::graphics::renderable::Sprite::GetHeight() const
 {
-	return m_data->GetHeight()*(m_rect.bottom - m_rect.top);
+	return m_size.height;
+	//return m_data->GetHeight()*(m_rect.bottom - m_rect.top);
 }
 
 engine::spatial::SizeF engine::graphics::renderable::Sprite::GetSize() const
 {
-	return spatial::SizeF{
-		m_data->GetWidth()* (m_rect.right - m_rect.left),
-		m_data->GetHeight()* (m_rect.bottom - m_rect.top)
-	};
+	return m_size;
+	//return spatial::SizeF{
+	//	m_data->GetWidth()* (m_rect.right - m_rect.left),
+	//	m_data->GetHeight()* (m_rect.bottom - m_rect.top)
+	//};
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <Utilities/Logger.h>
 #include <Utilities/Utilities.h>
+#include <Math/Rect.h>
 #include <windows.h>
 #include <string>
 #include <vector>
@@ -154,7 +155,7 @@ namespace engine::win32
 			unsigned int** ppData, // pointer to the font data, which will be allocated by this function. caller is responsible for freeing this memory
 			unsigned int& width, // is this total width of the font resource if stored in texture??? TODO
 			unsigned int& height, // is this total height of the font resource if stored in texture??? TODO
-			std::vector<std::array<float, 4>>& TextNormalizedCoords, // array of normalized coordinates for each character in the font, where each array contains {left, top, right, bottom} coordinates in normalized texture coordinates (0.0 to 1.0) float??? TODO
+			std::vector<engine::math::geometry::RectF>& TextNormalizedCoords, // array of normalized coordinates for each character in the font, where each array contains {left, top, right, bottom} coordinates in normalized texture coordinates (0.0 to 1.0) float??? TODO
 			const std::string& name = "Arial", // font name, e.g. "Arial". we're not sure if this font name is supported. it is best to query for it first
 			const unsigned int size = 12, // font size in ??? TODO
 			const bool italic = false, // if true, the font will be italicized
@@ -305,11 +306,11 @@ namespace engine::win32
 				nCharIndex = nChar - 32;
 
 				// normalize the texture coordinates. value is a ratio [0:1] with respect to texture size.
-				std::array<float, 4> texCoord = {};
-				texCoord[0] = (float)(x) / (float)nTextureWidth; // left
-				texCoord[1] = (float)(y) / (float)nTextureHeight; // top
-				texCoord[2] = (float)(x + sizeChar.cx) / (float)nTextureWidth; // right
-				texCoord[3] = (float)(y + sizeChar.cy) / (float)nTextureHeight; // bottom
+				engine::math::geometry::RectF texCoord = {};
+				texCoord.left = (float)(x) / (float)nTextureWidth; // left
+				texCoord.top = (float)(y) / (float)nTextureHeight; // top
+				texCoord.right = (float)(x + sizeChar.cx) / (float)nTextureWidth; // right
+				texCoord.bottom = (float)(y + sizeChar.cy) / (float)nTextureHeight; // bottom
 				TextNormalizedCoords.push_back(texCoord);
 
 				// Update the x position, but make sure there's enough space so that characters don't overlap.
