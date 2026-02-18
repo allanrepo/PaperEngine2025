@@ -3,6 +3,7 @@
 #include <Spatial/ISizeable.h>
 #include <vector>
 #include <Core/Bindable.h>
+#include <Graphics/Resource/ITexture.h>
 
 namespace engine
 {
@@ -23,7 +24,7 @@ namespace engine
 				virtual inline size_t GetUVRectCount() const = 0;
 				virtual engine::graphics::renderable::Sprite MakeSprite(int index) const = 0;
 				virtual engine::graphics::renderable::Sprite GetSprite() const = 0;
-
+				virtual void Reset() = 0;
 			};
 		}
 	}

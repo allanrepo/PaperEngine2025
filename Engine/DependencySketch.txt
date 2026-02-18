@@ -74,3 +74,18 @@ or should the game code handle that responsibility?
 
 6. tiles can have lighting effects that change based on time of day or weather conditions
 
+
+
+1. it seems you create instance of controller during actor construction. i thought controller is a common component shared by actors?
+2. animation controller is totally independent of actor state. it reacts to changes in actor's parameter e.g. velocity. how does it align with actor state?
+3. earlier you said actor state contains pointers to animation. it seems you don't need that because animation controller will do it for you?
+4. that leads to next question, how does actor state sync with animation controller? can you give an example of an actor is given instruction to move to target location? can you show how actor updates state as well as animation?
+
+1. you have a predefined animation controller stored globally. then it is copied over (along with all its data) into a constructed actor?
+2. so animation controller has nothing to do with state actor. it is its own job. it reacts to actor parameter change and transitions animation based on it?
+3. so i guess that is where confusion happened. you kept mentioning animation controller state changing animation/clip. i thought the whole time you were referring to actor state. that is because i never had animation controller
+4. so basically in my case, my actor states are fine. all i need to do is remove the parts where it manages animation to play 
+5. in summary, animation controller is like state manager, but it manages animation instead. it is part of the animation. if i implement this, i should remove the animation container from my animator. i return back its original design where it only has reference to current animation.
+6. now how do we handle direction? or face direction? animation has direction too.
+
+1. ok in animation controller state, the animation clip and lambda is a pointer, so only its reference is copied, but state name and nexto is a string and gets copied. the state list is copied. correct?

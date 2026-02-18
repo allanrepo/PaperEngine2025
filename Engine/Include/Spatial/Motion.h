@@ -1,7 +1,7 @@
 #pragma once
 #include <Spatial/Transform.h>
 
-namespace spatial
+namespace engine::spatial
 {
 	template<typename T>
 	class Motion
@@ -11,9 +11,9 @@ namespace spatial
 		float m_speed;
 
 	public:
-		void Update(spatial::Transform<T>& transform, float delta) const
+		void Update(spatial::Transform<T>& transform, double delta) const
 		{
-			transform.SetPosition(transform.GetPosition() + (m_velocity * delta));
+			transform.SetPosition(transform.GetPosition() + (m_velocity * (float)delta));
 		}
 
 		void MoveTo(const spatial::Transform<T>& transform, const engine::spatial::Position<T> target, float speed)

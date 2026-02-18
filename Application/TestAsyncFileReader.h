@@ -37,6 +37,9 @@ on map rendering state
 #include <Command/DrawCommand.h>
 #include <Performance/FrameRateMonitor.h>
 #include <limits.h>
+#include <Timer/FrameRateController.h>
+#include <Timer/Scheduler.h>
+
 #include "Utilities.h"
 
 namespace TestAsyncFileReader

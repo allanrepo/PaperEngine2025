@@ -28,7 +28,7 @@ namespace engine::graphics::resource
 		std::vector<engine::math::geometry::RectF> m_nUVs;
 
 	public:
-		SpriteAtlas(std::unique_ptr<::engine::graphics::resource::ITexture> tex);
+		SpriteAtlas(std::unique_ptr<engine::graphics::resource::ITexture> tex);
 		virtual ~SpriteAtlas() = default;
 
 		// ISpriteAtlas methods implementation
@@ -40,6 +40,7 @@ namespace engine::graphics::resource
 		virtual inline size_t GetUVRectCount() const override final;
 		virtual engine::graphics::renderable::Sprite MakeSprite(int index) const override final;
 		virtual engine::graphics::renderable::Sprite GetSprite() const override final;
+		void Reset() override final;
 
 		// ISizeable methods implementation
 		virtual float GetWidth() const override final;

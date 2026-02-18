@@ -25,6 +25,7 @@
 #include <Engine/Manager/AnimatedTileSetManager.h>
 #include <Engine/Factory/AnimationFactory.h>
 #include <Spatial/Camera.h>
+#include "Actor.h"
 
 //using namespace engine;
 

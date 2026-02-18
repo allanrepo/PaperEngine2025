@@ -14,7 +14,7 @@
 #include "TestFrameRate.h"
 #include "DemoAsyncLoader.h"
 #include "DemoTileMap.h"
-#include <Cache/Registry.h>
+#include "TestActor.h"
 
 #include <iostream>
 #include <fstream>
@@ -171,7 +171,8 @@ int main()
     //TestLargeMap::Test testLargeMap;
     //testFrameRate::Test::Instance().Run();
     //test::TestCanvas testCanvas;
-    TestFont::Test testFont;
+    //TestFont::Test testFont;
+    TestActor::Test testActor;
 
 
 	return 0;

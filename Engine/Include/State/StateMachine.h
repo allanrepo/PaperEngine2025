@@ -80,5 +80,19 @@ namespace engine::state
 		{
 			return m_current.get();
 		}
+
+		template<typename S, typename... Args> 
+		void Set(Args&&... args) 
+		{ 
+			static_assert(std::is_base_of_v<State<T>, S>, "S must derive from State<T>"); 
+			Set(std::make_unique<S>(std::forward<Args>(args)...));
+		}
+
+		template<typename S, typename... Args>
+		void Queue(Args&&... args)
+		{
+			static_assert(std::is_base_of_v<State<T>, S>, "S must derive from State<T>");
+			Queue(std::make_unique<S>(std::forward<Args>(args)...));
+		}
 	};
 }

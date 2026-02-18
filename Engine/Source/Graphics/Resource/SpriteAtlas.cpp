@@ -64,6 +64,11 @@ engine::graphics::renderable::Sprite engine::graphics::resource::SpriteAtlas::Ge
 	return engine::graphics::renderable::Sprite(this, engine::math::geometry::RectF{ 0, 0, 1, 1 });
 }
 
+void engine::graphics::resource::SpriteAtlas::Reset()
+{
+	m_texture->Reset();
+}
+
 void engine::graphics::resource::SpriteAtlas::Bind() const
 {
 	return m_texture->Bind();

@@ -82,7 +82,7 @@ engine::graphics::renderable::Sprite engine::graphics::resource::FontAtlas::GetS
 
 void engine::graphics::resource::FontAtlas::Reset()
 {
-	// TODO: sprite atlas don't have Reset(). if it does, call it here.
+	m_spriteAtlas->Reset();
 	m_glyphs.clear();
 }
 
