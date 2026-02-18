@@ -34,6 +34,15 @@ bool engine::graphics::renderable::DrawableSurface::CanBind() const
 	return texture->CanBind();
 }
 
+void engine::graphics::renderable::DrawableSurface::SetAnchor(const engine::spatial::PositionF& pos)
+{
+}
+
+engine::spatial::PositionF engine::graphics::renderable::DrawableSurface::GetAnchor() const
+{
+	return engine::spatial::PositionF();
+}
+
 // drawing methods
 void engine::graphics::renderable::DrawableSurface::Begin()
 {

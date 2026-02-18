@@ -53,6 +53,7 @@ namespace engine::graphics::renderable
 		engine::math::geometry::RectF m_rect;
 		engine::spatial::SizeF m_size;
 		core::View<engine::graphics::resource::ISpriteAtlas> m_view;
+		engine::spatial::PositionF m_anchor;
 
 		friend class engine::graphics::resource::SpriteAtlas;
 		friend class engine::graphics::resource::ISpriteAtlas;
@@ -67,7 +68,6 @@ namespace engine::graphics::renderable
 		inline bool isValid() const
 		{
 			return m_view.isValid();
-			//return core::View<engine::graphics::resource::ISpriteAtlas>::isValid();
 		}
 
 		// ISizeable methods implementation
@@ -79,6 +79,8 @@ namespace engine::graphics::renderable
 		virtual void Bind() const override final;
 		virtual bool CanBind() const override final;
 		virtual engine::math::geometry::RectF GetUVRect() const override final;
+		void SetAnchor(const engine::spatial::PositionF& pos) override final;
+		engine::spatial::PositionF GetAnchor() const override final;
 	};
 }
 

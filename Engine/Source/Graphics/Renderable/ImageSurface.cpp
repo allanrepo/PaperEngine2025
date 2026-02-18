@@ -34,6 +34,15 @@ bool engine::graphics::renderable::ImageSurface::CanBind() const
 	return texture->CanBind();
 }
 
+void engine::graphics::renderable::ImageSurface::SetAnchor(const engine::spatial::PositionF& pos)
+{
+}
+
+engine::spatial::PositionF engine::graphics::renderable::ImageSurface::GetAnchor() const
+{
+	return engine::spatial::PositionF();
+}
+
 float engine::graphics::renderable::ImageSurface::GetWidth() const
 {
 	return static_cast<float>(texture->GetWidth());

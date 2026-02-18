@@ -532,8 +532,16 @@ void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawRenderable(
 #pragma endregion
 
 #pragma region // update vertex translate transform. this will be the position. 
-	m_UpdateConstantBuffer.vertex[m_nCurrSpriteCount].translate.x = (-m_D3DViewPort.Width + size.width) / 2 + pos.x;
-	m_UpdateConstantBuffer.vertex[m_nCurrSpriteCount].translate.y = (m_D3DViewPort.Height - size.height) / 2 + -pos.y;
+
+	// given position is the top-left of image. image will be rendered where its top-left is in the given position
+	// anchor is the normalized position somewhere in the image. if you want to draw the image such that the position given
+	// will be at the anchor, shift it using the given anchor
+	engine::spatial::PositionF anchor = renderable.GetAnchor();
+	anchor.x *= size.width;
+	anchor.y *= size.height;
+
+	m_UpdateConstantBuffer.vertex[m_nCurrSpriteCount].translate.x = (-m_D3DViewPort.Width + size.width) / 2 + pos.x - anchor.x;
+	m_UpdateConstantBuffer.vertex[m_nCurrSpriteCount].translate.y = (m_D3DViewPort.Height - size.height) / 2 + - pos.y + anchor.y;
 #pragma endregion
 
 #pragma region // update rotation

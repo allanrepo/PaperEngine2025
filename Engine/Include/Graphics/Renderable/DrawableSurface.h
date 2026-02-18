@@ -51,6 +51,8 @@ namespace engine::graphics::renderable
 		virtual engine::math::geometry::RectF GetUVRect() const override final;
 		virtual void Bind() const override final;
 		virtual bool CanBind() const override final;
+		void SetAnchor(const engine::spatial::PositionF& pos) override final;
+		engine::spatial::PositionF GetAnchor() const override final;
 	};
 }
 

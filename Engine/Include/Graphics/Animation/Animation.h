@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <Core/Event.h>
 #include <Core/View.h>
 #include <Utilities/Logger.h>
@@ -36,33 +36,9 @@ namespace engine::graphics::animation
 	private:
 		bool m_running = false;					// whether the animation is currently playing.
 		double m_elapsedTimeAccumulator = 0.0;	// accumulated time since last frame change.
-		Animation<T>* m_animation;				// pointer to the current animation being played.
+		const Animation<T>* m_animation;				// pointer to the current animation being played.
 		int m_currFrame = -1;					// index of the current frame in the animation.
-		std::unordered_map<std::string, engine::graphics::animation::Animation<T>> m_animations;
-
-		// starts playing the specified animation from the beginning.
-		void Play(engine::graphics::animation::Animation<T>* animation) noexcept
-		{
-			// guard against invalid animations
-			if (!animation || animation->frames.empty())
-			{
-				return;
-			}
-
-			// validate animation
-			m_animation = animation;
-
-			// if animation is valid and we can store it
-			m_running = true;
-
-			// reset to first frame
-			m_currFrame = 0;
-
-			OnPlay(m_animation);
-
-			// trigger first frame event
-			OnFrame(m_currFrame, m_animation->frames[m_currFrame]);
-		}
+		//std::unordered_map<std::string, engine::graphics::animation::Animation<T>> m_animations;
 
 	public:
 		// event fired when the frame changes. provides the new frame index and frame data.
@@ -72,7 +48,7 @@ namespace engine::graphics::animation
 		engine::event::Event<> OnEnd;
 
 		// event fired when a new animation starts playing. provides pointer to the animation.
-		engine::event::Event<engine::graphics::animation::Animation<T>*> OnPlay;
+		engine::event::Event<const engine::graphics::animation::Animation<T>&> OnPlay;
 
 		// constructs a new Animator instance with no animation playing.
 		Animator():
@@ -164,53 +140,10 @@ namespace engine::graphics::animation
 			return (m_currFrame == m_animation->frames.size() - 1) && !m_animation->loop;
 		}
 
-		Animation<T>* GetCurrentAnimation()
+		const Animation<T>* GetCurrentAnimation() const
 		{
 			return m_animation;
 		}
-
-		// Add a new animation by name 
-		void Add(const std::string& name, const Animation<T>& anim) 
-		{ 
-			m_animations[name] = anim; 
-		} 
-		
-		// Remove an animation by name 
-		void Remove(const std::string& name) 
-		{ 
-			auto it = m_animations.find(name); 
-			if (it != m_animations.end()) 
-			{ 
-				// If currently playing this animation, stop it 
-				if (m_animation == &it->second) 
-				{ 
-					m_running = false; 
-					m_animation = nullptr; 
-					m_currFrame = -1; 
-				} 
-				m_animations.erase(it); 
-			} 
-		}
-
-		// Set and play an animation by name 
-		bool Play(const std::string& name) 
-		{ 
-			auto it = m_animations.find(name); 
-			if (it == m_animations.end()) 
-			{ 
-				return false;
-			} 
-
-			Play(&it->second);
-			return true;			
-		}
-
-		bool Has(const std::string& name) const
-		{
-			auto it = m_animations.find(name);
-			return it != m_animations.end();
-		}
-
 
 		void Clear() noexcept 
 		{
@@ -218,11 +151,79 @@ namespace engine::graphics::animation
 			m_elapsedTimeAccumulator = 0.0; 
 			m_animation = nullptr; 
 			m_currFrame = -1; 
-	
-			// releases all stored animations 
-			m_animations.clear();			
+		}
+
+		// starts playing the specified animation from the beginning.
+		void Play(const engine::graphics::animation::Animation<T>& animation) noexcept
+		{
+			// validate animation
+			m_animation = &animation;
+
+			// if animation is valid and we can store it
+			m_running = true;
+
+			// reset to first frame
+			m_currFrame = 0;
+
+			OnPlay(*m_animation);
+
+			// trigger first frame event
+			OnFrame(m_currFrame, m_animation->frames[m_currFrame]);
 		}
 	};
+
+
+	template<typename T>
+	class AnimationManager 
+	{
+	private:
+		Animator<T>* m_animator; // playback engine (not owned)
+		std::unordered_map<std::string, Animation<T>*> m_animations; // available animations
+
+	public:
+		AnimationManager(Animator<T>* animator = nullptr) :
+			m_animator(animator) 
+		{
+		}
+
+		void Set(Animator<T>& animator)
+		{
+			m_animator = &animator;
+		}
+
+		void Add(const std::string& key, Animation<T>& anim) 
+		{
+			m_animations[key] = &anim;
+		}
+
+		bool Remove(const std::string& key) 
+		{ 
+			auto it = m_animations.find(key);
+			if (it != m_animations.end()) 
+			{ 
+				m_animations.erase(it);
+				return true;
+			} 
+			return false;
+		}
+
+		bool Play(const std::string& key) const
+		{
+			auto it = m_animations.find(key);
+			if (it != m_animations.end()) 
+			{
+				m_animator->Play(*it->second);
+				return true;
+			}
+			return false;
+		}
+
+		void Update(double delta) 
+		{
+			m_animator->Update(delta);
+		}
+	};
+
 
 
 	namespace Test
@@ -268,8 +269,8 @@ namespace engine::graphics::animation
 					},
 					true // loop
 				};
-				animator.Add("default", animation);
-				animator.Play("default");
+				//animator.Add("default", animation);
+				animator.Play(animation);
 
 				animator.OnFrame += engine::event::Handler(this, &TestClass::OnFrame);
 

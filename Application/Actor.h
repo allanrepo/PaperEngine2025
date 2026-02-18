@@ -58,39 +58,33 @@ namespace engine
 			Animator<Sprite> m_animator;
 			StateMachine<Actor> m_stateMachine;
 			Direction m_direction;
+			AnimationManager<Sprite> m_animManager;
 
 		public:
 
-			Actor(const std::string& name = "default") :
+			Actor(const AnimationManager<Sprite>& animManager, const std::string& name = "default") :
 				m_stateMachine(this),
 				m_name(name),
-				m_direction(Direction::Right)
+				m_direction(Direction::Right),
+				m_animManager(animManager)
 			{
+				m_animManager.Set(m_animator);
 				m_stateMachine.Set<ActorIdleState>();
 			}
 
 			virtual ~Actor() = default;
 
-			// update
 			void Update(double delta)
 			{
+				// update state and animation manager, position
 				m_stateMachine.Update(delta);
-				m_animator.Update(delta);
-
+				m_animManager.Update(delta);
 				m_motion.Update(m_transform, delta);
 			}
 
 			bool PlayAnimation(const std::string& name)
 			{
-				if (!m_animator.Has(name))
-				{
-					if (!Registry<Animation<Sprite>>::Instance().Has(name))
-					{
-						return false;
-					}
-					m_animator.Add(name, Registry<Animation<Sprite>>::Instance().Get(name));
-				}
-				return m_animator.Play(name);
+				return m_animManager.Play(name);
 			}
 
 			bool IsDrawable() const
@@ -112,10 +106,9 @@ namespace engine
 			
 			Direction GetDirection() const 
 			{ 
-				return m_direction;
-				//if (m_motion.GetVelocity().x > 0) return Direction::Right;
-				//else if (m_motion.GetVelocity().x < 0) return Direction::Left;
-				//else return Direction::None;
+				if (m_motion.GetVelocity().x > 0) return Direction::Right;
+				else if (m_motion.GetVelocity().x < 0) return Direction::Left;
+				else return Direction::None;
 			}
 
 			PositionF GetPosition() const
@@ -138,21 +131,29 @@ namespace engine
 				m_transform.SetPosition(pos);
 			}
 
-
 			void StopMoving()
 			{
 				m_motion.Stop();
 			}
 
-			void Idle()
+			bool IsMovingTowards(const PositionF& target)
 			{
-				m_stateMachine.Set<ActorIdleState>();
+				math::VecF direction = (target - m_transform.GetPosition()).Normalize();
+
+				return direction.Dot(m_motion.GetVelocity()) > 0;
 			}
 
-			void WalkTo(const PositionF& target, const float speed)
+
+			template<typename State, typename... Args>
+			void SetState(Args&&... args) 
 			{
-				m_stateMachine.Set<ActorWalkToState>(target, speed);
-				m_stateMachine.Queue<ActorIdleState>();
+				m_stateMachine.Set<State>(std::forward<Args>(args)...);
+			}
+
+			template<typename State, typename... Args>
+			void QueueState(Args&&... args) 
+			{
+				m_stateMachine.Queue<State>(std::forward<Args>(args)...);
 			}
 		};
 	}
@@ -163,22 +164,26 @@ namespace engine
 		{
 		private:
 			std::string m_name = "idle";
+			Actor::Direction m_dir;
 
 		public:
-			ActorIdleState()
+			ActorIdleState(Actor::Direction dir = Actor::Direction::Right):
+				m_dir(dir)
 			{
-			};
+
+			}
+
 			virtual ~ActorIdleState() = default;
 
 			virtual void Enter(Actor& owner) override final
 			{
-				switch (owner.GetDirection())
+				switch (m_dir)
 				{
 				case Actor::Direction::Left:
-					owner.PlayAnimation("hero idle left");
+					owner.PlayAnimation("idle left");
 					break;
 				default:
-					owner.PlayAnimation("hero idle right");
+					owner.PlayAnimation("idle right");
 					break;
 				}
 			}
@@ -204,12 +209,14 @@ namespace engine
 			float m_speed = 0.0f;
 			PositionF m_target;
 			bool m_isFinished;
+			Actor::Direction m_dir;
 
 		public:
 			ActorWalkToState(const PositionF& target, const float speed) :
 				m_target(target),
 				m_speed(speed),
-				m_isFinished(false)
+				m_isFinished(false),
+				m_dir(Actor::Direction::None)
 			{
 			}
 
@@ -218,24 +225,23 @@ namespace engine
 			virtual void Enter(Actor& owner) override final
 			{
 				// calculate and set velocity
-				math::VecF direction = m_target - owner.GetPosition();
-				direction = direction.Normalize();
+				math::VecF direction = (m_target - owner.GetPosition()).Normalize();
 				owner.SetVelocity(direction * m_speed);
 
-				// update direction
-				owner.SetDirectionBasedOnVelocity();
+				// save direction
+				m_dir = owner.GetDirection();
 
 				// set animation
-				switch (owner.GetDirection())
+				switch (m_dir)
 				{
 				case Actor::Direction::Left:
-					owner.PlayAnimation("hero walk left");
+					owner.PlayAnimation("walk left");
 					break;
 				case Actor::Direction::Right:
-					owner.PlayAnimation("hero walk right");
+					owner.PlayAnimation("walk right");
 					break;
 				default:
-					owner.PlayAnimation("hero idle right");
+					owner.PlayAnimation("idle right");
 					break;
 				}
 
@@ -245,18 +251,15 @@ namespace engine
 			virtual void Exit(Actor& owner) override final
 			{
 				owner.StopMoving();
-				//owner.SetPosition(m_target);
 			}
 
 			virtual void Update(Actor& owner, double delta) override final
 			{
-				math::VecF direction = m_target - owner.GetPosition();
-				direction = direction.Normalize();
-
-				float dot = direction.Dot(owner.GetVelocity());
-				if (dot < 0)
+				if (!owner.IsMovingTowards(m_target))
 				{
+					owner.SetPosition(m_target);
 					m_isFinished = true;
+					owner.QueueState<ActorIdleState>(m_dir);
 				}
 			}
 

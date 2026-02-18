@@ -554,6 +554,7 @@ namespace demo
 		using Sprite = engine::graphics::renderable::Sprite;
 		using Animator = engine::graphics::animation::Animator<Sprite>;
 		using Animation = engine::graphics::animation::Animation<Sprite>;
+		using AnimationFactory = engine::graphics::factory::AnimationFactory;
 
 		engine::performance::FrameRateMonitor m_frameRateMonitor;
 		bool m_isFinished;

@@ -120,8 +120,7 @@ namespace test
 
 			// create animator and load the animation
 			m_animator = std::make_unique<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>();
-			m_animator->Add("default", anim);
-			m_animator->Play("default");
+			m_animator->Play(anim);
 
 			// setup stopwatch to manage timing and start it
 			m_stopwatch.OnLap += engine::event::Handler(this, &TestAnimation::OnLap);

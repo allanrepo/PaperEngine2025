@@ -66,6 +66,7 @@ namespace TestActor
 		Animation<Sprite> m_anim;
 
 		timer::StopWatch m_stopwatch;
+		double m_elapsed;
 
 	public:
 		Test()
@@ -116,17 +117,28 @@ namespace TestActor
 				factory::SpriteAtlasFactory::Create("Hero", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12);
 				resource::ISpriteAtlas& atlas = cache::Registry<resource::ISpriteAtlas>::Instance().Get("Hero");
 
-				// load animation in cache
-				factory::AnimationFactory::Create("hero idle right", atlas, { 0, 1, 2, 3, 4, 5 }, 100, true);
-				factory::AnimationFactory::Create("hero idle left", atlas, { 6, 7, 8, 9, 10, 11 }, 100, true);
-				factory::AnimationFactory::Create("hero walk right", atlas, { 12, 13, 14, 15, 16, 17 }, 100, true);
-				factory::AnimationFactory::Create("hero walk left", atlas, { 18, 19, 20, 21, 22, 23, }, 100, true);
+				// create animation manager for actor and store in registry
+				cache::Registry<animation::AnimationManager<renderable::Sprite>>::Instance().Register("actor",std::make_unique<animation::AnimationManager<renderable::Sprite>>());
+				animation::AnimationManager<renderable::Sprite>& animManager = cache::Registry<animation::AnimationManager<renderable::Sprite>>::Instance().Get("actor");
 
+				// create actor animations and store in registry
+				factory::AnimationFactory::Create("idle right", atlas, { 0, 1, 2, 3, 4, 5 }, 100, true, PositionF{0.5f, 0.5f});
+				factory::AnimationFactory::Create("idle left", atlas, { 6, 7, 8, 9, 10, 11 }, 100, true, PositionF{ 0.5f, 0.5f });
+				factory::AnimationFactory::Create("walk right", atlas, { 12, 13, 14, 15, 16, 17 }, 100, true, PositionF{ 0.5f, 0.5f });
+				factory::AnimationFactory::Create("walk left", atlas, { 18, 19, 20, 21, 22, 23, }, 100, true, PositionF{ 0.5f, 0.5f });
+
+				// load actor animations into animation manager
+				animManager.Add("idle right", cache::Registry<animation::Animation<renderable::Sprite>>::Instance().Get("idle right"));
+				animManager.Add("idle left", cache::Registry<animation::Animation<renderable::Sprite>>::Instance().Get("idle left"));
+				animManager.Add("walk right", cache::Registry<animation::Animation<renderable::Sprite>>::Instance().Get("walk right"));
+				animManager.Add("walk left", cache::Registry<animation::Animation<renderable::Sprite>>::Instance().Get("walk left"));
+
+				// create actor 
+				m_actor = std::make_unique<Actor>(animManager, "Actor");
+
+				// set actor default state
+				m_actor->SetState<engine::state::ActorIdleState>();
 			}
-			// create sprite atlas for tilemap (grass, wall, etc...)
-
-			// create actor 
-			m_actor = std::make_unique<Actor>("Actor");
 
 			// setup stopwatch to manage timing and start it
 			m_stopwatch.OnLap += event::Handler(this, &Test::OnLap);
@@ -136,12 +148,14 @@ namespace TestActor
 
 		void OnMouseDown(int btn, int x, int y)
 		{
-			m_actor->WalkTo({ (float)x, (float)y }, 0.25f);
+			PositionF pos((float)x, (float)y);
+			m_actor->SetState<engine::state::ActorWalkToState>(pos, 0.25f);
 		}
 
 		// this method is fired up whenever the OnLap event is triggered from stopwatch
 		void OnLap(double time)
 		{
+			m_elapsed += time;
 			m_actor->Update(time);
 		}
 
@@ -153,7 +167,6 @@ namespace TestActor
 
 			m_input.Update();
 
-
 			m_canvas->Clear({ 0.2f, 0.2f, 1.0f, 1.0f });
 
 			// start the canvas. we can draw from here
@@ -161,8 +174,9 @@ namespace TestActor
 			{
 				m_rendererBatch->Begin();
 
-				m_rendererBatch->Draw(m_actor->GetPosition(), m_actor->GetSprite().GetSize(), { 1,1,1,0.5f }, 0);
-				m_rendererBatch->DrawRenderable(m_actor->GetSprite(), m_actor->GetPosition(), m_actor->GetSprite().GetSize(), {1,1,1,1}, 0);
+				//m_rendererBatch->DrawRenderable(m_actor->GetSprite(), m_actor->GetPosition(), m_actor->GetSprite().GetSize(), { 1,1,1,1 }, 0);
+				m_rendererBatch->DrawRenderable(m_actor->GetSprite(), m_actor->GetPosition(), {500, 500 }, {1,1,1,1}, 0);
+				m_rendererBatch->Draw(m_actor->GetPosition() - PositionF{ 10, 10 }, { 20, 20 }, { 1,0,0,1 }, 0);
 
 				std::string str = std::to_string(m_actor->GetPosition().x) + ", " + std::to_string(m_actor->GetPosition().y);
 				m_rendererBatch->DrawText(*m_FontAtlas, str, { 500, 5 }, { 1,1,1,1 });

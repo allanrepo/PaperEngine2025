@@ -14,14 +14,18 @@ namespace engine
 			{
 			private:
 				engine::graphics::animation::Animator<engine::graphics::renderable::Sprite> m_animator;
+				std::unordered_map<std::string, engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>> m_animations;
 				bool m_walkable;
 
 			public:
 				AnimatedTile(bool walkable, const std::string& name, const engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>& anim) :
 					m_walkable(walkable)
 				{
-					m_animator.Add(name, anim);
-					m_animator.Play(name);
+					// copy the animation into our container
+					m_animations[name] = anim;
+
+					// assign the animation from our container into animator (don't assign the passed animation. that is reference to animation outside which is not safe
+					m_animator.Play(m_animations[name]);
 				}
 
 				bool IsRunning() const
@@ -37,17 +41,6 @@ namespace engine
 				void Update(double delta)
 				{
 					m_animator.Update(delta);
-				}
-
-				void Add(const std::string& name, const engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>& anim, bool play = false)
-				{
-					m_animator.Add(name, anim);
-					if (play) m_animator.Play(name);
-				}
-
-				void Play(const std::string& name)
-				{
-					m_animator.Play(name);
 				}
 			};
 

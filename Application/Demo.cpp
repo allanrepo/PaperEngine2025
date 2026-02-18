@@ -674,15 +674,14 @@ void demo::DemoStateActor::Enter(Demo& owner)
 		engine::graphics::factory::SpriteAtlasFactory::Create("Character", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12);
 		engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("Character");
 
-		// create animated tileset for tilemap (grass, wall, etc...)
-		owner.TileSetManager().Create("Character");
-
-
+		// create our animator
 		engine::cache::Registry<Animator>::Instance().Register("Character", std::make_unique<Animator>());
 		Animator& animator = engine::cache::Registry<Animator>::Instance().Get("Character");
 
-		animator.Add("idle right face", engine::graphics::factory::AnimationFactory::Create(atlas, { 0, 1, 2, 3, 4, 5 }, 0.1f, true));
-		animator.Play("idle right face");
+		// create our animation
+		
+		engine::cache::Registry<Animation>::Instance().Register("idle right face", std::make_unique<Animation>(AnimationFactory::Create(atlas, { 0, 1, 2, 3, 4, 5 }, 0.1f, true, PositionF{ 0.5f, 0.5f })));
+		animator.Play(engine::cache::Registry<Animation>::Instance().Get("idle right face"));
 	}
 }
 
@@ -702,8 +701,7 @@ void demo::DemoStateActor::Update(Demo& owner, double delta)
 	// flush the draw commands on queue. we will queue new ones 
 	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
 
-	owner.Engine().QueueDrawSpriteCommand(animator.GetCurrent(), engine::spatial::PositionF{ 50.0f, 50.0f }, animator.GetCurrent().GetSize(), engine::graphics::ColorF{ 1.0f,1.0f,1.0f,1.0f }, 0.0f);
-
+	owner.Engine().QueueDrawSpriteCommand(animator.GetCurrent(), engine::spatial::PositionF{ 250.0f, 250.0f }, animator.GetCurrent().GetSize(), engine::graphics::ColorF{ 1.0f,1.0f,1.0f,1.0f }, 0.0f);
 
 	// render statistics
 	std::list<std::string> logs;
