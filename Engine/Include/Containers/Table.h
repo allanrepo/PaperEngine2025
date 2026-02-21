@@ -81,6 +81,15 @@ namespace engine::container
 		{
 		}
 
+		Table(const engine::spatial::Size<size_t> size, const T& t):
+			m_width(size.width)
+		{
+			while (m_data.size() < size.width * size.height)
+			{
+				m_data.push_back(t);
+			}
+		}
+
 		void Add(const T& data) override
 		{
 			m_data.push_back(data);

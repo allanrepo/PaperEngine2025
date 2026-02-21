@@ -22,9 +22,9 @@ int main()
 	//graphics::animation::Test::Test();
 	//TestTimer testTimer;
 	//TestInput testInput;
-	TestActorStateBehavior testActorStateBehavior;
+	//TestActorStateBehavior testActorStateBehavior;
 	//TestSaveTextureToFile testSaveTextureToFile;
-	//testPathFinder::TestPathFinder testPathFinder;
+	testPathFinder::TestPathFinder testPathFinder;
 	//test::TestFootprintResolver testFootprintResolver;
 	//test::TestPinchBlock testPinchBlock;
 	//test::TestGridScaling testGridScaling;

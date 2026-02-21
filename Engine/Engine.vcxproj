@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Include\Algorithm\Pathfinding.h" />
     <ClInclude Include="Include\Cache\BindCache.h" />
     <ClInclude Include="Include\Cache\Registry.h" />
     <ClInclude Include="Include\Command\CommandQueue.h" />
@@ -48,6 +49,7 @@
     <ClInclude Include="Include\Graphics\Animation\Animation.h" />
     <ClInclude Include="Include\Graphics\Core\Canvas.h" />
     <ClInclude Include="Include\Graphics\Core\Color.h" />
+    <ClInclude Include="Include\Graphics\Core\Draw.h" />
     <ClInclude Include="Include\Graphics\Core\DX11CanvasImpl.h" />
     <ClInclude Include="Include\Graphics\Core\DX11Core.h" />
     <ClInclude Include="Include\Graphics\Core\ICanvas.h" />
@@ -112,6 +114,7 @@
     <ClCompile Include="Source\Engine\Factory\SpriteAtlasFactory.cpp" />
     <ClCompile Include="Source\Engine\Loader\AsyncLoader.cpp" />
     <ClCompile Include="Source\Graphics\Core\Canvas.cpp" />
+    <ClCompile Include="Source\Graphics\Core\Draw.cpp" />
     <ClCompile Include="Source\Graphics\Core\DX11CanvasImpl.cpp" />
     <ClCompile Include="Source\Graphics\Core\DX11Core.cpp" />
     <ClCompile Include="Source\Graphics\IO\DX11ImageFileHelper.cpp" />

@@ -580,4 +580,22 @@ namespace demo
 		void OnMouseUp(int btn, int x, int y);
 	};
 
+
+	class DemoStatePathFinding : public engine::state::State<Demo>
+	{
+	private:
+		engine::performance::FrameRateMonitor m_frameRateMonitor;
+		bool m_isFinished;
+
+	public:
+		DemoStatePathFinding();
+		virtual ~DemoStatePathFinding();
+
+		virtual void Enter(Demo& owner) override;
+		virtual void Exit(Demo& owner) override;
+		virtual void Update(Demo& owner, double delta) override;
+		virtual bool IsFinished(Demo& owner) override;
+
+		void OnMouseDown(int btn, int x, int y);
+	};
 }

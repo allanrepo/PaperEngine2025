@@ -356,6 +356,11 @@ namespace engine::event
 
 
 
+
+};
+
+namespace engine::event
+{
     namespace Test
     {
         class TestClass
@@ -517,4 +522,4 @@ namespace engine::event
             return;
         }
     }
-};
+}

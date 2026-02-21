@@ -79,6 +79,9 @@
     <Filter Include="Engine\Manager">
       <UniqueIdentifier>{8e22cc10-eba0-4b25-9d40-ed2adf0a70d4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Algorithm">
+      <UniqueIdentifier>{d0c1f5cf-84a5-4773-88ea-3bc8e8f961e6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Core\Event.h">
@@ -327,6 +330,12 @@
     <ClInclude Include="Include\Graphics\Resource\IFontAtlas.h">
       <Filter>Graphics\Resource</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Algorithm\Pathfinding.h">
+      <Filter>Algorithm</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Core\Draw.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">
@@ -430,6 +439,9 @@
     </ClCompile>
     <ClCompile Include="Source\Graphics\Resource\FontAtlas.cpp">
       <Filter>Graphics\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Core\Draw.cpp">
+      <Filter>Graphics\Core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -15,6 +15,7 @@
 #include "DemoAsyncLoader.h"
 #include "DemoTileMap.h"
 #include "TestActor.h"
+#include "TestPathFinding.h"
 
 #include <iostream>
 #include <fstream>
@@ -172,7 +173,8 @@ int main()
     //testFrameRate::Test::Instance().Run();
     //test::TestCanvas testCanvas;
     //TestFont::Test testFont;
-    TestActor::Test testActor;
+    //TestActor::Test testActor;
+    TestPathFinding::Test testPathFinding;
 
 
 	return 0;

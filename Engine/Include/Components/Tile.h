@@ -82,7 +82,6 @@ namespace engine::component::tile
 	private:
 		// only tileset and TileGrid can create tile instances
 		friend class Tileset<T>;
-		//friend class TileGrid<T>;
 
 		// private constructor used by Tileset to create tile instances. defaults to invalid tile if no data provided
 		Tile(T* data = nullptr) :
@@ -191,10 +190,10 @@ namespace engine::component::tile
 			};
 		}
 
-		// overload for tilecoord input
-		bool IsInBounds(const component::tile::Coord& tileCoord) const
+		// overload for Coord input
+		bool IsInBounds(const component::tile::Coord& Coord) const
 		{
-			return IsInBounds(tileCoord.row, tileCoord.col);
+			return IsInBounds(Coord.row, Coord.col);
 		}
 
 		size_t GetTileCount() const
@@ -313,7 +312,7 @@ namespace engine::component::tile
 			return m_map[row * m_width + col];
 		}
 
-		// retrieves the tile at tilecoord
+		// retrieves the tile at Coord
 		const Tile<T>& Get(const Coord& coord) const
 		{
 			return Get(coord.row, coord.col);
@@ -382,10 +381,10 @@ namespace engine::component::tile
 			return m_tilegrid.GetSize();
 		}
 
-		// overload for tilecoord input
-		bool IsInBounds(const component::tile::Coord& tileCoord) const
+		// overload for Coord input
+		bool IsInBounds(const component::tile::Coord& Coord) const
 		{
-			return m_tilegrid.IsInBounds(tileCoord);
+			return m_tilegrid.IsInBounds(Coord);
 		}
 
 		size_t GetTileCount() const
@@ -699,7 +698,6 @@ namespace engine::component::tile
 		}
 	};
 
-
 	template<typename T>
 	class TileMap: public core::View<TileGrid<T>>
 	{
@@ -714,17 +712,6 @@ namespace engine::component::tile
 
 	public:
 		virtual ~TileMap() = default;
-	};
-
-
-
-	class ITile 
-	{
-	public:
-
-		virtual void Update(double) = 0;
-		virtual bool IsWalkable() const = 0;
-		virtual const ::engine::graphics::renderable::Sprite& GetSprite() const = 0;
 	};
 
 

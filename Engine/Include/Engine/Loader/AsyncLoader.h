@@ -102,7 +102,7 @@ namespace engine
 
 				// blocking load: consumes the entire table in one shot 
 				// internally calls Begin() and repeatedly Update() until all tiles are loaded.
-				component::tile::TileGrid<T>& SyncLoadAll(
+				component::tile::TileGrid<T>& LoadImmediate(
 					component::tile::TileGrid<T>& grid,
 					const engine::container::Table<std::string>& table,
 					std::function<component::tile::Tile<T>(const U&)> tileLoader,
@@ -229,7 +229,7 @@ namespace engine
 
 				// blocking load: consumes the entire table in one shot 
 				// internally calls Begin() and repeatedly Update() until all tiles are loaded.
-				component::tile::TileRegion<T>& SyncLoadAll(
+				component::tile::TileRegion<T>& LoadImmediate(
 					component::tile::TileRegion<T>& region,
 					const engine::container::Table<std::string>& table,
 					std::function<engine::component::tile::Tile<T>(const U&)> tileLoader,
@@ -238,7 +238,7 @@ namespace engine
 				)
 				{
 					// Initialize 
-					Begin(region, table, tileLoader);
+					Begin("TileRegion", region, table, tileLoader);
 
 					// Loop until done 
 					while (!IsDone())

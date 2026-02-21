@@ -602,6 +602,62 @@ bool demo::DemoStateCameraMap::IsFinished(Demo& owner)
 
 #pragma endregion
 
+#pragma region DemoStatePathFinding 
+demo::DemoStatePathFinding::DemoStatePathFinding() :
+	m_isFinished(false),
+	m_frameRateMonitor(1.0f)
+{
+	LOG("[DemoStatePathFinding] created");
+}
+
+demo::DemoStatePathFinding::~DemoStatePathFinding()
+{
+	LOG("[DemoStatePathFinding] destroyed");
+}
+
+void demo::DemoStatePathFinding::Enter(Demo& owner)
+{
+}
+
+
+void demo::DemoStatePathFinding::Update(Demo& owner, double delta)
+{
+	// monitor frame rate
+	m_frameRateMonitor.OnFrameCompleted(delta);
+
+	// update animations of tiles
+	owner.TileSetManager().Update(delta);
+
+	// flush the draw commands on queue. we will queue new ones 
+	owner.Engine().CommandQueue().Clear(engine::command::Type::Render);
+
+	// render statistics
+	std::list<std::string> logs;
+	logs.push_back("State: DemoStatePathFinding");
+	logs.push_back("State FPS: " + std::to_string(static_cast<int>(m_frameRateMonitor.GetAverageFrameRate())));
+	owner.DrawStatisticsCommand(logs);
+}
+
+void demo::DemoStatePathFinding::Exit(Demo& owner)
+{
+	engine::input::Input::Instance().MouseDownEvent -= engine::event::Handler(this, &DemoStatePathFinding::OnMouseDown);
+}
+
+
+bool demo::DemoStatePathFinding::IsFinished(Demo& owner)
+{
+	return m_isFinished;
+}
+
+
+void demo::DemoStatePathFinding::OnMouseDown(int btn, int x, int y)
+{
+	m_isFinished = true;
+}
+
+#pragma endregion
+
+
 #pragma region DemoStateActor 
 demo::DemoStateActor::DemoStateActor() :
 	m_isFinished(false),

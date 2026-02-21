@@ -148,6 +148,7 @@
     <ClInclude Include="TestFont.h" />
     <ClInclude Include="TestFrameRate.h" />
     <ClInclude Include="TestLargeMap.h" />
+    <ClInclude Include="TestPathFinding.h" />
     <ClInclude Include="TestSprite.h" />
     <ClInclude Include="TestTile.h" />
     <ClInclude Include="TestWin32.h" />

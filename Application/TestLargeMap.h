@@ -184,7 +184,7 @@ namespace TestLargeMap
 				fileReader.SyncReadAll(0xFF, 5.0);
 
 				engine::loader::tile::AsyncTileGridLoader<RenderableTile, int> tileLoader;
-				tileLoader.SyncLoadAll(
+				tileLoader.LoadImmediate(
 					m_tilegrid,
 					table,
 					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>

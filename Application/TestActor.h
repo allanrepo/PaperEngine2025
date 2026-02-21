@@ -122,10 +122,10 @@ namespace TestActor
 				animation::AnimationManager<renderable::Sprite>& animManager = cache::Registry<animation::AnimationManager<renderable::Sprite>>::Instance().Get("actor");
 
 				// create actor animations and store in registry
-				factory::AnimationFactory::Create("idle right", atlas, { 0, 1, 2, 3, 4, 5 }, 100, true, PositionF{0.5f, 0.5f});
-				factory::AnimationFactory::Create("idle left", atlas, { 6, 7, 8, 9, 10, 11 }, 100, true, PositionF{ 0.5f, 0.5f });
-				factory::AnimationFactory::Create("walk right", atlas, { 12, 13, 14, 15, 16, 17 }, 100, true, PositionF{ 0.5f, 0.5f });
-				factory::AnimationFactory::Create("walk left", atlas, { 18, 19, 20, 21, 22, 23, }, 100, true, PositionF{ 0.5f, 0.5f });
+				factory::AnimationFactory::Create("idle right", atlas, { 0, 1, 2, 3, 4, 5 }, 100, true, PositionF{0.5f, 0.65f});
+				factory::AnimationFactory::Create("idle left", atlas, { 6, 7, 8, 9, 10, 11 }, 100, true, PositionF{ 0.5f, 0.65f });
+				factory::AnimationFactory::Create("walk right", atlas, { 12, 13, 14, 15, 16, 17 }, 100, true, PositionF{ 0.5f, 0.65f });
+				factory::AnimationFactory::Create("walk left", atlas, { 18, 19, 20, 21, 22, 23, }, 100, true, PositionF{ 0.5f, 0.65f });
 
 				// load actor animations into animation manager
 				animManager.Add("idle right", cache::Registry<animation::Animation<renderable::Sprite>>::Instance().Get("idle right"));
@@ -138,6 +138,7 @@ namespace TestActor
 
 				// set actor default state
 				m_actor->SetState<engine::state::ActorIdleState>();
+				m_actor->SetPosition({300, 300});
 			}
 
 			// setup stopwatch to manage timing and start it
@@ -174,9 +175,9 @@ namespace TestActor
 			{
 				m_rendererBatch->Begin();
 
-				//m_rendererBatch->DrawRenderable(m_actor->GetSprite(), m_actor->GetPosition(), m_actor->GetSprite().GetSize(), { 1,1,1,1 }, 0);
-				m_rendererBatch->DrawRenderable(m_actor->GetSprite(), m_actor->GetPosition(), {500, 500 }, {1,1,1,1}, 0);
-				m_rendererBatch->Draw(m_actor->GetPosition() - PositionF{ 10, 10 }, { 20, 20 }, { 1,0,0,1 }, 0);
+				m_rendererBatch->DrawRenderable(m_actor->GetSprite(), m_actor->GetPosition(), m_actor->GetSprite().GetSize(), { 1,1,1,1 }, 0);
+				//m_rendererBatch->DrawRenderable(m_actor->GetSprite(), m_actor->GetPosition(), {500, 500 }, {1,1,1,1}, 0);
+				m_rendererBatch->Draw(m_actor->GetPosition() - PositionF{ 4, 4 }, { 8, 8 }, { 1,0,0,1 }, 0);
 
 				std::string str = std::to_string(m_actor->GetPosition().x) + ", " + std::to_string(m_actor->GetPosition().y);
 				m_rendererBatch->DrawText(*m_FontAtlas, str, { 500, 5 }, { 1,1,1,1 });

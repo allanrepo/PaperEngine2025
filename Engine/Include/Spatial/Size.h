@@ -39,6 +39,19 @@ namespace engine::spatial
 			return !(*this == other); 
 		}
 
+		Size():
+			width(0),
+			height(0)
+		{
+
+		}
+
+		Size(const T& w, const T& h)
+		{
+			width = w;
+			height = h;
+		}
+
 	};
 
 	using SizeF = Size<float>;
