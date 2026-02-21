@@ -708,62 +708,6 @@ namespace engine::component::tile
 		}
 	};
 
-	//template<typename T>
-	//class TileMap : public core::View<TileGrid<T>>, public spatial::ISizeable<size_t>
-	//{
-	//private:
-	//	friend class TileGrid<T>;
-
-	//protected:
-	//	TileMap(TileGrid<T>* tileGrid):
-	//		core::View<TileGrid<T>>(tileGrid)
-	//	{			
-	//	}
-
-	//public:
-	//	virtual ~TileMap() = default;
-
-
-	//	Tile<T> Get(int row, int col)
-	//	{
-	//		return this->m_data->Get(row, col);
-	//	}
-
-	//	const Tile<T> Get(int row, int col) const
-	//	{
-	//		return this->m_data->Get(row, col);
-	//	}
-
-	//	void Set(int row, int col, const T& data)
-	//	{
-	//		this->m_data->Set(row, col, data);
-	//	}
-
-	//	bool IsInBounds(int row, int col) const
-	//	{
-	//		return this->m_data->IsInBounds(row, col);
-	//	}
-
-	//	inline bool isValid() const
-	//	{
-	//		return this->m_data.isValid();
-	//	}
-
-	//	virtual size_t GetWidth() const override final
-	//	{
-	//		return this->m_data->GetWidth();
-	//	}
-	//	virtual size_t GetHeight() const override final
-	//	{
-	//		return this->m_data->GetHeight();
-
-	//	}
-	//	virtual spatial::Size<size_t> GetSize() const override final
-	//	{
-	//		return this->m_data->GetSize();
-	//	}
-	//};
-
 	template<typename T>
 	class TileMap: public spatial::ISizeable<size_t>
 	{

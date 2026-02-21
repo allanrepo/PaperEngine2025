@@ -354,11 +354,14 @@ namespace TestPathFinding
 				// draw the tile region
 				DrawTileMap(tilemap, m_tilesize, m_pos);
 
-				std::vector<engine::spatial::PositionF> wp = navigation::tile::GetWayPoints(m_path);
-				DrawWaypoints(wp, m_tilesize, m_pos, { 1,1,1,1 });
+				std::vector<engine::component::tile::Coord> wp = navigation::tile::GetWayPoints(m_path);
+				DrawWaypoints(wp, m_tilesize, m_pos, { 1,1,1,1 }, 6.0f);
 
-				wp = SmoothWayPoints(wp, m_region->MakeTileMap());
-				DrawWaypoints(wp, m_tilesize, m_pos, { 0,1,0,1 });
+				wp = engine::navigation::tile::SmoothWayPoints(wp, m_region->MakeTileMap(), [](const engine::component::tile::Tile<RenderableTile>& tile){ return tile->IsWalkable();	});
+				DrawWaypoints(wp, m_tilesize, m_pos, { 0,1,0,1 }, 4.0f);
+
+				wp = engine::navigation::tile::SmoothWayPoints(m_path, m_region->MakeTileMap(), [](const engine::component::tile::Tile<RenderableTile>& tile) { return tile->IsWalkable(); });
+				DrawWaypoints(wp, m_tilesize, m_pos, { 1,0,1,1 }, 2.0f);
 
 				
 				m_rendererBatch->End();
@@ -409,35 +412,38 @@ namespace TestPathFinding
 			}
 		}
 
-		void DrawWaypoints(const std::vector<engine::spatial::PositionF>& wp, const engine::spatial::SizeF& tilesize, const engine::spatial::PositionF& pos, const engine::graphics::ColorF& color)
+		void DrawWaypoints(const std::vector<engine::component::tile::Coord>& wp, const engine::spatial::SizeF& tilesize, const engine::spatial::PositionF& pos, const engine::graphics::ColorF& color, float thickness)
 		{
 			for (size_t i = 1; i < wp.size(); i++)
 			{
 				engine::spatial::PositionF start
 				{
-					wp[i - 1].x * tilesize.width + tilesize.width / 2,
-					wp[i - 1].y * tilesize.height + tilesize.height / 2
+					wp[i - 1].col * tilesize.width + tilesize.width / 2,
+					wp[i - 1].row * tilesize.height + tilesize.height / 2
 				};
 				engine::spatial::PositionF end
 				{
-					wp[i].x * tilesize.width + tilesize.width / 2,
-					wp[i].y * tilesize.height + tilesize.height / 2
+					wp[i].col * tilesize.width + tilesize.width / 2,
+					wp[i].row * tilesize.height + tilesize.height / 2
 				};
 
 				start += pos;
 				end += pos;
 
-				engine::graphics::primitives::DrawLineSegment(*m_rendererBatch, start, end, color, 4.0f);
+				engine::graphics::primitives::DrawLineSegment(*m_rendererBatch, start, end, color, thickness);
 			}
 		}
-		std::vector<engine::spatial::PositionF> SmoothWayPoints(
-			const std::vector<engine::spatial::PositionF>& waypoints,
-			const engine::component::tile::TileMap<RenderableTile>& map
+
+		template<typename T>
+		std::vector<engine::component::tile::Coord> SmoothWayPoints(
+			const std::vector<engine::component::tile::Coord>& waypoints,
+			const T& map
 		)
 		{
-			std::vector<engine::spatial::PositionF> smoothed;
+			std::vector<engine::component::tile::Coord> smoothed;
 
-			if (waypoints.empty()) {
+			if (waypoints.empty()) 
+			{
 				return smoothed;
 			}
 
@@ -466,20 +472,24 @@ namespace TestPathFinding
 			return smoothed;
 		}
 
+		template<typename T>
 		bool IsRegionClear(
-			const engine::spatial::PositionF& a,
-			const engine::spatial::PositionF& b,
-			const engine::component::tile::TileMap<RenderableTile>& map
+			const engine::component::tile::Coord& a,
+			const engine::component::tile::Coord& b,
+			const T& map
 		)
 		{
-			int mincol = (int)std::floor(std::min<float>(a.x, b.x));
-			int maxcol = (int)std::floor(std::max<float>(a.x, b.x));
-			int minrow = (int)std::floor(std::min<float>(a.y, b.y));
-			int maxrow = (int)std::floor(std::max<float>(a.y, b.y));
+			int mincol = (int)std::floor(std::min<int>(a.col, b.col));
+			int maxcol = (int)std::floor(std::max<int>(a.col, b.col));
+			int minrow = (int)std::floor(std::min<int>(a.row, b.row));
+			int maxrow = (int)std::floor(std::max<int>(a.row, b.row));
 
-			for (int row = minrow; row <= maxrow; ++row) {
-				for (int col = mincol; col <= maxcol; ++col) {
-					if (!map.Get(row, col)->IsWalkable()) {
+			for (int row = minrow; row <= maxrow; ++row) 
+			{
+				for (int col = mincol; col <= maxcol; ++col) 
+				{
+					if (!map.Get(row, col)->IsWalkable()) 
+					{
 						return false;
 					}
 				}
@@ -487,28 +497,7 @@ namespace TestPathFinding
 			return true;
 		}
 
-		template<typename T, typename Predicate>
-		bool IsRegionClear(
-			const engine::spatial::PositionF& a,
-			const engine::spatial::PositionF& b,
-			const T& map,
-			Predicate isWalkable
-		)
-		{
-			int mincol = (int)std::floor(std::min<float>(a.x, b.x));
-			int maxcol = (int)std::floor(std::max<float>(a.x, b.x));
-			int minrow = (int)std::floor(std::min<float>(a.y, b.y));
-			int maxrow = (int)std::floor(std::max<float>(a.y, b.y));
 
-			for (int row = minrow; row <= maxrow; ++row) {
-				for (int col = mincol; col <= maxcol; ++col) {
-					if (!isWalkable(map.Get(row, col))) {
-						return false;
-					}
-				}
-			}
-			return true;
-		}
 
 	};
 }

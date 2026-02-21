@@ -39,6 +39,7 @@ namespace engine::navigation
 			std::vector<std::vector<Node>> m_nodes;
 			std::vector<engine::component::tile::Coord> m_openTiles;
 			std::vector<engine::component::tile::Coord> m_closedTiles;
+			int m_steps;
 
 			bool m_diagonal;
 			int m_maxSteps;
@@ -159,12 +160,12 @@ namespace engine::navigation
 				m_isWalkable = isWalkable;
 			}
 
-			virtual const std::vector<engine::component::tile::Coord> GetOpenTiles() const
+			const std::vector<engine::component::tile::Coord>& GetOpenTiles() const
 			{
 				return m_openTiles;
 			}
 
-			const std::vector<engine::component::tile::Coord> GetClosedTiles() const
+			const std::vector<engine::component::tile::Coord>& GetClosedTiles() const
 			{
 				return m_closedTiles;
 			}
@@ -229,8 +230,8 @@ namespace engine::navigation
 				// add start node's tile coordinate to open list
 				m_openTiles.push_back(regionStart);
 
-				int steps = m_maxSteps;
-				while (!m_openTiles.empty() && steps-- > 0)
+				m_steps = m_maxSteps;
+				while (!m_openTiles.empty() && m_steps-- > 0)
 				{
 					// find node in open list with lowest f = g + h
 					auto bestIt = m_openTiles.begin();
@@ -316,8 +317,8 @@ namespace engine::navigation
 
 						// calculate tentative g cost considering diagonal movement
 						int tentativeG = neighborTile.row != currentTile.row && neighborTile.col != currentTile.col ?
-							currentNode.g + 14 :	// diagonal movement cost is 14
-							currentNode.g + 10;		// orthogonal movement cost is 10
+							currentNode.g + DiagonalCost :	// diagonal movement cost is 14
+							currentNode.g + CardinalCost;	// orthogonal movement cost is 10
 
 						// if this neighbor node is not in open list yet
 						if (!neighborNode.open)
@@ -352,6 +353,7 @@ namespace engine::navigation
 
 				return true;
 			}
+		
 		};
 
 		class PathFinderUsingPriorityQueue : public PathFinder
@@ -405,7 +407,8 @@ namespace engine::navigation
 				// copy the queue (since priority_queue has no iterators)
 				auto temp = openTiles;
 				std::vector<engine::component::tile::Coord> result;
-				while (!temp.empty()) {
+				while (!temp.empty()) 
+				{
 					result.push_back(temp.top());
 					temp.pop();
 				}
@@ -521,8 +524,8 @@ namespace engine::navigation
 
 						// calculate tentative g cost considering diagonal movement
 						int tentativeG = neighborTile.row != currentTile.row && neighborTile.col != currentTile.col ?
-							currentNode.g + 14 :	// diagonal movement cost is 14
-							currentNode.g + 10;		// orthogonal movement cost is 10
+							currentNode.g + DiagonalCost :	// diagonal movement cost is 14
+							currentNode.g + CardinalCost;		// orthogonal movement cost is 10
 
 						// if this neighbor node is not in open list yet OR we found a cheaper path, update its state
 						if (!neighborNode.open || tentativeG < neighborNode.g)
@@ -554,21 +557,16 @@ namespace engine::navigation
 			}
 		};
 
-		static std::vector<engine::spatial::PositionF> GetWayPoints(const std::vector<engine::component::tile::Coord>& path)
+		static std::vector<engine::component::tile::Coord> GetWayPoints(const std::vector<engine::component::tile::Coord>& path)
 		{
-			std::vector<engine::spatial::PositionF> wp;
+			std::vector<engine::component::tile::Coord> wp;
 
 			if (path.size() < 2)
 			{
 				return wp;
 			}
 
-			wp.push_back(
-				{
-					(float)path[0].col,
-					(float)path[0].row
-				}
-			);
+			wp.push_back(path[0]);
 
 			engine::math::VecF currDir
 			{
@@ -586,28 +584,81 @@ namespace engine::navigation
 
 				if (dir.x != currDir.x || dir.y != currDir.y)
 				{
-					wp.push_back(
-						{
-							(float)path[i - 1].col,
-							(float)path[i - 1].row
-						}
-					);
+					wp.push_back(path[i - 1]);
 
 					currDir = dir;
 				}
 			}
 
-
-			wp.push_back(
-				{
-					(float)path[path.size() - 1].col,
-					(float)path[path.size() - 1].row
-				}
-			);
+			wp.push_back(path[path.size() - 1]);
 
 			return wp;
 		}
 
+		template<typename T, typename Predicate>
+		bool IsRegionClear(
+			const engine::component::tile::Coord& a,
+			const engine::component::tile::Coord& b,
+			const T& map,
+			Predicate&& isWalkable
+		)
+		{
+			int mincol = (int)std::floor(std::min<int>(a.col, b.col));
+			int maxcol = (int)std::floor(std::max<int>(a.col, b.col));
+			int minrow = (int)std::floor(std::min<int>(a.row, b.row));
+			int maxrow = (int)std::floor(std::max<int>(a.row, b.row));
+
+			for (int row = minrow; row <= maxrow; ++row)
+			{
+				for (int col = mincol; col <= maxcol; ++col)
+				{
+					if (!isWalkable(map.Get(row, col)))
+					{
+						return false;
+					}
+				}
+			}
+			return true;
+		}
+
+		template<typename T, typename Predicate>
+		std::vector<engine::component::tile::Coord> SmoothWayPoints(
+			const std::vector<engine::component::tile::Coord>& waypoints,
+			const T& map,
+			Predicate&& isWalkable
+		)
+		{
+			std::vector<engine::component::tile::Coord> smoothed;
+
+			if (waypoints.empty())
+			{
+				return smoothed;
+			}
+
+			// Always keep the first waypoint
+			smoothed.push_back(waypoints.front());
+
+			size_t i = 0;
+			while (i < waypoints.size() - 1)
+			{
+				size_t j = waypoints.size() - 1;
+
+				// Try to jump as far ahead as possible
+				for (; j > i + 1; --j)
+				{
+					if (IsRegionClear(waypoints[i], waypoints[j], map, isWalkable))
+					{
+						break; // found a clear jump
+					}
+				}
+
+				// Keep the farthest reachable waypoint
+				smoothed.push_back(waypoints[j]);
+				i = j;
+			}
+
+			return smoothed;
+		}
 
 
 	}
