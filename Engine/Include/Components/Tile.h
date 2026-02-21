@@ -335,7 +335,12 @@ namespace engine::component::tile
 				row * m_width + col < m_map.size();	// make sure if you map the row and column, it is within the grid array's range
 		}
 
-		const TileMap<T> MakeTileMap()
+		const TileMap<T> MakeTileMap() const
+		{
+			return TileMap<T>(this);
+		}
+
+		TileMap<T> MakeTileMap()
 		{
 			return TileMap<T>(this);
 		}
@@ -489,6 +494,11 @@ namespace engine::component::tile
 		}
 
 		const TileMap<T> MakeTileMap()
+		{
+			return m_tilegrid.MakeTileMap();
+		}
+
+		TileMap<T> MakeTileMap() const
 		{
 			return m_tilegrid.MakeTileMap();
 		}
@@ -698,23 +708,118 @@ namespace engine::component::tile
 		}
 	};
 
+	//template<typename T>
+	//class TileMap : public core::View<TileGrid<T>>, public spatial::ISizeable<size_t>
+	//{
+	//private:
+	//	friend class TileGrid<T>;
+
+	//protected:
+	//	TileMap(TileGrid<T>* tileGrid):
+	//		core::View<TileGrid<T>>(tileGrid)
+	//	{			
+	//	}
+
+	//public:
+	//	virtual ~TileMap() = default;
+
+
+	//	Tile<T> Get(int row, int col)
+	//	{
+	//		return this->m_data->Get(row, col);
+	//	}
+
+	//	const Tile<T> Get(int row, int col) const
+	//	{
+	//		return this->m_data->Get(row, col);
+	//	}
+
+	//	void Set(int row, int col, const T& data)
+	//	{
+	//		this->m_data->Set(row, col, data);
+	//	}
+
+	//	bool IsInBounds(int row, int col) const
+	//	{
+	//		return this->m_data->IsInBounds(row, col);
+	//	}
+
+	//	inline bool isValid() const
+	//	{
+	//		return this->m_data.isValid();
+	//	}
+
+	//	virtual size_t GetWidth() const override final
+	//	{
+	//		return this->m_data->GetWidth();
+	//	}
+	//	virtual size_t GetHeight() const override final
+	//	{
+	//		return this->m_data->GetHeight();
+
+	//	}
+	//	virtual spatial::Size<size_t> GetSize() const override final
+	//	{
+	//		return this->m_data->GetSize();
+	//	}
+	//};
+
 	template<typename T>
-	class TileMap: public core::View<TileGrid<T>>
+	class TileMap: public spatial::ISizeable<size_t>
 	{
 	private:
+		core::View<TileGrid<T>> m_view;
+
 		friend class TileGrid<T>;
 
 	protected:
-		TileMap(TileGrid<T>* tileGrid):
-			core::View<TileGrid<T>>(tileGrid)
-		{			
+		TileMap(TileGrid<T>* tileGrid) :
+			m_view(tileGrid)
+		{
 		}
 
 	public:
 		virtual ~TileMap() = default;
+
+		Tile<T> Get(int row, int col)
+		{
+			return m_view->Get(row, col);
+		}
+
+		const Tile<T> Get(int row, int col) const
+		{
+			return m_view->Get(row, col);
+		}
+
+		void Set(int row, int col, const T& data) 
+		{
+			m_view->Set(row, col, data);
+		}
+
+		bool IsInBounds(int row, int col) const
+		{
+			return m_view->IsInBounds(row, col);
+		}
+
+		inline bool isValid() const
+		{
+			return m_view.isValid();
+		}
+
+		virtual size_t GetWidth() const override final
+		{
+			return m_view->GetWidth();
+		}
+		virtual size_t GetHeight() const override final
+		{
+			return m_view->GetHeight();
+
+		}
+		virtual spatial::Size<size_t> GetSize() const override final
+		{
+			return m_view->GetSize();
+		}
 	};
-
-
 
 
 }

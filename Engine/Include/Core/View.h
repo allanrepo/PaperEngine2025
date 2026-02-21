@@ -28,8 +28,6 @@ namespace engine::core
 	protected:
 		const T* m_data;
 
-
-
 	public:
 		View(const T* data) :
 			m_data(data)

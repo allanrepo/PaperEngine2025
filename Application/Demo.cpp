@@ -538,8 +538,8 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 	{
 		// tell camera the size of the world. this will be the tile map
 		m_camera.SetWorldSize(
-			owner.TileMapManager().GetTileMap("demoTileMap")->GetWidth() * m_tileSize.width,
-			owner.TileMapManager().GetTileMap("demoTileMap")->GetHeight() * m_tileSize.height
+			owner.TileMapManager().GetTileMap("demoTileMap").GetWidth() * m_tileSize.width,
+			owner.TileMapManager().GetTileMap("demoTileMap").GetHeight() * m_tileSize.height
 		);
 	}
 }

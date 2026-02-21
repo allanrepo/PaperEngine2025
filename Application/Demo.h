@@ -103,16 +103,16 @@ namespace demo
 
 		void Execute() override
 		{
-			for (int row = 0; row <= m_tilemap->GetHeight(); ++row)
+			for (int row = 0; row <= m_tilemap.GetHeight(); ++row)
 			{
-				for (int col = 0; col <= m_tilemap->GetWidth(); ++col)
+				for (int col = 0; col <= m_tilemap.GetWidth(); ++col)
 				{
-					if (!m_tilemap->IsInBounds(row, col))
+					if (!m_tilemap.IsInBounds(row, col))
 					{
 						continue;
 					}
 
-					const engine::component::tile::Tile<T>& tile = m_tilemap->Get(row, col);
+					const engine::component::tile::Tile<T>& tile = m_tilemap.Get(row, col);
 					if (tile.isValid())
 					{
 						engine::spatial::PositionF pos =
@@ -189,13 +189,13 @@ namespace demo
 				for (int col = left; col <= right; ++col)
 				{
 					// defensive. just in case we have tile that is out of bounds, skip it.
-					if (!m_tilemap->IsInBounds(row, col))
+					if (!m_tilemap.IsInBounds(row, col))
 					{
 						continue;
 					}
 
 					// get the tile
-					const engine::component::tile::Tile<T>& tile = m_tilemap->Get(row, col);
+					const engine::component::tile::Tile<T>& tile = m_tilemap.Get(row, col);
 
 					// defensive. we're never sure if the tile has valid sprite, so do check
 					if (tile.isValid())

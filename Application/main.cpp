@@ -174,7 +174,7 @@ int main()
     //test::TestCanvas testCanvas;
     //TestFont::Test testFont;
     //TestActor::Test testActor;
-    TestPathFinding::Test testPathFinding;
+    //TestPathFinding::Test testPathFinding;
 
 
 	return 0;

@@ -360,7 +360,7 @@ namespace TestPathFinding
 				wp = SmoothWayPoints(wp, m_region->MakeTileMap());
 				DrawWaypoints(wp, m_tilesize, m_pos, { 0,1,0,1 });
 
-
+				
 				m_rendererBatch->End();
 			}
 			m_canvas->End();
@@ -384,16 +384,16 @@ namespace TestPathFinding
 
 		void DrawTileMap(const engine::component::tile::TileMap<RenderableTile>& tilemap, const engine::spatial::SizeF& tilesize, const engine::spatial::PositionF& pos)
 		{
-			for (int row = 0; row <= tilemap->GetHeight(); ++row)
+			for (int row = 0; row <= tilemap.GetHeight(); ++row)
 			{
-				for (int col = 0; col <= tilemap->GetWidth(); ++col)
+				for (int col = 0; col <= tilemap.GetWidth(); ++col)
 				{
-					if (!tilemap->IsInBounds(row, col))
+					if (!tilemap.IsInBounds(row, col))
 					{
 						continue;
 					}
 
-					const engine::component::tile::Tile<RenderableTile>& tile = tilemap->Get(row, col);
+					const engine::component::tile::Tile<RenderableTile>& tile = tilemap.Get(row, col);
 					if (tile.isValid())
 					{
 						engine::spatial::PositionF origin =
@@ -479,7 +479,7 @@ namespace TestPathFinding
 
 			for (int row = minrow; row <= maxrow; ++row) {
 				for (int col = mincol; col <= maxcol; ++col) {
-					if (!map->Get(row, col)->IsWalkable()) {
+					if (!map.Get(row, col)->IsWalkable()) {
 						return false;
 					}
 				}
