@@ -22,65 +22,62 @@
 #include <Core/View.h>
 #include <memory>
 
-// forward declare
-namespace engine
+namespace engine::graphics
 {
-	namespace graphics
+	namespace resource
 	{
-		namespace resource
-		{
-			class ISpriteAtlas;
-			class SpriteAtlas;
-		}
+		class ISpriteAtlas;
+		class SpriteAtlas;
 	}
-}
 
-
-namespace engine::graphics::renderable
-{
-	// is renderable
-	// has pointer to sprite atlas 
-	// has source rect (normalized rectangular coordinates or UV)
-	// Sprite is sprite. Is is NOT a SpriteAtlas.It has a View SpriteAtlas instead.
-	// 
-	// design consideration: 
-	// change View<T> as composition instead of inheritance. in inheritance, Sprite is behaving like SpriteAtlas
-	// View<T> -> operator allows Sprite to call SpriteAtlas methods. making View<T> protected prevents that but it is visible in intellisense
-	// that is confusing. Sprite is sprite. Is is NOT a SpriteAtlas.It has a View SpriteAtlas instead.
-	class Sprite : public engine::graphics::renderable::IRenderable, public spatial::ISizeable<float>//, private core::View<engine::graphics::resource::ISpriteAtlas>
+	namespace renderable
 	{
-	private:
-		engine::math::geometry::RectF m_rect;
-		engine::spatial::SizeF m_size;
-		core::View<engine::graphics::resource::ISpriteAtlas> m_view;
-		engine::spatial::PositionF m_anchor;
-
-		friend class engine::graphics::resource::SpriteAtlas;
-		friend class engine::graphics::resource::ISpriteAtlas;
-
-	protected:
-		// use this constructor if you have the sprite atlas and the source rect
-		Sprite(const engine::graphics::resource::ISpriteAtlas* spriteAtlas, engine::math::geometry::RectF rect);
-
-	public:
-		~Sprite() = default;
-
-		inline bool isValid() const
+		// is renderable
+		// has pointer to sprite atlas 
+		// has source rect (normalized rectangular coordinates or UV)
+		// Sprite is sprite. Is is NOT a SpriteAtlas.It has a View SpriteAtlas instead.
+		// 
+		// design consideration: 
+		// change View<T> as composition instead of inheritance. in inheritance, Sprite is behaving like SpriteAtlas
+		// View<T> -> operator allows Sprite to call SpriteAtlas methods. making View<T> protected prevents that but it is visible in intellisense
+		// that is confusing. Sprite is sprite. Is is NOT a SpriteAtlas.It has a View SpriteAtlas instead.
+		class Sprite : public engine::graphics::renderable::IRenderable, public spatial::ISizeable<float>//, private core::View<engine::graphics::resource::ISpriteAtlas>
 		{
-			return m_view.isValid();
-		}
+		private:
+			engine::math::geometry::RectF m_rect;
+			engine::spatial::SizeF m_size;
+			core::View<engine::graphics::resource::ISpriteAtlas> m_view;
+			engine::spatial::PositionF m_anchor;
 
-		// ISizeable methods implementation
-		virtual float GetWidth() const override final;
-		virtual float GetHeight() const override final;
-		virtual spatial::SizeF GetSize() const override final;
+			friend class engine::graphics::resource::SpriteAtlas;
+			friend class engine::graphics::resource::ISpriteAtlas;
 
-		// IRenderable methods implementation
-		virtual void Bind() const override final;
-		virtual bool CanBind() const override final;
-		virtual engine::math::geometry::RectF GetUVRect() const override final;
-		void SetAnchor(const engine::spatial::PositionF& pos) override final;
-		engine::spatial::PositionF GetAnchor() const override final;
-	};
+		protected:
+			// use this constructor if you have the sprite atlas and the source rect
+			Sprite(const engine::graphics::resource::ISpriteAtlas* spriteAtlas, engine::math::geometry::RectF rect);
+
+		public:
+			~Sprite() = default;
+
+			inline bool isValid() const
+			{
+				return m_view.isValid();
+			}
+
+			// ISizeable methods implementation
+			virtual float GetWidth() const override final;
+			virtual float GetHeight() const override final;
+			virtual spatial::SizeF GetSize() const override final;
+
+			// IRenderable methods implementation
+			virtual void Bind() const override final;
+			virtual bool CanBind() const override final;
+			virtual engine::math::geometry::RectF GetUVRect() const override final;
+			void SetAnchor(const engine::spatial::PositionF& pos) override final;
+			engine::spatial::PositionF GetAnchor() const override final;
+		};
+	}
+
+
 }
 

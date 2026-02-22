@@ -11,15 +11,7 @@
 #include <Spatial/Position.h>
 #include <string>
 
-using namespace std;
-using namespace engine::spatial;
-using namespace engine::graphics::animation;
-using namespace engine::graphics::renderable;
-using namespace engine::container;
-using namespace engine::state;
-using namespace engine::math;
-using namespace engine::component;
-using namespace engine::cache;
+
 
 namespace engine
 {
@@ -37,6 +29,16 @@ namespace engine
 
 namespace engine
 {
+	using namespace std;
+	using namespace engine::spatial;
+	using namespace engine::graphics::animation;
+	using namespace engine::graphics::renderable;
+	using namespace engine::container;
+	using namespace engine::state;
+	using namespace engine::math;
+	using namespace engine::component;
+	using namespace engine::cache;
+
 	namespace component
 	{
 		class Actor
@@ -108,6 +110,8 @@ namespace engine
 			{ 
 				if (m_motion.GetVelocity().x > 0) return Direction::Right;
 				else if (m_motion.GetVelocity().x < 0) return Direction::Left;
+				else if (m_motion.GetVelocity().y > 0) return Direction::Right;
+				else if (m_motion.GetVelocity().y < 0) return Direction::Left;
 				else return Direction::None;
 			}
 
@@ -154,6 +158,11 @@ namespace engine
 			void QueueState(Args&&... args) 
 			{
 				m_stateMachine.Queue<State>(std::forward<Args>(args)...);
+			}
+
+			void FlushStates()
+			{
+				m_stateMachine.Flush();
 			}
 		};
 	}

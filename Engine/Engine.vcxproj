@@ -41,6 +41,7 @@
     <ClInclude Include="Include\Engine\Factory\RendererFactory.h" />
     <ClInclude Include="Include\Engine\Factory\SpriteAtlasFactory.h" />
     <ClInclude Include="Include\Engine\Factory\TextureFactory.h" />
+    <ClInclude Include="Include\Engine\Graphics\Draw.h" />
     <ClInclude Include="Include\Engine\Loader\AsyncLoader.h" />
     <ClInclude Include="Include\Engine\Loader\SpriteAtlasLoader.h" />
     <ClInclude Include="Include\Engine\Manager\AnimatedTileSetManager.h" />
@@ -49,11 +50,11 @@
     <ClInclude Include="Include\Graphics\Animation\Animation.h" />
     <ClInclude Include="Include\Graphics\Core\Canvas.h" />
     <ClInclude Include="Include\Graphics\Core\Color.h" />
-    <ClInclude Include="Include\Graphics\Core\Draw.h" />
     <ClInclude Include="Include\Graphics\Core\DX11CanvasImpl.h" />
     <ClInclude Include="Include\Graphics\Core\DX11Core.h" />
     <ClInclude Include="Include\Graphics\Core\ICanvas.h" />
     <ClInclude Include="Include\Graphics\Core\ICanvasImpl.h" />
+    <ClInclude Include="Include\Graphics\Core\Primitives.h" />
     <ClInclude Include="Include\Graphics\IO\DX11ImageFileHelper.h" />
     <ClInclude Include="Include\Graphics\Renderable\DrawableSurface.h" />
     <ClInclude Include="Include\Graphics\Renderable\IDrawableSurface.h" />
@@ -112,11 +113,12 @@
     <ClCompile Include="Source\Engine\Engine.cpp" />
     <ClCompile Include="Source\Engine\Factory\CanvasFactory.cpp" />
     <ClCompile Include="Source\Engine\Factory\SpriteAtlasFactory.cpp" />
+    <ClCompile Include="Source\Engine\Graphics\Draw.cpp" />
     <ClCompile Include="Source\Engine\Loader\AsyncLoader.cpp" />
     <ClCompile Include="Source\Graphics\Core\Canvas.cpp" />
-    <ClCompile Include="Source\Graphics\Core\Draw.cpp" />
     <ClCompile Include="Source\Graphics\Core\DX11CanvasImpl.cpp" />
     <ClCompile Include="Source\Graphics\Core\DX11Core.cpp" />
+    <ClCompile Include="Source\Graphics\Core\Primitives.cpp" />
     <ClCompile Include="Source\Graphics\IO\DX11ImageFileHelper.cpp" />
     <ClCompile Include="Source\Graphics\Renderable\DrawableSurface.cpp" />
     <ClCompile Include="Source\Graphics\Renderable\ImageSurface.cpp" />

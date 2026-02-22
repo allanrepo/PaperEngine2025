@@ -8,7 +8,7 @@
 #include "TestWin32.h"
 #include "TestLargeMap.h"
 #include "TestFileReader.h"
-#include "TestAsyncFileReader.h"
+#include "TestActorNavigation.h"
 #include "Demo.h"
 #include "DemoTileLayer.h"
 #include "TestFrameRate.h"
@@ -152,12 +152,7 @@ int main()
 {
     //GenerateOrganicTilemapCSV("256x256.csv", 256, 256, 32, 16);
 
-	//test::TestWin32 testWin32;
-	//test::TestEngine testEngine;
-	//TestAsyncFileReader::Test testAsyncFileReader;
-    //demo::Demo demoInstance(std::make_unique<demo::LoadTileLayerState>());
-
-    // OK
+    //test::TestWin32 testWin32;
     //TestCamera::Test testCamera;
     //TestTile::Test testTile;
     //test::TestFileReader testFileReader;
@@ -165,6 +160,7 @@ int main()
     //test::TestAnimation testAnimation;
     //demo::Demo demoInstance(std::make_unique<demo::LoadAsyncLoaderState>("..\\Assets\\256x256.csv"));
     //demo::Demo1 demoTest;
+    //demo::Demo demoInstance(std::make_unique<demo::LoadTileLayerState>());
     //demo::Demo demoInstance(std::make_unique<demo::LoadTileMapState>("..\\Assets\\256x256.csv"));
     //demo::Demo demoInstance(std::make_unique<demo::DemoState>());
     //demo::Demo demoInstance(std::make_unique<demo::DemoStateCameraMap>());
@@ -174,126 +170,10 @@ int main()
     //test::TestCanvas testCanvas;
     //TestFont::Test testFont;
     //TestActor::Test testActor;
-    TestPathFinding::Test testPathFinding;
-
+    //TestPathFinding::Test testPathFinding;
+    TestActorNavigation::Test testActorNavigation;
 
 	return 0;
 }
 
 
-
-//namespace proto
-//{
-//    class IComponent
-//    {
-//    public:
-//        void Update(double)
-//        {
-//
-//        }
-//        void Render()
-//        {
-//
-//        }
-//    };
-//
-//    class ProgressBar : public IComponent
-//    {
-//    public:
-//    };
-//
-//    class TileLayer: public IComponent
-//    {
-//    public:
-//
-//    };
-//
-//    class IScene
-//    {
-//    public:
-//        virtual void Update(double t) = 0;
-//        virtual void Render() = 0;
-//    };
-//
-//    class Scene: public IScene
-//    {
-//    private:
-//        std::vector<ProgressBar> m_progressBars;
-//        std::vector<TileLayer> m_tileLayers;
-//
-//        std::list<IComponent*> m_components;
-//
-//    public:
-//
-//        void Add(ProgressBar pb)
-//        {
-//            m_progressBars.push_back(pb);
-//        }
-//
-//        ProgressBar& GetProgressBar(size_t index)
-//        {
-//            return m_progressBars[index];
-//		}
-//
-//        TileLayer& GetTileLayer(size_t index)
-//        {
-//            return m_tileLayers[index];
-//		}
-//
-//        void Add(TileLayer layer)
-//        {
-//            m_tileLayers.push_back(layer);
-//        }
-//
-//        void Queue(IComponent* comp)
-//        {
-//            m_components.push_back(comp);
-//        }
-//
-//        void Update(double t)
-//        {
-//            for (IComponent* comp : m_components)
-//            {
-//                comp->Update(t);
-//            }
-//        }
-//
-//        void Render()
-//        {
-//            for (IComponent* comp : m_components)
-//            {
-//                comp->Render();
-//            }
-//        }
-//    };
-//
-//    void run(Scene& scene)
-//    {
-//
-//
-//    }
-//
-//}
-//
-//using namespace proto;
-//int main()
-//{
-//    Scene scene;
-//
-//    scene.Add(ProgressBar());
-//    scene.Add(ProgressBar());
-//    scene.Add(TileLayer());
-//    scene.Add(TileLayer());
-//
-//	scene.Queue(&scene.GetProgressBar(0));
-//	scene.Queue(&scene.GetTileLayer(1));
-//
-//    while (true)
-//    {
-//        scene.Update(0.016);
-//        scene.Render();
-//    }
-//
-//    return 0;
-//}
-//

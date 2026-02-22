@@ -23,7 +23,8 @@
 #include <Timer/StopWatch.h>
 #include <Algorithm/Pathfinding.h>
 #include <Engine/Loader/AsyncLoader.h>
-#include <Graphics/Core/Draw.h>
+#include <Graphics/Core/Primitives.h>
+#include <Engine/Graphics/Draw.h>
 
 using namespace engine;
 using namespace engine::graphics;
@@ -190,12 +191,6 @@ namespace TestPathFinding
 
 			switch (key)
 			{
-			//case 27: // escape
-			//	m_pathFinder->SetMaxSteps(m_step = 0);
-			//	break;
-			//case 32: // space
-			//	m_pathFinder->SetMaxSteps(m_step++);
-			//	break;
 			case 49: // 1
 				// remove all obstacles
 				for (int row = 0; row < m_region->GetHeight(); row++)
@@ -209,33 +204,6 @@ namespace TestPathFinding
 					}
 				}
 				break;
-			//case 51: // 3
-			//	m_drawText = !m_drawText;
-			//	break;
-			//case 52: // 4
-			//	m_drawPathFindingTiles = !m_drawPathFindingTiles;
-			//	break;
-			//case 53: // 5
-			//	m_drawWaypoint = !m_drawWaypoint;
-			//	break;
-			//case 54: // 6
-			//	m_pathFinder->EnableDiagonal(!m_pathFinder->IsDiagonalEnabled());
-			//	break;
-			//case 55: // 7
-			//	m_pathFinder->EnableCutCorners(!m_pathFinder->IsCutCornersEnabled());
-			//	break;
-			//case 56: // 8
-			//	m_pathFinder = (m_pathFinder == &m_pathFinderVector) ? &m_pathFinderPriorityQueue : &m_pathFinderVector;
-			//	//m_pathFinder->SetMaxSteps(m_step = 0);
-			//	break;
-			//case 81: // q
-			//	SetTileLayer(m_tileLayer, 24, 16, component::tile::TileInstance{ 0 });
-			//	m_pathFinder->SetMaxSteps(m_step = 0);
-			//	break;
-			//case 87: // w
-			//	m_tileLayer = engine::io::TileLayerLoader<int>::LoadFromCSV("PathFindingMap_24x16.csv", ',');
-			//	m_pathFinder->SetMaxSteps(m_step = 0);
-			//	break;
 			default:
 				break;
 			}
@@ -352,16 +320,17 @@ namespace TestPathFinding
 				engine::component::tile::TileMap<RenderableTile> tilemap = m_region->MakeTileMap();
 
 				// draw the tile region
-				DrawTileMap(tilemap, m_tilesize, m_pos);
+				engine::graphics::tile::DrawTileMap(*m_rendererBatch, tilemap, m_tilesize, m_pos, { 1,1,1,1 });
 
-				std::vector<engine::component::tile::Coord> wp = navigation::tile::GetWayPoints(m_path);
-				DrawWaypoints(wp, m_tilesize, m_pos, { 1,1,1,1 }, 6.0f);
+				std::vector<engine::component::tile::Coord> wp = engine::navigation::tile::GetWayPoints(m_path);
+				engine::graphics::navigation::DrawWaypoints(*m_rendererBatch, wp, m_tilesize, m_pos, { 1,1,1,1 }, 6.0f);
 
-				wp = engine::navigation::tile::SmoothWayPoints(wp, m_region->MakeTileMap(), [](const engine::component::tile::Tile<RenderableTile>& tile){ return tile->IsWalkable();	});
-				DrawWaypoints(wp, m_tilesize, m_pos, { 0,1,0,1 }, 4.0f);
 
-				wp = engine::navigation::tile::SmoothWayPoints(m_path, m_region->MakeTileMap(), [](const engine::component::tile::Tile<RenderableTile>& tile) { return tile->IsWalkable(); });
-				DrawWaypoints(wp, m_tilesize, m_pos, { 1,0,1,1 }, 2.0f);
+				wp = engine::navigation::tile::SmoothWayPoints(wp, [&tilemap](int row, int col) { return tilemap.IsInBounds(row, col) ? tilemap.Get(row, col)->IsWalkable() : false; });
+				engine::graphics::navigation::DrawWaypoints(*m_rendererBatch, wp, m_tilesize, m_pos, { 0,1,0,1 }, 4.0f);
+
+				wp = engine::navigation::tile::SmoothWayPoints(m_path, [&tilemap](int row, int col) { return tilemap.IsInBounds(row, col) ? tilemap.Get(row, col)->IsWalkable() : false; });
+				engine::graphics::navigation::DrawWaypoints(*m_rendererBatch, wp, m_tilesize, m_pos, { 1,0,1,1 }, 2.0f);
 
 				
 				m_rendererBatch->End();
@@ -383,121 +352,6 @@ namespace TestPathFinding
 			LOG("Window resized to: " + std::to_string(nWidth) + ", " + std::to_string(nHeight));
 			m_canvas->Resize({ static_cast<unsigned int>(nWidth), static_cast<unsigned int>(nHeight) });
 			m_canvas->SetViewPort();
-		}
-
-		void DrawTileMap(const engine::component::tile::TileMap<RenderableTile>& tilemap, const engine::spatial::SizeF& tilesize, const engine::spatial::PositionF& pos)
-		{
-			for (int row = 0; row <= tilemap.GetHeight(); ++row)
-			{
-				for (int col = 0; col <= tilemap.GetWidth(); ++col)
-				{
-					if (!tilemap.IsInBounds(row, col))
-					{
-						continue;
-					}
-
-					const engine::component::tile::Tile<RenderableTile>& tile = tilemap.Get(row, col);
-					if (tile.isValid())
-					{
-						engine::spatial::PositionF origin =
-						{
-							col * tilesize.width,
-							row * tilesize.height
-						};
-
-
-						m_rendererBatch->DrawRenderable(tile->GetSprite(), pos + origin, tilesize, engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
-					}
-				}
-			}
-		}
-
-		void DrawWaypoints(const std::vector<engine::component::tile::Coord>& wp, const engine::spatial::SizeF& tilesize, const engine::spatial::PositionF& pos, const engine::graphics::ColorF& color, float thickness)
-		{
-			for (size_t i = 1; i < wp.size(); i++)
-			{
-				engine::spatial::PositionF start
-				{
-					wp[i - 1].col * tilesize.width + tilesize.width / 2,
-					wp[i - 1].row * tilesize.height + tilesize.height / 2
-				};
-				engine::spatial::PositionF end
-				{
-					wp[i].col * tilesize.width + tilesize.width / 2,
-					wp[i].row * tilesize.height + tilesize.height / 2
-				};
-
-				start += pos;
-				end += pos;
-
-				engine::graphics::primitives::DrawLineSegment(*m_rendererBatch, start, end, color, thickness);
-			}
-		}
-
-		template<typename T>
-		std::vector<engine::component::tile::Coord> SmoothWayPoints(
-			const std::vector<engine::component::tile::Coord>& waypoints,
-			const T& map
-		)
-		{
-			std::vector<engine::component::tile::Coord> smoothed;
-
-			if (waypoints.empty()) 
-			{
-				return smoothed;
-			}
-
-			// Always keep the first waypoint
-			smoothed.push_back(waypoints.front());
-
-			size_t i = 0;
-			while (i < waypoints.size() - 1) 
-			{
-				size_t j = waypoints.size() - 1;
-
-				// Try to jump as far ahead as possible
-				for (; j > i + 1; --j) 
-				{
-					if (IsRegionClear(waypoints[i], waypoints[j], map))
-					{
-						break; // found a clear jump
-					}
-				}
-
-				// Keep the farthest reachable waypoint
-				smoothed.push_back(waypoints[j]);
-				i = j;
-			}
-
-			return smoothed;
-		}
-
-		template<typename T>
-		bool IsRegionClear(
-			const engine::component::tile::Coord& a,
-			const engine::component::tile::Coord& b,
-			const T& map
-		)
-		{
-			int mincol = (int)std::floor(std::min<int>(a.col, b.col));
-			int maxcol = (int)std::floor(std::max<int>(a.col, b.col));
-			int minrow = (int)std::floor(std::min<int>(a.row, b.row));
-			int maxrow = (int)std::floor(std::max<int>(a.row, b.row));
-
-			for (int row = minrow; row <= maxrow; ++row) 
-			{
-				for (int col = mincol; col <= maxcol; ++col) 
-				{
-					if (!map.Get(row, col)->IsWalkable()) 
-					{
-						return false;
-					}
-				}
-			}
-			return true;
-		}
-
-
-
+		}	
 	};
 }

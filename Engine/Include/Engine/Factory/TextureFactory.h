@@ -6,8 +6,6 @@
 #include <Containers/Dictionary.h>
 #include <memory>
 
-//using namespace engine;
-
 namespace graphics
 {
     class TextureFactory

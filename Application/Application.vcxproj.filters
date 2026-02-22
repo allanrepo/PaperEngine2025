@@ -47,7 +47,7 @@
     <ClInclude Include="TestFileReader.h">
       <Filter>Tests</Filter>
     </ClInclude>
-    <ClInclude Include="TestAsyncFileReader.h">
+    <ClInclude Include="TestActorNavigation.h">
       <Filter>Tests</Filter>
     </ClInclude>
     <ClInclude Include="Demo.h">

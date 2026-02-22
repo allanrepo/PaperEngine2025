@@ -82,6 +82,9 @@
     <Filter Include="Algorithm">
       <UniqueIdentifier>{d0c1f5cf-84a5-4773-88ea-3bc8e8f961e6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Graphics">
+      <UniqueIdentifier>{e822ef6c-4a38-4e4e-a383-d12974eedbcb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Core\Event.h">
@@ -333,8 +336,11 @@
     <ClInclude Include="Include\Algorithm\Pathfinding.h">
       <Filter>Algorithm</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\Core\Draw.h">
+    <ClInclude Include="Include\Graphics\Core\Primitives.h">
       <Filter>Graphics\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Engine\Graphics\Draw.h">
+      <Filter>Engine\Graphics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -440,8 +446,11 @@
     <ClCompile Include="Source\Graphics\Resource\FontAtlas.cpp">
       <Filter>Graphics\Resource</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\Core\Draw.cpp">
+    <ClCompile Include="Source\Graphics\Core\Primitives.cpp">
       <Filter>Graphics\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Graphics\Draw.cpp">
+      <Filter>Engine\Graphics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

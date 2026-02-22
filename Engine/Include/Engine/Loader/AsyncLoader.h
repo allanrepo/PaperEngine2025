@@ -9,26 +9,172 @@
 #include <Math/Rect.h>
 #include <queue>
 
-// forward declare
-namespace engine
-{
-	namespace loader
-	{
-		namespace tile
-		{
-		}
-		namespace container
-		{
-			template<typename T>
-			class AsyncContainerClearer;
-		}
-	}
-}
+//// forward declare
+//namespace engine
+//{
+//	namespace loader
+//	{
+//		namespace tile
+//		{
+//		}
+//		namespace container
+//		{
+//			template<typename T>
+//			class AsyncContainerClearer;
+//		}
+//	}
+//}
 
 namespace engine
 {
 	namespace loader
 	{
+		namespace container
+		{
+			// ------------------------------------------------------------------------------------------------------------------
+			// Design considerations
+			// - Purpose:
+			//     Utility class that incrementally or synchronously clears an IContainer<T> by repeatedly invoking Pop().
+			//     Provides a time-sliced Update() method for gradual clearing, or can be driven until completion for blocking use.
+			//
+			// - Features:
+			//     - Non-owning reference: m_container is borrowed; caller manages its lifetime.
+			//     - Supports both incremental clearing (Update with time budget) and synchronous clearing (loop until IsDone()).
+			//     - Tracks total number of elements scheduled for clearing, current progress, and completion state.
+			//     - Provides progress reporting via GetCurrent(), GetTotal(), and GetProgress().
+			//     - Labeling support: caller can tag each clearing operation with a descriptive string.
+			//     - Optional delay parameter (m_delayMS) to simulate longer processing for debugging.
+			//
+			// - Highlights:
+			//     - Async clearing: Update() pops elements until the time budget expires, allowing cooperative multitasking.
+			//     - Sync clearing: caller can drive Update() in a loop until IsDone() is true.
+			//     - Safe null handling: if Begin is never called or container is null, loader is immediately marked done.
+			//     - Lightweight: does not own or allocate; simply drives container’s Pop() method.
+			//     - Encapsulated state: m_isDone flag ensures predictable completion semantics.
+			//     - Deferred Pop(): container elements are only removed during Update(), avoiding dangling references.
+			//
+			// - Limitations:
+			//     - Assumes container implements Pop(), GetElementCount(), IsEmpty(), etc. via IContainer<T>.
+			//     - No parallelism: Update() runs on caller thread; external scheduling required.
+			//     - No built-in events; client must poll IsDone() or GetProgress().
+			//     - Does not reset m_total automatically; caller must call Begin() again to reuse for a new container.
+			//     - Debug delay uses busy-wait; replace with sleep for production use if needed.
+			//
+			// - Usage:
+			//     // Blocking clear
+			//     AsyncContainerClearer<MyType> clearer;
+			//     clearer.Begin("Clear Layer", myContainer);
+			//     while (!clearer.IsDone()) {
+			//         clearer.Update(1.0); // process within 1ms budget
+			//     }
+			//
+			//     // Async clear (time-sliced)
+			//     AsyncContainerClearer<MyType> clearer;
+			//     clearer.Begin("Clear Table", myContainer, 0.5); // optional delay for debug
+			//     clearer.Update(0.5); // clear incrementally within 0.5ms
+			// ------------------------------------------------------------------------------------------------------------------
+			template<typename T>
+			class AsyncContainerClearer : public engine::loader::IAsyncLoader
+			{
+			private:
+				engine::container::IContainer<T>* m_container;
+				size_t m_total;
+				std::string m_label;
+				bool m_isDone;
+
+				// for debug purposes only, we can add a delay to simulate longer processing time
+				double m_delayMS;
+
+			public:
+				AsyncContainerClearer() :
+					m_container(nullptr),
+					m_total(0),
+					m_isDone(false),
+					m_label("")
+				{
+				}
+
+				virtual ~AsyncContainerClearer() = default;
+
+				void Begin(
+					const std::string& label,
+					engine::container::IContainer<T>& container,
+					double delayMS = 0.0
+				)
+				{
+					m_container = &container;
+					m_label = label;
+					m_isDone = false;
+					m_delayMS = delayMS;
+
+					// remember the actual number of cells 
+					m_total = m_container ? m_container->GetElementCount() : 0;
+				}
+
+				void Update(double maxTimeToReadMS) override
+				{
+					// if no container, we are done
+					if (!m_container)
+					{
+						m_isDone = true;
+						return;
+					}
+
+					engine::timer::StopWatch sw;
+					sw.Start();
+					while (!m_isDone)
+					{
+						if (m_container->IsEmpty())
+						{
+							m_isDone = true;
+							break;
+						}
+
+						// pop one element to reduce the container size
+						m_container->Pop();
+
+						// for debug purposes only, we can add a delay here to simulate longer processing time
+						{
+							engine::timer::StopWatch delay;
+							delay.Start();
+							while (delay.Peek<timer::milliseconds>() < m_delayMS) {}
+							delay.Stop();
+						}
+
+						if (sw.Peek<timer::milliseconds>() >= maxTimeToReadMS)
+						{
+							break;
+						}
+					}
+				}
+
+				size_t GetCurrent() const override
+				{
+					return m_container ? m_total - m_container->GetElementCount() : 0;
+				}
+
+				size_t GetTotal() const override
+				{
+					return m_total;
+				}
+
+				std::string GetLabel() const override
+				{
+					return m_label;
+				}
+
+				double GetProgress() const override
+				{
+					return m_total > 0 ? static_cast<double>(GetCurrent()) / m_total : 0.0;
+				}
+
+				bool IsDone() const override
+				{
+					return m_isDone;
+				}
+			};
+		}
+
 		namespace tile
 		{
 			// ------------------------------------------------------------------------------------------------------------------
@@ -1111,151 +1257,7 @@ namespace engine
 			};
 		}
 		
-		namespace container
-		{
-			// ------------------------------------------------------------------------------------------------------------------
-			// Design considerations
-			// - Purpose:
-			//     Utility class that incrementally or synchronously clears an IContainer<T> by repeatedly invoking Pop().
-			//     Provides a time-sliced Update() method for gradual clearing, or can be driven until completion for blocking use.
-			//
-			// - Features:
-			//     - Non-owning reference: m_container is borrowed; caller manages its lifetime.
-			//     - Supports both incremental clearing (Update with time budget) and synchronous clearing (loop until IsDone()).
-			//     - Tracks total number of elements scheduled for clearing, current progress, and completion state.
-			//     - Provides progress reporting via GetCurrent(), GetTotal(), and GetProgress().
-			//     - Labeling support: caller can tag each clearing operation with a descriptive string.
-			//     - Optional delay parameter (m_delayMS) to simulate longer processing for debugging.
-			//
-			// - Highlights:
-			//     - Async clearing: Update() pops elements until the time budget expires, allowing cooperative multitasking.
-			//     - Sync clearing: caller can drive Update() in a loop until IsDone() is true.
-			//     - Safe null handling: if Begin is never called or container is null, loader is immediately marked done.
-			//     - Lightweight: does not own or allocate; simply drives container’s Pop() method.
-			//     - Encapsulated state: m_isDone flag ensures predictable completion semantics.
-			//     - Deferred Pop(): container elements are only removed during Update(), avoiding dangling references.
-			//
-			// - Limitations:
-			//     - Assumes container implements Pop(), GetElementCount(), IsEmpty(), etc. via IContainer<T>.
-			//     - No parallelism: Update() runs on caller thread; external scheduling required.
-			//     - No built-in events; client must poll IsDone() or GetProgress().
-			//     - Does not reset m_total automatically; caller must call Begin() again to reuse for a new container.
-			//     - Debug delay uses busy-wait; replace with sleep for production use if needed.
-			//
-			// - Usage:
-			//     // Blocking clear
-			//     AsyncContainerClearer<MyType> clearer;
-			//     clearer.Begin("Clear Layer", myContainer);
-			//     while (!clearer.IsDone()) {
-			//         clearer.Update(1.0); // process within 1ms budget
-			//     }
-			//
-			//     // Async clear (time-sliced)
-			//     AsyncContainerClearer<MyType> clearer;
-			//     clearer.Begin("Clear Table", myContainer, 0.5); // optional delay for debug
-			//     clearer.Update(0.5); // clear incrementally within 0.5ms
-			// ------------------------------------------------------------------------------------------------------------------
-			template<typename T>
-			class AsyncContainerClearer : public engine::loader::IAsyncLoader
-			{
-			private:
-				engine::container::IContainer<T>* m_container;
-				size_t m_total;
-				std::string m_label;
-				bool m_isDone;
 
-				// for debug purposes only, we can add a delay to simulate longer processing time
-				double m_delayMS;
-
-			public:
-				AsyncContainerClearer() :
-					m_container(nullptr),
-					m_total(0),
-					m_isDone(false),
-					m_label("")
-				{
-				}
-
-				virtual ~AsyncContainerClearer() = default;
-
-				void Begin(
-					const std::string& label,
-					engine::container::IContainer<T>& container,
-					double delayMS = 0.0
-				)
-				{
-					m_container = &container;
-					m_label = label;
-					m_isDone = false;
-					m_delayMS = delayMS;
-
-					// remember the actual number of cells 
-					m_total = m_container ? m_container->GetElementCount() : 0;
-				}
-
-				void Update(double maxTimeToReadMS) override
-				{
-					// if no container, we are done
-					if (!m_container)
-					{
-						m_isDone = true;
-						return;
-					}
-
-					engine::timer::StopWatch sw;
-					sw.Start();
-					while (!m_isDone)
-					{
-						if (m_container->IsEmpty())
-						{
-							m_isDone = true;
-							break;
-						}
-
-						// pop one element to reduce the container size
-						m_container->Pop();
-
-						// for debug purposes only, we can add a delay here to simulate longer processing time
-						{
-							engine::timer::StopWatch delay;
-							delay.Start();
-							while (delay.Peek<timer::milliseconds>() < m_delayMS) {}
-							delay.Stop();
-						}
-
-						if (sw.Peek<timer::milliseconds>() >= maxTimeToReadMS)
-						{
-							break;
-						}
-					}
-				}
-
-				size_t GetCurrent() const override
-				{
-					return m_container ? m_total - m_container->GetElementCount() : 0;
-				}
-
-				size_t GetTotal() const override
-				{
-					return m_total;
-				}
-
-				std::string GetLabel() const override
-				{
-					return m_label;
-				}
-
-				double GetProgress() const override
-				{
-					return m_total > 0 ? static_cast<double>(GetCurrent()) / m_total : 0.0;
-				}
-
-				bool IsDone() const override
-				{
-					return m_isDone;
-				}
-			};
-		}
 	}	
 
 }

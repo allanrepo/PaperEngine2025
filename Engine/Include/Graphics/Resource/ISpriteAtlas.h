@@ -1,6 +1,6 @@
 #pragma once
-#include <Graphics/Renderable/Sprite.h>
 #include <Spatial/ISizeable.h>
+#include <Math/Rect.h>
 #include <vector>
 #include <Core/Bindable.h>
 #include <Graphics/Resource/ITexture.h>
@@ -9,8 +9,15 @@ namespace engine
 {
 	namespace graphics
 	{
+		namespace renderable
+		{
+			class Sprite;
+		}
+
 		namespace resource
 		{
+			class ITexture;
+
 			class ISpriteAtlas : public core::IBindable, public spatial::ISizeable<float>
 			{
 

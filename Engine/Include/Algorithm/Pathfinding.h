@@ -595,11 +595,12 @@ namespace engine::navigation
 			return wp;
 		}
 
-		template<typename T, typename Predicate>
+		// this helper function checks if any tiles in the region of the map coordinates a and b occupy is walkable or not
+		// it uses predicate so caller can define a lambda to evaluate if tile is walkable or not
+		template<typename Predicate>
 		bool IsRegionClear(
 			const engine::component::tile::Coord& a,
 			const engine::component::tile::Coord& b,
-			const T& map,
 			Predicate&& isWalkable
 		)
 		{
@@ -612,7 +613,7 @@ namespace engine::navigation
 			{
 				for (int col = mincol; col <= maxcol; ++col)
 				{
-					if (!isWalkable(map.Get(row, col)))
+					if (!isWalkable(row, col))
 					{
 						return false;
 					}
@@ -621,10 +622,9 @@ namespace engine::navigation
 			return true;
 		}
 
-		template<typename T, typename Predicate>
+		template<typename Predicate>
 		std::vector<engine::component::tile::Coord> SmoothWayPoints(
 			const std::vector<engine::component::tile::Coord>& waypoints,
-			const T& map,
 			Predicate&& isWalkable
 		)
 		{
@@ -646,7 +646,7 @@ namespace engine::navigation
 				// Try to jump as far ahead as possible
 				for (; j > i + 1; --j)
 				{
-					if (IsRegionClear(waypoints[i], waypoints[j], map, isWalkable))
+					if (IsRegionClear(waypoints[i], waypoints[j], isWalkable))
 					{
 						break; // found a clear jump
 					}

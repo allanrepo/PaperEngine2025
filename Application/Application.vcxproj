@@ -141,7 +141,7 @@
     <ClInclude Include="DemoTileMap.h" />
     <ClInclude Include="TestActor.h" />
     <ClInclude Include="TestAnimation.h" />
-    <ClInclude Include="TestAsyncFileReader.h" />
+    <ClInclude Include="TestActorNavigation.h" />
     <ClInclude Include="TestCanvas.h" />
     <ClInclude Include="TestEngine.h" />
     <ClInclude Include="TestFileReader.h" />
