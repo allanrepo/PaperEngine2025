@@ -90,7 +90,7 @@ bool engine::graphics::factory::SpriteAtlasFactory::Create(
 )
 {
     // create an uninitialized sprite atlas object
-    std::unique_ptr<engine::graphics::resource::ISpriteAtlas> atlas = engine::graphics::factory::SpriteAtlasFactory::Create();
+    std::unique_ptr<engine::graphics::resource::ISpriteAtlas> atlas = engine::graphics::factory::SpriteAtlasFactory::Create(filepath, row, col);
 
     // make sure it is created successfully
     if (!atlas)
@@ -98,10 +98,27 @@ bool engine::graphics::factory::SpriteAtlasFactory::Create(
         return false;
     }
 
+    // save into cache
+    cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Register(name, std::move(atlas));
+
+    return true;
+}
+
+std::unique_ptr<engine::graphics::resource::ISpriteAtlas> engine::graphics::factory::SpriteAtlasFactory::Create(const std::wstring& filepath, const size_t row, const size_t col)
+{
+    // create an uninitialized sprite atlas object
+    std::unique_ptr<engine::graphics::resource::ISpriteAtlas> atlas = engine::graphics::factory::SpriteAtlasFactory::Create();
+
+    // make sure it is created successfully
+    if (!atlas)
+    {
+        return nullptr;
+    }
+
     // load image source
     if (!atlas->Initialize(filepath.c_str()))
     {
-        return false;
+        return nullptr;
     }
 
     // create UV list and load them to atlas 
@@ -111,14 +128,8 @@ bool engine::graphics::factory::SpriteAtlasFactory::Create(
         atlas->AddUVRects(uvs);
     }
 
-    // save into cache
-    cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Register(name, std::move(atlas));
-
-    return true;
+    return atlas;
 }
-
-
-
 
 std::unique_ptr<engine::graphics::resource::ISpriteAtlas> engine::graphics::factory::SpriteAtlasFactory::Create(
     const std::wstring& filepath,

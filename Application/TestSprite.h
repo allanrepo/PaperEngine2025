@@ -31,21 +31,9 @@ namespace test
 	class TestSprite
 	{
 	private:
-		//// we are mocking the sprite class here for demo purpose so we can create sprite directly without using factory
-		//class MockSprite : public engine::graphics::renderable::Sprite
-		//{
-		//public:
-		//	MockSprite(engine::graphics::resource::ISpriteAtlas* spriteAtlas, math::geometry::RectF rect) :
-		//		Sprite(spriteAtlas, rect)
-		//	{
-		//	}
-		//};
-
-	private:
 		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
-		std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
 		std::unique_ptr<engine::graphics::renderable::Sprite> m_sprite;
 		engine::spatial::SizeF m_spriteSize{};
 		engine::input::Input m_input;
@@ -90,43 +78,35 @@ namespace test
 			m_renderer->Initialize();
 			LOG("Renderer (DX11) created...");
 
-			// create sprite atlas manually for demo purpose
-			m_spriteAtlas = std::make_unique<MockSpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
-
-			// load sprite atlas from file manually for demo purpose
-			m_spriteAtlas->Initialize(L"../Assets/CharacterTest_2304x1536_12x8.png");
-
-			// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 8 rows and 12 columns
-			// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-			std::vector<engine::math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(8, 12, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
-			for (engine::math::geometry::RectF& rect : uvs)
-			{
-				m_spriteAtlas->AddUVRect(rect);
-			}
-			
+			// create sprite atlas using factory. it will be stored in cache and will auto generate UV's based on given row and col
+			engine::graphics::factory::SpriteAtlasFactory::Create("CharacterTest_2304x1536_12x8", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12);
+			engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("CharacterTest_2304x1536_12x8");
+						
 			// calculate sprite size based on atlas size and grid
-			m_spriteSize.width = m_spriteAtlas->GetWidth() / 12; // assuming 12 columns
-			m_spriteSize.height = m_spriteAtlas->GetHeight() / 8; // assuming 8 rows
+			m_spriteSize.width = atlas.GetWidth() / 12; // assuming 12 columns
+			m_spriteSize.height = atlas.GetHeight() / 8; // assuming 8 rows
 			
 			// create sprite
-			m_sprite = std::make_unique<engine::graphics::renderable::Sprite>(m_spriteAtlas->MakeSprite(0));
+			m_sprite = std::make_unique<engine::graphics::renderable::Sprite>(atlas.MakeSprite(0));
 		}
 
 		void OnMouseMove(int x, int y)
 		{
+			engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("CharacterTest_2304x1536_12x8");
+
 			// find the sprite cell from sprite atlas based on mouse position
-			engine::spatial::SizeF size = m_spriteAtlas->GetSize();
+			engine::spatial::SizeF size = atlas.GetSize();
 
 			// dividing by 2 because sprite atlas is drawn at half size
 			int col = static_cast<int>(x / (m_spriteSize.width / 2));
 			int row = static_cast<int>(y / (m_spriteSize.height / 2));
 
-			int index = row * (int)(m_spriteAtlas->GetWidth()/m_spriteSize.width) + col;
+			int index = row * (int)(atlas.GetWidth()/m_spriteSize.width) + col;
 
 			// recreate sprite with new UV rect
-			if (index < m_spriteAtlas->GetUVRectCount())
+			if (index < atlas.GetUVRectCount())
 			{
-				m_sprite = std::make_unique<engine::graphics::renderable::Sprite>(m_spriteAtlas->MakeSprite(index));
+				m_sprite = std::make_unique<engine::graphics::renderable::Sprite>(atlas.MakeSprite(index));
 			}
 		}
 
@@ -142,17 +122,19 @@ namespace test
 
 				m_renderer->Begin();
 				{
+					engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("CharacterTest_2304x1536_12x8");
+
 					// draw the sprite atlas at half size
-					m_renderer->DrawRenderable(m_spriteAtlas->GetSprite(),
+					m_renderer->DrawRenderable(atlas.GetSprite(),
 						engine::spatial::PositionF{ 0, 0 },
-						engine::spatial::SizeF{ m_spriteAtlas->GetWidth()/2, m_spriteAtlas->GetHeight()/2},
+						engine::spatial::SizeF{ atlas.GetWidth()/2, atlas.GetHeight()/2},
 						engine::graphics::ColorF{ 1,1,1,1 },
 						0
 					);
 
 					// draw the selected sprite cell next to the sprite atlas
 					m_renderer->DrawRenderable(*m_sprite,
-						engine::spatial::PositionF{ m_spriteAtlas->GetWidth() / 2 + 10, 0 },
+						engine::spatial::PositionF{ atlas.GetWidth() / 2 + 10, 0 },
 						engine::spatial::SizeF{ m_sprite->GetWidth(), m_sprite->GetHeight() },
 						engine::graphics::ColorF{ 1,1,1,1 },
 						0

@@ -36,8 +36,15 @@ namespace engine::graphics::factory
             const std::vector<engine::math::geometry::RectF>& uvs
         );
 
+        // creates an initialized sprite atlas object but store in registry and UV's calculated and loaded with assumption that sprites are
+        // evenly divided by given row and col
         static bool Create(
             const std::string& name,
+            const std::wstring& filepath,
+            const size_t row, const size_t col
+        );
+
+        static std::unique_ptr<engine::graphics::resource::ISpriteAtlas> Create(
             const std::wstring& filepath,
             const size_t row, const size_t col
         );

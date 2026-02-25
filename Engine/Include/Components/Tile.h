@@ -72,6 +72,9 @@ namespace engine::component::tile
 		{
 			return !(*this == other);
 		}
+
+		Coord(int r, int c): row(r), col(c){}
+		Coord() : row(0), col(0) {}
 	};
 
 	// tile instance holds a reference to tile data from tileset
@@ -327,6 +330,14 @@ namespace engine::component::tile
 			m_map[row * m_width + col] = data;
 		}
 
+		void Set(const Tile<T>& data) override
+		{
+			for (size_t i = 0; i < m_map.size(); i++)
+			{
+				m_map[i] = data;
+			}
+		}
+
 		bool IsInBounds(int row, int col) const override
 		{
 			return
@@ -488,6 +499,11 @@ namespace engine::component::tile
 			m_tilegrid.Set(row, col, data);
 		}
 
+		void Set(const Tile<T>& data) override
+		{
+			m_tilegrid.Set(data);
+		}
+
 		bool IsInBounds(int row, int col) const override
 		{
 			return m_tilegrid.IsInBounds(row, col);
@@ -539,16 +555,14 @@ namespace engine::component::tile
 			m_regions.insert(m_regions.end(), std::make_move_iterator(data.begin()), std::make_move_iterator(data.end())); // move 
 		}
 
-		//TileRegion<T>& CreateAndAddRegion(const spatial::Size<size_t>& size)
-		//{
-		//	TileRegion<T> region; 
-		//	region.SetWidth(size.width); 
-		//	
-		//	m_regions.emplace_back(std::move(region)); 
-
-		//	// return reference to the newly created region
-		//	return m_regions.back(); 
-		//}
+		// this could be a very expensive method. it is best to set tile by tile and do it asynchronously
+		void Set(const TileRegion<T>& data) override
+		{
+			for (size_t i = 0; i < m_regions.size(); i++)
+			{
+				m_regions[i] = data;
+			}
+		}
 
 		void Pop() override
 		{
@@ -733,11 +747,6 @@ namespace engine::component::tile
 		const Tile<T> Get(int row, int col) const
 		{
 			return m_view->Get(row, col);
-		}
-
-		void Set(int row, int col, const T& data) 
-		{
-			m_view->Set(row, col, data);
 		}
 
 		bool IsInBounds(int row, int col) const

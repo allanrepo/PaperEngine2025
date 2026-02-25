@@ -66,22 +66,16 @@ namespace TestActorNavigation
 	private:
 		Sprite m_sprite;
 		bool m_walkable;
-		Animator<Sprite>* m_animator;
 
 	public:
-		RenderableTile(const Sprite& sprite, bool walkable, Animator<Sprite>* animator = nullptr) :
+		RenderableTile(const Sprite& sprite, bool walkable) :
 			m_sprite(sprite),
-			m_walkable(walkable),
-			m_animator(animator)
+			m_walkable(walkable)
 		{
 		}
 
 		const Sprite& GetSprite() const
 		{
-			if (m_animator)
-			{
-				return m_animator->GetCurrentFrame().element;
-			}
 			return m_sprite;
 		}
 
@@ -116,10 +110,11 @@ namespace TestActorNavigation
 	public:
 		Test():
 			m_pathFinder(
-				[](int currRow, int currCol, int row, int col) -> bool
+				[](int row, int col) -> bool
 				{
 					return Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile").Get(row, col)->IsWalkable();
 				},
+				nullptr,
 				true,
 				false
 			),

@@ -243,9 +243,6 @@
     <ClInclude Include="Include\Utilities\CSVFile.h">
       <Filter>Utilities</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Engine\Loader\SpriteAtlasLoader.h">
-      <Filter>Engine\Loader</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Core\Input.h">
       <Filter>Core</Filter>
     </ClInclude>
@@ -341,6 +338,9 @@
     </ClInclude>
     <ClInclude Include="Include\Engine\Graphics\Draw.h">
       <Filter>Engine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Engine\Loader\SpriteAtlasLoader.h">
+      <Filter>Engine\Loader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

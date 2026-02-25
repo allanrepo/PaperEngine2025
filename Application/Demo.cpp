@@ -12,9 +12,6 @@
 #include <Engine/Factory/SpriteAtlasFactory.h>
 #include <Cache/Registry.h>
 
-//using namespace engine;
-using namespace app;
-
 #pragma region demo
 
 std::vector<engine::math::geometry::RectF> demo::CalcUV(int row, int col, int fileWidth, int fileHeight)

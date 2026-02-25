@@ -31,38 +31,52 @@ using namespace engine::graphics;
 
 namespace TestPathFinding
 {
+	// tile descriptor
+	enum class TileDesc : int
+	{						// NWSE
+		CLEAR  = 0b0000,	// 0000 -> clear
+		BLOCKED = 0b1111,	// 1111 -> blocked
+		NW = 0b1100,		// 1100 -> NW blocked half diagonal
+		SE = 0b0011,		// 0011 -> SE blocked half diagonal
+		NE = 0b1001,		// 1001 -> NE blocked half diagonal
+		SW = 0b0110			// 0110 -> SW blocked half diagonal
+	};
+
+
 	class RenderableTile
 	{
 	private:
 		engine::graphics::renderable::Sprite m_sprite;
-		bool m_walkable;
-		engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>* m_animator;
+		TileDesc m_mask;
 
 	public:
-		RenderableTile(const engine::graphics::renderable::Sprite& sprite, bool walkable, engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>* animator = nullptr) :
+		RenderableTile(const engine::graphics::renderable::Sprite& sprite, TileDesc mask = TileDesc::CLEAR) :
 			m_sprite(sprite),
-			m_walkable(walkable),
-			m_animator(animator)
+			m_mask(mask)
 		{
 		}
 
 		const engine::graphics::renderable::Sprite& GetSprite() const
 		{
-			if (m_animator)
-			{
-				return m_animator->GetCurrentFrame().element;
-			}
 			return m_sprite;
 		}
+
 		bool IsWalkable() const
 		{
-			return m_walkable;
+			return !(int)m_mask;
+		}
+
+		TileDesc GetMask() const
+		{
+			return m_mask;
 		}
 	};
 
+
+
+
 	class Test
 	{
-	private:
 	private:
 		std::unique_ptr<win32::Window> m_window;
 		std::unique_ptr<ICanvas> m_canvas;
@@ -78,7 +92,7 @@ namespace TestPathFinding
 		engine::spatial::SizeF m_tilesize;
 
 		
-		std::unique_ptr< engine::component::tile::TileRegion<RenderableTile>> m_region;
+		std::unique_ptr<engine::component::tile::TileRegion<RenderableTile>> m_region;
 		engine::navigation::tile::PathFinder m_pathFinder;
 		engine::component::tile::Coord m_startTile;
 		engine::component::tile::Coord m_goalTile;
@@ -87,14 +101,88 @@ namespace TestPathFinding
 
 
 	public:
+
+		std::function<bool(const engine::component::tile::Coord&, const engine::component::tile::Coord&)> CanMoveDiagonally = 
+			[this](const engine::component::tile::Coord& curr, const engine::component::tile::Coord& next) -> bool
+			{
+				enum Direction
+				{
+					NE,
+					SE,
+					NW,
+					SW,
+					NONE
+				};
+
+				// get direction 
+				engine::math::Vec<int> dir;
+				dir.y = next.row - curr.row;
+				dir.x = next.col - curr.col;
+
+				Direction direction;
+				direction =
+					dir.y > 0 && dir.x > 0 ? SE :
+					dir.y < 0 && dir.x < 0 ? NW :
+					dir.y < 0 && dir.x > 0 ? NE :
+					dir.y > 0 && dir.x < 0 ? SW :
+					NONE;
+
+				// if not diagonal, just do a regular compare if block or not
+				if (dir.y == 0 || dir.x == 0)
+				{
+					return m_region->Get(next)->IsWalkable();
+				}
+
+				// get adjacent tiles bitmask
+				TileDesc CRNC = m_region->Get(curr.row, next.col)->GetMask();
+				TileDesc NRCC = m_region->Get(next.row, curr.col)->GetMask();
+
+				//// tile descriptor
+				//enum class TileDesc: int
+				//{						// NWSE
+				//	BLOCKED	= 0b0000,	// 0000 -> clear
+				//	CLEAR	= 0b1111,	// 1111 -> blocked
+				//	NW		= 0b1100,	// 1100 -> NW blocked half diagonal
+				//	SE		= 0b0011,	// 0011 -> SE blocked half diagonal
+				//	NE		= 0b1001,	// 1001 -> NE blocked half diagonal
+				//	SW		= 0b0110	// 0110 -> SW blocked half diagonal
+				//};
+
+				if (CRNC == TileDesc::CLEAR && NRCC == TileDesc::CLEAR)
+				{
+					return true;
+				}
+				if (direction == Direction::SE && CRNC == TileDesc::NE && NRCC == TileDesc::SW)
+				{
+					return true;
+				}
+				else if (direction == Direction::NW && CRNC == TileDesc::SW && NRCC == TileDesc::NE)
+				{
+					return true;
+				}
+				else if (direction == Direction::NE && CRNC == TileDesc::SE && NRCC == TileDesc::NW)
+				{
+					return true;
+				}
+				else if (direction == Direction::SW && CRNC == TileDesc::NW && NRCC == TileDesc::SE)
+				{
+					return true;
+				}
+				else 
+				{
+					return false;
+				}
+			};
+
 		Test():
 			m_pos(50, 50),
 			m_tilesize(32, 32),
 			m_pathFinder(
-				[this](int currRow, int currCol, int row, int col) -> bool
+				[this](int row, int col) -> bool
 				{
 					return m_region->Get(row, col)->IsWalkable();
 				},
+				nullptr,
 				true,
 				false
 			),
@@ -105,6 +193,7 @@ namespace TestPathFinding
 			win32::Window::OnExit += event::Handler(this, &Test::OnExit);
 			win32::Window::OnIdle += event::Handler(this, &Test::OnIdle);
 			win32::Window::Run();
+
 		}
 
 		// function that will be called just before we enter into message loop
@@ -145,25 +234,27 @@ namespace TestPathFinding
 
 			{
 				// create sprite atlas to be used by tilemap
-				engine::graphics::factory::SpriteAtlasFactory::Create("1x8_256x32_tile", L"../Assets/1x8_256x32_tile.png", 1, 8);
-				engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("1x8_256x32_tile");
+				engine::graphics::factory::SpriteAtlasFactory::Create("12x1_384x32_tile", L"../Assets/12x1_384x32_tile.png", 1, 12);
+				engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("12x1_384x32_tile");
 
-				engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Register("1x8_256x32_tile", std::make_unique<engine::component::tile::Tileset<RenderableTile>>());
-				engine::component::tile::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Get("1x8_256x32_tile");
+				engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Register("12x1_384x32_tile", std::make_unique<engine::component::tile::Tileset<RenderableTile>>());
+				engine::component::tile::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Get("12x1_384x32_tile");
 
-				tileset.Register(0, std::make_unique<RenderableTile>(atlas.MakeSprite(0), true)); // walkable
-				tileset.Register(1, std::make_unique<RenderableTile>(atlas.MakeSprite(1), true)); // obstacle
-				tileset.Register(2, std::make_unique<RenderableTile>(atlas.MakeSprite(2), true)); // obstacle
-				tileset.Register(3, std::make_unique<RenderableTile>(atlas.MakeSprite(3), true)); // obstacle
-				tileset.Register(4, std::make_unique<RenderableTile>(atlas.MakeSprite(4), false)); // walkable
-				tileset.Register(5, std::make_unique<RenderableTile>(atlas.MakeSprite(5), true)); // obstacle
-				tileset.Register(6, std::make_unique<RenderableTile>(atlas.MakeSprite(6), true)); // obstacle
-				tileset.Register(7, std::make_unique<RenderableTile>(atlas.MakeSprite(7), true)); // obstacle
+				tileset.Register(0, std::make_unique<RenderableTile>(atlas.MakeSprite(0), TileDesc::CLEAR)); // walkable
+				tileset.Register(1, std::make_unique<RenderableTile>(atlas.MakeSprite(1), TileDesc::CLEAR)); // obstacle
+				tileset.Register(2, std::make_unique<RenderableTile>(atlas.MakeSprite(2), TileDesc::CLEAR)); // obstacle
+				tileset.Register(3, std::make_unique<RenderableTile>(atlas.MakeSprite(3), TileDesc::CLEAR)); // obstacle
+				tileset.Register(4, std::make_unique<RenderableTile>(atlas.MakeSprite(4), TileDesc::BLOCKED)); // walkable
+				tileset.Register(5, std::make_unique<RenderableTile>(atlas.MakeSprite(5), TileDesc::CLEAR)); // obstacle
+				tileset.Register(6, std::make_unique<RenderableTile>(atlas.MakeSprite(6), TileDesc::CLEAR)); // obstacle
+				tileset.Register(7, std::make_unique<RenderableTile>(atlas.MakeSprite(7), TileDesc::CLEAR)); // obstacle
+				tileset.Register(8, std::make_unique<RenderableTile>(atlas.MakeSprite(8), TileDesc::SE)); // obstacle
+				tileset.Register(9, std::make_unique<RenderableTile>(atlas.MakeSprite(9), TileDesc::SW)); // obstacle
+				tileset.Register(10, std::make_unique<RenderableTile>(atlas.MakeSprite(10), TileDesc::NE)); // obstacle
+				tileset.Register(11, std::make_unique<RenderableTile>(atlas.MakeSprite(11), TileDesc::NW)); // obstacle
 
 				engine::container::Table<std::string> map({ 24, 16 }, "0");
 
-				//engine::cache::Registry<engine::component::tile::TileRegion<RenderableTile>>::Instance().Register("1x8_256x32_tile", std::make_unique<engine::component::tile::TileRegion<RenderableTile>>());
-				//engine::component::tile::TileRegion<RenderableTile>& region = engine::cache::Registry<engine::component::tile::TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile");
 				m_region = std::make_unique<engine::component::tile::TileRegion<RenderableTile>>();
 
 				engine::loader::tile::AsyncTileRegionLoader<RenderableTile, int> tileRegionLoader;
@@ -178,6 +269,24 @@ namespace TestPathFinding
 
 				m_region->Set(m_startTile.row, m_startTile.col, tileset.MakeTile(7));
 				m_region->Set(m_goalTile.row, m_goalTile.col, tileset.MakeTile(6));
+
+				//m_region->Set(10, 5, tileset.MakeTile(8));
+				m_region->Set(8, 4, tileset.MakeTile(8));
+				//m_region->Set(9, 4, tileset.MakeTile(11));
+				m_region->Set(7, 3, tileset.MakeTile(11));
+
+				m_region->Set(5, 15, tileset.MakeTile(11));
+
+
+				m_region->Set(11, 12, tileset.MakeTile(9));
+				m_region->Set(10, 13, tileset.MakeTile(10));
+				m_region->Set(10, 11, tileset.MakeTile(9));
+				m_region->Set( 9, 12, tileset.MakeTile(10));
+				m_region->Set( 9, 10, tileset.MakeTile(9));
+				m_region->Set( 8, 11, tileset.MakeTile(10));
+
+				m_pathFinder.SetCanMoveDiagonallyFunc(CanMoveDiagonally);
+
 			}
 
 			// setup stopwatch to manage timing and start it
@@ -187,7 +296,7 @@ namespace TestPathFinding
 
 		void OnKeyDown(int key)
 		{
-			engine::component::tile::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Get("1x8_256x32_tile");
+			engine::component::tile::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Get("12x1_384x32_tile");
 
 			switch (key)
 			{
@@ -225,7 +334,7 @@ namespace TestPathFinding
 			if (!m_region->Get(row, col)->IsWalkable()) return;
 
 			// get tileset
-			engine::component::tile::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Get("1x8_256x32_tile");
+			engine::component::tile::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Get("12x1_384x32_tile");
 
 			for (int i = 1; i < (int)m_path.size() - 1; i++)
 			{
@@ -285,7 +394,7 @@ namespace TestPathFinding
 			);
 
 			// get tileset
-			engine::component::tile::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Get("1x8_256x32_tile");
+			engine::component::tile::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Get("12x1_384x32_tile");
 
 
 			// clear tiles that were previous path

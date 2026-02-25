@@ -6,7 +6,6 @@
 #include "TestCanvas.h"
 #include "TestEngine.h"
 #include "TestWin32.h"
-#include "TestLargeMap.h"
 #include "TestFileReader.h"
 #include "TestActorNavigation.h"
 #include "Demo.h"
@@ -16,6 +15,7 @@
 #include "DemoTileMap.h"
 #include "TestActor.h"
 #include "TestPathFinding.h"
+#include "TestEditMap.h"
 
 #include <iostream>
 #include <fstream>
@@ -165,13 +165,13 @@ int main()
     //demo::Demo demoInstance(std::make_unique<demo::DemoState>());
     //demo::Demo demoInstance(std::make_unique<demo::DemoStateCameraMap>());
     //demo::Demo demoInstance(std::make_unique<demo::DemoStateActor>());
-    //TestLargeMap::Test testLargeMap;
     //testFrameRate::Test::Instance().Run();
     //test::TestCanvas testCanvas;
     //TestFont::Test testFont;
     //TestActor::Test testActor;
-    //TestPathFinding::Test testPathFinding;
-    TestActorNavigation::Test testActorNavigation;
+    TestPathFinding::Test testPathFinding;
+    //TestActorNavigation::Test testActorNavigation;
+   //TestEditMap::Test testEditMap;
 
 	return 0;
 }

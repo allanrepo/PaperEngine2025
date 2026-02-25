@@ -25,7 +25,7 @@
 #include <IO/ASyncFileReader.h>
 #include <Utilities/CSVParser.h>
 #include "Utilities.h"
-
+#include <Cache/Registry.h>
 
 namespace TestCamera
 {
@@ -57,7 +57,7 @@ namespace TestCamera
 		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
-		std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
+		//std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
 		engine::timer::StopWatch m_stopwatch;
 		engine::component::tile::Tileset<RenderableTile> m_tileset;
 		engine::component::tile::TileGrid<RenderableTile> m_tilegrid;
@@ -154,23 +154,13 @@ namespace TestCamera
 			m_renderer->Initialize();
 			LOG("Renderer (DX11) created...");
 
-			// create sprite atlas manually for demo purpose
-			m_spriteAtlas = std::make_unique<engine::graphics::resource::SpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
-
-			// load sprite atlas from file manually for demo purpose
-			m_spriteAtlas->Initialize(L"../Assets/4x1_128x32_tile.png");
-
-			// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 8 rows and 12 columns
-			// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-			std::vector<engine::math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
-			for (engine::math::geometry::RectF& rect : uvs)
-			{
-				m_spriteAtlas->AddUVRect(rect);
-			}
+			// create sprite atlas using factory. it will be stored in cache and will auto generate UV's based on given row and col
+			engine::graphics::factory::SpriteAtlasFactory::Create("4x1_128x32_tile", L"../Assets/4x1_128x32_tile.png", 1, 4);
+			engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("4x1_128x32_tile");
 
 			// register tiles
-			m_tileset.Register(0, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(0), true)); // walkable
-			m_tileset.Register(1, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(1), false)); // obstacle
+			m_tileset.Register(0, std::make_unique<RenderableTile>(atlas.MakeSprite(0), true)); // walkable
+			m_tileset.Register(1, std::make_unique<RenderableTile>(atlas.MakeSprite(1), false)); // obstacle
 
 
 			{

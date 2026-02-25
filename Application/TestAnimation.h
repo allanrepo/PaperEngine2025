@@ -29,10 +29,10 @@
 #include <Graphics/Animation/Animation.h>
 #include <Graphics/Resource/DX11TextureImpl.h>
 #include <Timer/StopWatch.h>
+#include <Engine/Factory/AnimationFactory.h>
 
 #include "Utilities.h"
 
-using namespace app;
 
 namespace test
 {
@@ -52,9 +52,9 @@ namespace test
 		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
-		std::unique_ptr<MockSpriteAtlas> m_spriteAtlas;
 		std::unique_ptr<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>> m_animator;
 		engine::timer::StopWatch m_stopwatch;
+		engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> m_anim;
 
 	public:
 		TestAnimation()
@@ -74,7 +74,7 @@ namespace test
 			m_window->OnClose += engine::event::Handler(this, &TestAnimation::OnWindowClose);
 			m_window->OnCreate += engine::event::Handler(this, &TestAnimation::OnWindowCreate);
 			m_window->OnSize += engine::event::Handler(this, &TestAnimation::OnWindowSize);
-			m_window->Create(L"Test Sprite", 1400, 900);
+			m_window->Create(L"TestAnimation", 1400, 900);
 		}
 
 		// when window is created. we can now safely create resources dependent on window
@@ -93,34 +93,23 @@ namespace test
 			m_renderer->Initialize();
 			LOG("Renderer (DX11) created...");
 
-			// create sprite atlas manually for demo purpose
-			m_spriteAtlas = std::make_unique<MockSpriteAtlas>(std::make_unique<engine::graphics::dx11::resource::DX11TextureImpl>());
+			// create sprite atlas using factory. it will be stored in cache and will auto generate UV's based on given row and col
+			engine::graphics::factory::SpriteAtlasFactory::Create("CharacterTest_2304x1536_12x8", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12);
+			engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("CharacterTest_2304x1536_12x8");
 
-			// load sprite atlas from file manually for demo purpose
-			m_spriteAtlas->Initialize(L"../Assets/CharacterTest_2304x1536_12x8.png");
-
-			// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 8 rows and 12 columns
-			// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-			std::vector<engine::math::geometry::RectF> uvs = app::utilities::graphics::CalcUV(8, 12, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
-			for(engine::math::geometry::RectF& rect : uvs)
-			{
-				m_spriteAtlas->AddUVRect(rect);
-			}
-
-			// create animation manually and make it loop
-			engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> anim;
-			anim.loop = true;
+	
+			m_anim.loop = true;
 
 			// load with walking animation frames manually
 			for (int i = 12; i < 18; i++)
 			{
-				engine::graphics::renderable::Sprite sprite = m_spriteAtlas->MakeSprite(i);
-				anim.frames.push_back({ sprite, 100.0f });
+				engine::graphics::renderable::Sprite sprite = atlas.MakeSprite(i);
+				m_anim.frames.push_back({ sprite, 100.0f });
 			}
 
 			// create animator and load the animation
 			m_animator = std::make_unique<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>();
-			m_animator->Play(anim);
+			m_animator->Play(m_anim);
 
 			// setup stopwatch to manage timing and start it
 			m_stopwatch.OnLap += engine::event::Handler(this, &TestAnimation::OnLap);

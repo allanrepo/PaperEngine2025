@@ -41,7 +41,7 @@
     <ClInclude Include="Utilities.h">
       <Filter>Game Code</Filter>
     </ClInclude>
-    <ClInclude Include="TestLargeMap.h">
+    <ClInclude Include="TestEditMap.h">
       <Filter>Tests</Filter>
     </ClInclude>
     <ClInclude Include="TestFileReader.h">

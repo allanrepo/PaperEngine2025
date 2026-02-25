@@ -63,6 +63,8 @@ namespace engine::container
 
 		virtual void Set(int row, int col, const T& data) = 0;
 
+		virtual void Set(const T& data) = 0;
+
 		virtual bool IsInBounds(int row, int col) const = 0;
 	};
 
@@ -136,6 +138,14 @@ namespace engine::container
 				throw std::out_of_range("Table::Get - index out of bounds");
 			}
 			return m_data[index];
+		}
+
+		void Set(const T& data) override
+		{
+			for (size_t i = 0; i < m_data.size(); i++)
+			{
+				m_data[i] = data;
+			}
 		}
 
 
