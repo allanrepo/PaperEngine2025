@@ -1,5 +1,7 @@
 #include <Algorithm/Pathfinding.h>
 
+#include <type_traits>
+#include <stdexcept>
 
 namespace engine
 {

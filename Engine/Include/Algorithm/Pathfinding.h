@@ -1,11 +1,9 @@
 ﻿#pragma once
 #include <Spatial/Coord.h>
-#include <queue>
-#include <functional>
-#include <type_traits>
-#include <memory>
 #include <Math/Rect.h>
-#include <stdexcept>
+#include <functional>
+#include <memory>
+#include <queue>
 
 namespace engine::navigation
 {
