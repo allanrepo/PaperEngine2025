@@ -1,21 +1,307 @@
-#pragma once
-#include <Components/Tile.h>
+﻿#pragma once
+#include <Spatial/Coord.h>
 #include <queue>
 #include <functional>
+#include <type_traits>
+#include <memory>
+#include <Math/Rect.h>
+#include <stdexcept>
 
 namespace engine::navigation
 {
 	namespace tile
 	{
+		// the ITileNavigationResolver interface defines how movement between tiles is validated.
+		// it decouples pathfinding mechanics(handled by PathFinder) from tile semantics(rules about walls, diagonals, blocked centers, etc.)
+		// application can inherit from this interface to implement their own tile rules
+		class ITileNavigationResolver
+		{
+		public:
+			virtual bool CanMove(const engine::spatial::Coord& curr, const engine::spatial::Coord& next) = 0;
+		};
+
+		// TileConstraint is a bitmask enum representing walls, corners, and blocked regions of a tile.
+		// Basic edges : N, E, S, W
+		// Corners : NE, NW, SE, SW
+		// Center : CENTER(fully blocked tile)
+		// Combinations:
+		// 		BLOCKED → all bits set(tile is fully blocked).
+		// 		N_WALL, E_WALL, S_WALL, W_WALL → walls along edges including adjacent corners.
+		//		Half‑triangles(NE_HALFTRI, etc.) → partial blocking shapes.
+		// 
+		// Imagine each tile as a square with 8 edges/corners plus a center:
+		//   NW   N   NE
+		//    +---+---+
+		//    |       |
+		// 	W |   C   | E
+		//    |       |
+		//    +---+---+
+		//   SW   S   SE
+		// Edges (N, E, S, W) → block movement across that edge.
+		// Corners(NE, NW, SE, SW) → block diagonal entry.
+		// CENTER → tile is fully blocked.
+		// Walls(N_WALL, etc.) → edge + adjacent corners blocked.
+		// Half‑triangles → partial blocking shapes(e.g., NE_HALFTRI blocks north / east half of tile).
+		enum class TileConstraint : unsigned int
+		{
+			NONE = 0b000000000,	// walkable
+			N = 0b000000001,  // bit 0
+			E = 0b000000010,  // bit 1
+			S = 0b000000100,  // bit 2
+			W = 0b000001000,  // bit 3
+			NE = 0b000010000,  // bit 4
+			NW = 0b000100000,  // bit 5
+			SE = 0b001000000,  // bit 6
+			SW = 0b010000000,  // bit 7
+			CENTER = 0b100000000,  // bit 8
+
+			// fully blocked 
+			BLOCKED = N | E | S | W | NE | NW | SE | SW | CENTER,
+
+			// Half-block triangles
+			NE_HALFTRI = N | E | NE | SE | NW | CENTER,
+			NW_HALFTRI = N | W | NW | NE | SW | CENTER,
+			SE_HALFTRI = S | E | SE | NE | SW | CENTER,
+			SW_HALFTRI = S | W | SW | NW | SE | CENTER,
+
+			// Walls (edge + adjacent corners)
+			N_WALL = N | NE | NW,
+			E_WALL = E | NE | SE,
+			S_WALL = S | SE | SW,
+			W_WALL = W | NW | SW
+		};
+
+		constexpr TileConstraint operator | (TileConstraint lhs, TileConstraint rhs)
+		{
+			return static_cast<TileConstraint>(static_cast<unsigned int>(lhs) | static_cast<unsigned int>(rhs));
+		}
+
+		constexpr TileConstraint operator & (TileConstraint lhs, TileConstraint rhs) 
+		{
+			return static_cast<TileConstraint>(static_cast<unsigned int>(lhs) & static_cast<unsigned int>(rhs));
+		}
+
+		constexpr TileConstraint operator ^ (TileConstraint lhs, TileConstraint rhs) 
+		{
+			return static_cast<TileConstraint>(static_cast<unsigned int>(lhs) ^ static_cast<unsigned int>(rhs));
+		}
+
+		constexpr TileConstraint operator ~ (TileConstraint val) 
+		{
+			return static_cast<TileConstraint>(~static_cast<unsigned int>(val));
+		}
+
+		constexpr TileConstraint& operator |= (TileConstraint& lhs, TileConstraint rhs) 
+		{
+			lhs = lhs | rhs;
+			return lhs;
+		}
+
+		constexpr TileConstraint& operator &= (TileConstraint& lhs, TileConstraint rhs) 
+		{
+			lhs = lhs & rhs;
+			return lhs;
+		}
+
+		constexpr TileConstraint& operator ^= (TileConstraint& lhs, TileConstraint rhs) 
+		{
+			lhs = lhs ^ rhs;
+			return lhs;
+		}
+
+		// a more sophisticated resolver for maps with complex tile constraints (walls, corners, half‑triangles, blocked centers).
+		// how it works:
+		//	uses a std::function<TileConstraint(int row, int col)> to retrieve a tile’s constraint bitmask.
+		//  each tile can encode multiple blocking features : edges, corners, center, or composite shapes.
+		//  cardinal moves :
+		//		denied if the current tile has a wall on the moving edge, or if the destination tile has a wall on the opposite edge.
+		//  diagonal moves : 
+		//		denied if adjacent corner tiles or walls block the diagonal path.
+		//		checks both the current and destination tile’s constraints, plus their adjacent neighbors. 
+		//		encodes nuanced rules like half‑triangles and wall composites, ensuring realistic movement restrictions.
+		// use case: 
+		//	ideal for maps with detailed geometry(e.g., tiles representing slopes, partial walls, or irregular obstacles). 
+		//	provides fine‑grained control over movement semantics. 
+		//	slightly heavier than the binary resolver, but necessary for complex environments.
+		// 
+		// half triangle block are tiles where 2 adjacent sides are blocked as well as corners connected to either of them,
+		// plus center, making the tile not eligible as next tile.
+		// the terms crnc, nrcc are neighbor tiles of both current and next tile that are diagonal to each other.
+		// SE_HALFTRI (south-east triangle blocked):
+		// 	+-------++-------+
+		//	|       ||\#CRNC#| # = blocked
+		//	|   C   || \#####| CURR = source tile
+		//	|   U   ||  \####| NEXT = destination tile
+		//	|   R   ||   \###| CRNC and NRCC 
+		//	|   R   ||    \##|	- neighbor tiles adjacent to both CURR and NEXT tiles
+		//	|       ||     \#|	- CR stands for CURR.ROW and NC for NEXT.COL
+		//	+-------++-------+  - NR stands for NEXT.ROW and CC for CURR.COL
+		// 	+-------++-------+
+		//	|\      ||       |
+		//	|#\     ||   N   |
+		//	|##\    ||   E   |
+		//	|###\   ||   X   |
+		//	|####\  ||   T   |
+		//	|NRCC#\ ||       |
+		//	+-------++-------+
+		//
+		// NW_HALFTRI (north-west triangle blocked):
+		// 	+-------++-------+
+		//	|       ||\#NRCC#| # = blocked
+		//	|   N   || \#####| CURR = source tile
+		//	|   E   ||  \####| NEXT = destination tile
+		//	|   X   ||   \###| CRNC and NRCC 
+		//	|   T   ||    \##|	- neighbor tiles adjacent to both CURR and NEXT tiles
+		//	|       ||     \#|	- CR stands for CURR.ROW and NC for NEXT.COL
+		//	+-------++-------+  - NR stands for NEXT.ROW and CC for CURR.COL
+		// 	+-------++-------+
+		//	|\      ||       |
+		//	|#\     ||   C   |
+		//	|##\    ||   U   |
+		//	|###\   ||   R   |
+		//	|####\  ||   R   |
+		//	|CRNC#\ ||       |
+		//	+-------++-------+	
+		// 	
+		// SW_HALFTRI (south-west triangle blocked):
+		//  +-------++-------+
+		//  |#CRNC#/||       |  
+		//  |#####/ ||   C   |  
+		//  |####/  ||   U   |  
+		//  |###/   ||   R   |  
+		//  |##/    ||   R   |  
+		//  |#/     ||       |  
+		//  +-------++-------+  
+		//  +-------++-------+
+		//  |       ||      /|
+		//  |   N   ||     /#|
+		//  |   E   ||    /##|
+		//  |   X   ||   /###|
+		//  |   T   ||  /####|
+		//  |       || /NRCC#|
+		//  +-------++-------+
+		// 
+		// NE_HALFTRI (south-west triangle blocked):
+		//  +-------++-------+
+		//  |#NRCC#/||       |  
+		//  |#####/ ||   N   |  
+		//  |####/  ||   E   |  
+		//  |###/   ||   X   |  
+		//  |##/    ||   T   |  
+		//  |#/     ||       |  
+		//  +-------++-------+  
+		//  +-------++-------+
+		//  |       ||      /|
+		//  |   C   ||     /#|
+		//  |   U   ||    /##|
+		//  |   R   ||   /###|
+		//  |   R   ||  /####|
+		//  |       || /CRNC#|
+		//  +-------++-------+
+		class TileNavigationResolver: public ITileNavigationResolver
+		{
+		private:
+			enum class Direction
+			{
+				NE,
+				SE,
+				NW,
+				SW,
+				N,
+				S,
+				W,
+				E,
+				NONE
+			};
+
+			std::function<TileConstraint(int row, int col)> m_getConstraint;
+
+			bool HasAnyBits(const TileConstraint tile, const TileConstraint mask) const 
+			{
+				return (tile & mask) != TileConstraint::NONE;
+			}
+
+			Direction GetDirection(const engine::spatial::Coord& curr, const engine::spatial::Coord& next)
+			{
+				int dr = next.row - curr.row;
+				int dc = next.col - curr.col;
+
+				if (dr == -1 && dc == 0) return Direction::N;
+				if (dr == 1 && dc == 0) return Direction::S;
+				if (dr == 0 && dc == -1) return Direction::W;
+				if (dr == 0 && dc == 1) return Direction::E;
+				if (dr == -1 && dc == 1) return Direction::NE;
+				if (dr == 1 && dc == 1) return Direction::SE;
+				if (dr == -1 && dc == -1) return Direction::NW;
+				if (dr == 1 && dc == -1) return Direction::SW;
+				return Direction::NONE;
+			}
+
+			bool IsDiagonal(const engine::spatial::Coord& curr, const engine::spatial::Coord& next)
+			{
+				return (curr.row != next.row) && (curr.col != next.col);
+			}
+
+			bool IsCardinal(const engine::spatial::Coord& curr, const engine::spatial::Coord& next)
+			{
+				return (curr.row == next.row) ^ (curr.col == next.col);
+			}
+
+			bool CanMoveDiagonally(const TileConstraint crcc, const TileConstraint nrnc, const TileConstraint crnc, const TileConstraint nrcc, Direction dir);
+			bool CanMoveCardinally(const TileConstraint crcc, const TileConstraint nrnc, Direction dir);
+
+		public:
+			TileNavigationResolver(
+				std::function<TileConstraint(int row, int col)> getConstraint
+			):
+				m_getConstraint(getConstraint)
+			{
+			}
+
+			bool CanMove(const engine::spatial::Coord& curr, const engine::spatial::Coord& next) override final;
+		};
+
+		// a lightweight resolver for simple maps where tiles are either walkable or blocked.
+		// 
+		// how it works:
+		//	uses a std::function<bool(int row, int col)> to determine if a tile is walkable.
+		//	if the target tile is blocked, movement is denied.
+		//	for cardinal moves(N, S, E, W), it only checks the destination tile.
+		//	for diagonal moves, it additionally checks the two adjacent cardinal neighbors(to prevent corner‑cutting through blocked tiles).
+		//
+		// use case:
+		//	ideal for grids with binary states(e.g., walls vs.open floor).
+		//	fast and simple, minimal overhead.
+		//	good for performance‑critical pathfinding where complex tile semantics aren’t needed.
+		class BinaryNavigationResolver : public ITileNavigationResolver
+		{
+		private:
+			std::function<bool(int row, int col)> m_isWalkable;
+			bool IsDiagonal(const engine::spatial::Coord& curr, const engine::spatial::Coord& next)
+			{
+				return (curr.row != next.row) && (curr.col != next.col);
+			}
+
+		public:
+			BinaryNavigationResolver(
+				std::function<bool(int row, int col)> isWalkable
+			) :
+				m_isWalkable(isWalkable)
+			{
+			}
+
+			bool CanMove(const engine::spatial::Coord& curr, const engine::spatial::Coord& next) override final;
+		};
+
 		constexpr int CardinalCost = 10;
 		constexpr int DiagonalCost = 14;
 
 		struct Node
 		{
-			engine::component::tile::Coord pos;
+			engine::spatial::Coord pos;
 			int g = 0;
 			int h = 0;
-			engine::component::tile::Coord parent;
+			engine::spatial::Coord parent;
 			bool closed = false;
 			bool open = false;
 
@@ -37,143 +323,50 @@ namespace engine::navigation
 		protected:
 			// for debugging purposes, we keep track of all nodes, open tiles, and closed tiles
 			std::vector<std::vector<Node>> m_nodes;
-			std::vector<engine::component::tile::Coord> m_openTiles;
-			std::vector<engine::component::tile::Coord> m_closedTiles;
+			std::vector<engine::spatial::Coord> m_openTiles;
+			std::vector<engine::spatial::Coord> m_closedTiles;
 			int m_steps;
 
 			bool m_diagonal;
 			int m_maxSteps;
-			bool m_cutCorners;
-			std::function<bool(int, int)> m_isWalkable;
 			navigation::tile::HeuristicType m_heuristicType;
-			std::function<bool(const engine::component::tile::Coord&, const engine::component::tile::Coord&)> m_canMoveDiagonally;
 
-			int Heuristic(const engine::component::tile::Coord& a, const engine::component::tile::Coord& b) const
-			{
-				switch (m_heuristicType)
-				{
-				case navigation::tile::HeuristicType::Manhattan:
-					return HeuristicManhattan(a, b);
-				case navigation::tile::HeuristicType::Euclidean:
-					return HeuristicEuclidean(a, b);
-				case navigation::tile::HeuristicType::Octile:
-					return HeuristicOctile(a, b);
-				default:
-					throw std::invalid_argument("Unknown heuristic type");
-				}
-			}
+			std::unique_ptr<ITileNavigationResolver> m_tileNavigationResolver;
 
-			int HeuristicEuclidean(const engine::component::tile::Coord& a, const engine::component::tile::Coord& b) const
-			{
-				// get distance in rows and columns like in Manhattan heuristic
-				int distanceRow = std::abs(a.row - b.row);
-				int distanceCol = std::abs(a.col - b.col);
+			int Heuristic(const engine::spatial::Coord& a, const engine::spatial::Coord& b) const;
 
-				return static_cast<int>(CardinalCost * std::sqrt(distanceCol * distanceCol + distanceRow * distanceRow));
-			}
+			int HeuristicEuclidean(const engine::spatial::Coord& a, const engine::spatial::Coord& b) const;
 
-			int HeuristicManhattan(const engine::component::tile::Coord& a, const engine::component::tile::Coord& b) const
-			{
-				// get distance in rows and columns like in Manhattan heuristic
-				int distanceRow = std::abs(a.row - b.row);
-				int distanceCol = std::abs(a.col - b.col);
-
-				return (distanceCol + distanceRow) * CardinalCost;
-			}
+			int HeuristicManhattan(const engine::spatial::Coord& a, const engine::spatial::Coord& b) const;
 
 			// Octile heuristic
-			int HeuristicOctile(const engine::component::tile::Coord& a, const engine::component::tile::Coord& b) const
-			{
-				// get distance in rows and columns like in Manhattan heuristic
-				int distanceRow = std::abs(a.row - b.row);
-				int distanceCol = std::abs(a.col - b.col);
+			int HeuristicOctile(const engine::spatial::Coord& a, const engine::spatial::Coord& b) const;
 
-				// the diagonal distance is the minimum of the two distances
-				int diagonalDistance = std::min<int>(distanceRow, distanceCol);
-
-				// the cardinal distance is the difference between the two distances
-				int cardinalDistance = std::abs(distanceRow - distanceCol);
-
-				// cost is 14 for diagonal movement and 10 for cardinal movement. total cost is sum of both
-				return diagonalDistance * DiagonalCost + cardinalDistance * CardinalCost;
-			}
-
-			std::vector<engine::component::tile::Coord> GetNeighbors(
-				const engine::component::tile::Coord& pos,
+			std::vector<engine::spatial::Coord> GetNeighbors(
+				const engine::spatial::Coord& pos,
 				const int width, const int height
-			) const
-			{
-				std::vector<engine::component::tile::Coord> neighbors;
-
-				// iterate through all adjacent tiles of the given tile coord, including those from its diagonals			
-				for (int dr = -1; dr <= 1; ++dr)
-				{
-					for (int dc = -1; dc <= 1; ++dc)
-					{
-						// skip the tile itself
-						if (dr == 0 && dc == 0)
-						{
-							continue;
-						}
-
-						// if diagonal movement is not allowed, skip diagonal neighbors
-						if (!m_diagonal && dr != 0 && dc != 0)
-						{
-							continue;
-						}
-
-						int row = pos.row + dr;
-						int col = pos.col + dc;
-
-						// the width and height are supposed to be the size of the grid/map. any tile coord outside this range is invalid
-						if (row < 0 || row >= height ||
-							col < 0 || col >= width)
-						{
-							continue;
-						}
-
-						// add to neighbors list as local coordinates to the region
-						neighbors.push_back({ row, col });
-					}
-				}
-
-				return neighbors;
-			}
+			) const;
 
 		public:
 			PathFinder(
-				std::function<bool(int, int)> isWalkable,
-				std::function<bool(const engine::component::tile::Coord&, const engine::component::tile::Coord&)> canMoveDiagonally = nullptr,
+				std::unique_ptr<ITileNavigationResolver> tileNavigationResolver,
 				bool diagonal = false,
-				bool cutCorners = false,
 				int maxSteps = 1000,
 				navigation::tile::HeuristicType heuristicType = navigation::tile::HeuristicType::Octile
 			) :
-				m_isWalkable(isWalkable),
 				m_maxSteps(maxSteps),
 				m_diagonal(diagonal),
-				m_cutCorners(cutCorners),
 				m_heuristicType(heuristicType),
-				m_canMoveDiagonally(canMoveDiagonally)
+				m_tileNavigationResolver(std::move(tileNavigationResolver))
 			{
 			}
 
-			void SetWalkableFunc(std::function<bool(int, int)> isWalkable)
-			{
-				m_isWalkable = isWalkable;
-			}
-
-			void SetCanMoveDiagonallyFunc(std::function<bool(const engine::component::tile::Coord&, const engine::component::tile::Coord&)> canMoveDiagonally)
-			{
-				m_canMoveDiagonally = canMoveDiagonally;
-			}
-
-			const std::vector<engine::component::tile::Coord>& GetOpenTiles() const
+			const std::vector<engine::spatial::Coord>& GetOpenTiles() const
 			{
 				return m_openTiles;
 			}
 
-			const std::vector<engine::component::tile::Coord>& GetClosedTiles() const
+			const std::vector<engine::spatial::Coord>& GetClosedTiles() const
 			{
 				return m_closedTiles;
 			}
@@ -181,16 +374,6 @@ namespace engine::navigation
 			const std::vector<std::vector<Node>>& GetNodes() const
 			{
 				return m_nodes;
-			}
-
-			void EnableCutCorners(bool enabled)
-			{
-				m_cutCorners = enabled;
-			}
-
-			bool IsCutCornersEnabled() const
-			{
-				return m_cutCorners;
 			}
 
 			void EnableDiagonal(bool enabled)
@@ -210,343 +393,23 @@ namespace engine::navigation
 
 			virtual bool FindPath(
 				const math::geometry::Rect<int>& region,
-				const engine::component::tile::Coord& start,
-				const engine::component::tile::Coord& goal,
-				std::vector<engine::component::tile::Coord>& outPath
-			)
-			{
-				// clear previous data
-				m_openTiles.clear();
-				m_closedTiles.clear();
-				outPath.clear();
-
-				// set size of the region and initialize nodes
-				int width = region.right - region.left;
-				int height = region.bottom - region.top;
-				m_nodes.assign(height, std::vector<Node>(width));
-
-				// translate start and goal to region coordinates
-				engine::component::tile::Coord regionStart = { start.row - region.top, start.col - region.left };
-				engine::component::tile::Coord regionGoal = { goal.row - region.top, goal.col - region.left };
-
-				// initialize start node	
-				m_nodes[regionStart.row][regionStart.col].pos = regionStart;						// tile coordinate
-				m_nodes[regionStart.row][regionStart.col].g = 0;									// cost from start
-				m_nodes[regionStart.row][regionStart.col].h = Heuristic(regionStart, regionGoal);	// heuristic cost to goal
-				m_nodes[regionStart.row][regionStart.col].open = true;								// mark as in open list
-
-				// add start node's tile coordinate to open list
-				m_openTiles.push_back(regionStart);
-
-				m_steps = m_maxSteps;
-				while (!m_openTiles.empty() && m_steps-- > 0)
-				{
-					// find node in open list with lowest f = g + h
-					auto bestIt = m_openTiles.begin();
-					for (auto it = m_openTiles.begin(); it != m_openTiles.end(); ++it)
-					{
-						// this is the node of the current tile coordinate
-						const Node& a = m_nodes[it->row][it->col];
-
-						// this is the node of the best tile coordinate found so far
-						const Node& b = m_nodes[bestIt->row][bestIt->col];
-
-						// if f is the same, prefer node with lower h
-						int af = a.g + a.h;
-						int bf = b.g + b.h;
-						if (af < bf || (af == bf && a.h < b.h)) bestIt = it;
-					}
-
-					// copy tile coordinate of the node with the lowest f from open list
-					engine::component::tile::Coord currentTile = *bestIt;
-
-					// get reference to the node with the lowest f 
-					Node& currentNode = m_nodes[currentTile.row][currentTile.col];
-
-					// since we now have a copy of the tile coordinate of the node with with the lowest f, we can remove it from open list
-					m_openTiles.erase(bestIt);
-
-					// since this node is now being processed, mark it as closed
-					currentNode.open = false;
-					currentNode.closed = true;
-					m_closedTiles.push_back(currentTile);
-
-					// did we reach the goal?
-					if (currentTile == regionGoal)
-					{
-						// for now, we store the path in reverse order (from goal to start)
-						engine::component::tile::Coord tc = regionGoal;
-						while (tc != regionStart)
-						{
-							// now we translate back to world coordinates
-							outPath.push_back({ tc.row + region.top, tc.col + region.left });
-
-							// move to parent
-							tc = m_nodes[tc.row][tc.col].parent;
-						}
-						// finally, add the start tile in world coordinates
-						outPath.push_back(start);
-
-						// reverse the path to be from start to goal
-						std::reverse(outPath.begin(), outPath.end());
-						return true;
-					}
-
-					// iterate over neighbor tiles of the current tile
-					for (const engine::component::tile::Coord& neighborTile : GetNeighbors(currentTile, width, height))
-					{
-						// get the tile coordinates of this neighbor tile
-						int neighborTileRow = region.top + neighborTile.row;
-						int neighborTileCol = region.left + neighborTile.col;
-
-						// skip non-walkable tiles. note that we check walkability in world coordinates
-						if (!m_isWalkable(neighborTileRow, neighborTileCol)) continue;
-
-						// if cutting corners is not allowed, skip diagonal neighbors that would require cutting corners
-						if (!m_cutCorners &&
-							neighborTile.row != currentTile.row &&
-							neighborTile.col != currentTile.col
-							)
-						{
-							// do we have a special handler for checking diagonal movement exclusively?
-							if (m_canMoveDiagonally)
-							{
-								if (!m_canMoveDiagonally(currentTile, neighborTile))
-								{
-									continue;
-								}
-							}
-							// if none, we just check if adjacent tiles between current and neighbor tiles are both blocked. 
-							// if any of them is blocked, then we cannot move diagonally
-							else
-							{
-								// if current tile and neighbor tile are diagonal to each other, then check if both adjacent orthogonal tiles are walkable
-								if (!m_isWalkable(region.top + currentTile.row, region.left + neighborTile.col) ||
-									!m_isWalkable(region.top + neighborTile.row, region.left + currentTile.col))
-								{
-									continue;
-								}
-							}
-
-						}
-
-						// get the node of the neighbor tile. if this tile is already closed, skip it
-						Node& neighborNode = m_nodes[neighborTile.row][neighborTile.col];
-						if (neighborNode.closed)
-						{
-							continue;
-						}
-
-						// calculate tentative g cost considering diagonal movement
-						int tentativeG = neighborTile.row != currentTile.row && neighborTile.col != currentTile.col ?
-							currentNode.g + DiagonalCost :	// diagonal movement cost is 14
-							currentNode.g + CardinalCost;	// orthogonal movement cost is 10
-
-						// if this neighbor node is not in open list yet
-						if (!neighborNode.open)
-						{
-							// initialize neighbor node
-							neighborNode.pos = neighborTile;
-							neighborNode.parent = currentTile;
-
-							// g cost is cost from start tile to this neighbor tile via current tile
-							neighborNode.g = tentativeG;
-
-							// h cost is heuristic cost from this neighbor tile to goal tile
-							// both nighborTile and regionGoal are in region coordinates
-							neighborNode.h = Heuristic(neighborTile, regionGoal);
-
-							// add it to open list
-							m_openTiles.push_back(neighborTile);
-							neighborNode.open = true;
-						}
-
-						// else if this neighbor node is already in open list, check if this path to neighbor tile is better (lower g cost)
-						else if (tentativeG < neighborNode.g)
-						{
-							// update parent to current tile
-							neighborNode.parent = currentTile;
-
-							// update g cost to the lower tentative g cost
-							neighborNode.g = tentativeG;
-						}
-					}
-				}
-
-				return true;
-			}
-		
-			//virtual bool FindPath1(
-			//	const math::geometry::Rect<int>& region,
-			//	const engine::component::tile::Coord& start,
-			//	const engine::component::tile::Coord& goal,
-			//	std::vector<engine::component::tile::Coord>& outPath
-			//)
-			//{
-			//	// clear previous data
-			//	m_openTiles.clear();
-			//	m_closedTiles.clear();
-			//	outPath.clear();
-
-			//	// set size of the region and initialize nodes
-			//	int width = region.right - region.left;
-			//	int height = region.bottom - region.top;
-			//	m_nodes.assign(height, std::vector<Node>(width));
-
-			//	// translate start and goal to region coordinates
-			//	engine::component::tile::Coord regionStart = { start.row - region.top, start.col - region.left };
-			//	engine::component::tile::Coord regionGoal = { goal.row - region.top, goal.col - region.left };
-
-			//	// initialize start node	
-			//	m_nodes[regionStart.row][regionStart.col].pos = regionStart;						// tile coordinate
-			//	m_nodes[regionStart.row][regionStart.col].g = 0;									// cost from start
-			//	m_nodes[regionStart.row][regionStart.col].h = Heuristic(regionStart, regionGoal);	// heuristic cost to goal
-			//	m_nodes[regionStart.row][regionStart.col].open = true;								// mark as in open list
-
-			//	// add start node's tile coordinate to open list
-			//	m_openTiles.push_back(regionStart);
-
-			//	m_steps = m_maxSteps;
-			//	while (!m_openTiles.empty() && m_steps-- > 0)
-			//	{
-			//		// find node in open list with lowest f = g + h
-			//		auto bestIt = m_openTiles.begin();
-			//		for (auto it = m_openTiles.begin(); it != m_openTiles.end(); ++it)
-			//		{
-			//			// this is the node of the current tile coordinate
-			//			const Node& a = m_nodes[it->row][it->col];
-
-			//			// this is the node of the best tile coordinate found so far
-			//			const Node& b = m_nodes[bestIt->row][bestIt->col];
-
-			//			// if f is the same, prefer node with lower h
-			//			int af = a.g + a.h;
-			//			int bf = b.g + b.h;
-			//			if (af < bf || (af == bf && a.h < b.h)) bestIt = it;
-			//		}
-
-			//		// copy tile coordinate of the node with the lowest f from open list
-			//		engine::component::tile::Coord currentTile = *bestIt;
-
-			//		// get reference to the node with the lowest f 
-			//		Node& currentNode = m_nodes[currentTile.row][currentTile.col];
-
-			//		// since we now have a copy of the tile coordinate of the node with with the lowest f, we can remove it from open list
-			//		m_openTiles.erase(bestIt);
-
-			//		// since this node is now being processed, mark it as closed
-			//		currentNode.open = false;
-			//		currentNode.closed = true;
-			//		m_closedTiles.push_back(currentTile);
-
-			//		// did we reach the goal?
-			//		if (currentTile == regionGoal)
-			//		{
-			//			// for now, we store the path in reverse order (from goal to start)
-			//			engine::component::tile::Coord tc = regionGoal;
-			//			while (tc != regionStart)
-			//			{
-			//				// now we translate back to world coordinates
-			//				outPath.push_back({ tc.row + region.top, tc.col + region.left });
-
-			//				// move to parent
-			//				tc = m_nodes[tc.row][tc.col].parent;
-			//			}
-			//			// finally, add the start tile in world coordinates
-			//			outPath.push_back(start);
-
-			//			// reverse the path to be from start to goal
-			//			std::reverse(outPath.begin(), outPath.end());
-			//			return true;
-			//		}
-
-			//		// iterate over neighbor tiles of the current tile
-			//		for (const engine::component::tile::Coord& neighborTile : GetNeighbors(currentTile, width, height))
-			//		{
-			//			// get the tile coordinates of this neighbor tile
-			//			int neighborTileRow = region.top + neighborTile.row;
-			//			int neighborTileCol = region.left + neighborTile.col;
-
-			//			// skip non-walkable tiles. note that we check walkability in world coordinates
-			//			if (!m_isWalkable(neighborTileRow, neighborTileCol)) continue;
-
-			//			// if cutting corners is not allowed, skip diagonal neighbors that would require cutting corners
-			//			if (!m_cutCorners &&
-			//				neighborTile.row != currentTile.row &&
-			//				neighborTile.col != currentTile.col
-			//				)
-			//			{
-			//				if (!m_canMoveDiagonally(currentTile, neighborTile))
-			//				{
-			//					continue;
-			//				}
-			//				//// if current tile and neighbor tile are diagonal to each other, then check if both adjacent orthogonal tiles are walkable
-			//				//if (!m_isWalkable(region.top + currentTile.row, region.left + neighborTile.col) ||
-			//				//	!m_isWalkable(region.top + neighborTile.row, region.left + currentTile.col))
-			//				//{
-			//				//	continue;
-			//				//}
-			//			}
-
-			//			// get the node of the neighbor tile. if this tile is already closed, skip it
-			//			Node& neighborNode = m_nodes[neighborTile.row][neighborTile.col];
-			//			if (neighborNode.closed)
-			//			{
-			//				continue;
-			//			}
-
-			//			// calculate tentative g cost considering diagonal movement
-			//			int tentativeG = neighborTile.row != currentTile.row && neighborTile.col != currentTile.col ?
-			//				currentNode.g + DiagonalCost :	// diagonal movement cost is 14
-			//				currentNode.g + CardinalCost;	// orthogonal movement cost is 10
-
-			//			// if this neighbor node is not in open list yet
-			//			if (!neighborNode.open)
-			//			{
-			//				// initialize neighbor node
-			//				neighborNode.pos = neighborTile;
-			//				neighborNode.parent = currentTile;
-
-			//				// g cost is cost from start tile to this neighbor tile via current tile
-			//				neighborNode.g = tentativeG;
-
-			//				// h cost is heuristic cost from this neighbor tile to goal tile
-			//				// both nighborTile and regionGoal are in region coordinates
-			//				neighborNode.h = Heuristic(neighborTile, regionGoal);
-
-			//				// add it to open list
-			//				m_openTiles.push_back(neighborTile);
-			//				neighborNode.open = true;
-			//			}
-
-			//			// else if this neighbor node is already in open list, check if this path to neighbor tile is better (lower g cost)
-			//			else if (tentativeG < neighborNode.g)
-			//			{
-			//				// update parent to current tile
-			//				neighborNode.parent = currentTile;
-
-			//				// update g cost to the lower tentative g cost
-			//				neighborNode.g = tentativeG;
-			//			}
-			//		}
-			//	}
-
-			//	return true;
-			//}
+				const engine::spatial::Coord& start,
+				const engine::spatial::Coord& goal,
+				std::vector<engine::spatial::Coord>& outPath
+			);
 		};
 
 		class PathFinderUsingPriorityQueue : public PathFinder
 		{
 		private:
-
 			struct NodeComparator
 			{
 				const std::vector<std::vector<Node>>* nodes;
 
 				NodeComparator(const std::vector<std::vector<Node>>* n) : nodes(n) {}
 
-				bool operator()(const engine::component::tile::Coord& a,
-					const engine::component::tile::Coord& b) const
+				bool operator()(const engine::spatial::Coord& a,
+					const engine::spatial::Coord& b) const
 				{
 					const Node& na = (*nodes)[a.row][a.col];
 					const Node& nb = (*nodes)[b.row][b.col];
@@ -559,236 +422,50 @@ namespace engine::navigation
 					return fa > fb;         // prefer lower f
 				}
 			};
-
-			std::priority_queue<engine::component::tile::Coord, std::vector<engine::component::tile::Coord>, NodeComparator> openTiles;
+			std::priority_queue<engine::spatial::Coord, std::vector<engine::spatial::Coord>, NodeComparator> openTiles;
 
 		public:
 			PathFinderUsingPriorityQueue(
-				std::function<bool(int, int)> isWalkable,
-				std::function<bool(const engine::component::tile::Coord&, const engine::component::tile::Coord&)> canMoveDiagonally = nullptr,
-				int maxSteps = 1000,
+				std::unique_ptr<ITileNavigationResolver> tileNavigationResolver,
 				bool diagonal = false,
-				bool cutCorners = false,
+				int maxSteps = 1000,
 				navigation::tile::HeuristicType heuristicType = navigation::tile::HeuristicType::Octile
-			)
-				:PathFinder(
-					isWalkable,
-					canMoveDiagonally,
-					maxSteps,
+			):
+				PathFinder(
+					std::move(tileNavigationResolver),
 					diagonal,
-					cutCorners,
+					maxSteps,
 					heuristicType
 				),
 				openTiles(NodeComparator(nullptr))
 			{
 			}
 
-			virtual const std::vector<engine::component::tile::Coord> GetOpenTiles() const
-			{
-				// copy the queue (since priority_queue has no iterators)
-				auto temp = openTiles;
-				std::vector<engine::component::tile::Coord> result;
-				while (!temp.empty()) 
-				{
-					result.push_back(temp.top());
-					temp.pop();
-				}
-				return result;
-			}
+			const std::vector<engine::spatial::Coord> GetOpenTiles() const;
 
 			virtual bool FindPath(
-				const math::geometry::Rect<int>& region,
-				const engine::component::tile::Coord& start,
-				const engine::component::tile::Coord& goal,
-				std::vector<engine::component::tile::Coord>& outPath
-			)
-			{
-				// clear previous data
-				m_openTiles.clear();
-				m_closedTiles.clear();
-				outPath.clear();
-
-				// set size of the region and initialize nodes
-				int width = region.right - region.left;
-				int height = region.bottom - region.top;
-				m_nodes.assign(height, std::vector<Node>(width));
-
-				// translate start and goal to region coordinates
-				engine::component::tile::Coord regionStart = { start.row - region.top, start.col - region.left };
-				engine::component::tile::Coord regionGoal = { goal.row - region.top, goal.col - region.left };
-
-				// initialize start node	
-				m_nodes[regionStart.row][regionStart.col].pos = regionStart;						// tile coordinate
-				m_nodes[regionStart.row][regionStart.col].g = 0;									// cost from start
-				m_nodes[regionStart.row][regionStart.col].h = Heuristic(regionStart, regionGoal);	// heuristic cost to goal
-				m_nodes[regionStart.row][regionStart.col].open = true;								// mark as in open list
-
-				// priority queue for open list
-				NodeComparator cmp(&m_nodes);
-				//std::priority_queue<engine::component::tile::Coord, std::vector<engine::component::tile::Coord>, NodeComparator> openTiles(cmp);
-				openTiles = std::priority_queue<engine::component::tile::Coord, std::vector<engine::component::tile::Coord>, NodeComparator>(cmp);
-
-				// add start node's tile coordinate to open list
-				openTiles.push(regionStart);
-
-				int steps = m_maxSteps;
-				while (!openTiles.empty() && steps-- > 0)
-				{
-					// pop the best candidate by lowest f(then h)
-					engine::component::tile::Coord currentTile = openTiles.top();
-					openTiles.pop();
-
-					// get reference to the node with the lowest f 
-					Node& currentNode = m_nodes[currentTile.row][currentTile.col];
-
-					// If this node was already processed (closed), skip it.
-					 // This can happen if the node re-entered the queue after a cost update
-					 // and an earlier instance was already popped and closed.
-					if (currentNode.closed) continue;
-
-					// since this node is now being processed, mark it as closed. we are expanding it now.
-					currentNode.open = false;
-					currentNode.closed = true;
-					m_closedTiles.push_back(currentTile);
-
-					// did we reach the goal?
-					if (currentTile == regionGoal)
-					{
-						// for now, we store the path in reverse order (from goal to start)
-						engine::component::tile::Coord tc = regionGoal;
-						while (tc != regionStart)
-						{
-							// now we translate back to world coordinates
-							outPath.push_back({ tc.row + region.top, tc.col + region.left });
-
-							// move to parent
-							tc = m_nodes[tc.row][tc.col].parent;
-						}
-						// finally, add the start tile in world coordinates
-						outPath.push_back(start);
-
-						// reverse the path to be from start to goal
-						std::reverse(outPath.begin(), outPath.end());
-						return true;
-					}
-
-					// iterate over neighbor tiles of the current tile
-					for (const engine::component::tile::Coord& neighborTile : GetNeighbors(currentTile, width, height))
-					{
-						// get the tile coordinates of this neighbor tile
-						int neighborTileRow = region.top + neighborTile.row;
-						int neighborTileCol = region.left + neighborTile.col;
-
-						// skip non-walkable tiles. note that we check walkability in world coordinates
-						if (!m_isWalkable(neighborTileRow, neighborTileCol)) continue;
-
-						// if cutting corners is not allowed, skip diagonal neighbors that would require cutting corners
-						if (!m_cutCorners &&
-							neighborTile.row != currentTile.row &&
-							neighborTile.col != currentTile.col
-							)
-						{
-							// if current tile and neighbor tile are diagonal to each other, then check if both adjacent orthogonal tiles are walkable
-							if (!m_isWalkable(region.top + currentTile.row, region.left + neighborTile.col) ||
-								!m_isWalkable(region.top + neighborTile.row, region.left + currentTile.col))
-							{
-								continue;
-							}
-						}
-
-						// get the node of the neighbor tile. if this tile is already closed, skip it
-						Node& neighborNode = m_nodes[neighborTile.row][neighborTile.col];
-						if (neighborNode.closed)
-						{
-							continue;
-						}
-
-						// calculate tentative g cost considering diagonal movement
-						int tentativeG = neighborTile.row != currentTile.row && neighborTile.col != currentTile.col ?
-							currentNode.g + DiagonalCost :	// diagonal movement cost is 14
-							currentNode.g + CardinalCost;		// orthogonal movement cost is 10
-
-						// if this neighbor node is not in open list yet OR we found a cheaper path, update its state
-						if (!neighborNode.open || tentativeG < neighborNode.g)
-						{
-							// initialize neighbor node
-							neighborNode.pos = neighborTile;
-							neighborNode.parent = currentTile;
-
-							// g cost is cost from start tile to this neighbor tile via current tile
-							neighborNode.g = tentativeG;
-
-							// h cost is heuristic cost from this neighbor tile to goal tile
-							// both nighborTile and regionGoal are in region coordinates
-							neighborNode.h = Heuristic(neighborTile, regionGoal);
-
-							// mark as in open set
-							neighborNode.open = true;
-
-							// push into open list; comparator will read latest g/h from m_nodes.
-							// If this node was already in the queue, this push acts like an "update":
-							// the older entry becomes stale and will be ignored when popped (closed check).
-							openTiles.push(neighborTile);
-						}
-					}
-				}
-
-
-				return true;
-			}
+				const engine::math::geometry::Rect<int>& region,
+				const engine::spatial::Coord& start,
+				const engine::spatial::Coord& goal,
+				std::vector<engine::spatial::Coord>& outPath
+			);
 		};
 
-		static std::vector<engine::component::tile::Coord> GetWayPoints(const std::vector<engine::component::tile::Coord>& path)
-		{
-			std::vector<engine::component::tile::Coord> wp;
-
-			if (path.size() < 2)
-			{
-				return wp;
-			}
-
-			wp.push_back(path[0]);
-
-			engine::math::VecF currDir
-			{
-				(float)(path[1].col - path[0].col),
-				(float)(path[1].row - path[0].row)
-			};
-
-			for (size_t i = 2; i < path.size(); i++)
-			{
-				engine::math::VecF dir
-				{
-					(float)(path[i].col - path[i - 1].col),
-					(float)(path[i].row - path[i - 1].row)
-				};
-
-				if (dir.x != currDir.x || dir.y != currDir.y)
-				{
-					wp.push_back(path[i - 1]);
-
-					currDir = dir;
-				}
-			}
-
-			wp.push_back(path[path.size() - 1]);
-
-			return wp;
-		}
+		std::vector<engine::spatial::Coord> GetWayPoints(const std::vector<engine::spatial::Coord>& path);
 
 		// this helper function checks if any tiles in the region of the map coordinates a and b occupy is walkable or not
 		// it uses predicate so caller can define a lambda to evaluate if tile is walkable or not
 		template<typename Predicate>
 		bool IsRegionClear(
-			const engine::component::tile::Coord& a,
-			const engine::component::tile::Coord& b,
+			const engine::spatial::Coord& a,
+			const engine::spatial::Coord& b,
 			Predicate&& isWalkable
 		)
 		{
-			int mincol = (int)std::floor(std::min<int>(a.col, b.col));
-			int maxcol = (int)std::floor(std::max<int>(a.col, b.col));
-			int minrow = (int)std::floor(std::min<int>(a.row, b.row));
-			int maxrow = (int)std::floor(std::max<int>(a.row, b.row));
+			int mincol = static_cast<int>(std::floor(std::min<int>(a.col, b.col)));
+			int maxcol = static_cast<int>(std::floor(std::max<int>(a.col, b.col)));
+			int minrow = static_cast<int>(std::floor(std::min<int>(a.row, b.row)));
+			int maxrow = static_cast<int>(std::floor(std::max<int>(a.row, b.row)));
 
 			for (int row = minrow; row <= maxrow; ++row)
 			{
@@ -804,12 +481,12 @@ namespace engine::navigation
 		}
 
 		template<typename Predicate>
-		std::vector<engine::component::tile::Coord> SmoothWayPoints(
-			const std::vector<engine::component::tile::Coord>& waypoints,
+		std::vector<engine::spatial::Coord> SmoothWayPoints(
+			const std::vector<engine::spatial::Coord>& waypoints,
 			Predicate&& isWalkable
 		)
 		{
-			std::vector<engine::component::tile::Coord> smoothed;
+			std::vector<engine::spatial::Coord> smoothed;
 
 			if (waypoints.empty())
 			{
@@ -840,9 +517,6 @@ namespace engine::navigation
 
 			return smoothed;
 		}
-
-
 	}
-
 }
 

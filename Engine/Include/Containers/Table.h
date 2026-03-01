@@ -5,6 +5,8 @@
 #include <sstream>
 #include <Spatial/ISizeable.h>
 #include <Core/View.h>
+#include <Containers/Container.h>
+#include <Containers/Grid.h>
 
 namespace engine
 {
@@ -20,57 +22,9 @@ namespace engine
 
 namespace engine::container
 {
-	template<typename T>
-	class IContainer
-	{
-	public:
-
-		virtual void Add(const T& data) = 0;
-
-		virtual void Take(T&& data) = 0;
-
-		virtual void AddRange(const std::vector<T>& data) = 0;
-
-		virtual void TakeRange(std::vector<T>&& data) = 0;
-
-		virtual void Pop() = 0;
-
-		virtual const T& Get(size_t index) const = 0;
-
-		virtual T& Get(size_t index) = 0;
-
-		virtual void Reserve(const spatial::Size<size_t>& size) = 0;
-
-		virtual size_t GetElementCount() const = 0;
-
-		virtual bool IsEmpty() const = 0;
-
-		virtual void Clear() = 0;
-
-		virtual bool IsInBounds(const size_t index) const = 0;
-
-		virtual T& Back() = 0;
-
-		virtual const T& Back() const = 0;
-	};
-
-	template<typename T>
-	class IGrid: public IContainer<T>, public spatial::ISizeable<size_t>
-	{
-		virtual T& Get(int row, int col) = 0;
-
-		virtual const T& Get(int row, int col) const = 0;
-
-		virtual void Set(int row, int col, const T& data) = 0;
-
-		virtual void Set(const T& data) = 0;
-
-		virtual bool IsInBounds(int row, int col) const = 0;
-	};
-
 	// tile layer represents a 2d Table of tile instances
 	template<typename T>
-	class Table : public IGrid<std::string> //public spatial::ISizeable<size_t>
+	class Table : public IGrid<std::string> 
 	{
 	private:
 		// flat array of tiles
@@ -147,7 +101,6 @@ namespace engine::container
 				m_data[i] = data;
 			}
 		}
-
 
 		void Reserve(const spatial::Size<size_t>& size) override
 		{
@@ -269,10 +222,25 @@ namespace engine::container
 			};
 		}
 
-		//TableView<T> MakeTableView(int row, int col, size_t width, size_t height) const
-		//{
-		//	return TableView<T>(*this, row, col, width, height);
-		//}
+		bool IsInBounds(const engine::spatial::Coord& coord) const override final
+		{
+			return IsInBounds(coord.row, coord.col);
+		}
+
+		T& Get(const engine::spatial::Coord& coord) override final
+		{
+			return Get(coord.row, coord.col);
+		}
+
+		const T& Get(const engine::spatial::Coord& coord) const override final
+		{
+			return Get(coord.row, coord.col);
+		}
+
+		void Set(const engine::spatial::Coord& coord, const T& data) override final
+		{
+			Set(coord.row, coord.col, data);
+		}
 	};
 
 	template<typename T>

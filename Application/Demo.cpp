@@ -7,7 +7,6 @@
 #include <Job/IJob.h>
 #include <Job/Job.h>
 #include <Graphics/Resource/SpriteAtlas.h>
-#include "Utilities.h"
 #include <Containers/Table.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
 #include <Cache/Registry.h>

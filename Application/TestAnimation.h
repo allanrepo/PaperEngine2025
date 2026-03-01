@@ -23,16 +23,12 @@
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Graphics/Resource/SpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Engine/Loader/SpriteAtlasLoader.h>
 #include <Graphics/Renderable/Sprite.h>
 #include <Core/Input.h>
 #include <Graphics/Animation/Animation.h>
 #include <Graphics/Resource/DX11TextureImpl.h>
 #include <Timer/StopWatch.h>
 #include <Engine/Factory/AnimationFactory.h>
-
-#include "Utilities.h"
-
 
 namespace test
 {

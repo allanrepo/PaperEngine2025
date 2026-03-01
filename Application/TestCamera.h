@@ -12,7 +12,6 @@
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Graphics/Resource/SpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Engine/Loader/SpriteAtlasLoader.h>
 #include <Graphics/Renderable/Sprite.h>
 #include <Core/Input.h>
 #include <Graphics/Animation/Animation.h>
@@ -24,7 +23,6 @@
 #include <Engine/Loader/AsyncLoader.h>
 #include <IO/ASyncFileReader.h>
 #include <Utilities/CSVParser.h>
-#include "Utilities.h"
 #include <Cache/Registry.h>
 
 namespace TestCamera

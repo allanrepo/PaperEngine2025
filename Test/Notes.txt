@@ -209,3 +209,9 @@ so behavior i can describe as follows:
 					// if we reach this point
 					return true;
 				},  
+
+
+
+
+NOTES FOR DEMO: PATH FINDING
+- performance challenge: open start, blocked goal - if you forget what this is, check with gpt. it knows.

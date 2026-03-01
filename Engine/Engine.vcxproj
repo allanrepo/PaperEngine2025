@@ -26,7 +26,9 @@
     <ClInclude Include="Include\Command\DrawCommand.h" />
     <ClInclude Include="Include\Command\ICommand.h" />
     <ClInclude Include="Include\Components\Tile.h" />
+    <ClInclude Include="Include\Containers\Container.h" />
     <ClInclude Include="Include\Containers\Dictionary.h" />
+    <ClInclude Include="Include\Containers\Grid.h" />
     <ClInclude Include="Include\Containers\Table.h" />
     <ClInclude Include="Include\Core\Bindable.h" />
     <ClInclude Include="Include\Core\Event.h" />
@@ -43,7 +45,6 @@
     <ClInclude Include="Include\Engine\Factory\TextureFactory.h" />
     <ClInclude Include="Include\Engine\Graphics\Draw.h" />
     <ClInclude Include="Include\Engine\Loader\AsyncLoader.h" />
-    <ClInclude Include="Include\Engine\Loader\SpriteAtlasLoader.h" />
     <ClInclude Include="Include\Engine\Manager\AnimatedTileSetManager.h" />
     <ClInclude Include="Include\Engine\Manager\TileMapManager.h" />
     <ClInclude Include="Include\Engine\Manager\TileSetManager.h" />
@@ -83,6 +84,7 @@
     <ClInclude Include="Include\Math\Vector.h" />
     <ClInclude Include="Include\Performance\FrameRateMonitor.h" />
     <ClInclude Include="Include\Spatial\Camera.h" />
+    <ClInclude Include="Include\Spatial\Coord.h" />
     <ClInclude Include="Include\Spatial\IResizeable.h" />
     <ClInclude Include="Include\Spatial\ISizeable.h" />
     <ClInclude Include="Include\Spatial\Motion.h" />
@@ -96,7 +98,6 @@
     <ClInclude Include="Include\Timer\Scheduler.h" />
     <ClInclude Include="Include\Timer\StopWatch.h" />
     <ClInclude Include="Include\Timer\Timer.h" />
-    <ClInclude Include="Include\Utilities\CSVFile.h" />
     <ClInclude Include="Include\Utilities\CSVParser.h" />
     <ClInclude Include="Include\Utilities\Logger.h" />
     <ClInclude Include="Include\Utilities\Utilities.h" />
@@ -106,6 +107,7 @@
     <ClInclude Include="Include\Win32\WindowBase.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Algorithm\Pathfinding.cpp" />
     <ClCompile Include="Source\Command\CommandQueue.cpp" />
     <ClCompile Include="Source\Command\ICommand.cpp" />
     <ClCompile Include="Source\Components\Tile.cpp" />

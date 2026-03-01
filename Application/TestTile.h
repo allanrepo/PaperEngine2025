@@ -25,7 +25,6 @@
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Graphics/Resource/SpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Engine/Loader/SpriteAtlasLoader.h>
 #include <Graphics/Renderable/Sprite.h>
 #include <Core/Input.h>
 #include <Graphics/Animation/Animation.h>
@@ -33,8 +32,6 @@
 #include <Timer/StopWatch.h>
 #include <Components/Tile.h>
 #include <Engine/Loader/AsyncLoader.h>
-
-#include "Utilities.h"
 
 namespace TestTile
 {	

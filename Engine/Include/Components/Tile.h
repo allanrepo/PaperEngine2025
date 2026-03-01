@@ -28,6 +28,7 @@
 #include <memory>
 #include <stdexcept>
 #include <Containers/Table.h>
+#include <Spatial/Coord.h>
 
 #include <Graphics/Renderable/Sprite.h>
 
@@ -55,28 +56,6 @@ namespace engine::component::tile
 
 namespace engine::component::tile
 {
-	// represents a 2d coordinate in tilemap. this can be grid or region
-	struct Coord
-	{
-		int row;
-		int col;
-
-		// equality operator: returns true if both row and col match
-		bool operator==(const Coord& other) const
-		{
-			return row == other.row && col == other.col;
-		}
-
-		// inequality operator: returns true if either row or col differ
-		bool operator!=(const Coord& other) const
-		{
-			return !(*this == other);
-		}
-
-		Coord(int r, int c): row(r), col(c){}
-		Coord() : row(0), col(0) {}
-	};
-
 	// tile instance holds a reference to tile data from tileset
 	// lightweight view into tile data 
 	template<typename T>
@@ -194,7 +173,7 @@ namespace engine::component::tile
 		}
 
 		// overload for Coord input
-		bool IsInBounds(const component::tile::Coord& Coord) const
+		bool IsInBounds(const engine::spatial::Coord& Coord) const
 		{
 			return IsInBounds(Coord.row, Coord.col);
 		}
@@ -316,7 +295,13 @@ namespace engine::component::tile
 		}
 
 		// retrieves the tile at Coord
-		const Tile<T>& Get(const Coord& coord) const
+		Tile<T>& Get(const engine::spatial::Coord& coord) override final
+		{
+			return Get(coord.row, coord.col);
+		}
+
+		// retrieves the tile at Coord
+		const Tile<T>& Get(const engine::spatial::Coord& coord) const override final
 		{
 			return Get(coord.row, coord.col);
 		}
@@ -328,6 +313,15 @@ namespace engine::component::tile
 				throw std::out_of_range("TileGrid::GetTile - index out of bounds");
 			}
 			m_map[row * m_width + col] = data;
+		}
+
+		void Set(const engine::spatial::Coord& coord, const Tile<T>& data) override
+		{
+			if (!IsInBounds(coord))
+			{
+				throw std::out_of_range("TileGrid::GetTile - index out of bounds");
+			}
+			m_map[coord.row * m_width + coord.col] = data;
 		}
 
 		void Set(const Tile<T>& data) override
@@ -358,7 +352,7 @@ namespace engine::component::tile
 	};
 
 	template<typename T>
-	class TileRegion: public container::IGrid<Tile<T>>//public spatial::ISizeable<size_t>
+	class TileRegion: public container::IGrid<Tile<T>>
 	{
 	private:
 		TileGrid<T> m_tilegrid;
@@ -376,7 +370,6 @@ namespace engine::component::tile
 			return m_tilegrid;
 		}
 
-
 		void SetWidth(const size_t width)
 		{
 			m_tilegrid.SetWidth(width);
@@ -392,15 +385,21 @@ namespace engine::component::tile
 			return m_tilegrid.GetWidth();
 		}
 
-		spatial::Size<size_t> GetSize() const override
+		spatial::Size<size_t> GetSize() const override final
 		{
 			return m_tilegrid.GetSize();
 		}
 
 		// overload for Coord input
-		bool IsInBounds(const component::tile::Coord& Coord) const
+		bool IsInBounds(const engine::spatial::Coord& Coord) const override final
 		{
 			return m_tilegrid.IsInBounds(Coord);
+		}
+
+		// overload for Coord input
+		bool IsInBounds(int row, int col) const override final
+		{
+			return m_tilegrid.IsInBounds(row, col);
 		}
 
 		size_t GetTileCount() const
@@ -483,13 +482,19 @@ namespace engine::component::tile
 			return m_tilegrid.Get(row, col);
 		}
 
-		const  Tile<T>& Get(int row, int col) const override
+		const Tile<T>& Get(int row, int col) const override
 		{
 			return m_tilegrid.Get(row, col);
 		}
 
 		// retrieves the region at coord
-		Tile<T>& Get(const Coord& coord)
+		Tile<T>& Get(const engine::spatial::Coord& coord) override final
+		{
+			return Get(coord.row, coord.col);
+		}
+
+		// retrieves the region at coord
+		const Tile<T>& Get(const engine::spatial::Coord& coord) const override final
 		{
 			return Get(coord.row, coord.col);
 		}
@@ -499,29 +504,29 @@ namespace engine::component::tile
 			m_tilegrid.Set(row, col, data);
 		}
 
+		void Set(const engine::spatial::Coord& coord, const Tile<T>& data) override
+		{
+			Set(coord.row, coord.col, data);
+		}
+
 		void Set(const Tile<T>& data) override
 		{
 			m_tilegrid.Set(data);
 		}
 
-		bool IsInBounds(int row, int col) const override
-		{
-			return m_tilegrid.IsInBounds(row, col);
-		}
-
-		const TileMap<T> MakeTileMap()
+		TileMap<T> MakeTileMap()
 		{
 			return m_tilegrid.MakeTileMap();
 		}
 
-		TileMap<T> MakeTileMap() const
+		const TileMap<T> MakeTileMap() const
 		{
 			return m_tilegrid.MakeTileMap();
 		}
 	};
 
 	template<typename T>
-	class TileLayer: public container::IGrid<TileRegion<T>>// public spatial::ISizeable<size_t>
+	class TileLayer: public container::IGrid<TileRegion<T>>
 	{
 	private:
 		std::vector<TileRegion<T>> m_regions;
@@ -676,7 +681,7 @@ namespace engine::component::tile
 		}
 	
 		// retrieves the region at coord
-		TileRegion<T>& Get(const Coord& coord)
+		TileRegion<T>& Get(const engine::spatial::Coord& coord) override final
 		{
 			return Get(coord.row, coord.col);
 		}
@@ -691,7 +696,7 @@ namespace engine::component::tile
 			return tileCount;
 		}
 		
-		bool IsInBounds(const component::tile::Coord& coord) const
+		bool IsInBounds(const engine::spatial::Coord& coord) const override final
 		{
 			return IsInBounds(coord.row, coord.col);
 		}
@@ -699,6 +704,16 @@ namespace engine::component::tile
 		void SetWidth(const size_t width)
 		{
 			m_width = width;
+		}
+
+		const TileRegion<T>& Get(const engine::spatial::Coord& coord) const override final
+		{
+			return Get(coord.row, coord.col);
+		}
+
+		void Set(const engine::spatial::Coord& coord, const TileRegion<T>& data) override final
+		{
+			Set(coord.row, coord.col, data);
 		}
 	
 		// Returns a const reference to the last region

@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <Containers/Table.h>
+#include <Spatial/Coord.h>
 #include <Components/Tile.h>
 #include <Timer/StopWatch.h>
 #include <Spatial/Position.h>
@@ -8,22 +9,6 @@
 #include <Utilities/CSVParser.h>
 #include <Math/Rect.h>
 #include <queue>
-
-//// forward declare
-//namespace engine
-//{
-//	namespace loader
-//	{
-//		namespace tile
-//		{
-//		}
-//		namespace container
-//		{
-//			template<typename T>
-//			class AsyncContainerClearer;
-//		}
-//	}
-//}
 
 namespace engine
 {
@@ -491,8 +476,8 @@ namespace engine
 				bool m_isDone;
 				spatial::Size<size_t> m_regionSize;
 				spatial::Size<size_t> m_layerSize;
-				engine::component::tile::Coord m_currRegion;
-				engine::component::tile::Coord m_currTile;
+				engine::spatial::Coord m_currRegion;
+				engine::spatial::Coord m_currTile;
 				size_t m_loadedTiles;
 				size_t m_totalTiles;
 				spatial::Size<size_t> m_currRegionSize;

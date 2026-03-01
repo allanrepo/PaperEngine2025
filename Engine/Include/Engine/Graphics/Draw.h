@@ -1,5 +1,6 @@
 #pragma once
 #include <Components/Tile.h>
+#include <Spatial/Coord.h>
 #include <Graphics/Core/Color.h>
 #include <Graphics/Core/Primitives.h>
 #include <Graphics/Renderer/IRenderer.h>
@@ -48,7 +49,7 @@ namespace engine
 		{
 			void DrawWaypoints(
 				engine::graphics::renderer::IRenderer& renderer,
-				const std::vector<engine::component::tile::Coord>& wp,
+				const std::vector<engine::spatial::Coord>& wp,
 				const engine::spatial::SizeF& tilesize,
 				const engine::spatial::PositionF& pos,
 				const engine::graphics::ColorF& color,

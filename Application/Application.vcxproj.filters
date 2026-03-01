@@ -38,9 +38,6 @@
     <ClInclude Include="ActorState.h">
       <Filter>Game Code</Filter>
     </ClInclude>
-    <ClInclude Include="Utilities.h">
-      <Filter>Game Code</Filter>
-    </ClInclude>
     <ClInclude Include="TestEditMap.h">
       <Filter>Tests</Filter>
     </ClInclude>
@@ -78,9 +75,6 @@
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Main</Filter>
-    </ClCompile>
-    <ClCompile Include="Utilities.cpp">
-      <Filter>Game Code</Filter>
     </ClCompile>
     <ClCompile Include="Demo.cpp">
       <Filter>Main</Filter>

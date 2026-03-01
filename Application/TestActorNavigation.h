@@ -12,7 +12,6 @@
 #include <Graphics/Renderer/Renderer.h>
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Engine/Loader/SpriteAtlasLoader.h>
 #include <Graphics/Renderable/Sprite.h>
 #include <Core/Input.h>
 #include <Graphics/Resource/IFontAtlas.h>
@@ -109,15 +108,28 @@ namespace TestActorNavigation
 
 	public:
 		Test():
+			//m_pathFinder(
+			//	[](int row, int col) -> bool
+			//	{
+			//		return Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile").Get(row, col)->IsWalkable();
+			//	},
+			//	nullptr,
+			//	true,
+			//	false
+			//),
 			m_pathFinder(
-				[](int row, int col) -> bool
-				{
-					return Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile").Get(row, col)->IsWalkable();
-				},
-				nullptr,
-				true,
-				false
+				std::make_unique<engine::navigation::tile::BinaryNavigationResolver>(
+					//[this](int row, int col) -> engine::navigation::tile::TileConstraint
+					//{
+					//	return m_regionTD->Get(row, col)->GetConstraint();
+					//}),
+					[this](int row, int col) -> bool
+					{
+						return Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile").Get(row, col)->IsWalkable();
+					}), 
+				true
 			),
+
 			m_startTile({ 0,0 }),
 			m_endTile({ 0,0 }),
 			m_drawDebugGraph(true)

@@ -240,9 +240,6 @@
     <ClInclude Include="Include\Engine\Factory\SpriteAtlasFactory.h">
       <Filter>Engine\Factory</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Utilities\CSVFile.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Core\Input.h">
       <Filter>Core</Filter>
     </ClInclude>
@@ -339,8 +336,14 @@
     <ClInclude Include="Include\Engine\Graphics\Draw.h">
       <Filter>Engine\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Engine\Loader\SpriteAtlasLoader.h">
-      <Filter>Engine\Loader</Filter>
+    <ClInclude Include="Include\Spatial\Coord.h">
+      <Filter>Spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Containers\Container.h">
+      <Filter>Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Containers\Grid.h">
+      <Filter>Containers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -451,6 +454,9 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Graphics\Draw.cpp">
       <Filter>Engine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Algorithm\Pathfinding.cpp">
+      <Filter>Algorithm</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

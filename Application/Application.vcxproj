@@ -130,7 +130,6 @@
     <ClCompile Include="DemoTileLayer.cpp" />
     <ClCompile Include="DemoTileMap.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Actor.h" />
@@ -152,7 +151,6 @@
     <ClInclude Include="TestSprite.h" />
     <ClInclude Include="TestTile.h" />
     <ClInclude Include="TestWin32.h" />
-    <ClInclude Include="Utilities.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Engine\Engine.vcxproj">
