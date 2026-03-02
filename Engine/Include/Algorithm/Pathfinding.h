@@ -355,7 +355,8 @@ namespace engine::navigation
 				m_maxSteps(maxSteps),
 				m_diagonal(diagonal),
 				m_heuristicType(heuristicType),
-				m_tileNavigationResolver(std::move(tileNavigationResolver))
+				m_tileNavigationResolver(std::move(tileNavigationResolver)),
+				m_steps(0)
 			{
 			}
 

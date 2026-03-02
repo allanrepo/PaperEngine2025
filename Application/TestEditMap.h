@@ -1,5 +1,5 @@
-#pragma once
-
+﻿#pragma once
+#include <Algorithm/AutoTileResolver.h>
 #include <Win32/Window.h>
 #include <Core/Event.h>
 #include <Utilities/Logger.h>
@@ -59,18 +59,70 @@ namespace TestEditMap
 
 	template<typename T>
 	using Animation = engine::graphics::animation::Animation<T>;
+	
+
+
+	// this is a tile definition class, not exactly tile class. tile class is Tile<T> and this is what is assigned to T
+	class AnimatedTile
+	{
+	private:
+		engine::graphics::animation::Animator<engine::graphics::renderable::Sprite> m_animator;
+		std::unordered_map<std::string, engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>> m_animations;
+		bool m_walkable;
+		int m_index;
+
+	public:
+		AnimatedTile(bool walkable, const std::string& name, const engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>& anim, int index) :
+			m_walkable(walkable),
+			m_index(index)
+
+		{
+			// copy the animation into our container
+			m_animations[name] = anim;
+
+			// assign the animation from our container into animator (don't assign the passed animation. that is reference to animation outside which is not safe
+			m_animator.Play(m_animations[name]);
+		}
+
+		bool IsRunning() const
+		{
+			return m_animator.IsRunning();
+		}
+
+		const engine::graphics::renderable::Sprite& GetSprite() const
+		{
+			return m_animator.GetCurrent();
+		}
+
+		void Update(double delta)
+		{
+			m_animator.Update(delta);
+		}
+
+		int GetIndex() const
+		{
+			return m_index;
+		}
+	};
 
 	class RenderableTile
 	{
 	private:
 		Sprite m_sprite;
 		bool m_walkable;
+		int m_index;
 
 	public:
-		RenderableTile(const Sprite& sprite, bool walkable) :
+		RenderableTile(const Sprite& sprite, bool walkable, int index) :
 			m_sprite(sprite),
-			m_walkable(walkable)
+			m_walkable(walkable),
+			m_index(index)
 		{
+		}
+		
+		int GetIndex() const
+		{
+			return m_index;
 		}
 
 		const Sprite& GetSprite() const
@@ -83,6 +135,7 @@ namespace TestEditMap
 			return m_walkable;
 		}
 	};
+	
 
 	class Test
 	{
@@ -100,6 +153,9 @@ namespace TestEditMap
 		Input m_input;
 
 		PositionF m_mousePos;
+
+		engine::tile::AutoTileResolver<RenderableTile> m_autoTileMapLand;
+		engine::tile::AutoTileResolver<AnimatedTile> m_autoTileMapSplash;
 
 	public:
 		Test() 
@@ -159,7 +215,7 @@ namespace TestEditMap
 				Registry<Tileset<RenderableTile>>::Instance().Register("1x1_64x64_water_background", std::make_unique<Tileset<RenderableTile>>());
 				Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("1x1_64x64_water_background");
 
-				tileset.Register(0, std::make_unique<RenderableTile>(atlas.MakeSprite(0), false)); // water so not walkable. doesn't matter. this is background map
+				tileset.Register(0, std::make_unique<RenderableTile>(atlas.MakeSprite(0), false, 0)); // water so not walkable. doesn't matter. this is background map
 
 				// create tile region
 				Registry<TileRegion<RenderableTile>>::Instance().Register("1x1_64x64_water_background", make_unique<TileRegion<RenderableTile>>());
@@ -184,25 +240,7 @@ namespace TestEditMap
 				// each sprite from atlas is a static tile (single frame), so we create tile from each sprite
 				for (int i = 0; i < atlas.GetUVRectCount(); i++)
 				{
-					bool walkable = false;
-					walkable |= (i == 0); // 
-					walkable |= (i == 1);
-					walkable |= (i == 2);
-					walkable |= (i == 3);
-					walkable |= (i == 9);
-					walkable |= (i == 10);
-					walkable |= (i == 11);
-					walkable |= (i == 12);
-					walkable |= (i == 18);
-					walkable |= (i == 19);
-					walkable |= (i == 20);
-					walkable |= (i == 21);
-					walkable |= (i == 27);
-					walkable |= (i == 28);
-					walkable |= (i == 29);
-					walkable |= (i == 30);
-
-					tileset.Register(i, std::make_unique<RenderableTile>(atlas.MakeSprite(i), walkable)); // make it all walkable for now
+					tileset.Register(i, std::make_unique<RenderableTile>(atlas.MakeSprite(i), true, i)); // make it all walkable for now
 				}
 
 				// create tile region
@@ -214,6 +252,89 @@ namespace TestEditMap
 				AsyncTileRegionLoader<RenderableTile, int> tileRegionLoader;
 				tileRegionLoader.LoadImmediate(region, map, [&tileset](const int& cell) -> Tile<RenderableTile> { return tileset.MakeTile(cell); });
 				region.Set(2, 2, tileset.MakeTile(30));
+			}
+
+			// configure land auto-tile mapping
+			{			
+				// index → variant mapping
+				m_autoTileMapLand.Register(4, engine::tile::TileVariant::Empty);
+				m_autoTileMapLand.Register(30, engine::tile::TileVariant::Island);
+				m_autoTileMapLand.Register(10, engine::tile::TileVariant::Full);
+
+				m_autoTileMapLand.Register(21, engine::tile::TileVariant::NorthEdge);
+				m_autoTileMapLand.Register(3, engine::tile::TileVariant::SouthEdge);
+				m_autoTileMapLand.Register(29, engine::tile::TileVariant::EastEdge);
+				m_autoTileMapLand.Register(27, engine::tile::TileVariant::WestEdge);
+
+				m_autoTileMapLand.Register(0, engine::tile::TileVariant::NECorner);
+				m_autoTileMapLand.Register(2, engine::tile::TileVariant::NWCorner);
+				m_autoTileMapLand.Register(18, engine::tile::TileVariant::SECorner);
+				m_autoTileMapLand.Register(20, engine::tile::TileVariant::SWCorner);
+
+				m_autoTileMapLand.Register(12, engine::tile::TileVariant::Vertical);
+				m_autoTileMapLand.Register(28, engine::tile::TileVariant::Horizontal);
+
+				m_autoTileMapLand.Register(1, engine::tile::TileVariant::TNorth);
+				m_autoTileMapLand.Register(19, engine::tile::TileVariant::TSouth);
+				m_autoTileMapLand.Register(9, engine::tile::TileVariant::TEast);
+				m_autoTileMapLand.Register(11, engine::tile::TileVariant::TWest);
+			}
+
+			// create splash map
+			{
+				// create sprite atlas for the water splash animation
+				engine::graphics::factory::SpriteAtlasFactory::Create("water_splash", L"../Assets/3072x192px_1x17tile_waterfoam.png", 1, 16);
+				engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("water_splash");
+
+				// create animation and load all of our sprite atlas' sprite into it and store in registry
+				//engine::graphics::factory::AnimationFactory::Create("water_splash", atlas, { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 }, 100.0f, true);
+				engine::graphics::factory::AnimationFactory::Create("water_splash", atlas, 100.0f, true);
+				engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>& anim = Registry<engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>>::Instance().Get("water_splash");
+
+				// create our tileset
+				Registry<Tileset<AnimatedTile>>::Instance().Register("water_splash", std::make_unique<Tileset<AnimatedTile>>());
+				Tileset<AnimatedTile>& tileset = Registry<Tileset<AnimatedTile>>::Instance().Get("water_splash");
+
+				// load tile definition into tileset. since this is animated tile, we create AnimatedTile definition which holds the animation and animator for this tile.
+				// we only have one - water splash tile, so we just register it at index 0. 
+				tileset.Register(0, std::make_unique<AnimatedTile>(false, "water_splash", anim, 0)); 
+
+				// create tile region
+				Registry<TileRegion<AnimatedTile>>::Instance().Register("water_splash", make_unique<TileRegion<AnimatedTile>>());
+				TileRegion<AnimatedTile>& region = Registry<TileRegion<AnimatedTile>>::Instance().Get("water_splash");
+
+				// load tile region by filling it with all '0' tile
+				Table<string> map({ 20, 12 }, "1");
+				AsyncTileRegionLoader<AnimatedTile, int> tileRegionLoader;
+				tileRegionLoader.LoadImmediate(region, map, [&tileset](const int& cell) -> Tile<AnimatedTile> { return tileset.MakeTile(cell); });
+				//region.Set(9, 9, tileset.MakeTile(0));
+				//region.Set(0, 0, tileset.MakeTile(0));
+			}
+
+			// configure land auto-tile mapping
+			{
+				// index → variant mapping
+				m_autoTileMapSplash.Register(1, engine::tile::TileVariant::Empty);
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::Island);
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::Full);
+
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::NorthEdge);
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::SouthEdge);
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::EastEdge);
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::WestEdge);
+
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::NECorner);
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::NWCorner);
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::SECorner);
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::SWCorner);
+
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::Vertical);
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::Horizontal);
+
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::TNorth);
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::TSouth);
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::TEast);
+				m_autoTileMapSplash.Register(0, engine::tile::TileVariant::TWest);
 			}
 
 			// setup stopwatch to manage timing and start it
@@ -228,9 +349,18 @@ namespace TestEditMap
 			case 27: // escape
 			{
 				// clear map of land
-				Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
-				TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
-				region.Set(tileset.MakeTile(4));
+				{
+					Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
+					TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
+					region.Set(tileset.MakeTile(4));
+				}
+
+				// clear water splash map
+				{
+					Tileset<AnimatedTile>& tileset = Registry<Tileset<AnimatedTile>>::Instance().Get("water_splash");
+					TileRegion<AnimatedTile>& region = Registry<TileRegion<AnimatedTile>>::Instance().Get("water_splash");
+					region.Set(tileset.MakeTile(0));	
+				}
 
 				break;
 			}
@@ -238,17 +368,37 @@ namespace TestEditMap
 				break;
 			case 49: // 1
 			{
-				//Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
-				//TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
-				//// add a land tile
-				//Coord c = PositionToMapCoord(m_mousePos);
-				//region.Set(c.row, c.col, tileset.MakeTile(30));
+				{
+					TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
+					Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
+					engine::spatial::Coord coord = PositionToMapCoord(m_mousePos);
+					m_autoTileMapLand.Set(region, tileset, coord);
+				}
 
-				SetLandTile(PositionToMapCoord(m_mousePos));
+				{
+					TileRegion<AnimatedTile>& region = Registry<TileRegion<AnimatedTile>>::Instance().Get("water_splash");
+					Tileset<AnimatedTile>& tileset = Registry<Tileset<AnimatedTile>>::Instance().Get("water_splash");
+					engine::spatial::Coord coord = PositionToMapCoord(m_mousePos);
+					m_autoTileMapSplash.Set(region, tileset, coord);
+				}
+
 				break;
 			}
 			case 50: // 2
 			{
+				{
+					TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
+					Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
+					engine::spatial::Coord coord = PositionToMapCoord(m_mousePos);
+					m_autoTileMapLand.Remove(region, tileset, coord);
+				}
+
+				{
+					TileRegion<AnimatedTile>& region = Registry<TileRegion<AnimatedTile>>::Instance().Get("water_splash");
+					Tileset<AnimatedTile>& tileset = Registry<Tileset<AnimatedTile>>::Instance().Get("water_splash");
+					engine::spatial::Coord coord = PositionToMapCoord(m_mousePos);
+					m_autoTileMapSplash.Remove(region, tileset, coord);
+				}
 				break;
 			}
 			case 51: // 3
@@ -273,6 +423,15 @@ namespace TestEditMap
 		// this method is fired up whenever the OnLap event is triggered from stopwatch
 		void OnLap(double time)
 		{
+			// update our animated tile's animator  
+			Tileset<AnimatedTile>& tileset = Registry<Tileset<AnimatedTile>>::Instance().Get("water_splash");
+			for(auto& [id, tile] : tileset)
+			{
+				if (tile->IsRunning())
+				{
+					tile->Update(time);
+				}
+			}
 		}
 
 		// fun stuff. this is called on each loop of the message loop. this is where we draw!
@@ -300,6 +459,18 @@ namespace TestEditMap
 					SizeF tilesize = Registry<SizeF>::Instance().Get("tile_size");
 
 					DrawTileMap(*m_renderer, tilemap, tilesize, pos, { 1,1,1,1 });
+				}
+
+				// draw water splash map
+				{
+					TileRegion<AnimatedTile> region = Registry<TileRegion<AnimatedTile>>::Instance().Get("water_splash");
+					TileMap<AnimatedTile> tilemap = region.MakeTileMap();
+
+					// get tilemap parameters
+					PositionF pos = Registry<PositionF>::Instance().Get("map_position");
+					SizeF tilesize = Registry<SizeF>::Instance().Get("tile_size");
+
+					DrawTileMap(*m_renderer, tilemap, tilesize, pos, { 1,1,1,1 }, { -64, -68 }, { 3,3 }, 1.0f);
 				}
 
 				// draw first level map
@@ -348,7 +519,10 @@ namespace TestEditMap
 			return coord;
 		}
 
-		enum class TileVariant : int {
+
+
+		enum class TileVariant : unsigned int 
+		{
 			// Base tiles
 			Empty = 4,
 
@@ -379,13 +553,12 @@ namespace TestEditMap
 			TWest = 11   // land north+south+east, water west
 		};
 
-
 		bool SetLandTile(const Coord& coord)
 		{
 			TileRegion<RenderableTile> region = Registry<TileRegion<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
 			if (!region.IsInBounds(coord)) return false;
 
-			int mask = ComputeMask(coord.row, coord.col);
+			unsigned int mask = ComputeMask(coord.row, coord.col);
 
 			TileVariant tv = ResolveTileVariant(mask);
 
@@ -394,10 +567,15 @@ namespace TestEditMap
 			return true;
 		}
 
-		int ComputeMask(int row, int col) 
+		unsigned int ComputeMask(int row, int col)
 		{
 			TileRegion<RenderableTile> region = Registry<TileRegion<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
 
+			// we define our mask for all neighbor tiles. application don't need to know about it. this is internal logic of our AutoTileResolver class.
+
+
+			// check cardinal neighbors if they are land tiles already.  
+			// so if coord is surrounded by land on all side, mask = 0b1111 = 15.
 			int mask = 0;
 			if (region.IsInBounds(row - 1, col) && region.Get(row - 1, col)->IsWalkable()) mask |= 8; // N
 			if (region.IsInBounds(row + 1, col) && region.Get(row + 1, col)->IsWalkable()) mask |= 2; // S
@@ -408,30 +586,31 @@ namespace TestEditMap
 
 		TileVariant ResolveTileVariant(int mask) 
 		{
-			switch (mask) {
-			case 0:   return TileVariant::Island;   // surrounded by water
-			case 15:  return TileVariant::Full;   // surrounded by land
+			switch (mask) 
+			{
+			case 0:   return TileVariant::Island;   // surrounded by nothing
+			case 15:  return TileVariant::Full;   // surrounded by same tile type on all 4 sides
+			
+			case 8:   return TileVariant::NorthEdge;  // same tile type on north only. nothing on south, east, west
+			case 2:   return TileVariant::SouthEdge;  // same tile type on south only. nothing on north, east, west
+			case 1:   return TileVariant::EastEdge;   // same tile type on east only. nothing on north, south, west
+			case 4:   return TileVariant::WestEdge;   // same tile type on west only. nothing on north, south, east
 
-			case 8:   return TileVariant::NorthEdge;  // land north only
-			case 2:   return TileVariant::SouthEdge;  // land south only
-			case 1:   return TileVariant::EastEdge;   // land east only
-			case 4:   return TileVariant::WestEdge;   // land west only
+			case 10:  return TileVariant::Vertical;   // same tile type on north+south. nothing on east, west
+			case 5:   return TileVariant::Horizontal; // same tile type on east+west. nothing on north, south
 
-			case 10:  return TileVariant::Vertical;   // land north+south
-			case 5:   return TileVariant::Horizontal; // land east+west
-
-			case 7:   return TileVariant::TNorth;     // land S+E+W
-			case 13:  return TileVariant::TSouth;     // land N+E+W
-			case 14:  return TileVariant::TEast;      // land N+S+W
-			case 11:  return TileVariant::TWest;      // land N+S+E
+			case 7:   return TileVariant::TNorth;     // same tile type on south+east+west. nothing on north
+			case 13:  return TileVariant::TSouth;     // same tile type on north+east+west. nothing on south
+			case 14:  return TileVariant::TEast;      // same tile type on north+south+west. nothing on east	
+			case 11:  return TileVariant::TWest;      // same tile type on north+south+east. nothing on west
 
 			// Corners 
-			case 6: return TileVariant::NECorner; // 0 
-			case 3: return TileVariant::NWCorner; // 2 
-			case 12: return TileVariant::SECorner; // 18 
-			case 9: return TileVariant::SWCorner; // 20
+			case 6: return TileVariant::NECorner; // same tile type on north+east. nothing on south, west 
+			case 3: return TileVariant::NWCorner; // same tile type on north+west. nothing on south, east
+			case 12: return TileVariant::SECorner; // same tile type on south+east. nothing on north, west
+			case 9: return TileVariant::SWCorner; // same tile type on south+west. nothing on north, east
 
-			default:  return TileVariant::Empty;       // fallback
+			default:  return TileVariant::Empty; // default to empty tile if mask configuration not found. this should not happen if we cover all cases.
 			}
 		}
 

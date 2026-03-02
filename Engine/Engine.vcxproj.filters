@@ -345,6 +345,9 @@
     <ClInclude Include="Include\Containers\Grid.h">
       <Filter>Containers</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Algorithm\AutoTileResolver.h">
+      <Filter>Algorithm</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">

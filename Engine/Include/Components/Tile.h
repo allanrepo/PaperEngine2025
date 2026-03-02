@@ -61,7 +61,7 @@ namespace engine::component::tile
 	template<typename T>
 	class Tile : public core::View<T>
 	{
-	private:
+	protected:
 		// only tileset and TileGrid can create tile instances
 		friend class Tileset<T>;
 

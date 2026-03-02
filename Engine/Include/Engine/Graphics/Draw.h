@@ -43,6 +43,61 @@ namespace engine
 					}
 				}
 			}
+
+
+			template<typename T>
+			void DrawTileMap(
+				engine::graphics::renderer::IRenderer& renderer,
+				const engine::component::tile::TileMap<T>& tilemap,
+				const engine::spatial::SizeF& tilesize,
+				const engine::spatial::PositionF& pos,
+				const engine::graphics::ColorF& color,
+				const engine::spatial::PositionF& offset,
+				const engine::math::VecF& scale,
+				float alpha	
+			) 
+			{
+				for (int row = 0; row <= tilemap.GetHeight(); ++row)
+				{
+					for (int col = 0; col <= tilemap.GetWidth(); ++col)
+					{
+						if (!tilemap.IsInBounds(row, col))
+						{
+							continue;
+						}
+
+						// get the tile
+						const engine::component::tile::Tile<T>& tile = tilemap.Get(row, col);
+
+						// defensive. we're never sure if the tile has valid sprite, so do check
+						if (tile.isValid())
+						{
+							// this will be the top-left position of this tile in map coordinate.
+							engine::spatial::PositionF origin =
+							{
+								col * tilesize.width,
+								row * tilesize.height
+							};
+
+							origin += offset;
+
+							engine::spatial::SizeF ts =
+							{
+								tilesize.width * scale.x,
+								tilesize.height * scale.y
+							};
+
+							renderer.DrawRenderable(
+								tile->GetSprite(),
+								pos + origin,
+								ts,
+								engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, alpha },
+								0.0f
+							);
+						}
+					}
+				}
+			}
 		}
 
 		namespace navigation

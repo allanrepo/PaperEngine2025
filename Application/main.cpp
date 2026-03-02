@@ -169,9 +169,10 @@ int main()
     //test::TestCanvas testCanvas;
     //TestFont::Test testFont;
     //TestActor::Test testActor;
-    TestPathFinding::Test testPathFinding;
+    //TestPathFinding::Test testPathFinding;
     //TestActorNavigation::Test testActorNavigation;
-   //TestEditMap::Test testEditMap;
+    TestEditMap::Test testEditMap;
+	//TestSpecializedTileDefinition::Test testSpecializedTileDefinition;
 
 	return 0;
 }

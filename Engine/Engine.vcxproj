@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Include\Algorithm\AutoTileResolver.h" />
     <ClInclude Include="Include\Algorithm\Pathfinding.h" />
     <ClInclude Include="Include\Cache\BindCache.h" />
     <ClInclude Include="Include\Cache\Registry.h" />
