@@ -2,11 +2,34 @@
 #include <Components/Tile.h>
 #include <Containers/Dictionary.h>
 #include <Spatial/Coord.h>
+#include <Core/Event.h>
 
 namespace engine
 {
 	namespace tile
 	{
+		// UML diagram :
+		//  +--------------------------+       fires event      +-----------------------+
+		//  | AutoTileResolver         | ---------------------> | LookupTileResolver    |
+		//	|--------------------------|                        |-----------------------|
+		//	| +TileVariantChangedEvent |                        | +OnTileVariantChanged |
+		//	+--------------------------+                        +-----------------------+
+		//	           |
+		//	           | delegates variant info
+		//	           v
+		//	+ -------------------------+
+		//	| Event<Coord&, Variant>   |
+		//	|--------------------------|
+		//	| +operator()              |
+		//	| +operator+=              |
+		//	| +operator-=              |
+		//	+--------------------------+
+		//
+		// Flow:
+		// AutoTileResolver computes adjacency masks and determines the correct TileVariant for a floor tile.
+		// It places the tile in the TileRegion using the Tileset.
+		// If a LookupTileResolver is plugged in, AutoTileResolver passes the TileVariant and coordinate to it.
+		// LookupTileResolver uses its own dictionary(variant → index) and places the corresponding wall(or decoration) tile in its own region / tileset.
 
 		enum class TileVariant : unsigned int
 		{
@@ -36,6 +59,37 @@ namespace engine
 			TSouth,// = 19, // land north+east+west, water south
 			TEast,// = 9,  // land north+south+west, water east
 			TWest,// = 11  // land north+south+east, water west
+		};
+
+		template<typename T>
+		class LookupTileResolver
+		{
+		private:
+			engine::container::Dictionary<TileVariant, int> m_variantToIndex;
+			engine::component::tile::TileRegion<T>& m_region;
+			engine::component::tile::Tileset<T>& m_tileset;
+
+		public:
+			LookupTileResolver(
+				engine::component::tile::TileRegion<T>& region,
+				engine::component::tile::Tileset<T>& tileset)
+				: m_region(region), m_tileset(tileset)
+			{
+			}
+
+			void Register(TileVariant variant, int index)
+			{
+				m_variantToIndex[variant] = index;
+			}
+
+			void Set(const engine::spatial::Coord& coord, TileVariant variant)
+			{
+				if (!m_region.IsInBounds(coord)) return;
+				if (!m_variantToIndex.Has(variant)) return;
+
+				int index = m_variantToIndex[variant];
+				m_region.Set(coord, m_tileset.MakeTile(index));
+			}
 		};
 
 		// purpose:
@@ -81,10 +135,20 @@ namespace engine
 		private:
 			engine::container::Dictionary<int, TileVariant> m_indexToVariant;
 			engine::container::Dictionary<TileVariant, int> m_variantToIndex;
+			engine::component::tile::TileRegion<T>& m_region;
+			engine::component::tile::Tileset<T>& m_tileset;
 
 		public:
-			AutoTileResolver()
+			AutoTileResolver(
+				engine::component::tile::TileRegion<T>& region,
+				engine::component::tile::Tileset<T>& tileset)
+				: m_region(region), m_tileset(tileset)
 			{
+			}
+
+			virtual ~AutoTileResolver()
+			{
+				TileVariantChangedEvent.Clear();	
 			}
 
 			void Register(int index, TileVariant variant)
@@ -93,35 +157,83 @@ namespace engine
 				m_variantToIndex[variant] = index;
 			}
 
-			void Set(engine::component::tile::TileRegion<T>& region, engine::component::tile::Tileset<T>& tileset, const engine::spatial::Coord& coord)
+			void ResolveNeighbors(const engine::spatial::Coord& coord)	
 			{
-				if (!region.IsInBounds(coord)) return;
+				// Update self + 4 neighbors (skip diagonals)
+				for (int dr = -1; dr <= 1; ++dr)
+				{
+					for (int dc = -1; dc <= 1; ++dc)
+					{
+						// Skip corners (diagonals)
+						if (std::abs(dr) + std::abs(dc) > 1) continue;
 
-				unsigned int mask = ComputeMask(region, coord.row, coord.col);
+						// neighbor tile coords
+						engine::spatial::Coord neighborCoord = { coord.row + dr, coord.col + dc };
+
+						// if neighbor tile is out of bounds or not walkable, skip it.
+						if (!m_region.IsInBounds(neighborCoord)) continue;
+
+						// this is the tile we just placed, so we already know its new variant. skip it since we don't need to recompute it.
+						if (dr == 0 && dc == 0) continue;
+
+						// defensive check to ensure tile exists at this location before accessing its index. if tile doesn't exist, treat it as empty for autotiling purposes and skip it.
+						if (!m_region.Get(neighborCoord).isValid()) continue;
+
+						// if tile exists but is empty tile, skip it since empty tile is like "air" and doesn't affect autotiling of neighbors
+						int index = m_region.Get(neighborCoord)->GetIndex();
+						if (m_indexToVariant.Has(index) && m_indexToVariant[index] == TileVariant::Empty) continue;
+
+						// evaluate this neighbor if this it of same tile type as the one we just placed. if not, skip it since its tile variant won't be affected by the new tile.
+						if (!m_indexToVariant.Has(index)) continue;
+
+						unsigned int mask = ComputeMask(neighborCoord);
+						TileVariant variant = ResolveTileVariant(mask);
+
+						PlaceTile(neighborCoord, variant);
+					}
+				}
+			}
+
+			void Set(
+				const engine::spatial::Coord& coord
+			)
+			{
+				if (!m_region.IsInBounds(coord)) return;
+
+				unsigned int mask = ComputeMask(coord);
 
 				TileVariant variant = ResolveTileVariant(mask);
 
-				PlaceTile(region, tileset, coord, variant);
+				// Set the selected tile
+				PlaceTile(coord, variant);
+
+				// update neighbors to ensure seamless transitions
+				ResolveNeighbors(coord);
 			}
 
-			void Remove(engine::component::tile::TileRegion<T>& region, const engine::component::tile::Tileset<T>& tileset, const Coord& coord)
+			void Remove(const engine::spatial::Coord& coord)
 			{
-				if (!region.IsInBounds(coord)) return;
+				if (!m_region.IsInBounds(coord)) return;
 
 				// if we don't have an empty tile registered, we can't remove. just return early.
 				if (!m_variantToIndex.Has(TileVariant::Empty)) return;
 
-				PlaceTile(region, tileset, coord, TileVariant::Empty);
+				// remove the selected tile
+				PlaceTile(coord, TileVariant::Empty);
+
+
+				// update neighbors to ensure seamless transitions
+				ResolveNeighbors(coord);
 			}
 
-			void UpdateMask(engine::component::tile::TileRegion<T>& region, int row, int col, unsigned int& mask, unsigned int bit)
+			void UpdateMask(const engine::spatial::Coord& coord, unsigned int& mask, unsigned int bit)
 			{
-				if (region.IsInBounds(row, col))
+				if (m_region.IsInBounds(coord))
 				{
 					// defensive check to ensure tile exists at this location before accessing its index. if tile doesn't exist, treat it as empty for autotiling purposes and skip it.
-					if (!region.Get(row, col).isValid()) return;
+					if (!m_region.Get(coord).isValid()) return;
 
-					int index = region.Get(row, col)->GetIndex();
+					int index = m_region.Get(coord)->GetIndex();
 					if (m_indexToVariant.Has(index) && m_indexToVariant[index] != TileVariant::Empty)
 					{
 						mask |= bit;
@@ -129,18 +241,14 @@ namespace engine
 				}
 			}
 
-			unsigned int ComputeMask(engine::component::tile::TileRegion<T>& region, int row, int col)
+			unsigned int ComputeMask(const engine::spatial::Coord& coord)
 			{
 				unsigned int mask = 0;
 
-				UpdateMask(region, row - 1, col, mask, 8);	// N
-				UpdateMask(region, row + 1, col, mask, 2);	// S
-				UpdateMask(region, row, col + 1, mask, 4);	// E
-				UpdateMask(region, row, col - 1, mask, 1);	// W
-				//UpdateMask(region, row - 1, col - 1, mask);	// NW
-				//UpdateMask(region, row - 1, col + 1, mask);	// NE
-				//UpdateMask(region, row + 1, col - 1, mask);	// SW
-				//UpdateMask(region, row + 1, col + 1, mask);	// SE
+				UpdateMask({ coord.row - 1, coord.col }, mask, 8);	// N
+				UpdateMask({ coord.row + 1, coord.col }, mask, 2);	// S
+				UpdateMask({ coord.row, coord.col + 1 }, mask, 4);	// E
+				UpdateMask({ coord.row, coord.col - 1 }, mask, 1);	// W
 
 				return mask;
 			}
@@ -174,46 +282,17 @@ namespace engine
 				}
 			}
 
-			void PlaceTile(engine::component::tile::TileRegion<T>& region, const engine::component::tile::Tileset<T>& tileset, const engine::spatial::Coord& coord, const TileVariant type)
+			void PlaceTile(const engine::spatial::Coord& coord, const TileVariant type)
 			{
 				// Set the selected tile
-				region.Set(coord, tileset.MakeTile(m_variantToIndex[type]));
+				m_region.Set(coord, m_tileset.MakeTile(m_variantToIndex[type]));
 
-				// Update self + 4 neighbors (skip diagonals)
-				for (int dr = -1; dr <= 1; ++dr)
-				{
-					for (int dc = -1; dc <= 1; ++dc)
-					{
-						// Skip corners (diagonals)
-						if (std::abs(dr) + std::abs(dc) > 1) continue;
-
-						// neighbor tile coords
-						int nr = coord.row + dr;
-						int nc = coord.col + dc;
-
-						// if neighbor tile is out of bounds or not walkable, skip it.
-						if (!region.IsInBounds(nr, nc)) continue;
-
-						// this is the tile we just placed, so we already know its new variant. skip it since we don't need to recompute it.
-						if (dr == 0 && dc == 0) continue;
-
-						// defensive check to ensure tile exists at this location before accessing its index. if tile doesn't exist, treat it as empty for autotiling purposes and skip it.
-						if (!region.Get(nr, nc).isValid()) continue;
-
-						// if tile exists but is empty tile, skip it since empty tile is like "air" and doesn't affect autotiling of neighbors
-						int index = region.Get(nr, nc)->GetIndex();
-						if (m_indexToVariant.Has(index) && m_indexToVariant[index] == TileVariant::Empty) continue;
-
-						// evaluate this neighbor if this it of same tile type as the one we just placed. if not, skip it since its tile variant won't be affected by the new tile.
-						if (!m_indexToVariant.Has(index)) continue;
-
-						unsigned int mask = ComputeMask(region, nr, nc);
-						TileVariant variant = ResolveTileVariant(mask);
-
-						region.Set(nr, nc, tileset.MakeTile(m_variantToIndex[variant]));
-					}
-				}
+				// Notify listeners about the tile variant change
+				TileVariantChangedEvent(coord, type);
 			}
+
+			engine::event::Event<const engine::spatial::Coord&, TileVariant> TileVariantChangedEvent;
 		};
+
 	}
 }

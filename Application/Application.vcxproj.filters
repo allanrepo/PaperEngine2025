@@ -41,7 +41,7 @@
     <ClInclude Include="TestEditMap.h">
       <Filter>Tests</Filter>
     </ClInclude>
-    <ClInclude Include="TestFileReader.h">
+    <ClInclude Include="TestEditMultiLayerMap.h">
       <Filter>Tests</Filter>
     </ClInclude>
     <ClInclude Include="TestActorNavigation.h">

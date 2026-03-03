@@ -143,7 +143,7 @@
     <ClInclude Include="TestActorNavigation.h" />
     <ClInclude Include="TestCanvas.h" />
     <ClInclude Include="TestEngine.h" />
-    <ClInclude Include="TestFileReader.h" />
+    <ClInclude Include="TestEditMultiLayerMap.h" />
     <ClInclude Include="TestFont.h" />
     <ClInclude Include="TestFrameRate.h" />
     <ClInclude Include="TestEditMap.h" />

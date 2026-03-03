@@ -6,7 +6,7 @@
 #include "TestCanvas.h"
 #include "TestEngine.h"
 #include "TestWin32.h"
-#include "TestFileReader.h"
+#include "TestEditMultiLayerMap.h"
 #include "TestActorNavigation.h"
 #include "Demo.h"
 #include "DemoTileLayer.h"
@@ -171,7 +171,8 @@ int main()
     //TestActor::Test testActor;
     //TestPathFinding::Test testPathFinding;
     //TestActorNavigation::Test testActorNavigation;
-    TestEditMap::Test testEditMap;
+    //TestEditMap::Test testEditMap;
+	TestEditMultiLayerMap::Test testEditMultiLayerMap;
 	//TestSpecializedTileDefinition::Test testSpecializedTileDefinition;
 
 	return 0;

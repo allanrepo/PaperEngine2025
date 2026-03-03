@@ -11,6 +11,11 @@ namespace engine::spatial
 		float m_speed;
 
 	public:
+		Motion(const math::Vec<T>& velocity = {0, 0}, float speed = 0) :
+			m_velocity(velocity),
+			m_speed(speed)
+		{
+		}
 		void Update(spatial::Transform<T>& transform, double delta) const
 		{
 			transform.SetPosition(transform.GetPosition() + (m_velocity * (float)delta));

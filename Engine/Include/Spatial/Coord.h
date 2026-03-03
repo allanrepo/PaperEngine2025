@@ -1,4 +1,6 @@
 #pragma once
+#include <Spatial/Position.h>
+#include <Spatial/Size.h>
 
 namespace engine
 {
@@ -25,5 +27,13 @@ namespace engine
 			Coord(int r, int c) : row(r), col(c) {}
 			Coord() : row(0), col(0) {}
 		};
+
+		inline const Coord PositionToCoord(const engine::spatial::PositionF& position, const spatial::SizeF& tilesize)
+		{
+			return engine::spatial::Coord(
+				static_cast<int>(position.y / tilesize.height),
+				static_cast<int>(position.x / tilesize.width)
+			);
+		}
 	}
 }
