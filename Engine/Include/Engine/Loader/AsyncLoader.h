@@ -158,10 +158,149 @@ namespace engine
 					return m_isDone;
 				}
 			};
+
+			template<typename T, typename U>
+			class AsyncGridLoader : public engine::loader::IAsyncLoader
+			{
+			private:
+				const engine::container::Table<std::string>* m_table;
+				std::function<T(const U&)> m_tileLoader;
+				engine::container::Grid<T>* m_grid;
+				bool m_isDone;
+				size_t m_curr;
+				size_t m_total;
+				std::string m_label;
+
+			public:
+				AsyncGridLoader() :
+					m_isDone(false),
+					m_table(nullptr),
+					m_grid(nullptr),
+					m_curr(0),
+					m_total(0),
+					m_label("")
+				{
+				}
+
+				std::string GetLabel() const override
+				{
+					return m_label;
+				}
+
+				// blocking load: consumes the entire table in one shot 
+				// internally calls Begin() and repeatedly Update() until all tiles are loaded.
+				engine::container::Grid<T>& LoadImmediate(
+					engine::container::Grid<T>& grid,
+					const engine::container::Table<std::string>& table,
+					std::function<T(const U&)> tileLoader,
+					size_t maxTilesPerUpdate = 0xFF,
+					double maxTimePerUpdateMS = 1.0
+				)
+				{
+					// Initialize 
+					Begin("Grid", grid, table, tileLoader);
+
+					// Loop until done 
+					while (!IsDone())
+					{
+						Update(maxTimePerUpdateMS);
+					}
+					// Return the fully loaded grid 
+					return grid;
+				}
+
+				size_t GetCurrent() const override
+				{
+					return m_curr;
+				}
+
+				size_t GetTotal() const override
+				{
+					return m_total;
+				}
+
+				double GetProgress() const override
+				{
+					return m_total > 0 ? static_cast<double>(GetCurrent()) / m_total : 0.0;
+				}
+
+				// initializes the loader with a CSV table, tileset, and tileLoader function.
+				// resets internal state and allocates a new TileGrid<T>.
+				// throws if table has no rows or columns.
+				void Begin(
+					const std::string& label,
+					engine::container::Grid<T>& grid,
+					const engine::container::Table<std::string>& table,
+					std::function<T(const U&)> tileLoader
+				)
+				{
+					// handle error if csv table has no rows
+					if (!table.GetHeight())
+					{
+						throw std::out_of_range("csv table has no rows");
+					}
+
+					// handle error if csv's 1st row has no column
+					if (!table.GetWidth())
+					{
+						throw std::out_of_range("csv table has no columns");
+					}
+
+					m_label = label;
+					m_grid = &grid;
+					m_table = &table;
+					m_tileLoader = tileLoader;
+					m_isDone = false;
+					m_curr = 0;
+
+					m_grid->SetWidth(m_table->GetWidth());
+
+					m_total = m_table->GetElementCount();
+				}
+
+				// incrementally loads tiles within a given time budget.
+				// advances row / col indices, skipping malformed rows.
+				// marks loader as done when all rows are processed.
+				void Update(double maxTimeToReadMS = 1) override
+				{
+					engine::timer::StopWatch sw;
+					sw.Start();
+					while (!m_isDone)
+					{
+						// if we already loaded the last tile from map, we done. bail out.
+						if (m_curr >= m_table->GetElementCount())
+						{
+							m_isDone = true;
+							break;
+						}
+
+						// at this point we now have valid row and col tile. get the tile object and load it
+						std::string cell = m_table->Get(m_curr);
+						T tile = m_tileLoader(std::stoi(cell));
+						m_grid->Add(tile);
+
+						// move to next col tile
+						m_curr++;
+
+						// if we reached time budget, bail out for this frame
+						if (sw.Peek<timer::milliseconds>() >= maxTimeToReadMS)
+						{
+							break;
+						}
+					}
+				}
+
+				bool IsDone() const override
+				{
+					return m_isDone;
+				}
+			};
+
 		}
 
 		namespace tile
 		{
+
 			// ------------------------------------------------------------------------------------------------------------------
 			// Design considerations
 			// - Purpose:
@@ -1241,8 +1380,6 @@ namespace engine
 				}
 			};
 		}
-		
-
 	}	
 
 }

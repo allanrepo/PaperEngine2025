@@ -9,7 +9,7 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Tests\Game Code">
+    <Filter Include="Game Code">
       <UniqueIdentifier>{6cca1151-2f4f-4ced-a282-6594950ead62}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -33,12 +33,12 @@
       <Filter>Tests</Filter>
     </ClInclude>
     <ClInclude Include="Actor.h">
-      <Filter>Tests\Game Code</Filter>
+      <Filter>Game Code</Filter>
     </ClInclude>
     <ClInclude Include="ActorState.h">
-      <Filter>Tests\Game Code</Filter>
+      <Filter>Game Code</Filter>
     </ClInclude>
-    <ClInclude Include="TestEditMap.h">
+    <ClInclude Include="TestTree.h">
       <Filter>Tests</Filter>
     </ClInclude>
     <ClInclude Include="TestEditMultiLayerMap.h">

@@ -32,25 +32,13 @@
 
 namespace test
 {
-	// we are mocking the sprite atlas class here for demo purpose so we can create sprite directly without using factory
-	class MockSpriteAtlas : public engine::graphics::resource::SpriteAtlas
-	{
-	public:
-		MockSpriteAtlas(std::unique_ptr<engine::graphics::resource::ITexture> tex) :
-			SpriteAtlas(std::move(tex))
-		{
-		}
-	};
-
 	class TestAnimation
 	{
 	private:
 		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
-		std::unique_ptr<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>> m_animator;
 		engine::timer::StopWatch m_stopwatch;
-		engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> m_anim;
 
 	public:
 		TestAnimation()
@@ -73,6 +61,49 @@ namespace test
 			m_window->Create(L"TestAnimation", 1400, 900);
 		}
 
+		void CreateAnimation(const std::string& name, const std::wstring& filepath, const size_t row, const size_t col, const std::vector<int>& animationFrameIndice, float duration)
+		{
+			// create sprite atlas using factory. it will be stored in cache and will auto generate UV's based on given row and col
+			engine::graphics::factory::SpriteAtlasFactory::Create(name, filepath, row, col);
+			engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get(name);
+
+			// create animation using factory. it will be stored in cache as well. we set loop to true for this animation
+			engine::graphics::factory::AnimationFactory::Create(name, atlas, animationFrameIndice, duration, true);
+
+			// create animator and load the animation. it will also be stored in cache. we can have multiple animators using the same animation
+			engine::cache::Registry<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>::Instance().Register(name, std::make_unique<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>());
+
+			// get animator from cache and play the animation. since we set loop to true, it will keep looping through the frames in the animation
+			engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>& animator = engine::cache::Registry<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>::Instance().Get(name);
+			animator.Play(engine::cache::Registry<engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>>::Instance().Get(name));
+		}
+
+		void UpdateAnimation(const std::string& name, double delta)
+		{
+			engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>& animator = engine::cache::Registry<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>::Instance().Get(name);
+			animator.Update(delta);
+		}
+
+		void DrawAnimation(const std::string& name, const engine::spatial::PositionF& pos, engine::graphics::ColorF color = { 1.0f, 1.0f, 1.0f, 1.0f }, float rotation = 0.0f)
+		{
+			engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>& animator = engine::cache::Registry<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>::Instance().Get(name);
+
+			m_renderer->Draw(
+				pos,			// position
+				animator.GetCurrentFrame().element.GetSize(),	// get the sprite size from animator's current frame
+				{1,1,1,0.5f},			// color
+				rotation		// rotation
+			);
+
+			m_renderer->DrawRenderable(
+				animator.GetCurrentFrame().element,				// get the sprite from animator's current frame
+				pos,				// position
+				animator.GetCurrentFrame().element.GetSize(),	// get the sprite size from animator's current frame
+				color,			// color
+				rotation
+			);
+		}
+
 		// when window is created. we can now safely create resources dependent on window
 		void OnWindowCreate(void* hWnd)
 		{
@@ -89,23 +120,12 @@ namespace test
 			m_renderer->Initialize();
 			LOG("Renderer (DX11) created...");
 
-			// create sprite atlas using factory. it will be stored in cache and will auto generate UV's based on given row and col
-			engine::graphics::factory::SpriteAtlasFactory::Create("CharacterTest_2304x1536_12x8", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12);
-			engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("CharacterTest_2304x1536_12x8");
+			CreateAnimation("CharacterTest_Animation", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12, { 12,13,14,15,16,17 }, 100.0f);
+			CreateAnimation("Tree1", L"../Assets/tree_1x8_1536x256.png", 1, 8, { 0,1,2,3,4,5,6,7 }, 100.0f);
+			CreateAnimation("Tree2", L"../Assets/tree_1x8_1536x192.png", 1, 8, { 0,1,2,3,4,5,6,7 }, 100.0f);
+			CreateAnimation("Tree3", L"../Assets/tree1_1x8_1536x256.png", 1, 8, { 0,1,2,3,4,5,6,7 }, 100.0f);
+			CreateAnimation("Tree4", L"../Assets/tree1_1x8_1536x192.png", 1, 8, { 0,1,2,3,4,5,6,7 }, 100.0f);
 
-	
-			m_anim.loop = true;
-
-			// load with walking animation frames manually
-			for (int i = 12; i < 18; i++)
-			{
-				engine::graphics::renderable::Sprite sprite = atlas.MakeSprite(i);
-				m_anim.frames.push_back({ sprite, 100.0f });
-			}
-
-			// create animator and load the animation
-			m_animator = std::make_unique<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>();
-			m_animator->Play(m_anim);
 
 			// setup stopwatch to manage timing and start it
 			m_stopwatch.OnLap += engine::event::Handler(this, &TestAnimation::OnLap);
@@ -115,7 +135,11 @@ namespace test
 		// this method is fired up whenever the OnLap event is triggered from stopwatch
 		void OnLap(double time)
 		{
-			m_animator->Update(time);
+			UpdateAnimation("CharacterTest_Animation", time);
+			UpdateAnimation("Tree1", time);
+			UpdateAnimation("Tree2", time);
+			UpdateAnimation("Tree3", time);
+			UpdateAnimation("Tree4", time);
 		}
 
 		// fun stuff. this is called on each loop of the message loop. this is where we draw!
@@ -131,15 +155,11 @@ namespace test
 
 				m_renderer->Begin();
 				{
-					m_renderer->DrawRenderable(
-						m_animator->GetCurrentFrame().element,				// get the sprite from animator's current frame
-						engine::spatial::PositionF {
-						100.0f, 100.0f
-					},				// position
-						m_animator->GetCurrentFrame().element.GetSize(),	// get the sprite size from animator's current frame
-						engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f },			// color
-						0.0f
-					);
+					DrawAnimation("CharacterTest_Animation", { 100.0f, 100.0f });
+					DrawAnimation("Tree1", { 400.0f, 100.0f });
+					DrawAnimation("Tree2", { 600.0f, 200.0f });
+					DrawAnimation("Tree3", { 800.0f, 200.0f });
+					DrawAnimation("Tree4", { 1000.0f, 200.0f });
 				}
 				m_renderer->End();
 			}
@@ -160,37 +180,5 @@ namespace test
 			m_canvas->Resize({ static_cast<unsigned int>(nWidth), static_cast<unsigned int>(nHeight) });
 			m_canvas->SetViewPort();
 		}
-
-		//std::vector<math::geometry::RectF> CalcUV(int row, int col, int fileWidth, int fileHeight)
-		//{
-		//	std::vector<math::geometry::RectF> uvs;
-		//	float width = static_cast<float>(fileWidth / col);
-		//	float height = static_cast<float>(fileHeight / row);
-		//	float left = 0;
-		//	float top = 0;
-		//	float right = left + width;
-		//	float bottom = top + height;
-
-		//	for (int r = 0; r < row; r++)
-		//	{
-		//		for (int c = 0; c < col; c++)
-		//		{
-		//			left = width * c;
-		//			top = height * r;
-		//			right = left + width;
-		//			bottom = top + height;
-
-		//			left /= fileWidth;
-		//			top /= fileHeight;
-		//			right /= fileWidth;
-		//			bottom /= fileHeight;
-
-		//			uvs.push_back(math::geometry::RectF{ left, top, right, bottom });
-
-		//			//LOG(std::to_string(left) << ", " << std::to_string(top) << ", " << std::to_string(right) << ", " << std::to_string(bottom));
-		//		}
-		//	}
-		//	return uvs;
-		//}
 	};
 }

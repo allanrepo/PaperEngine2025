@@ -41,7 +41,7 @@ namespace engine::graphics
 		// change View<T> as composition instead of inheritance. in inheritance, Sprite is behaving like SpriteAtlas
 		// View<T> -> operator allows Sprite to call SpriteAtlas methods. making View<T> protected prevents that but it is visible in intellisense
 		// that is confusing. Sprite is sprite. Is is NOT a SpriteAtlas.It has a View SpriteAtlas instead.
-		class Sprite : public engine::graphics::renderable::IRenderable, public spatial::ISizeable<float>//, private core::View<engine::graphics::resource::ISpriteAtlas>
+		class Sprite : public engine::graphics::renderable::IRenderable, public spatial::ISizeable<float>
 		{
 		private:
 			engine::math::geometry::RectF m_rect;

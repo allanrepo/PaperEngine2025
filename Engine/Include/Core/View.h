@@ -62,5 +62,46 @@ namespace engine::core
 			return *m_data;
 		}
 	};
+
+	template<typename T>
+	class Handle
+	{
+	protected:
+		T* m_data;
+
+	public:
+		Handle(T* data) :
+			m_data(data)
+		{
+		}
+
+		virtual ~Handle() = default;
+
+		// check if view is valid
+		inline bool isValid() const
+		{
+			return m_data != nullptr;
+		}
+
+		// pointer-like access
+		inline T* operator->() const
+		{
+			if (!isValid())
+			{
+				throw std::runtime_error("View<T>::operator-> - invalid view access");
+			}
+			return m_data;
+		}
+
+		// dereference access
+		inline T& operator*() const
+		{
+			if (!isValid())
+			{
+				throw std::runtime_error("View<T>::operator* - invalid view access");
+			}
+			return *m_data;
+		}
+	};
 }
 

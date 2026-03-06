@@ -324,7 +324,7 @@ namespace engine::component::tile
 			m_map[coord.row * m_width + coord.col] = data;
 		}
 
-		void Set(const Tile<T>& data) override
+		void Fill(const Tile<T>& data) override
 		{
 			for (size_t i = 0; i < m_map.size(); i++)
 			{
@@ -509,9 +509,9 @@ namespace engine::component::tile
 			Set(coord.row, coord.col, data);
 		}
 
-		void Set(const Tile<T>& data) override
+		void Fill(const Tile<T>& data) override
 		{
-			m_tilegrid.Set(data);
+			m_tilegrid.Fill(data);
 		}
 
 		TileMap<T> MakeTileMap()
@@ -561,7 +561,7 @@ namespace engine::component::tile
 		}
 
 		// this could be a very expensive method. it is best to set tile by tile and do it asynchronously
-		void Set(const TileRegion<T>& data) override
+		void Fill(const TileRegion<T>& data) override
 		{
 			for (size_t i = 0; i < m_regions.size(); i++)
 			{

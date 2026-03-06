@@ -153,8 +153,10 @@ namespace TestEditMultiLayerMap
 
 		PositionF m_mousePos;
 
+		bool m_toggle;
 	public:
-		Test()
+		Test():
+			m_toggle(true)
 		{
 			Window::OnInitialize += Handler(this, &Test::OnInitialize);
 			Window::OnExit += Handler(this, &Test::OnExit);
@@ -450,26 +452,26 @@ namespace TestEditMultiLayerMap
 				{
 					Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
 					TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
-					region.Set(tileset.MakeTile(4));
+					region.Fill(tileset.MakeTile(4));
 				}
 
 				// clear water splash map
 				{
 					Tileset<AnimatedTile>& tileset = Registry<Tileset<AnimatedTile>>::Instance().Get("water_splash");
 					TileRegion<AnimatedTile>& region = Registry<TileRegion<AnimatedTile>>::Instance().Get("water_splash");
-					region.Set(tileset.MakeTile(4));
+					region.Fill(tileset.MakeTile(4));
 				}
 				// clear wall map
 				{
 					Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
 					TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("wall_map");
-					region.Set(tileset.MakeTile(4));
+					region.Fill(tileset.MakeTile(4));
 				}
 				// clear hill map
 				{
 					Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
 					TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("hill_map");
-					region.Set(tileset.MakeTile(4));
+					region.Fill(tileset.MakeTile(4));
 				}
 
 				break;
@@ -510,6 +512,11 @@ namespace TestEditMultiLayerMap
 					engine::tile::AutoTileResolver<RenderableTile>& resolver = Registry<engine::tile::AutoTileResolver<RenderableTile>>::Instance().Get("hill_map");
 					resolver.Set(coord);
 				}
+				break;
+			}
+			case 54: // 6
+			{
+				m_toggle = !m_toggle;
 				break;
 			}
 
@@ -614,7 +621,7 @@ namespace TestEditMultiLayerMap
 					SizeF tilesize = Registry<SizeF>::Instance().Get("tile_size");
 					PositionF layerheight = Registry<PositionF>::Instance().Get("layer_height");
 
-					DrawTileMap(*m_renderer, tilemap, tilesize, pos - layerheight, { 1,1,1,1 });
+					if(m_toggle)DrawTileMap(*m_renderer, tilemap, tilesize, pos - layerheight, { 1,1,1,1 });
 
 				}
 

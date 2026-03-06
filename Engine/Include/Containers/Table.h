@@ -94,7 +94,7 @@ namespace engine::container
 			return m_data[index];
 		}
 
-		void Set(const T& data) override
+		void Fill(const T& data) override
 		{
 			for (size_t i = 0; i < m_data.size(); i++)
 			{

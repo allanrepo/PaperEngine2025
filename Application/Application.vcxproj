@@ -146,7 +146,7 @@
     <ClInclude Include="TestEditMultiLayerMap.h" />
     <ClInclude Include="TestFont.h" />
     <ClInclude Include="TestFrameRate.h" />
-    <ClInclude Include="TestEditMap.h" />
+    <ClInclude Include="TestTree.h" />
     <ClInclude Include="TestPathFinding.h" />
     <ClInclude Include="TestSprite.h" />
     <ClInclude Include="TestTile.h" />
