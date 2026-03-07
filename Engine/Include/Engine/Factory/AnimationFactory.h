@@ -22,20 +22,24 @@ namespace engine
 				// creates an animation object loading all the sprites of given atlas with a fixed duration across all frames
 				static Animation Create(const ISpriteAtlas& atlas, float duration, bool loop, const PositionF& anchor = PositionF{0,0})
 				{
-					Animation anim;
-					anim.loop = loop;
+					//Animation anim;
+					//anim.loop = loop;
 
+					std::vector<int> indice;
 					for (int i = 0; i < atlas.GetUVRectCount(); i++)
 					{
-						// get sprite from each UV index in tilemap sprite atlas
-						Sprite sprite = atlas.MakeSprite(i);
-						sprite.SetAnchor(anchor);
+						indice.push_back(i);
+						//// get sprite from each UV index in tilemap sprite atlas
+						//Sprite sprite = atlas.MakeSprite(i);
+						//sprite.SetAnchor(anchor);
 
-						// create animation. these tilemaps are static. so their animations are 1 frame only
-						anim.frames.push_back({ sprite, duration });
+						//// create animation. these tilemaps are static. so their animations are 1 frame only
+						//anim.frames.push_back({ sprite, duration });
 					}
 
-					return anim;
+					return Create(atlas, indice, duration, loop, anchor);
+
+					//return anim;
 				}
 
 				// creates an animation object loading specified list of sprites of given atlas with a fixed duration across all frames
@@ -65,19 +69,6 @@ namespace engine
 				{
 					Animation anim = Create(atlas, indice, duration, loop, anchor);
 					anim.loop = loop;
-
-					//for (int i : indice)
-					//{
-					//	if (i >= atlas.GetUVRectCount()) continue;
-					//	if (i < 0) continue;
-
-					//	// get sprite from each UV index in tilemap sprite atlas
-					//	Sprite sprite = atlas.MakeSprite(i);
-					//	sprite.SetAnchor(anchor);
-
-					//	// create animation. these tilemaps are static. so their animations are 1 frame only
-					//	anim.frames.push_back({ sprite, duration });
-					//}
 
 					// register this animation in cache
 					return Registry::Instance().Register(name, std::make_unique<Animation>(anim));

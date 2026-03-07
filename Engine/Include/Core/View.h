@@ -37,7 +37,7 @@ namespace engine::core
 		virtual ~View() = default;
 
 		// check if view is valid
-		inline bool isValid() const
+		inline bool IsValid() const
 		{
 			return m_data != nullptr;
 		}
@@ -45,7 +45,7 @@ namespace engine::core
 		// pointer-like access
 		inline const T* operator->() const
 		{
-			if (!isValid())
+			if (!IsValid())
 			{
 				throw std::runtime_error("View<T>::operator-> - invalid view access");
 			}
@@ -55,7 +55,7 @@ namespace engine::core
 		// dereference access
 		inline const T& operator*() const
 		{
-			if (!isValid())
+			if (!IsValid())
 			{
 				throw std::runtime_error("View<T>::operator* - invalid view access");
 			}
@@ -78,7 +78,7 @@ namespace engine::core
 		virtual ~Handle() = default;
 
 		// check if view is valid
-		inline bool isValid() const
+		inline bool IsValid() const
 		{
 			return m_data != nullptr;
 		}
@@ -86,7 +86,7 @@ namespace engine::core
 		// pointer-like access
 		inline T* operator->() const
 		{
-			if (!isValid())
+			if (!IsValid())
 			{
 				throw std::runtime_error("View<T>::operator-> - invalid view access");
 			}
@@ -96,7 +96,7 @@ namespace engine::core
 		// dereference access
 		inline T& operator*() const
 		{
-			if (!isValid())
+			if (!IsValid())
 			{
 				throw std::runtime_error("View<T>::operator* - invalid view access");
 			}

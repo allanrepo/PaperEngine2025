@@ -769,9 +769,9 @@ namespace engine::component::tile
 			return m_view->IsInBounds(row, col);
 		}
 
-		inline bool isValid() const
+		inline bool IsValid() const
 		{
-			return m_view.isValid();
+			return m_view.IsValid();
 		}
 
 		virtual size_t GetWidth() const override final

@@ -252,7 +252,7 @@ namespace TestTile
 				for (int col = 0; col < TileGrid.GetWidth(); ++col)
 				{
 					const engine::component::tile::Tile<RenderableTile>& tile = TileGrid.Get(row, col);
-					if (tile.isValid())
+					if (tile.IsValid())
 					{
 						m_renderer->DrawRenderable(
 							tile->GetSprite(),

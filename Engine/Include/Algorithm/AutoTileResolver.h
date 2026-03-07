@@ -177,7 +177,7 @@ namespace engine
 						if (dr == 0 && dc == 0) continue;
 
 						// defensive check to ensure tile exists at this location before accessing its index. if tile doesn't exist, treat it as empty for autotiling purposes and skip it.
-						if (!m_region.Get(neighborCoord).isValid()) continue;
+						if (!m_region.Get(neighborCoord).IsValid()) continue;
 
 						// if tile exists but is empty tile, skip it since empty tile is like "air" and doesn't affect autotiling of neighbors
 						int index = m_region.Get(neighborCoord)->GetIndex();
@@ -194,9 +194,7 @@ namespace engine
 				}
 			}
 
-			void Set(
-				const engine::spatial::Coord& coord
-			)
+			void Set(const engine::spatial::Coord& coord)
 			{
 				if (!m_region.IsInBounds(coord)) return;
 
@@ -209,6 +207,32 @@ namespace engine
 
 				// update neighbors to ensure seamless transitions
 				ResolveNeighbors(coord);
+			}
+
+			void Set()
+			{
+				engine::spatial::Size<size_t> size = m_region.GetSize();
+
+				for (int row = 0; row < size.height; row++)
+				{
+					for (int col = 0; col < size.width; col++)
+					{
+						Set({ row, col });
+					}
+				}
+			}
+
+			void Remove()
+			{
+				engine::spatial::Size<size_t> size = m_region.GetSize();
+
+				for (int row = 0; row < size.height; row++)
+				{
+					for (int col = 0; col < size.width; col++)
+					{
+						Remove({ row, col });
+					}
+				}
 			}
 
 			void Remove(const engine::spatial::Coord& coord)
@@ -231,7 +255,7 @@ namespace engine
 				if (m_region.IsInBounds(coord))
 				{
 					// defensive check to ensure tile exists at this location before accessing its index. if tile doesn't exist, treat it as empty for autotiling purposes and skip it.
-					if (!m_region.Get(coord).isValid()) return;
+					if (!m_region.Get(coord).IsValid()) return;
 
 					int index = m_region.Get(coord)->GetIndex();
 					if (m_indexToVariant.Has(index) && m_indexToVariant[index] != TileVariant::Empty)

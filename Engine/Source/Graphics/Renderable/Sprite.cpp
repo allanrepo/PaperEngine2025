@@ -2,18 +2,14 @@
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Graphics/Resource/SpriteAtlas.h>
 
-
-engine::graphics::renderable::Sprite::Sprite(const engine::graphics::resource::ISpriteAtlas* spriteAtlas, engine::math::geometry::RectF rect) :
-	//View<engine::graphics::resource::ISpriteAtlas>(spriteAtlas),
+engine::graphics::renderable::Sprite::Sprite(const engine::graphics::resource::ISpriteAtlas* spriteAtlas, const engine::math::geometry::RectF& rect, const engine::spatial::PositionF& anchor):
 	m_view(spriteAtlas),
 	m_rect(rect),
-	m_anchor({0,0})
+	m_anchor(anchor)
 {
-	// precompute size relative to spriteatlas size. it is a lot faster than trying to compute it repeatedly on GetSize()
-	// performance hit accumulates as more sprites are rendered
 	m_size = spatial::SizeF{
-		m_view->GetWidth() * (m_rect.right - m_rect.left),
-		m_view->GetHeight() * (m_rect.bottom - m_rect.top)
+	m_view->GetWidth() * (m_rect.right - m_rect.left),
+	m_view->GetHeight() * (m_rect.bottom - m_rect.top)
 	};
 }
 

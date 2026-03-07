@@ -49,14 +49,14 @@ inline size_t engine::graphics::resource::SpriteAtlas::GetUVRectCount() const
 	return m_nUVs.size();
 }
 
-engine::graphics::renderable::Sprite engine::graphics::resource::SpriteAtlas::MakeSprite(int index) const
+engine::graphics::renderable::Sprite engine::graphics::resource::SpriteAtlas::MakeSprite(int index, const engine::spatial::PositionF& anchor) const
 {
 	if(index < 0 || index >= static_cast<int>(m_nUVs.size()))
 	{
 		throw std::runtime_error("SpriteAtlas::MakeSprite - invalid index");
 	}
 
-	return engine::graphics::renderable::Sprite(this, GetUVRect(index));
+	return engine::graphics::renderable::Sprite(this, GetUVRect(index), anchor);
 }
 
 engine::graphics::renderable::Sprite engine::graphics::resource::SpriteAtlas::GetSprite() const

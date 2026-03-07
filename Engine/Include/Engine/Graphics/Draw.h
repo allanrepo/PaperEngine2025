@@ -30,7 +30,7 @@ namespace engine
 						}
 
 						const engine::component::tile::Tile<T>& tile = tilemap.Get(row, col);
-						if (tile.isValid())
+						if (tile.IsValid())
 						{
 							engine::spatial::PositionF origin =
 							{
@@ -70,7 +70,7 @@ namespace engine
 						const engine::component::tile::Tile<T>& tile = tilemap.Get(row, col);
 
 						// defensive. we're never sure if the tile has valid sprite, so do check
-						if (tile.isValid())
+						if (tile.IsValid())
 						{
 							// this will be the top-left position of this tile in map coordinate.
 							engine::spatial::PositionF origin =

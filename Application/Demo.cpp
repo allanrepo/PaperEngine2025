@@ -215,7 +215,7 @@ void demo::Demo::RenderTileGridCommand(engine::component::tile::TileGrid<Rendera
 			}
 
 			const engine::component::tile::Tile<RenderableTile>& tile = tilegrid.Get(row, col);
-			if (tile.isValid())
+			if (tile.IsValid())
 			{
 				engine::spatial::PositionF pos =
 				{

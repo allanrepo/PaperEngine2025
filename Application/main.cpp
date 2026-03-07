@@ -16,6 +16,7 @@
 #include "TestActor.h"
 #include "TestPathFinding.h"
 #include "TestTree.h"
+#include "TestProp.h"
 
 #include <iostream>
 #include <fstream>
@@ -168,13 +169,14 @@ int main()
     //testFrameRate::Test::Instance().Run();
     //test::TestCanvas testCanvas;
     //TestFont::Test testFont;
-    TestActor::Test testActor;
+    //TestActor::Test testActor;
     //TestPathFinding::Test testPathFinding;
     //TestActorNavigation::Test testActorNavigation;
     //TestEditMap::Test testEditMap;
 	//TestEditMultiLayerMap::Test testEditMultiLayerMap;
 	//TestSpecializedTileDefinition::Test testSpecializedTileDefinition;
 	//TestTree::Test testTree;
+	TestProp::Test testProp;    
 
 	return 0;
 }

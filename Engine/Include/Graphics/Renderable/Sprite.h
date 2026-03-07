@@ -54,14 +54,15 @@ namespace engine::graphics
 
 		protected:
 			// use this constructor if you have the sprite atlas and the source rect
-			Sprite(const engine::graphics::resource::ISpriteAtlas* spriteAtlas, engine::math::geometry::RectF rect);
+			//Sprite(const engine::graphics::resource::ISpriteAtlas* spriteAtlas, engine::math::geometry::RectF rect);
+			Sprite(const engine::graphics::resource::ISpriteAtlas* spriteAtlas, const engine::math::geometry::RectF& rect, const engine::spatial::PositionF& anchor = { 0,0 });
 
 		public:
 			~Sprite() = default;
 
-			inline bool isValid() const
+			inline bool IsValid() const
 			{
-				return m_view.isValid();
+				return m_view.IsValid();
 			}
 
 			// ISizeable methods implementation

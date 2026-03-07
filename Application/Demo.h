@@ -113,7 +113,7 @@ namespace demo
 					}
 
 					const engine::component::tile::Tile<T>& tile = m_tilemap.Get(row, col);
-					if (tile.isValid())
+					if (tile.IsValid())
 					{
 						engine::spatial::PositionF pos =
 						{
@@ -198,7 +198,7 @@ namespace demo
 					const engine::component::tile::Tile<T>& tile = m_tilemap.Get(row, col);
 
 					// defensive. we're never sure if the tile has valid sprite, so do check
-					if (tile.isValid())
+					if (tile.IsValid())
 					{
 						// this will be the top-left position of this tile in map coordinate.
 						engine::spatial::PositionF pos =
@@ -356,7 +356,7 @@ namespace demo
 					}
 
 					const engine::component::tile::Tile<RenderableTile>& tile = m_tilegrid.Get(row, col);
-					if (tile.isValid())
+					if (tile.IsValid())
 					{
 						engine::spatial::PositionF pos =
 						{
@@ -406,7 +406,7 @@ namespace demo
 					}
 
 					const engine::component::tile::Tile<RenderableTile>& tile = m_region.Get(row, col);
-					if (tile.isValid())
+					if (tile.IsValid())
 					{
 						engine::spatial::PositionF pos =
 						{
@@ -471,7 +471,7 @@ namespace demo
 							}
 
 							const engine::component::tile::Tile<RenderableTile>& tile = region.Get(currTileRow, currTileCol);
-							if (!tile.isValid())
+							if (!tile.IsValid())
 							{
 								continue;
 							}

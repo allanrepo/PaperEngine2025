@@ -31,94 +31,66 @@
 //
 // Prop has AnimationManager
 // AnimationManager has Animator and Animations
-//// 
-////
+// 
 //
-//namespace engine
-//{
-//	namespace graphics
-//	{
-//		namespace renderable
-//		{
-//			// IProp: a visual object in the scene that can be rendered
-//			class IProp : public engine::graphics::renderable::IRenderable
-//			{
-//			public:
-//				virtual ~IProp() = default;
-//
-//				// Update animation or state
-//				virtual void Update(double delta) = 0;
-//
-//				// Access current sprite
-//				virtual const engine::graphics::renderable::Sprite& GetSprite() const = 0;
-//			};
-//
-//			// Prop: concrete implementation of IProp
-//			class Prop : public IProp
-//			{
-//			private:
-//				engine::graphics::animation::AnimationManager<engine::graphics::renderable::Sprite> m_animManager;
-//
-//			public:
-//				Prop(engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>& animator)
-//					: m_animManager(&animator)
-//				{
-//				}
-//
-//				void AddAnimation(const std::string& key,
-//					engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>& anim)
-//				{
-//					m_animManager.Add(key, anim);
-//				}
-//
-//				bool PlayAnimation(const std::string& key)
-//				{
-//					return m_animManager.Play(key);
-//				}
-//
-//				void Update(double delta) override
-//				{
-//					m_animManager.Update(delta);
-//				}
-//
-//				const engine::graphics::renderable::Sprite& GetSprite() const override
-//				{
-//					// You’d add a helper in AnimationManager to expose current frame
-//					return m_animManager.GetAnimator()->GetCurrent();
-//				}
-//
-//				// IRenderable implementation
-//				void Bind() const override
-//				{
-//					GetSprite().Bind();
-//				}
-//
-//				bool CanBind() const override
-//				{
-//					return GetSprite().CanBind();
-//				}
-//
-//				engine::math::geometry::RectF GetUVRect() const override
-//				{
-//					return GetSprite().GetUVRect();
-//				}
-//
-//				void SetAnchor(const engine::spatial::PositionF& pos) override
-//				{
-//					GetSprite().SetAnchor(pos);
-//				}
-//
-//				engine::spatial::PositionF GetAnchor() const override
-//				{
-//					return GetSprite().GetAnchor();
-//				}
-//			};
-//
-//
-//
-//		}
-//	}
-//}
+
+namespace engine
+{
+	namespace graphics
+	{
+		namespace renderable
+		{
+			class IProp 
+			{
+			public:
+				virtual void Update(double delta) = 0;
+				virtual void PlayAnimation(const std::string& key) = 0;
+				virtual bool IsValid() const = 0;
+				virtual ~IProp() = default;
+			};
+
+			class Prop : public IProp 
+			{
+			private:
+				Animator<Sprite> m_animator;
+				AnimationManager<Sprite> m_animationManager;
+
+			public:
+				// we're copying the reference of animation manager because we want to share the same animation manager across multiple props. 
+				// if we assign the passed animation manager directly, it will be reference to animation manager outside which is not safe. 
+				// we want to have our own copy of animation manager that shares the same animations but has its own animator
+				Prop(AnimationManager<Sprite> manager): 
+					m_animator(), 
+					m_animationManager(manager) 
+				{
+					m_animationManager.Set(m_animator);
+				}
+
+				void Update(double delta) override 
+				{
+					m_animationManager.Update(delta);
+				}
+
+				void PlayAnimation(const std::string& key) override 
+				{
+					m_animationManager.Play(key);
+				}
+
+				// Instead of inheriting IRenderable, just expose the renderable
+				const Sprite& GetSprite() const 
+				{
+					return m_animator.GetCurrent();
+				}
+
+				bool IsValid() const override 
+				{
+					return m_animator.IsRunning();
+				}
+			};
+
+		}
+	}
+}
 
 namespace TestTree
 {
@@ -263,7 +235,7 @@ namespace TestTree
 					const engine::component::tile::Tile<T>& tile = tilemap.Get(row, col);
 
 					// defensive. we're never sure if the tile has valid sprite, so do check
-					if (tile.isValid())
+					if (tile.IsValid())
 					{
 						// this will be the top-left position of this tile in map coordinate.
 						engine::spatial::PositionF origin =
@@ -313,7 +285,7 @@ namespace TestTree
 					}
 
 					const engine::component::tile::Tile<T>& tile = tilemap.Get(row, col);
-					if (tile.isValid())
+					if (tile.IsValid())
 					{
 						engine::spatial::PositionF origin =
 						{
@@ -482,6 +454,7 @@ namespace TestTree
 	class PropTile
 	{
 	private:
+		friend class PropMap;
 		engine::container::Dictionary<engine::navigation::tile::TileConstraint, IProp*> m_props;
 
 	public:
@@ -890,7 +863,7 @@ namespace TestTree
 				}
 
 				const engine::component::tile::Tile<T>& tile = map.Get(row, col);
-				if (tile.isValid())
+				if (tile.IsValid())
 				{
 					engine::spatial::PositionF origin =
 					{
@@ -928,7 +901,7 @@ namespace TestTree
 			}
 
 			const engine::component::tile::Tile<T>& tile = map.Get(row, col);
-			if (tile.isValid())
+			if (tile.IsValid())
 			{
 				engine::spatial::PositionF origin =
 				{
@@ -1394,7 +1367,6 @@ namespace TestTree
 					resolver.Set(coord);
 				}
 				{
-
 					// set prop at coord to tree if not already set.
 					PropMap& propMap = Registry<PropMap>::Instance().Get("prop_map");
 					PropHandle handle = propMap.Get(coord);
