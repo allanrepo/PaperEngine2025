@@ -29,346 +29,82 @@
 #include <Graphics/Renderable/IRenderable.h>
 #include <Core/View.h>
 #include <Containers/Dictionary.h>
+#include <Algorithm/Resolvers.h>
+#include <Components/Prop.h>
+#include <Command/DrawCommand.h>
 
 namespace engine
 {
 	namespace component
 	{
-		// WOW. just WOW.
-		template<typename T, typename K, typename V>
-		class LookupResolver
+		class DrawTileMapCommand : public engine::command::graphics::renderer::DrawCommandBase
 		{
+		public:
+			struct DrawInfo
+			{
+				Sprite sprite;						// what to draw
+				engine::spatial::PositionF pos;		// world position
+				engine::spatial::SizeF size;		// size on screen
+				engine::graphics::ColorF tint;		// color modulation
+				float depth;						// depth
+				float rotation;						// rotation angle
+			};
+
 		private:
-			engine::container::Dictionary<K, V> m_keyValues;
+			engine::spatial::PositionF m_pos;
+			spatial::SizeF m_tilesize;
+			engine::graphics::ColorF m_color;
+			std::vector<DrawInfo> m_batch;
 
 		public:
-			LookupResolver() 
+			DrawTileMapCommand(
+				engine::graphics::renderer::IRenderer& renderer,
+				const engine::spatial::PositionF& pos,
+				const spatial::SizeF& tilesize
+			):
+				DrawCommandBase(renderer),
+				m_pos(pos),
+				m_tilesize(tilesize)
 			{
+
 			}
 
-			void Register(K key, V value)
+			void Execute() override
 			{
-				m_keyValues[key] = value;
-			}
+				Sort();
 
-			void Set(T param, K key)
-			{
-				if (!m_keyValues.Has(key)) return;
-
-				LookupEvent(param, m_keyValues[key]);
-			}
-
-			engine::event::Event<T, V> LookupEvent;
-		};
-
-		template<typename T>
-		class AnimationSet;
-
-		template<typename T>
-		class AnimationController;
-
-		template<typename T>
-		class AnimationSet
-		{
-		protected:
-			engine::container::Dictionary<std::string, std::unique_ptr<Animation<T>>> m_registry;
-
-		public:
-			AnimationSet() = default;
-			~AnimationSet() = default;
-
-			AnimationSet(const AnimationSet&) = default;
-			AnimationSet& operator=(const AnimationSet&) = default;
-			AnimationSet(AnimationSet&&) = default;
-			AnimationSet& operator=(AnimationSet&&) = default;
-
-			bool Register(const std::string& name, std::unique_ptr<Animation<T>> data)
-			{
-				return m_registry.Register(name, std::move(data));
-			}
-
-			bool Register(const std::string& name, const Animation<T>& data)
-			{
-				return m_registry.Register(name, std::make_unique<Animation<T>>(data));
-			}
-			bool IsValid(const std::string& name) const
-			{
-				return m_registry.Has(name);
-			}
-
-			// creates a prop instance for the given id. returns invalid prop if id not found
-			AnimationController<T> MakeAnimationController()
-			{
-				return AnimationController<T>(&m_registry);
-			}
-
-			// define iterator for our container
-			using iterator = typename engine::container::Dictionary<int, std::unique_ptr<Animation<T>>>::iterator;
-			using const_iterator = typename engine::container::Dictionary<int, std::unique_ptr<Animation<T>>>::const_iterator;
-
-			// iterator access
-			iterator begin() { return m_registry.begin(); }
-			iterator end() { return m_registry.end(); }
-			const_iterator begin() const { return m_registry.begin(); }
-			const_iterator end() const { return m_registry.end(); }
-			const_iterator cbegin() const { return m_registry.cbegin(); }
-			const_iterator cend() const { return m_registry.cend(); }
-		};
-
-		template<typename T>
-		class AnimationController
-		{
-		private:
-			friend class AnimationSet<T>;
-			using AnimSet = engine::container::Dictionary <std::string, std::unique_ptr <Animation<T>>>;
-
-			Animator<T> m_animator; // playback engine (not owned)
-			core::Handle<AnimSet> m_handle;
-
-		protected:
-			AnimationController(AnimSet* set = nullptr) :
-				m_handle(set)
-			{
-			}
-
-		public:
-			bool Play(const std::string& key) 
-			{
-				if (m_handle->Has(key))
+				for (auto& cmd : m_batch)
 				{
-					m_animator.Play(*m_handle->Get(key).get());
-					return true;
-				}
-
-				return false;
-			}
-
-			void Update(double delta)
-			{
-				m_animator.Update(delta);
-			}
-
-			const Sprite& GetSprite() const 
-			{
-				return m_animator.GetCurrent();
-			}
-
-			bool IsValid() const 
-			{
-				return m_animator.IsRunning();
-			}
-		};
-
-		class IProp
-		{
-		public:
-			virtual void Update(double delta) = 0;
-			virtual void Play(const std::string& key) = 0;
-			virtual bool IsValid() const = 0;
-			virtual const Sprite& GetSprite() const = 0;
-
-			virtual ~IProp() = default;
-		};
-
-		class Prop : public IProp
-		{
-		private:
-			AnimationController<Sprite> m_animationController;
-
-		public:
-			// we're copying the reference of animation manager because we want to share the same animation manager across multiple props. 
-			// if we assign the passed animation manager directly, it will be reference to animation manager outside which is not safe. 
-			// we want to have our own copy of animation manager that shares the same animations but has its own animator
-			Prop(AnimationController<Sprite> controller) :
-				m_animationController(controller)
-			{
-			}
-
-			void Update(double delta) override
-			{
-				m_animationController.Update(delta);
-			}
-
-			void Play(const std::string& key) override
-			{
-				m_animationController.Play(key);
-			}
-
-			const Sprite& GetSprite() const override
-			{
-				return m_animationController.GetSprite();
-			}
-
-			bool IsValid() const override
-			{
-				return m_animationController.IsValid();
-			}
-		};
-
-		class SimpleProp : public IProp
-		{
-		private:
-			Sprite m_sprite;
-
-		public:
-			SimpleProp(const Sprite& sprite) :
-				m_sprite(sprite)
-			{
-			}
-
-			void Update(double delta) override
-			{
-			}
-
-			void Play(const std::string& key) override
-			{
-			}
-
-			const Sprite& GetSprite() const override
-			{
-				return m_sprite;
-			}
-
-			bool IsValid() const override
-			{
-				return m_sprite.IsValid();
-			}
-		};
-
-		class PropHandle
-		{
-		private:
-			friend class PropSet;
-			friend class PropTile;
-			core::Handle<IProp> m_handle;
-
-		protected:
-			// use this constructor if you have the sprite atlas and the source rect
-			PropHandle(IProp* prop):
-				m_handle(prop)
-			{
-			}
-
-			PropHandle() :
-				m_handle(nullptr)
-			{
-			}
-
-		public:
-			~PropHandle() = default;
-
-			//PropHandle(const PropHandle&) = default;
-			//PropHandle& operator=(const PropHandle&) = default;
-			//PropHandle(PropHandle&&) = default;
-			//PropHandle& operator=(PropHandle&&) = default;
-
-			inline bool IsValid() const
-			{
-				return m_handle.IsValid();
-			}
-
-			inline const Sprite& GetSprite() const
-			{
-				return m_handle->GetSprite();
-			}
-
-			void Play(const std::string& key)
-			{
-				m_handle->Play(key);
-			}
-		};
-
-		class PropSet
-		{
-		protected:
-			container::Dictionary<int, std::unique_ptr<IProp>> m_registry;
-
-		public:
-			PropSet() = default;
-			~PropSet() = default;
-
-			PropSet(const PropSet&) = default;
-			PropSet& operator=(const PropSet&) = default;
-			PropSet(PropSet&&) = default;
-			PropSet& operator=(PropSet&&) = default;
-
-			bool Register(int id, std::unique_ptr<IProp> data)
-			{
-				return m_registry.Register(id, std::move(data));
-			}
-
-			bool IsValid(int id) const
-			{
-				return m_registry.Has(id);
-			}
-
-			// creates a prop instance for the given id. returns invalid prop if id not found
-			PropHandle MakePropHandle(int id) const
-			{
-				return m_registry.Has(id) ? PropHandle(m_registry.Get(id).get()) : PropHandle(nullptr);
-			}
-
-			void Update(double delta) 
-			{
-				for (auto& [id, prop] : m_registry) 
-				{
-					prop->Update(delta);
+					m_renderer.DrawRenderable(cmd.sprite, cmd.pos, cmd.size, cmd.tint, cmd.rotation);
 				}
 			}
 
-			// define iterator for our container
-			using iterator = typename container::Dictionary<int, std::unique_ptr<IProp>>::iterator;
-			using const_iterator = typename container::Dictionary<int, std::unique_ptr<IProp>>::const_iterator;
-
-			// iterator access
-			iterator begin() { return m_registry.begin(); }
-			iterator end() { return m_registry.end(); }
-			const_iterator begin() const { return m_registry.begin(); }
-			const_iterator end() const { return m_registry.end(); }
-			const_iterator cbegin() const { return m_registry.cbegin(); }
-			const_iterator cend() const { return m_registry.cend(); }
-		};
-
-		class PropTile
-		{
-		private:
-			friend class PropMap;
-			engine::container::Dictionary<engine::navigation::tile::TileConstraint, PropHandle> m_props;
-
-		protected:
-			PropTile()
-			{
-			}
-
-			void Set(engine::navigation::tile::TileConstraint constraint, const PropHandle& prop)
-			{
-				if (m_props.Has(constraint))
-				{
-					m_props.Unregister(constraint);
-				}
-				m_props.Register(constraint, prop);		
-			}
-
-			void Remove(engine::navigation::tile::TileConstraint constraint)
-			{
-				m_props.Unregister(constraint);
-			}
-
-			bool Has(engine::navigation::tile::TileConstraint constraint) const
-			{
-				return m_props.Has(constraint);
-			}
-
-			PropHandle Get(engine::navigation::tile::TileConstraint constraint) const
-			{
-				// unsafe. caller should check Has() before calling this. 
-				return m_props[constraint];
-			}
-
-			// clears all props from this tile
 			void Clear()
 			{
-				m_props.Clear();
+				m_batch.clear();
+			}
+
+			void Reserve(size_t capacity)
+			{
+				m_batch.reserve(capacity);
+			}
+
+			void Queue(const DrawInfo& queue)
+			{
+				m_batch.push_back(queue);
+			}
+
+			void Sort()
+			{
+				std::sort(m_batch.begin(), m_batch.end(),
+					[](const DrawInfo& a, const DrawInfo& b)
+					{
+						// if depth is not same, e.g. lower and higher tile, higher tile (b) has higher depth than lower tile (a). draw lower tile first
+						if (a.depth != b.depth) return a.depth < b.depth;
+
+						// if same depth, whichever is farthest from screen(a) gets drawn first. nearest from screen (b) is drawn last
+						return a.pos.y < b.pos.y; // depth by Y
+					});
 			}
 		};
 
@@ -464,7 +200,7 @@ namespace engine
 		class PropMap
 		{
 		private:
-			engine::container::Grid<PropTile> m_grid;
+			engine::container::Grid<engine::component::graphics::PropTile> m_grid;
 
 		public:
 			PropMap(size_t width = 0) :
@@ -480,7 +216,7 @@ namespace engine
 
 				for (size_t i = 0; i < width * height; ++i)
 				{
-					m_grid.Add(PropTile{});
+					m_grid.Add(engine::component::graphics::PropTile{});
 				}
 			}
 
@@ -493,7 +229,7 @@ namespace engine
 			{
 				for (int i = 0; i < m_grid.GetElementCount(); i++)
 				{
-					PropTile& tile = m_grid.Get(i);
+					engine::component::graphics::PropTile& tile = m_grid.Get(i);
 					tile.Clear();
 				}
 			}
@@ -508,7 +244,7 @@ namespace engine
 				return m_grid.IsInBounds(coord);
 			}
 
-			void Set(int row, int col, engine::navigation::tile::TileConstraint constraint, const PropHandle& prop)
+			void Set(int row, int col, engine::navigation::tile::TileConstraint constraint, const engine::component::graphics::PropHandle& prop)
 			{
 				m_grid.Get(row, col).Set(constraint, prop);
 			}
@@ -550,7 +286,7 @@ namespace engine
 				// if a prop has no constraint, it will be drawn at the top-left corner of the tile by default.
 				if (!m_grid.IsInBounds(row, col)) return;
 
-				PropTile proptile = m_grid.Get(row, col);
+				engine::component::graphics::PropTile proptile = m_grid.Get(row, col);
 
 				if (proptile.Has(engine::navigation::tile::TileConstraint::CENTER))
 				{
@@ -704,8 +440,8 @@ namespace TestProp
 	using namespace engine::graphics::tile;
 	using namespace engine::navigation::tile;
 	using namespace engine::graphics::navigation;
-
-	using LookupWallResolver = LookupResolver<const engine::spatial::Coord&, engine::tile::TileVariant, int>;
+	
+	using LookupWallResolver = engine::algorithm::LookupResolver<const engine::spatial::Coord&, engine::tile::TileVariant, int>;
 
 
 	template<typename T>
@@ -867,8 +603,8 @@ namespace TestProp
 			// create storages
 			{
 				
-				Registry<engine::component::PropSet>::Instance().Register("props", make_unique<engine::component::PropSet>()); // prop storage				
-				Registry<engine::component::AnimationSet<Sprite>>::Instance().Register("props", make_unique<engine::component::AnimationSet<Sprite>>()); // animation storage
+				Registry<engine::component::graphics::PropSet>::Instance().Register("props", make_unique<engine::component::graphics::PropSet>()); // prop storage				
+				Registry<engine::graphics::animation::AnimationSet<Sprite>>::Instance().Register("props", make_unique<engine::graphics::animation::AnimationSet<Sprite>>()); // animation storage
 			}
 
 			// create sprite atlases
@@ -882,7 +618,7 @@ namespace TestProp
 			{
 				// create animation objects and store in animation set
 				ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("tree");
-				engine::component::AnimationSet<Sprite>& animset = Registry<engine::component::AnimationSet<Sprite>>::Instance().Get("props");
+				engine::graphics::animation::AnimationSet<Sprite>& animset = Registry<engine::graphics::animation::AnimationSet<Sprite>>::Instance().Get("props");
 				animset.Register("storm", AnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 25.0f, true, PositionF{ 0.5f, 0.85f }));
 				animset.Register("idle", AnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 200.0f, true, PositionF{ 0.5f, 0.85f }));
 				animset.Register("frozen", AnimationFactory::Create(atlas, std::vector<int>{ 0 }, 1000.0f, true, PositionF{ 0.5f, 0.85f }));
@@ -891,15 +627,15 @@ namespace TestProp
 			// setup tree prop
 			{
 				// get our storage for easy access
-				engine::component::AnimationSet<Sprite>& animset = Registry<engine::component::AnimationSet<Sprite>>::Instance().Get("props");
-				engine::component::PropSet& props = Registry<engine::component::PropSet>::Instance().Get("props");
+				AnimationSet<Sprite>& animset = Registry<AnimationSet<Sprite>>::Instance().Get("props");
+				engine::component::graphics::PropSet& props = Registry<engine::component::graphics::PropSet>::Instance().Get("props");
 				ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("tree");
 
 				// create prop object and assign animation set for trees. build 3 of them as animated, and 1 as simple
-				props.Register(0, std::make_unique<engine::component::Prop>(animset.MakeAnimationController()));
-				props.Register(1, std::make_unique<engine::component::Prop>(animset.MakeAnimationController()));
-				props.Register(2, std::make_unique<engine::component::Prop>(animset.MakeAnimationController()));
-				props.Register(3, std::make_unique<engine::component::SimpleProp>(atlas.MakeSprite(0, PositionF{ 0.5f, 0.85f })));
+				props.Register(0, std::make_unique<engine::component::graphics::AnimatedProp>(animset.MakeAnimationController()));
+				props.Register(1, std::make_unique<engine::component::graphics::AnimatedProp>(animset.MakeAnimationController()));
+				props.Register(2, std::make_unique<engine::component::graphics::AnimatedProp>(animset.MakeAnimationController()));
+				props.Register(3, std::make_unique<engine::component::graphics::SimpleProp>(atlas.MakeSprite(0, PositionF{ 0.5f, 0.85f })));
 
 				// for the 3 animated props, play different animations
 				props.MakePropHandle(0).Play("idle");
@@ -909,12 +645,12 @@ namespace TestProp
 
 			// setup wall prop
 			{
-				engine::component::PropSet& props = Registry<engine::component::PropSet>::Instance().Get("props");
+				engine::component::graphics::PropSet& props = Registry<engine::component::graphics::PropSet>::Instance().Get("props");
 				ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("tile");
-				props.Register(10, std::make_unique<engine::component::SimpleProp>(atlas.MakeSprite(41, PositionF{ 0.0f, 1.0f }))); // left corner wall
-				props.Register(11, std::make_unique<engine::component::SimpleProp>(atlas.MakeSprite(42, PositionF{ 0.0f, 1.0f }))); // center wall
-				props.Register(12, std::make_unique<engine::component::SimpleProp>(atlas.MakeSprite(43, PositionF{ 0.0f, 1.0f }))); // right corner wall
-				props.Register(13, std::make_unique<engine::component::SimpleProp>(atlas.MakeSprite(44, PositionF{ 0.0f, 1.0f }))); // island wall
+				props.Register(10, std::make_unique<engine::component::graphics::SimpleProp>(atlas.MakeSprite(41, PositionF{ 0.0f, 1.0f }))); // left corner wall
+				props.Register(11, std::make_unique<engine::component::graphics::SimpleProp>(atlas.MakeSprite(42, PositionF{ 0.0f, 1.0f }))); // center wall
+				props.Register(12, std::make_unique<engine::component::graphics::SimpleProp>(atlas.MakeSprite(43, PositionF{ 0.0f, 1.0f }))); // right corner wall
+				props.Register(13, std::make_unique<engine::component::graphics::SimpleProp>(atlas.MakeSprite(44, PositionF{ 0.0f, 1.0f }))); // island wall
 			}
 
 			// create propmap
@@ -972,7 +708,7 @@ namespace TestProp
 				resolver.Register(11, engine::tile::TileVariant::TWest);
 			}
 
-			// create ceiling map
+			// setup tile region for ceiling map
 			{
 				Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("tile");
 
@@ -1014,6 +750,28 @@ namespace TestProp
 				resolver.Register(16, engine::tile::TileVariant::TWest);
 			}
 
+			// setup water tilemap
+			{
+				// create sprite atlas to be used by tilemap
+				SpriteAtlasFactory::Create("water", L"../Assets/1x1_64x64_water_background.png", 1, 1);
+				ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("water");
+
+				// create our tileset
+				Registry<Tileset<RenderableTile>>::Instance().Register("water", std::make_unique<Tileset<RenderableTile>>());
+				Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("water");
+
+				tileset.Register(0, std::make_unique<RenderableTile>(atlas.MakeSprite(0), false, 0)); // water so not walkable. doesn't matter. this is background map
+
+				// create tile region
+				Registry<TileRegion<RenderableTile>>::Instance().Register("water", make_unique<TileRegion<RenderableTile>>());
+				TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("water");
+
+				// load tile region by filling it with all '0' tile
+				Table<string> map({ 20, 12 }, "0");
+				AsyncTileRegionLoader<RenderableTile, int> tileRegionLoader;
+				tileRegionLoader.LoadImmediate(region, map, [&tileset](const int& cell) -> Tile<RenderableTile> { return tileset.MakeTile(cell); });
+			}
+
 			{
 				Registry<LookupWallResolver>::Instance().Register("tile_to_wall", std::make_unique<LookupWallResolver>());
 				LookupWallResolver& tile2wallresolver = Registry<LookupWallResolver>::Instance().Get("tile_to_wall");
@@ -1050,7 +808,7 @@ namespace TestProp
 		void OnCeilingTilePlaced(const engine::spatial::Coord& coord, int index)
 		{
 			PropMap& propmap = Registry<PropMap>::Instance().Get("prop_map");
-			engine::component::PropSet& propset = Registry<engine::component::PropSet>::Instance().Get("props");
+			engine::component::graphics::PropSet& propset = Registry<engine::component::graphics::PropSet>::Instance().Get("props");
 
 			// if ceiling tile is placed, there should be no prop on this tile other than wall. so we clear it first
 			propmap.Clear(coord.row, coord.col);
@@ -1073,18 +831,25 @@ namespace TestProp
 			SizeF tilesize = Registry<SizeF>::Instance().Get("tile_size");
 			engine::spatial::Coord coord = engine::spatial::PositionToCoord(m_mousePos - mapPos, tilesize);
 			PropMap& propmap = Registry<PropMap>::Instance().Get("prop_map");
-			engine::component::PropSet& propset = Registry<engine::component::PropSet>::Instance().Get("props");
+			engine::component::graphics::PropSet& propset = Registry<engine::component::graphics::PropSet>::Instance().Get("props");
 			TileRegion<RenderableTile>& floormap = Registry<TileRegion<RenderableTile>>::Instance().Get("floor");
 			TileRegion<RenderableTile>& ceilingmap = Registry<TileRegion<RenderableTile>>::Instance().Get("ceiling");
 			engine::tile::AutoTileResolver<RenderableTile>& floorresolver = Registry<engine::tile::AutoTileResolver<RenderableTile>>::Instance().Get("floor");
 			engine::tile::AutoTileResolver<RenderableTile>& ceilingresolver = Registry<engine::tile::AutoTileResolver<RenderableTile>>::Instance().Get("ceiling");
+
+			// sanity check. if coord is out of bounds, bail out.
+			if (!floormap.IsInBounds(coord))
+			{
+				return;
+			}
 
 			switch (key)
 			{
 			case 27: // escape
 			{
 				{
-					floorresolver.Set();
+					floorresolver.Remove();
+					ceilingresolver.Remove();
 				}
 
 				// clear props
@@ -1163,7 +928,7 @@ namespace TestProp
 		// this method is fired up whenever the OnLap event is triggered from stopwatch
 		void OnLap(double time)
 		{
-			Registry<engine::component::PropSet>::Instance().Get("props").Update(time);
+			Registry<engine::component::graphics::PropSet>::Instance().Get("props").Update(time);
 		}
 
 		// fun stuff. this is called on each loop of the message loop. this is where we draw!
@@ -1180,35 +945,6 @@ namespace TestProp
 			m_canvas->Begin();
 			{
 				m_renderer->Begin();
-							
-				//{
-				//	PropHandle prop = Registry<engine::component::PropSet>::Instance().Get("props").MakePropHandle(0);
-				//	m_renderer->DrawRenderable(prop.GetSprite(), { 400.0f, 300.0f }, prop.GetSprite().GetSize(), { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
-				//	m_renderer->DrawRenderable(prop.GetSprite(), { 500.0f, 300.0f }, prop.GetSprite().GetSize(), { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
-				//	m_renderer->DrawRenderable(prop.GetSprite(), { 600.0f, 300.0f }, prop.GetSprite().GetSize(), { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
-				//	m_renderer->DrawRenderable(prop.GetSprite(), { 700.0f, 300.0f }, prop.GetSprite().GetSize(), { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
-				//}
-
-				//{
-				//	PropHandle prop = Registry<engine::component::PropSet>::Instance().Get("props").MakePropHandle(1);
-				//	m_renderer->DrawRenderable(prop.GetSprite(), { 400.0f, 450.0f }, prop.GetSprite().GetSize(), { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
-				//	m_renderer->DrawRenderable(prop.GetSprite(), { 500.0f, 450.0f }, prop.GetSprite().GetSize(), { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
-				//	m_renderer->DrawRenderable(prop.GetSprite(), { 600.0f, 450.0f }, prop.GetSprite().GetSize(), { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
-				//	m_renderer->DrawRenderable(prop.GetSprite(), { 700.0f, 450.0f }, prop.GetSprite().GetSize(), { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
-				//}
-
-				//{
-				//	PropHandle prop = Registry<engine::component::PropSet>::Instance().Get("props").MakePropHandle(2);
-				//	m_renderer->DrawRenderable(prop.GetSprite(), { 800.0f, 300.0f }, prop.GetSprite().GetSize(), { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
-				//	m_renderer->DrawRenderable(prop.GetSprite(), { 800.0f, 450.0f }, prop.GetSprite().GetSize(), { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
-				//}
-
-				//{
-				//	PropHandle prop = Registry<engine::component::PropSet>::Instance().Get("props").MakePropHandle(3);
-				//	m_renderer->DrawRenderable(prop.GetSprite(), { 900.0f, 300.0f }, prop.GetSprite().GetSize(), { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
-				//	m_renderer->DrawRenderable(prop.GetSprite(), { 900.0f, 450.0f }, prop.GetSprite().GetSize(), { 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
-				//}
-
 				{
 					PositionF pos = Registry<PositionF>::Instance().Get("map_position");
 					SizeF tilesize = Registry<SizeF>::Instance().Get("tile_size");
@@ -1216,6 +952,7 @@ namespace TestProp
 					PositionF depth = Registry<PositionF>::Instance().Get("depth");
 					TileMap<RenderableTile> floormap = Registry<TileRegion<RenderableTile>>::Instance().Get("floor").MakeTileMap();
 					TileMap<RenderableTile> ceilingmap = Registry<TileRegion<RenderableTile>>::Instance().Get("ceiling").MakeTileMap();
+					TileMap<RenderableTile> watermap = Registry<TileRegion<RenderableTile>>::Instance().Get("water").MakeTileMap();
 
 					PropMap& propMap = Registry<PropMap>::Instance().Get("prop_map");
 
@@ -1226,8 +963,9 @@ namespace TestProp
 						for (int col = 0; col < (int)mapsize.width; col++)
 						{
 							QueueDrawCommand(floormap, m_drawQueue, row, col, tilesize, pos, 1.0f, { 1,1,1,1 });
+							QueueDrawCommand(watermap, m_drawQueue, row, col, tilesize, pos, 0.0f, { 1,1,1,1 });
 							propMap.Queue(m_drawQueue, row, col, tilesize, pos, 1.0f);
-							QueueDrawCommand(ceilingmap, m_drawQueue, row, col, tilesize, pos - depth, 1.0f, { 1,1,1,1 });
+							QueueDrawCommand(ceilingmap, m_drawQueue, row, col, tilesize, pos - depth, 2.0f, { 1,1,1,1 });
 						}
 
 						m_drawQueue.Sort();

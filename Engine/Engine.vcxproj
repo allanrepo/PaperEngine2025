@@ -21,11 +21,13 @@
   <ItemGroup>
     <ClInclude Include="Include\Algorithm\AutoTileResolver.h" />
     <ClInclude Include="Include\Algorithm\Pathfinding.h" />
+    <ClInclude Include="Include\Algorithm\Resolvers.h" />
     <ClInclude Include="Include\Cache\BindCache.h" />
     <ClInclude Include="Include\Cache\Registry.h" />
     <ClInclude Include="Include\Command\CommandQueue.h" />
     <ClInclude Include="Include\Command\DrawCommand.h" />
     <ClInclude Include="Include\Command\ICommand.h" />
+    <ClInclude Include="Include\Components\Prop.h" />
     <ClInclude Include="Include\Components\Tile.h" />
     <ClInclude Include="Include\Containers\Container.h" />
     <ClInclude Include="Include\Containers\Dictionary.h" />
@@ -111,6 +113,7 @@
     <ClCompile Include="Source\Algorithm\Pathfinding.cpp" />
     <ClCompile Include="Source\Command\CommandQueue.cpp" />
     <ClCompile Include="Source\Command\ICommand.cpp" />
+    <ClCompile Include="Source\Components\Prop.cpp" />
     <ClCompile Include="Source\Components\Tile.cpp" />
     <ClCompile Include="Source\Containers\Table.cpp" />
     <ClCompile Include="Source\Engine\Engine.cpp" />

@@ -3,12 +3,16 @@
 #include <Core/View.h>
 #include <Utilities/Logger.h>
 #include <Timer/StopWatch.h>
+#include <Containers/Dictionary.h>
 #include <vector>
 #include <memory>
 #include <cassert>
 
 namespace engine::graphics::animation
 {
+	template<typename T>
+	class AnimationController;
+
 	// represents a single frame in an animation sequence.
 	// holds the payload element T and the duration to display this frame.
 	template<typename T>
@@ -172,7 +176,7 @@ namespace engine::graphics::animation
 		}
 	};
 
-
+	// TODO: deprecated. AnimationController should be used now
 	template<typename T>
 	class AnimationManager 
 	{
@@ -224,6 +228,105 @@ namespace engine::graphics::animation
 		}
 	};
 
+	// container or cache for animation
+	// frame definition is templated for flexibility
+	// provides a factory for AnimationController, which is a handle for AnimationSet's animation collection
+	template<typename T>
+	class AnimationSet
+	{
+	protected:
+		engine::container::Dictionary<std::string, std::unique_ptr<Animation<T>>> m_registry;
+
+	public:
+		AnimationSet() = default;
+		~AnimationSet() = default;
+
+		AnimationSet(const AnimationSet&) = default;
+		AnimationSet& operator=(const AnimationSet&) = default;
+		AnimationSet(AnimationSet&&) = default;
+		AnimationSet& operator=(AnimationSet&&) = default;
+
+		bool Register(const std::string& name, std::unique_ptr<Animation<T>> data)
+		{
+			return m_registry.Register(name, std::move(data));
+		}
+
+		bool Register(const std::string& name, const Animation<T>& data)
+		{
+			return m_registry.Register(name, std::make_unique<Animation<T>>(data));
+		}
+		bool IsValid(const std::string& name) const
+		{
+			return m_registry.Has(name);
+		}
+
+		// creates a prop instance for the given id. returns invalid prop if id not found
+		AnimationController<T> MakeAnimationController()
+		{
+			return AnimationController<T>(&m_registry);
+		}
+
+		// define iterator for our container
+		using iterator = typename engine::container::Dictionary<int, std::unique_ptr<Animation<T>>>::iterator;
+		using const_iterator = typename engine::container::Dictionary<int, std::unique_ptr<Animation<T>>>::const_iterator;
+
+		// iterator access
+		iterator begin() { return m_registry.begin(); }
+		iterator end() { return m_registry.end(); }
+		const_iterator begin() const { return m_registry.begin(); }
+		const_iterator end() const { return m_registry.end(); }
+		const_iterator cbegin() const { return m_registry.cbegin(); }
+		const_iterator cend() const { return m_registry.cend(); }
+	};
+
+	// lightweight class that provides handle to AnimationSet's animation collection
+	// exclusively created by AnimationSet class as it is a handle to AnimationSet's internal animation collection
+	// it is lightweight so can be copied or pass by value. 
+	// works as animator component of an object. 
+	// as animator component, it conveniently contains or have access to animation collection of the AnimationSet it is associated with
+	template<typename T>
+	class AnimationController
+	{
+	private:
+		friend class AnimationSet<T>;
+		using AnimSet = engine::container::Dictionary <std::string, std::unique_ptr <Animation<T>>>;
+
+		Animator<T> m_animator;
+		core::Handle<AnimSet> m_handle;
+
+	protected:
+		AnimationController(AnimSet* set = nullptr) :
+			m_handle(set)
+		{
+		}
+
+	public:
+		bool Play(const std::string& key)
+		{
+			if (m_handle->Has(key))
+			{
+				m_animator.Play(*m_handle->Get(key).get());
+				return true;
+			}
+
+			return false;
+		}
+
+		void Update(double delta)
+		{
+			m_animator.Update(delta);
+		}
+
+		const T& GetCurrent() const
+		{
+			return m_animator.GetCurrent();
+		}
+
+		bool IsValid() const
+		{
+			return m_animator.IsRunning();
+		}
+	};
 
 
 	namespace Test
