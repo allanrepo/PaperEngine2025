@@ -1,7 +1,7 @@
 #pragma once
 #include <Graphics/Animation/Animation.h>
 #include <Graphics/Resource/ISpriteAtlas.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Cache/Registry.h>
 
 namespace engine
@@ -10,7 +10,7 @@ namespace engine
 	{
 		namespace factory
 		{
-			using Sprite = engine::graphics::renderable::Sprite;
+			using Sprite = engine::graphics::Sprite;
 			using Animation = engine::graphics::animation::Animation<Sprite>;
 			using ISpriteAtlas = engine::graphics::resource::ISpriteAtlas;
 			using Registry = engine::cache::Registry<Animation>;
@@ -22,24 +22,13 @@ namespace engine
 				// creates an animation object loading all the sprites of given atlas with a fixed duration across all frames
 				static Animation Create(const ISpriteAtlas& atlas, float duration, bool loop, const PositionF& anchor = PositionF{0,0})
 				{
-					//Animation anim;
-					//anim.loop = loop;
-
 					std::vector<int> indice;
 					for (int i = 0; i < atlas.GetUVRectCount(); i++)
 					{
 						indice.push_back(i);
-						//// get sprite from each UV index in tilemap sprite atlas
-						//Sprite sprite = atlas.MakeSprite(i);
-						//sprite.SetAnchor(anchor);
-
-						//// create animation. these tilemaps are static. so their animations are 1 frame only
-						//anim.frames.push_back({ sprite, duration });
 					}
 
 					return Create(atlas, indice, duration, loop, anchor);
-
-					//return anim;
 				}
 
 				// creates an animation object loading specified list of sprites of given atlas with a fixed duration across all frames

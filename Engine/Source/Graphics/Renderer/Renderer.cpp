@@ -56,24 +56,24 @@ void engine::graphics::renderer::Renderer::Draw(
 }
 
 // Draws a string using a font atlas at the specified position and color
-void engine::graphics::renderer::Renderer::DrawText(
+void engine::graphics::renderer::Renderer::Draw(
     const engine::graphics::resource::IFontAtlas& font, // Font atlas
     const std::string& text,                    // Text to render
     const engine::spatial::PositionF& pos,                                 // Top-left screen position
     const engine::graphics::ColorF& color
 )
 {
-    impl->DrawText(font, text, pos, color);
+    impl->Draw(font, text, pos, color);
 }
 
-void engine::graphics::renderer::Renderer::DrawRenderable(
-    const engine::graphics::renderable::IRenderable& renderable,                    // renderable object
+void engine::graphics::renderer::Renderer::Draw(
+    const engine::graphics::Sprite& sprite,                          // sprite object
     const engine::spatial::PositionF& pos,                                 // Top-left screen position
-    const spatial::SizeF& size,                               // Sprite dimensions
+    const spatial::SizeF& size,                                     // Sprite dimensions
     const engine::graphics::ColorF& color,                                   // RGBA color tint
     const float rotation                                                    // Rotation in radians
 )
 {
-    impl->DrawRenderable(renderable, pos, size, color, rotation);
+    impl->Draw(sprite, pos, size, color, rotation);
 }
 

@@ -12,7 +12,7 @@
 #include <Graphics/Renderer/Renderer.h>
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Core/Input.h>
 #include <Graphics/Resource/IFontAtlas.h>
 #include <Graphics/Resource/FontAtlas.h>
@@ -65,13 +65,13 @@ namespace TestEditMultiLayerMap
 	class AnimatedTile
 	{
 	private:
-		engine::graphics::animation::Animator<engine::graphics::renderable::Sprite> m_animator;
-		std::unordered_map<std::string, engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>> m_animations;
+		engine::graphics::animation::Animator<engine::graphics::Sprite> m_animator;
+		std::unordered_map<std::string, engine::graphics::animation::Animation<engine::graphics::Sprite>> m_animations;
 		bool m_walkable;
 		int m_index;
 
 	public:
-		AnimatedTile(bool walkable, const std::string& name, const engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>& anim, int index) :
+		AnimatedTile(bool walkable, const std::string& name, const engine::graphics::animation::Animation<engine::graphics::Sprite>& anim, int index) :
 			m_walkable(walkable),
 			m_index(index)
 
@@ -88,7 +88,7 @@ namespace TestEditMultiLayerMap
 			return m_animator.IsRunning();
 		}
 
-		const engine::graphics::renderable::Sprite& GetSprite() const
+		const engine::graphics::Sprite& GetSprite() const
 		{
 			return m_animator.GetCurrent();
 		}
@@ -107,12 +107,12 @@ namespace TestEditMultiLayerMap
 	class RenderableTile
 	{
 	private:
-		Sprite m_sprite;
+		engine::graphics::Sprite m_sprite;
 		bool m_walkable;
 		int m_index;
 
 	public:
-		RenderableTile(const Sprite& sprite, bool walkable, int index) :
+		RenderableTile(const engine::graphics::Sprite& sprite, bool walkable, int index) :
 			m_sprite(sprite),
 			m_walkable(walkable),
 			m_index(index)
@@ -124,7 +124,7 @@ namespace TestEditMultiLayerMap
 			return m_index;
 		}
 
-		const Sprite& GetSprite() const
+		const engine::graphics::Sprite& GetSprite() const
 		{
 			return m_sprite;
 		}
@@ -331,7 +331,7 @@ namespace TestEditMultiLayerMap
 				// create animation and load all of our sprite atlas' sprite into it and store in registry
 				//engine::graphics::factory::AnimationFactory::Create("water_splash", atlas, { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 }, 100.0f, true);
 				engine::graphics::factory::AnimationFactory::Create("water_splash", atlas, 100.0f, true);
-				engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>& anim = Registry<engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>>::Instance().Get("water_splash");
+				engine::graphics::animation::Animation<engine::graphics::Sprite>& anim = Registry<engine::graphics::animation::Animation<engine::graphics::Sprite>>::Instance().Get("water_splash");
 
 				// create our tileset
 				Registry<Tileset<AnimatedTile>>::Instance().Register("water_splash", std::make_unique<Tileset<AnimatedTile>>());

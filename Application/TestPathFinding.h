@@ -12,7 +12,7 @@
 #include <Graphics/Renderer/Renderer.h>
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Core/Input.h>
 #include <Graphics/Resource/IFontAtlas.h>
 #include <Graphics/Resource/FontAtlas.h>
@@ -34,17 +34,17 @@ namespace TestPathFinding
 	class RenderableTile
 	{
 	private:
-		Sprite m_sprite;
+		engine::graphics::Sprite m_sprite;
 		bool m_walkable;
 
 	public:
-		RenderableTile(const Sprite& sprite, bool walkable) :
+		RenderableTile(const engine::graphics::Sprite& sprite, bool walkable) :
 			m_sprite(sprite),
 			m_walkable(walkable)
 		{
 		}
 
-		const Sprite& GetSprite() const
+		const engine::graphics::Sprite& GetSprite() const
 		{
 			return m_sprite;
 		}
@@ -61,12 +61,12 @@ namespace TestPathFinding
 	{
 	public:
 	private:
-		engine::graphics::animation::Animator<engine::graphics::renderable::Sprite> m_animator;
-		std::unordered_map<std::string, engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>> m_animations;
+		engine::graphics::animation::Animator<engine::graphics::Sprite> m_animator;
+		std::unordered_map<std::string, engine::graphics::animation::Animation<engine::graphics::Sprite>> m_animations;
 		engine::navigation::tile::TileConstraint m_mask;
 
 	public:
-		TileDefinition(const std::string& name, const engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>& anim)
+		TileDefinition(const std::string& name, const engine::graphics::animation::Animation<engine::graphics::Sprite>& anim)
 		{
 			// copy the animation into our container
 			m_animations[name] = anim;
@@ -75,10 +75,10 @@ namespace TestPathFinding
 			m_animator.Play(m_animations[name]);
 		}
 
-		TileDefinition(const std::string& name, const engine::graphics::renderable::Sprite& sprite, engine::navigation::tile::TileConstraint mask):
+		TileDefinition(const std::string& name, const engine::graphics::Sprite& sprite, engine::navigation::tile::TileConstraint mask):
 			m_mask(mask)
 		{
-			engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> anim;
+			engine::graphics::animation::Animation<engine::graphics::Sprite> anim;
 
 			// we're hardcoding a fixed duration because we don't intend to animate this. only the passed sprite will be rendered all the time. it is static.
 			anim.frames.push_back({ sprite, 1000.0f });
@@ -95,7 +95,7 @@ namespace TestPathFinding
 			return m_animator.IsRunning();
 		}
 
-		const engine::graphics::renderable::Sprite& GetSprite() const
+		const engine::graphics::Sprite& GetSprite() const
 		{
 			return m_animator.GetCurrent();
 		}
@@ -668,10 +668,10 @@ namespace TestPathFinding
 
 
 					std::string str = "Closed Tiles: " + std::to_string(m_pathFinder1.GetClosedTiles().size());
-					m_rendererBatch->DrawText(*m_FontAtlas, str, { 1000, 10 }, { 1,1,1,1 });
+					m_rendererBatch->Draw(*m_FontAtlas, str, { 1000, 10 }, { 1,1,1,1 });
 					str.clear();
 					str = "Open Tiles: " + std::to_string(m_pathFinder1.GetOpenTiles().size());
-					m_rendererBatch->DrawText(*m_FontAtlas, str, { 1000, 30 }, { 1,1,1,1 });
+					m_rendererBatch->Draw(*m_FontAtlas, str, { 1000, 30 }, { 1,1,1,1 });
 
 				}
 				// draw RenderableTile region
@@ -694,10 +694,10 @@ namespace TestPathFinding
 					engine::graphics::navigation::DrawWaypoints(*m_rendererBatch, wp, m_tilesize, m_pos, { 1,0,1,1 }, 2.0f);
 
 					std::string str = "Closed Tiles: " + std::to_string(m_pathFinder.GetClosedTiles().size());
-					m_rendererBatch->DrawText(*m_FontAtlas, str, { 1000, 10 }, { 1,1,1,1 });
+					m_rendererBatch->Draw(*m_FontAtlas, str, { 1000, 10 }, { 1,1,1,1 });
 					str.clear();
 					str = "Open Tiles: " + std::to_string(m_pathFinder.GetOpenTiles().size());
-					m_rendererBatch->DrawText(*m_FontAtlas, str, { 1000, 30 }, { 1,1,1,1 });
+					m_rendererBatch->Draw(*m_FontAtlas, str, { 1000, 30 }, { 1,1,1,1 });
 				}
 
 

@@ -25,7 +25,7 @@
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Graphics/Resource/SpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Core/Input.h>
 #include <Graphics/Animation/Animation.h>
 #include <Graphics/Resource/DX11TextureImpl.h>
@@ -48,16 +48,16 @@ namespace TestTile
 	class RenderableTile
 	{
 	private:
-		engine::graphics::renderable::Sprite m_sprite;
+		engine::graphics::Sprite m_sprite;
 		bool m_walkable;
 
 	public:
-		RenderableTile(const engine::graphics::renderable::Sprite& sprite, bool walkable) :
+		RenderableTile(const engine::graphics::Sprite& sprite, bool walkable) :
 			m_sprite(sprite),
 			m_walkable(walkable)
 		{
 		}
-		const engine::graphics::renderable::Sprite& GetSprite() const
+		const engine::graphics::Sprite& GetSprite() const
 		{
 			return m_sprite;
 		}
@@ -254,7 +254,7 @@ namespace TestTile
 					const engine::component::tile::Tile<RenderableTile>& tile = TileGrid.Get(row, col);
 					if (tile.IsValid())
 					{
-						m_renderer->DrawRenderable(
+						m_renderer->Draw(
 							tile->GetSprite(),
 							engine::spatial::PositionF{ 50.0f + col * m_tileSize.width, 50.0f + row * m_tileSize.height },
 							m_tileSize,

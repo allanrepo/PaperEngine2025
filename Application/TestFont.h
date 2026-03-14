@@ -12,7 +12,7 @@
 #include <Graphics/Renderer/Renderer.h>
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Core/Input.h>
 #include <Graphics/Resource/IFontAtlas.h>
 #include <Graphics/Resource/FontAtlas.h>
@@ -138,7 +138,7 @@ namespace TestFont
 
 				renderer->Begin();
 				{
-					renderer->DrawText(
+					renderer->Draw(
 						*m_FontAtlas,
 						title,
 						engine::spatial::PositionF{ 650.0f, 10.0f },
@@ -157,8 +157,8 @@ namespace TestFont
 							{
 								for (int col = 0; col < 96; col++)
 								{
-									engine::graphics::renderable::Sprite glyph = m_FontAtlas->GetGlyph(ch);
-									renderer->DrawRenderable(glyph,
+									engine::graphics::Sprite glyph = m_FontAtlas->GetGlyph(ch);
+									renderer->Draw(glyph,
 										engine::spatial::PositionF{ 50 + col * 12.0f, 50 + row * 25.0f },
 										glyph.GetSize(),
 										engine::graphics::ColorF{ 1,1,1,1 },
@@ -175,7 +175,7 @@ namespace TestFont
 						{
 							for (int row = 0; row < 32; row++)
 							{
-								renderer->DrawText(*m_FontAtlas, m_text, engine::spatial::PositionF{ 50, 50 + row * 25.0f }, engine::graphics::ColorF{ 1,1,1,1 });
+								renderer->Draw(*m_FontAtlas, m_text, engine::spatial::PositionF{ 50, 50 + row * 25.0f }, engine::graphics::ColorF{ 1,1,1,1 });
 							}
 							break;
 						}

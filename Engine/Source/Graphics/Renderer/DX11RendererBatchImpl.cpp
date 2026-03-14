@@ -461,7 +461,7 @@ void engine::graphics::dx11::renderer::DX11RendererBatchImpl::Draw(
 }
 
 // Draws a string using a font atlas at the specified position and color
-void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawText(
+void engine::graphics::dx11::renderer::DX11RendererBatchImpl::Draw(
 	const engine::graphics::resource::IFontAtlas& font, // Font atlas
 	const std::string& text,                    // Text to render
 	const engine::spatial::PositionF& pos,                                 // Top-left screen position
@@ -475,23 +475,30 @@ void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawText(
 	{
 		engine::spatial::PositionF _pos = { xCurr, pos.y };
 
-		engine::graphics::renderable::Sprite glyph = font.GetGlyph(c);
+		engine::graphics::Sprite glyph = font.GetGlyph(c);
 
 		// draw the char
-		DrawRenderable(glyph, _pos, glyph.GetSize(), color, 0);
+		Draw(glyph, _pos, glyph.GetSize(), color, 0);
 
 		xCurr += glyph.GetWidth();
 	}
 }
 
-void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawRenderable(
-	const engine::graphics::renderable::IRenderable& renderable, 
-	const engine::spatial::PositionF& pos, 
+void engine::graphics::dx11::renderer::DX11RendererBatchImpl::Draw(
+	const engine::graphics::Sprite& sprite,   
+	const engine::spatial::PositionF& pos,
 	const spatial::SizeF& size, 
 	const engine::graphics::ColorF& color, 
 	const float rotation
 )
 {
+#pragma region // sanity check. if this sprite is invalid. skip
+	if (!sprite.IsValid())
+	{
+		return;
+	}
+#pragma endregion
+
 #pragma region // if there's enough on queue to draw in batch, let's do it
 	if (m_nCurrSpriteCount >= MAXSPRITEBATCH)
 	{
@@ -501,7 +508,7 @@ void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawRenderable(
 #pragma endregion
 
 #pragma region // check if we need to bind texture. if current bound texture is same as what is needed for this draw call, then no need to bind this
-	if (renderable.CanBind())
+	if (sprite.CanBind())
 	{
 		// if there is any draw request on queue, flush it first
 		if (m_nCurrSpriteCount > 0)
@@ -510,7 +517,7 @@ void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawRenderable(
 			m_nCurrSpriteCount = 0;
 		}
 		// then bind its texture
-		renderable.Bind();
+		sprite.Bind();
 	}
 #pragma endregion
 
@@ -519,7 +526,7 @@ void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawRenderable(
 #pragma endregion
 
 #pragma region // update texture transform for this draw request
-	engine::math::geometry::RectF rect = renderable.GetUVRect();
+	engine::math::geometry::RectF rect = sprite.GetUVRect();
 	m_UpdateConstantBuffer.texture[m_nCurrSpriteCount].scale.x = (rect.right - rect.left);
 	m_UpdateConstantBuffer.texture[m_nCurrSpriteCount].scale.y = (rect.bottom - rect.top);
 	m_UpdateConstantBuffer.texture[m_nCurrSpriteCount].translate.x = rect.left;
@@ -536,7 +543,7 @@ void engine::graphics::dx11::renderer::DX11RendererBatchImpl::DrawRenderable(
 	// given position is the top-left of image. image will be rendered where its top-left is in the given position
 	// anchor is the normalized position somewhere in the image. if you want to draw the image such that the position given
 	// will be at the anchor, shift it using the given anchor
-	engine::spatial::PositionF anchor = renderable.GetAnchor();
+	engine::spatial::PositionF anchor = sprite.GetAnchor();
 	anchor.x *= size.width;
 	anchor.y *= size.height;
 

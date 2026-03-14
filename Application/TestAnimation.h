@@ -23,22 +23,81 @@
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Graphics/Resource/SpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Core/Input.h>
 #include <Graphics/Animation/Animation.h>
 #include <Graphics/Resource/DX11TextureImpl.h>
 #include <Timer/StopWatch.h>
 #include <Engine/Factory/AnimationFactory.h>
+#include <Core/View.h>
+#include <memory>
+#include <algorithm>	
+#include <Utilities/Utilities.h>
+#include <Graphics/Resource/FontAtlas.h>
 
 namespace test
 {
+	struct Item;
+	using Animated = engine::graphics::animation::Animated<engine::graphics::Sprite, Item>;
+	using SpriteAtlasFactory = engine::graphics::factory::SpriteAtlasFactory;
+	using ISpriteAtlas = engine::graphics::resource::ISpriteAtlas;
+	using SpriteAtlas = engine::graphics::resource::SpriteAtlas;
+	using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
+	using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite, Item>;
+	using AnimationFactory = engine::graphics::factory::AnimationFactory;
+	using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
+	using AnimationSystem = engine::graphics::animation::AnimationSystem<engine::graphics::Sprite, Item>;
+	using IFontAtlas = engine::graphics::resource::IFontAtlas;
+	using FontAtlas = engine::graphics::resource::FontAtlas;
+	using DX11TextureImpl = engine::graphics::dx11::resource::DX11TextureImpl;
+
+	struct Item
+	{
+		Animated animated;
+		PositionF pos;
+		std::string name;
+	};
+
+	struct AnimatedItem
+	{
+		PositionF pos;
+		std::string name;
+		engine::graphics::animation::AnimationController<engine::graphics::Sprite, AnimatedItem> animationController;
+
+		AnimatedItem(AnimationSet* set, PositionF p, std::string n):
+			animationController(set, this),
+			pos(p),
+			name(n)
+		{
+		}
+
+		engine::event::Event<AnimatedItem&>& GetEndEvent()
+		{
+			return animationController.EndEvent;
+		}
+	};
+
 	class TestAnimation
 	{
 	private:
+
+
 		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		engine::timer::StopWatch m_stopwatch;
+
+		engine::input::Input m_input;
+
+		std::vector<std::unique_ptr<Item>> m_items;
+
+		std::vector<std::unique_ptr<AnimatedItem>> m_animatedItems;
+		std::vector<std::vector<std::unique_ptr<AnimatedItem>>::iterator> m_pendingDestroyAnimatedItems;
+
+		std::unique_ptr<engine::graphics::resource::IFontAtlas> m_FontAtlas;
+
+
+		int m_count = 0;
 
 	public:
 		TestAnimation()
@@ -59,6 +118,12 @@ namespace test
 			m_window->OnCreate += engine::event::Handler(this, &TestAnimation::OnWindowCreate);
 			m_window->OnSize += engine::event::Handler(this, &TestAnimation::OnWindowSize);
 			m_window->Create(L"TestAnimation", 1400, 900);
+
+			m_window->OnWindowMessage += engine::event::Handler(&m_input, &engine::input::Input::ProcessWin32Message);
+
+			m_input.KeyDownEvent += engine::event::Handler(this, &TestAnimation::OnKeyDown);
+			m_input.MouseDownEvent += engine::event::Handler(this, &TestAnimation::OnMouseDown);
+			m_input.MouseMoveEvent += engine::event::Handler(this, &TestAnimation::OnMouseMove);
 		}
 
 		void CreateAnimation(const std::string& name, const std::wstring& filepath, const size_t row, const size_t col, const std::vector<int>& animationFrameIndice, float duration)
@@ -71,34 +136,34 @@ namespace test
 			engine::graphics::factory::AnimationFactory::Create(name, atlas, animationFrameIndice, duration, true);
 
 			// create animator and load the animation. it will also be stored in cache. we can have multiple animators using the same animation
-			engine::cache::Registry<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>::Instance().Register(name, std::make_unique<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>());
+			engine::cache::Registry<engine::graphics::animation::Animator<engine::graphics::Sprite>>::Instance().Register(name, std::make_unique<engine::graphics::animation::Animator<engine::graphics::Sprite>>());
 
 			// get animator from cache and play the animation. since we set loop to true, it will keep looping through the frames in the animation
-			engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>& animator = engine::cache::Registry<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>::Instance().Get(name);
-			animator.Play(engine::cache::Registry<engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>>::Instance().Get(name));
+			engine::graphics::animation::Animator<engine::graphics::Sprite>& animator = engine::cache::Registry<engine::graphics::animation::Animator<engine::graphics::Sprite>>::Instance().Get(name);
+			animator.Play(engine::cache::Registry<engine::graphics::animation::Animation<engine::graphics::Sprite>>::Instance().Get(name));
 		}
 
 		void UpdateAnimation(const std::string& name, double delta)
 		{
-			engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>& animator = engine::cache::Registry<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>::Instance().Get(name);
+			engine::graphics::animation::Animator<engine::graphics::Sprite>& animator = engine::cache::Registry<engine::graphics::animation::Animator<engine::graphics::Sprite>>::Instance().Get(name);
 			animator.Update(delta);
 		}
 
 		void DrawAnimation(const std::string& name, const engine::spatial::PositionF& pos, engine::graphics::ColorF color = { 1.0f, 1.0f, 1.0f, 1.0f }, float rotation = 0.0f)
 		{
-			engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>& animator = engine::cache::Registry<engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>>::Instance().Get(name);
+			engine::graphics::animation::Animator<engine::graphics::Sprite>& animator = engine::cache::Registry<engine::graphics::animation::Animator<engine::graphics::Sprite>>::Instance().Get(name);
 
 			m_renderer->Draw(
 				pos,			// position
-				animator.GetCurrentFrame().element.GetSize(),	// get the sprite size from animator's current frame
+				animator.GetCurrent().GetSize(),	// get the sprite size from animator's current frame
 				{1,1,1,0.5f},			// color
 				rotation		// rotation
 			);
 
-			m_renderer->DrawRenderable(
-				animator.GetCurrentFrame().element,				// get the sprite from animator's current frame
+			m_renderer->Draw(
+				animator.GetCurrent(),				// get the sprite from animator's current frame
 				pos,				// position
-				animator.GetCurrentFrame().element.GetSize(),	// get the sprite size from animator's current frame
+				animator.GetCurrent().GetSize(),	// get the sprite size from animator's current frame
 				color,			// color
 				rotation
 			);
@@ -120,6 +185,10 @@ namespace test
 			m_renderer->Initialize();
 			LOG("Renderer (DX11) created...");
 
+			// create font
+			m_FontAtlas = std::make_unique<FontAtlas>(std::make_unique<SpriteAtlas>(std::make_unique<DX11TextureImpl>()));
+			m_FontAtlas->Initialize("Terminal", 12);
+
 			CreateAnimation("CharacterTest_Animation", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12, { 12,13,14,15,16,17 }, 100.0f);
 			CreateAnimation("Tree1", L"../Assets/tree_1x8_1536x256.png", 1, 8, { 0,1,2,3,4,5,6,7 }, 100.0f);
 			CreateAnimation("Tree2", L"../Assets/tree_1x8_1536x192.png", 1, 8, { 0,1,2,3,4,5,6,7 }, 100.0f);
@@ -127,9 +196,152 @@ namespace test
 			CreateAnimation("Tree4", L"../Assets/tree1_1x8_1536x192.png", 1, 8, { 0,1,2,3,4,5,6,7 }, 100.0f);
 
 
+			{
+				SpriteAtlasFactory::Create("dust", L"../Assets/Dust_02.png", 1, 10);
+				ISpriteAtlas& atlas = engine::cache::Registry<ISpriteAtlas>::Instance().Get("dust");
+
+				engine::cache::Registry<AnimationSet>::Instance().Register("dust", std::make_unique<AnimationSet>());
+				AnimationSet& animset = engine::cache::Registry<AnimationSet>::Instance().Get("dust");
+				animset.Register("dust", AnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, 150.0f, true, PositionF{ 0.5f, 0.5f }));
+
+				engine::cache::Registry<AnimationSystem>::Instance().Register("dust", std::make_unique<AnimationSystem>(&animset));
+				AnimationSystem& animSystem = engine::cache::Registry<AnimationSystem>::Instance().Get("dust");
+			}
+
 			// setup stopwatch to manage timing and start it
 			m_stopwatch.OnLap += engine::event::Handler(this, &TestAnimation::OnLap);
 			m_stopwatch.Start();
+		}
+
+
+		void OnKeyDown(int key)
+		{
+			switch (key)
+			{
+			case 27: // escape
+			{
+
+
+				break;
+			}
+			case 32: // space
+			{
+				//engine::graphics::animation::AnimationSystem<engine::graphics::Sprite>& animSystem = engine::cache::Registry<engine::graphics::animation::AnimationSystem<engine::graphics::Sprite>>::Instance().Get("dust");
+				//engine::graphics::animation::Animated<engine::graphics::Sprite> animated = animSystem.GetAnimated("one");
+				//animated.Destroy();
+
+				break;
+			}
+			case 49: // 1
+			{
+
+
+				break;
+			}
+			case 50: // 2
+			{
+
+				break;
+			}
+			case 51: // 3
+			{
+
+				break;
+			}
+			case 52: // 4
+			{
+				break;
+			}
+			case 53: // 5
+			{
+				
+				break;
+			}
+			case 54: // 6
+			{
+				break;
+			}
+			case 55: // 7
+			{
+				break;
+			}
+			case 56: // 8
+			{
+				break;
+			}
+
+			default:
+				break;
+			}
+		}
+
+
+		void OnEndAnimated(Item& item)
+		{
+
+			for (std::vector<std::unique_ptr<Item>>::iterator it = m_items.begin(); it != m_items.end(); it++)
+			{
+				if ((*it).get() == &item)
+				{
+					item.animated.Destroy();
+					m_items.erase(it);
+					return;
+				}
+			}
+
+			{
+				// if we reach this point, it means the item passed was not erased. it must be invalid. why???
+				AnimationSystem& animSystem = engine::cache::Registry<AnimationSystem>::Instance().Get("dust");
+				size_t n = animSystem.GetAnimationControllerCount();
+				LOG("AnimationControllers: " << std::to_string(n));
+			}
+
+		}
+
+		void OnEndAnimatedItem(AnimatedItem& item)
+		{
+			for (std::vector<std::unique_ptr<AnimatedItem>>::iterator it = m_animatedItems.begin(); it != m_animatedItems.end(); it++)
+			{
+				if ((*it).get() == &item)
+				{
+					m_pendingDestroyAnimatedItems.push_back(it);
+					return;
+				}
+			}
+		}
+
+		void OnMouseDown(int btn, int x, int y)
+		{
+			if(btn == 1)
+			{
+				AnimationSet& set = engine::cache::Registry<AnimationSet>::Instance().Get("dust");
+				m_animatedItems.push_back(std::make_unique<AnimatedItem>(&set, PositionF((float)x, (float)y), std::string("my_item " + std::to_string(m_count))));
+				m_animatedItems.back()->animationController.Play("dust", 3);
+				m_animatedItems.back()->GetEndEvent() += engine::event::Handler(this, &TestAnimation::OnEndAnimatedItem);
+			}
+			else if (btn == 2)
+			{
+				AnimationSystem& animSystem = engine::cache::Registry<AnimationSystem>::Instance().Get("dust");
+
+				// create an empty item first and add into our container
+				m_items.push_back(std::make_unique<Item>());
+
+				// fill it with data including Animated
+				m_items.back()->name = std::string("my_item " + std::to_string(m_count));
+				m_items.back()->pos = PositionF((float)x, (float)y);
+				m_items.back()->animated = animSystem.MakeAnimated();// m_items.back().get());
+				m_items.back()->animated.SetOwner(m_items.back().get());
+
+				// let it play animation once and be destroyed after
+				m_items.back()->animated.GetEndEvent() += engine::event::Handler(this, &TestAnimation::OnEndAnimated);
+				m_items.back()->animated.Play("dust", 1);
+
+				m_count++;
+			}
+		}
+
+		void OnMouseMove(int x, int y)
+		{
 		}
 
 		// this method is fired up whenever the OnLap event is triggered from stopwatch
@@ -140,6 +352,21 @@ namespace test
 			UpdateAnimation("Tree2", time);
 			UpdateAnimation("Tree3", time);
 			UpdateAnimation("Tree4", time);
+
+			//m_animated->Update(time);
+			engine::cache::Registry<AnimationSystem>::Instance().Get("dust").Update(time);
+			engine::cache::Registry<AnimationSystem>::Instance().Get("dust").Flush();
+
+			for (std::vector<std::unique_ptr<AnimatedItem>>::iterator it = m_animatedItems.begin(); it != m_animatedItems.end(); it++)
+			{
+				(*it)->animationController.Update(time);
+			}
+
+			for (auto& it : m_pendingDestroyAnimatedItems)
+			{
+				m_animatedItems.erase(it);
+			}
+			m_pendingDestroyAnimatedItems.clear();
 		}
 
 		// fun stuff. this is called on each loop of the message loop. this is where we draw!
@@ -147,6 +374,8 @@ namespace test
 		{
 			// call lap to get elapsed time and trigger OnLap event
 			m_stopwatch.Lap<engine::timer::milliseconds>();
+
+			m_input.Update();
 
 			// start the canvas. we can draw from here
 			m_canvas->Begin();
@@ -160,6 +389,29 @@ namespace test
 					DrawAnimation("Tree2", { 600.0f, 200.0f });
 					DrawAnimation("Tree3", { 800.0f, 200.0f });
 					DrawAnimation("Tree4", { 1000.0f, 200.0f });
+
+					
+					for (std::vector<std::unique_ptr<AnimatedItem>>::iterator it = m_animatedItems.begin(); it != m_animatedItems.end(); it++)
+					{
+						if (!(*it)->animationController.IsValid()) continue;
+						m_renderer->Draw((*it)->animationController.GetCurrent(), (*it)->pos, (*it)->animationController.GetCurrent().GetSize(), { 1,1,1,1 }, 0.0f);
+					}
+	
+					for (std::vector<std::unique_ptr<Item>>::iterator it = m_items.begin(); it != m_items.end(); it++)
+					{
+						Animated animated = (*it)->animated;
+						PositionF pos = (*it)->pos;
+						if (!animated.IsValid()) continue;
+						m_renderer->Draw(animated.GetCurrent(), pos, animated.GetCurrent().GetSize(), { 1,0.2f,1,1 }, 0.0f);
+					}
+
+					{
+						std::string msg = "AnimatedItems: " + std::to_string(m_animatedItems.size());
+						m_renderer->Draw(*m_FontAtlas, msg, { 600, 5 }, { 1,1,1,1 });
+						msg.clear();
+						msg = "Items: " + std::to_string(m_items.size());
+						m_renderer->Draw(*m_FontAtlas, msg, { 600, 45 }, { 1,1,1,1 });
+					}
 				}
 				m_renderer->End();
 			}

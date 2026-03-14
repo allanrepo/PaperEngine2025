@@ -126,25 +126,25 @@ namespace testFrameRate
 				m_renderer->Begin();
 				{
 					std::string Text = "The application subscribes to scheduler using Lambda, class method, and free function";
-					m_renderer->DrawText(*m_fontAtlas, Text, { 10, 200 }, { 1,1,1,1 });
+					m_renderer->Draw(*m_fontAtlas, Text, { 10, 200 }, { 1,1,1,1 });
 					Text = "FrameRateMonitor for each subscribed listeners are attached, with measure range of 1 second";
-					m_renderer->DrawText(*m_fontAtlas, Text, { 10, 230 }, { 1,1,1,1 });
+					m_renderer->Draw(*m_fontAtlas, Text, { 10, 230 }, { 1,1,1,1 });
 					Text = "FrameRateMonitor is also attached to main loop to monitor main FPS, with measure range of 1 second";
-					m_renderer->DrawText(*m_fontAtlas, Text, { 10, 260 }, { 1,1,1,1 });
+					m_renderer->Draw(*m_fontAtlas, Text, { 10, 260 }, { 1,1,1,1 });
 					Text = "Note: The test class is a singleton so it can provide a static method as a free function";
-					m_renderer->DrawText(*m_fontAtlas, Text, { 10, 290 }, { 1,1,1,1 });
+					m_renderer->Draw(*m_fontAtlas, Text, { 10, 290 }, { 1,1,1,1 });
 
 					std::string fpsText = "FPS: " + std::to_string(static_cast<int>(m_frameRateMonitor4.GetAverageFrameRate()));
-					m_renderer->DrawText(*m_fontAtlas, fpsText, { 10, 330 }, { 1,1,1,1 });
+					m_renderer->Draw(*m_fontAtlas, fpsText, { 10, 330 }, { 1,1,1,1 });
 
 					std::string fpsLambdaText = "FPS(Lambda 1 FPS): " + std::to_string(static_cast<int>(m_frameRateMonitor1.GetAverageFrameRate()));
-					m_renderer->DrawText(*m_fontAtlas, fpsLambdaText, { 10, 360 }, { 1,1,1,1 });
+					m_renderer->Draw(*m_fontAtlas, fpsLambdaText, { 10, 360 }, { 1,1,1,1 });
 
 					std::string fpsMethodText = "FPS(Method 30 FPS): " + std::to_string(static_cast<float>(m_frameRateMonitor2.GetAverageFrameRate()));
-					m_renderer->DrawText(*m_fontAtlas, fpsMethodText, { 10, 390 }, { 1,1,1,1 });
+					m_renderer->Draw(*m_fontAtlas, fpsMethodText, { 10, 390 }, { 1,1,1,1 });
 
 					std::string fpsFuncText = "FPS(Free Function 60 FPS): " + std::to_string(static_cast<float>(m_frameRateMonitor3.GetAverageFrameRate()));
-					m_renderer->DrawText(*m_fontAtlas, fpsFuncText, { 10, 420 }, { 1,1,1,1 });
+					m_renderer->Draw(*m_fontAtlas, fpsFuncText, { 10, 420 }, { 1,1,1,1 });
 				}
 				m_renderer->End();
 			}

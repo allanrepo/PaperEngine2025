@@ -223,8 +223,8 @@ void demo::Demo::RenderTileGridCommand(engine::component::tile::TileGrid<Rendera
 					row * tileSize.height
 				};
 
-				std::unique_ptr<engine::command::graphics::renderer::DrawRenderableCommand> cmd =
-					std::make_unique<engine::command::graphics::renderer::DrawRenderableCommand>(
+				std::unique_ptr<engine::command::graphics::renderer::DrawCommand> cmd =
+					std::make_unique<engine::command::graphics::renderer::DrawCommand>(
 						Engine().Renderer(),
 						tile->GetSprite(),						
 						pos,
@@ -290,7 +290,7 @@ void demo::DemoState::Enter(Demo& owner)
 		for (int i = 0; i < atlas.GetUVRectCount(); i++)
 		{
 			// create animation. these tilemaps are static. so their animations are 1 frame only
-			engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, { i }, 0.1f, true);
+			engine::graphics::animation::Animation<engine::graphics::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, { i }, 0.1f, true);
 
 			// when instancing AnimatedTile, it sets the animation passed in constructor as current animation
 			owner.TileSetManager().Register("576x384TileSet", i, std::make_unique<AnimatedTile>(true, "default", anim));
@@ -304,7 +304,7 @@ void demo::DemoState::Enter(Demo& owner)
 		engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("3072x192TileSet");
 
 		// load all sprite atlas's sprites into animation object
-		engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
+		engine::graphics::animation::Animation<engine::graphics::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
 
 		// create tileset
 		owner.TileSetManager().Create("splashTileset");
@@ -356,8 +356,8 @@ void demo::DemoState::Update(Demo& owner, double delta)
 
 	//engine::graphics::resource::ISpriteAtlas& atlas = cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("576x384TileSet");
 	//{
-	//	std::unique_ptr<engine::command::graphics::renderer::DrawRenderableCommand> drawRenderableCmd =
-	//		std::make_unique<engine::command::graphics::renderer::DrawRenderableCommand>(
+	//	std::unique_ptr<engine::command::graphics::renderer::DrawCommand> DrawCmd =
+	//		std::make_unique<engine::command::graphics::renderer::DrawCommand>(
 	//			owner.Engine().Renderer(),
 	//			atlas,
 	//			spatial::PositionF{ 50.0f, 50.0f },
@@ -365,7 +365,7 @@ void demo::DemoState::Update(Demo& owner, double delta)
 	//			::graphics::ColorF{ 1.0f,1.0f,1.0f,1.0f },
 	//			0.0f
 	//		);
-	//	owner.Engine().CommandQueue().Enqueue(std::move(drawRenderableCmd));
+	//	owner.Engine().CommandQueue().Enqueue(std::move(DrawCmd));
 	//}
 
 
@@ -480,7 +480,7 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 		for (int i = 0; i < atlas.GetUVRectCount(); i++)
 		{
 			// create animation. these tilemaps are static. so their animations are 1 frame only
-			engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, { i }, 0.1f, true);
+			engine::graphics::animation::Animation<engine::graphics::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, { i }, 0.1f, true);
 
 			// when instancing AnimatedTile, it sets the animation passed in constructor as current animation
 			owner.TileSetManager().Register("576x384TileSet", i, std::make_unique<AnimatedTile>(true, "default", anim));
@@ -494,7 +494,7 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 		engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("3072x192TileSet");
 
 		// load all sprite atlas's sprites into animation object
-		engine::graphics::animation::Animation<engine::graphics::renderable::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
+		engine::graphics::animation::Animation<engine::graphics::Sprite> anim = engine::graphics::factory::AnimationFactory::Create(atlas, 0.1f, true);
 
 		// create tileset
 		owner.TileSetManager().Create("splashTileset");

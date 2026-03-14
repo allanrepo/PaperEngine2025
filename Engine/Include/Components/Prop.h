@@ -1,5 +1,5 @@
 #pragma once
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Graphics/Animation/Animation.h>
 #include <Algorithm/Pathfinding.h>
 #include <string>
@@ -11,6 +11,12 @@ namespace engine
 	{
 		namespace graphics
 		{
+			class IProp;
+
+			using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
+			using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite, IProp>;
+			using AnimationFactory = engine::graphics::factory::AnimationFactory;
+
 			// Prop is a visual object, therefore it is tightly coupled with a IRenderable - Sprite
 			// Prop being a visual object, can be animated. Update() and Play() methods provide support for animation 
 			class IProp
@@ -19,7 +25,7 @@ namespace engine
 				virtual void Update(double delta) = 0;
 				virtual void Play(const std::string& key) = 0;
 				virtual bool IsValid() const = 0;
-				virtual const engine::graphics::renderable::Sprite& GetSprite() const = 0;
+				virtual const engine::graphics::Sprite GetSprite() const = 0;
 
 				virtual ~IProp() = default;
 			};
@@ -27,11 +33,11 @@ namespace engine
 			class AnimatedProp : public IProp
 			{
 			private:
-				engine::graphics::animation::AnimationController<engine::graphics::renderable::Sprite> m_animationController;
+				AnimationController m_animationController;
 
 			public:
-				AnimatedProp(engine::graphics::animation::AnimationController<engine::graphics::renderable::Sprite> controller) :
-					m_animationController(controller)
+				AnimatedProp(AnimationSet* set) :
+					m_animationController(set)
 				{
 				}
 
@@ -45,7 +51,7 @@ namespace engine
 					m_animationController.Play(key);
 				}
 
-				const engine::graphics::renderable::Sprite& GetSprite() const override
+				const engine::graphics::Sprite GetSprite() const override
 				{
 					return m_animationController.GetCurrent();
 				}
@@ -59,10 +65,10 @@ namespace engine
 			class SimpleProp : public IProp
 			{
 			private:
-				engine::graphics::renderable::Sprite m_sprite;
+				engine::graphics::Sprite m_sprite;
 
 			public:
-				SimpleProp(const engine::graphics::renderable::Sprite& sprite) :
+				SimpleProp(const engine::graphics::Sprite& sprite) :
 					m_sprite(sprite)
 				{
 				}
@@ -75,7 +81,7 @@ namespace engine
 				{
 				}
 
-				const engine::graphics::renderable::Sprite& GetSprite() const override
+				const engine::graphics::Sprite GetSprite() const override
 				{
 					return m_sprite;
 				}
@@ -113,7 +119,7 @@ namespace engine
 					return m_handle.IsValid();
 				}
 
-				inline const engine::graphics::renderable::Sprite& GetSprite() const
+				inline const engine::graphics::Sprite GetSprite() const
 				{
 					return m_handle->GetSprite();
 				}

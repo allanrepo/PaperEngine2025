@@ -35,7 +35,14 @@ namespace engine
 			friend Vector operator * (T scalar, Vector rhs) { return rhs *= scalar; }
 			friend Vector operator / (Vector lhs, T scalar) { return lhs /= scalar; }
 
+			// TODO: test this
+			// unary minus operator. negates the vector
 			Vector operator-() const { return Vector(-x, -y); }
+
+			// TODO: test this
+			// comparison operators 
+			bool operator == (const Vector& rhs) const { return x == rhs.x && y == rhs.y; }
+			bool operator != (const Vector& rhs) const { return !(*this == rhs); }
 
 			// Vector operations
 			float Magnitude() const

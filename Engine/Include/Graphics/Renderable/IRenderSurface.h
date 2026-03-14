@@ -1,14 +1,14 @@
 #pragma once
-#include <Graphics/Renderable/IRenderable.h>
 #include <Spatial/ISizeable.h>
+#include <Graphics/Core/Sprite.h>
 
 namespace engine::graphics::renderable
 {
-	class IDrawableSurface: public engine::graphics::renderable::IRenderable, public spatial::ISizeable<float>
+	class IRenderSurface: public spatial::ISizeable<float>
 	{
 	protected:
 	public:
-		virtual ~IDrawableSurface() = default;
+		virtual ~IRenderSurface() = default;
 		virtual bool Initialize(unsigned int width, unsigned int height) = 0;
 
 		virtual void Reset() = 0;
@@ -17,6 +17,9 @@ namespace engine::graphics::renderable
 		virtual void Begin() = 0;
 		virtual void Clear(float red, float green, float blue, float alpha) = 0;
 		virtual void End() = 0;
+
+		virtual const engine::graphics::Sprite GetSprite() const = 0;
+		virtual bool IsValid() const = 0;
 	};
 }
 

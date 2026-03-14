@@ -60,6 +60,29 @@ public:
 		window->OnCreate += event::Handler(this, &TestRendererVisualComparison::OnWindowCreate);
 		window->OnSize += event::Handler(this, &TestRendererVisualComparison::OnWindowSize);
 		window->Create(L"Test Bedding", 1400, 900);
+
+		
+			//// let's draw something in our drawable texture. rendering like this in main loop is bad. but we're testing...
+			//surface->Begin();
+			//surface->Clear(1, 1, 1, 1);
+			//{
+			//	std::unique_ptr<graphics::renderer::IRenderer> localRenderer = graphics::factory::RendererFactory::Create("Immediate");
+			//	localRenderer->Initialize();
+
+			//	// let's begin drawing stuff in the texture
+			//	localRenderer->Begin();
+			//	{
+			//		localRenderer->Draw(10.0f, 10.0f, 80.0f, 80.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0); // Draw a rectangle to the texture
+			//		localRenderer->Draw(50.0f, 40.0f, 120.0f, 80.0f, 0.0f, 1.0f, 0.0f, 0.5f, 0); // Draw a rectangle to the texture
+			//		localRenderer->Draw(70.0f, 50.0f, 80.0f, 100.0f, 1.0f, 0.0f, 0.0f, 0.5f, 0); // Draw a rectangle to the texture
+
+			//		localRenderer->Draw(5.0f, 155.0f, 40.0f, 40.0f, 1.0f, 1.0f, 0.0f, 0.5f, 0); // Draw a rectangle to the texture
+			//		localRenderer->DrawText(fontAtlasRoman, "Hello", 0.0f, 150.0f, 1, 0, 0, 1);
+			//		localRenderer->Draw(20.0f, 160.0f, 80.0f, 30.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0); // Draw a rectangle to the texture
+			//	}
+			//	localRenderer->End();
+			//}
+			//surface->End();
 	}
 
 	// fun stuff. this is called on each loop of the message loop. this is where we draw!

@@ -1,5 +1,5 @@
 #pragma once
-#include <Graphics/Renderable/IDrawableSurface.h>
+#include <Graphics/Renderable/IRenderSurface.h>
 #include <memory>
 
 // forward declare
@@ -17,18 +17,18 @@ namespace engine
 
 namespace engine::graphics::renderable
 {
-	class DrawableSurface: public engine::graphics::renderable::IDrawableSurface
+	class RenderSurface: public engine::graphics::renderable::IRenderSurface
 	{
 	private:
-		std::shared_ptr<engine::graphics::resource::ITexture> texture;
+		std::unique_ptr<engine::graphics::resource::ITexture> m_texture;
 
 	public:
-		DrawableSurface(std::unique_ptr<engine::graphics::resource::ITexture> tex);
-		virtual ~DrawableSurface() = default;
+		RenderSurface(std::unique_ptr<engine::graphics::resource::ITexture> texture);
+		virtual ~RenderSurface() = default;
 
 		// cannot be copied
-		DrawableSurface(const DrawableSurface&) = delete;
-		DrawableSurface& operator=(const DrawableSurface&) = delete;
+		RenderSurface(const RenderSurface&) = delete;
+		RenderSurface& operator=(const RenderSurface&) = delete;
 
 		// initialize methods
 		virtual bool Initialize(
@@ -48,11 +48,9 @@ namespace engine::graphics::renderable
 		virtual spatial::SizeF GetSize() const override final;
 
 		// IRenderable methods implementation
-		virtual engine::math::geometry::RectF GetUVRect() const override final;
-		virtual void Bind() const override final;
-		virtual bool CanBind() const override final;
-		void SetAnchor(const engine::spatial::PositionF& pos) override final;
-		engine::spatial::PositionF GetAnchor() const override final;
+		const engine::graphics::Sprite GetSprite() const override final;
+		bool IsValid() const override final;
+
 	};
 }
 

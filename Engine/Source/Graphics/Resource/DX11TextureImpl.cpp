@@ -246,4 +246,12 @@ bool engine::graphics::dx11::resource::DX11TextureImpl::SaveToFile(const wchar_t
 	}
 	return true;
 }
+bool engine::graphics::dx11::resource::DX11TextureImpl::IsValid()
+{
+	// A texture is valid if the core texture exists and has a nonzero size
+	return texture != nullptr
+		&& shaderResourceView != nullptr
+		&& textureDesc.Width > 0
+		&& textureDesc.Height > 0;
+}
 #pragma endregion

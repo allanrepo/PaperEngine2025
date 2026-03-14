@@ -22,7 +22,7 @@
 #include <Win32/Window.h>
 #include <Performance/FrameRateMonitor.h>
 #include <Timer/FrameRateController.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Job/IJob.h>
 #include <Job/Job.h>
 #include <memory>
@@ -146,7 +146,7 @@ namespace engine
 		{
 			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::DrawQuadCommand>(*m_renderer, pos, size, color, rot));
 		}
-		void QueueDrawSpriteCommand(::engine::graphics::renderable::Sprite sprite, engine::spatial::PositionF pos, spatial::SizeF size, ::engine::graphics::ColorF color, float rot)
+		void QueueDrawSpriteCommand(::engine::graphics::Sprite sprite, engine::spatial::PositionF pos, spatial::SizeF size, ::engine::graphics::ColorF color, float rot)
 		{
 			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::DrawSpriteCommand>(*m_renderer, sprite, pos, size, color, rot));
 		}

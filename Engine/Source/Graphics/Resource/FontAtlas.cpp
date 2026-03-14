@@ -63,7 +63,7 @@ bool engine::graphics::resource::FontAtlas::Initialize(const string& fontName, c
 	return true;
 }
 
-engine::graphics::renderable::Sprite engine::graphics::resource::FontAtlas::GetGlyph(const unsigned char character) const
+engine::graphics::Sprite engine::graphics::resource::FontAtlas::GetGlyph(const unsigned char character) const
 {
 	if (character < 32 || character > 127)
 	{
@@ -74,7 +74,7 @@ engine::graphics::renderable::Sprite engine::graphics::resource::FontAtlas::GetG
 	return m_glyphs[character - 32];
 }
 
-engine::graphics::renderable::Sprite engine::graphics::resource::FontAtlas::GetSprite() const
+engine::graphics::Sprite engine::graphics::resource::FontAtlas::GetSprite() const
 {
 	return m_spriteAtlas->GetSprite();
 }

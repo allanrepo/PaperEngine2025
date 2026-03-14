@@ -12,7 +12,7 @@
 #include <Graphics/Renderer/Renderer.h>
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Core/Input.h>
 #include <Graphics/Resource/IFontAtlas.h>
 #include <Graphics/Resource/FontAtlas.h>
@@ -26,7 +26,6 @@
 #include <Engine/Graphics/Draw.h>
 #include <Engine/Factory/AnimationFactory.h>
 #include "Actor.h"
-#include <Graphics/Renderable/IRenderable.h>
 #include <Core/View.h>
 #include <Containers/Dictionary.h>
 #include <Algorithm/Resolvers.h>
@@ -42,7 +41,7 @@ namespace engine
 		public:
 			struct DrawInfo
 			{
-				Sprite sprite;						// what to draw
+				engine::graphics::Sprite sprite;						// what to draw
 				engine::spatial::PositionF pos;		// world position
 				engine::spatial::SizeF size;		// size on screen
 				engine::graphics::ColorF tint;		// color modulation
@@ -74,7 +73,7 @@ namespace engine
 
 				for (auto& cmd : m_batch)
 				{
-					m_renderer.DrawRenderable(cmd.sprite, cmd.pos, cmd.size, cmd.tint, cmd.rotation);
+					m_renderer.Draw(cmd.sprite, cmd.pos, cmd.size, cmd.tint, cmd.rotation);
 				}
 			}
 
@@ -109,7 +108,7 @@ namespace engine
 
 		struct DrawCommand
 		{
-			Sprite sprite;              // what to draw
+			engine::graphics::Sprite sprite;              // what to draw
 			engine::spatial::PositionF pos;    // world position
 			engine::spatial::SizeF size;       // size on screen
 			engine::graphics::ColorF tint;     // color modulation
@@ -150,7 +149,7 @@ namespace engine
 			{
 				for (auto& cmd : m_commands)
 				{
-					renderer.DrawRenderable(cmd.sprite, cmd.pos, cmd.size, cmd.tint, cmd.rotation);
+					renderer.Draw(cmd.sprite, cmd.pos, cmd.size, cmd.tint, cmd.rotation);
 				}
 			}
 
@@ -196,18 +195,146 @@ namespace engine
 			}
 		}
 
-		class PropMap
+
+		class ILogic
+		{
+		public:
+			virtual const engine::graphics::Sprite GetSprite() const = 0;
+			virtual bool IsValid() const = 0;
+			virtual engine::navigation::tile::TileConstraint GetConstraint() const = 0;
+			virtual void Append(engine::navigation::tile::TileConstraint constraint) = 0;
+			virtual void Set(engine::navigation::tile::TileConstraint constraint) = 0;
+		};
+
+		class Logic : public ILogic
 		{
 		private:
-			engine::container::Grid<engine::component::graphics::PropTile> m_grid;
+			engine::graphics::Sprite m_sprite;
+			engine::navigation::tile::TileConstraint m_constraint;
 
 		public:
-			PropMap(size_t width = 0) :
-				m_grid(width)
+			Logic(const engine::graphics::Sprite& sprite, const engine::navigation::tile::TileConstraint constraint) :
+				m_sprite(sprite),
+				m_constraint(constraint)
 			{
 			}
 
-			void Initialize(size_t width, size_t height)
+			engine::navigation::tile::TileConstraint GetConstraint() const
+			{
+				return m_constraint;
+			}
+
+			const engine::graphics::Sprite GetSprite() const override
+			{
+				return m_sprite;
+			}
+
+			bool IsValid() const override
+			{
+				return m_sprite.IsValid();
+			}
+
+			virtual void Append(engine::navigation::tile::TileConstraint constraint) override
+			{
+				m_constraint |= constraint;
+			}
+
+			virtual void Set(engine::navigation::tile::TileConstraint constraint) override
+			{
+				m_constraint = constraint;
+			}
+
+
+		};
+
+		class LogicHandle : public ILogic
+		{
+		private:
+			core::Handle<ILogic> m_handle;
+
+		public:
+			// use this constructor if you have the sprite atlas and the source rect
+			LogicHandle(ILogic* logic) :
+				m_handle(logic)
+			{
+			}
+
+			LogicHandle() :
+				m_handle(nullptr)
+			{
+			}
+
+		public:
+			~LogicHandle() = default;
+
+			bool IsValid() const override final
+			{
+				return m_handle.IsValid();
+			}
+
+			const engine::graphics::Sprite GetSprite() const  override final
+			{
+				return m_handle->GetSprite();
+			}
+
+			engine::navigation::tile::TileConstraint GetConstraint() const
+			{
+				return m_handle->GetConstraint();
+			}
+
+			virtual void Append(engine::navigation::tile::TileConstraint constraint) 
+			{
+				m_handle->Append(constraint);
+			}
+			virtual void Set(engine::navigation::tile::TileConstraint constraint)
+			{
+				m_handle->Set(constraint);
+			}
+		};
+
+
+		class LogicSet: public engine::component::tile::Tileset<LogicHandle, engine::navigation::tile::TileConstraint>
+		{
+		protected:
+		public:
+			LogicSet() = default;
+			~LogicSet() = default;
+		};
+
+
+		class ConstraintMap
+		{
+		private:
+			engine::container::Grid<engine::navigation::tile::TileConstraint> m_grid;
+			engine::navigation::tile::PathFinder m_pathFinder;
+
+		public:
+			ConstraintMap(size_t width = 0) :
+				m_grid(width),
+				m_pathFinder(
+					std::make_unique<engine::navigation::tile::TileNavigationResolver>(
+						[this](int row, int col) -> engine::navigation::tile::TileConstraint
+						{
+							return m_grid.Get(row, col);
+						}),
+					true
+				)
+			{
+			}
+
+			bool FindPath(const engine::spatial::Coord& start, const engine::spatial::Coord& end, std::vector<engine::spatial::Coord>& path)
+			{
+				math::geometry::Rect<int> map = { 0, 0, (int)m_grid.GetWidth(), (int)m_grid.GetHeight() };
+
+				return m_pathFinder.FindPath(
+					map,
+					start,
+					end,
+					path
+				);
+			}
+
+			void Initialize(size_t width, size_t height, engine::navigation::tile::TileConstraint constraint)
 			{
 				m_grid.Clear();
 				m_grid.SetWidth(width);
@@ -215,24 +342,41 @@ namespace engine
 
 				for (size_t i = 0; i < width * height; ++i)
 				{
-					m_grid.Add(engine::component::graphics::PropTile{});
+					m_grid.Add(constraint);
 				}
 			}
 
-			void Initialize(engine::spatial::Size<size_t> size)
+			void Initialize(engine::spatial::Size<size_t> size, engine::navigation::tile::TileConstraint constraint)
 			{
-				Initialize(size.width, size.height);
+				Initialize(size.width, size.height, constraint);
 			}
 
-			void Clear()
+			void Set(engine::navigation::tile::TileConstraint constraint)
 			{
-				for (int i = 0; i < m_grid.GetElementCount(); i++)
+				for (int row = 0; row < m_grid.GetHeight(); row++)
 				{
-					engine::component::graphics::PropTile& tile = m_grid.Get(i);
-					tile.Clear();
+					for (int col = 0; col < m_grid.GetWidth(); col++)
+					{
+						m_grid.Set(row, col, constraint);
+					}
 				}
 			}
 
+			engine::navigation::tile::TileConstraint Get(int row, int col)
+			{
+				return m_grid.Get(row, col);
+			}
+
+			void Set(int row, int col, engine::navigation::tile::TileConstraint constraint)
+			{
+				m_grid.Set(row, col, constraint);
+			}
+
+			void Set(const engine::spatial::Coord& coord, engine::navigation::tile::TileConstraint constraint)
+			{
+				m_grid.Set(coord, constraint);
+
+			}
 			bool IsInBounds(int row, int col) const
 			{
 				return m_grid.IsInBounds(row, col);
@@ -243,172 +387,199 @@ namespace engine
 				return m_grid.IsInBounds(coord);
 			}
 
-			void Set(int row, int col, engine::navigation::tile::TileConstraint constraint, const engine::component::graphics::PropHandle& prop)
+			void Append(int row, int col, engine::navigation::tile::TileConstraint constraint)
 			{
-				m_grid.Get(row, col).Set(constraint, prop);
+				m_grid.Set(row, col, m_grid.Get(row, col) | constraint);
 			}
 
-			void Remove(int row, int col, engine::navigation::tile::TileConstraint constraint)
+			void Append(const engine::spatial::Coord& coord, engine::navigation::tile::TileConstraint constraint)
 			{
-				m_grid.Get(row, col).Remove(constraint);
+				m_grid.Set(coord, m_grid.Get(coord) | constraint);
 			}
 
-			bool Has(int row, int col, engine::navigation::tile::TileConstraint constraint) const
+			bool HasFlag(int row, int col, engine::navigation::tile::TileConstraint constraint)
 			{
-				return m_grid.Get(row, col).Has(constraint);
-
+				return (m_grid.Get(row, col) | constraint) != engine::navigation::tile::TileConstraint::NONE;
 			}
 
-			void Clear(int row, int col)
+			engine::spatial::Size<size_t> GetSize() const
 			{
-				m_grid.Get(row, col).Clear();
-			}
-
-			void Clear(const engine::spatial::Coord& coord)
-			{
-				m_grid.Get(coord).Clear();
-			}
-
-			void Queue(
-				DrawQueue& queue,
-				int row, int col,
-				const engine::spatial::SizeF& tilesize,
-				const engine::spatial::PositionF& pos,
-				float depth,
-				const math::VecF& offset = { 0,0 },
-				const engine::graphics::ColorF& tint = { 1,1,1,1 }
-			)
-			{
-				// prop map decides where in the tile the props should be drawn based on the constraints assigned to the props. 
-				// for example, if a prop has CENTER constraint, it will be drawn at the center of the tile. 
-				// if it has NW constraint, it will be drawn at the north-west corner of the tile, and so on. 
-				// if a prop has no constraint, it will be drawn at the top-left corner of the tile by default.
-				if (!m_grid.IsInBounds(row, col)) return;
-
-				engine::component::graphics::PropTile proptile = m_grid.Get(row, col);
-
-				if (proptile.Has(engine::navigation::tile::TileConstraint::CENTER))
-				{
-					const Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::CENTER).GetSprite();
-
-					// translate position so that the prop's anchor is at the center of the tile
-					engine::spatial::PositionF translated = pos;
-					translated.x += tilesize.width / 2.0f;
-					translated.y += tilesize.height / 2.0f;
-
-					// get the top-left position of this tile in world (tilemap) coordinate.
-					engine::spatial::PositionF origin
-					{
-						col * tilesize.width,
-						row * tilesize.height
-					};
-
-					queue.Add({
-						sprite,
-						translated + origin,   // world (tilemap)
-						sprite.GetSize(),
-						tint,
-						0.0f,
-						depth
-						});
-				}
-
-				if (proptile.Has(engine::navigation::tile::TileConstraint::NW))
-				{
-					const Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::NW).GetSprite();
-
-					// no need to translate position since the prop's anchor is already at north-west corner of the tile
-
-					// get the top-left position of this tile in world (tilemap) coordinate.
-					engine::spatial::PositionF origin
-					{
-						col * tilesize.width,
-						row * tilesize.height
-					};
-
-					queue.Add({
-						sprite,
-						pos + origin,   // world position
-						sprite.GetSize(),
-						tint,
-						0.0f,
-						depth
-						});
-				}
-
-				if (proptile.Has(engine::navigation::tile::TileConstraint::NE))
-				{
-					const Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::NE).GetSprite();
-
-					// translate position so that prop's anchor is at north-east corner of the tile
-					engine::spatial::PositionF translated = pos;
-					translated.x += tilesize.width;
-
-					// get the top-left position of this tile in world (tilemap) coordinate.
-					engine::spatial::PositionF origin
-					{
-						col * tilesize.width,
-						row * tilesize.height
-					};
-					queue.Add({
-						sprite,
-						translated + origin,   // world (tilemap)
-						sprite.GetSize(),
-						tint,
-						0.0f,
-						depth
-						});
-				}
-
-				if (proptile.Has(engine::navigation::tile::TileConstraint::SW))
-				{
-					const Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::SW).GetSprite();
-
-					// translate position so that prop's anchor is at south-west corner of the tile
-					engine::spatial::PositionF translated = pos;
-					translated.y += tilesize.height;
-
-					// get the top-left position of this tile in world (tilemap) coordinate.
-					engine::spatial::PositionF origin
-					{
-						col * tilesize.width,
-						row * tilesize.height
-					};
-					queue.Add({
-						sprite,
-						translated + origin,   // world (tilemap)
-						sprite.GetSize(),
-						tint,
-						0.0f,
-						depth
-						});
-				}
-
-				if (proptile.Has(engine::navigation::tile::TileConstraint::SE))
-				{
-					const Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::SE).GetSprite();
-					// translate position so that prop's anchor is at south-east corner of the tile
-					engine::spatial::PositionF translated = pos;
-					translated.x += tilesize.width;
-					translated.y += tilesize.height;
-
-					// get the top-left position of this tile in world (tilemap) coordinate.
-					engine::spatial::PositionF origin
-					{
-						col * tilesize.width,
-						row * tilesize.height
-					};
-					queue.Add({
-						sprite,
-						translated + origin,   // world (tilemap)
-						sprite.GetSize(),
-						tint,
-						0.0f,
-						depth
-						});
-				}
+				return m_grid.GetSize();
 			}
 		};
+
+		void Queue(
+			DrawQueue& queue,
+			const engine::spatial::Coord& coord,
+			const engine::spatial::SizeF& tilesize,
+			const engine::spatial::PositionF& pos,
+			const engine::graphics::Sprite sprite,
+			const engine::graphics::ColorF& tint = { 1,1,1,1 }
+		)
+		{
+			engine::spatial::PositionF origin =
+			{
+				coord.col * tilesize.width,
+				coord.row * tilesize.height
+			};
+			queue.Add({ sprite, pos + origin, tilesize, tint, 0.0f,	69 });
+		}
+
+		void Queue(
+			ConstraintMap& map,
+			DrawQueue& queue,
+			const engine::graphics::resource::ISpriteAtlas& atlas,
+			const engine::spatial::SizeF& tilesize,
+			const engine::spatial::PositionF& pos,
+			float depth,
+			const engine::graphics::ColorF& tint = { 1,1,1,1 }
+		)
+		{
+			engine::spatial::Size<size_t> size = map.GetSize();
+
+			for (int row = 0; row < size.height; row++)
+			{
+				for (int col = 0; col < size.width; col++)
+				{
+					//if (!map.IsInBounds(row, col)) continue;
+
+					engine::navigation::tile::TileConstraint constraint = map.Get(row, col);
+
+
+					engine::spatial::PositionF origin =
+					{
+						col * tilesize.width,
+						row * tilesize.height
+					};
+
+					if (constraint == engine::navigation::tile::TileConstraint::NONE)
+					{
+						continue;
+					}
+
+					// if constraint is block, set block tile and bail. 
+					if ((constraint & engine::navigation::tile::TileConstraint::BLOCKED) == engine::navigation::tile::TileConstraint::BLOCKED)
+					{
+						//queue.Add({atlas.MakeSprite(4), pos + origin, tilesize, tint, 0.0f,	depth});
+						continue;
+					}
+
+					engine::navigation::tile::TileConstraint queued = engine::navigation::tile::TileConstraint::NONE;
+
+					bool drawCenterIfNeeded = true;
+					if ((constraint & engine::navigation::tile::TileConstraint::SE_HALFTRI) == engine::navigation::tile::TileConstraint::SE_HALFTRI)
+					{
+						queue.Add({ atlas.MakeSprite(8), pos + origin, tilesize, tint, 0.0f,	depth });
+						queued |= engine::navigation::tile::TileConstraint::SE_HALFTRI;
+						drawCenterIfNeeded = false;
+					}
+
+					if ((constraint & engine::navigation::tile::TileConstraint::SW_HALFTRI) == engine::navigation::tile::TileConstraint::SW_HALFTRI)
+					{
+						queue.Add({ atlas.MakeSprite(9), pos + origin, tilesize, tint, 0.0f,	depth });
+						queued |= engine::navigation::tile::TileConstraint::SW_HALFTRI;
+						drawCenterIfNeeded = false;
+					}
+
+					if ((constraint & engine::navigation::tile::TileConstraint::NE_HALFTRI) == engine::navigation::tile::TileConstraint::NE_HALFTRI)
+					{
+						queue.Add({ atlas.MakeSprite(10), pos + origin, tilesize, tint, 0.0f,	depth });
+						queued |= engine::navigation::tile::TileConstraint::NE_HALFTRI;
+						drawCenterIfNeeded = false;
+					}
+
+					if ((constraint & engine::navigation::tile::TileConstraint::NW_HALFTRI) == engine::navigation::tile::TileConstraint::NW_HALFTRI)
+					{
+						queue.Add({ atlas.MakeSprite(11), pos + origin, tilesize, tint, 0.0f,	depth });
+						queued |= engine::navigation::tile::TileConstraint::NW_HALFTRI;
+						drawCenterIfNeeded = false;
+					}
+
+					// if west wall is blocked
+					if ((constraint & engine::navigation::tile::TileConstraint::W_WALL) == engine::navigation::tile::TileConstraint::W_WALL)
+					{
+						if ((queued & engine::navigation::tile::TileConstraint::W_WALL) != engine::navigation::tile::TileConstraint::W_WALL)
+						{
+							queue.Add({ atlas.MakeSprite(12), pos + origin, tilesize, tint, 0.0f,	depth });
+							queued |= engine::navigation::tile::TileConstraint::W_WALL;
+						}
+					}
+					// if south wall is blocked
+					if ((constraint & engine::navigation::tile::TileConstraint::S_WALL) == engine::navigation::tile::TileConstraint::S_WALL)
+					{
+						if ((queued & engine::navigation::tile::TileConstraint::S_WALL) != engine::navigation::tile::TileConstraint::S_WALL)
+						{
+							queue.Add({ atlas.MakeSprite(13), pos + origin, tilesize, tint, 0.0f,	depth });
+							queued |= engine::navigation::tile::TileConstraint::S_WALL;
+						}
+					}
+					// if east wall is blocked
+					if ((constraint & engine::navigation::tile::TileConstraint::E_WALL) == engine::navigation::tile::TileConstraint::E_WALL)
+					{
+						if ((queued & engine::navigation::tile::TileConstraint::E_WALL) != engine::navigation::tile::TileConstraint::E_WALL)
+						{
+							queue.Add({ atlas.MakeSprite(14), pos + origin, tilesize, tint, 0.0f,	depth });
+							queued |= engine::navigation::tile::TileConstraint::E_WALL;
+						}
+					}
+					// if north wall is blocked
+					if ((constraint & engine::navigation::tile::TileConstraint::N_WALL) == engine::navigation::tile::TileConstraint::N_WALL)
+					{
+						if ((queued & engine::navigation::tile::TileConstraint::N_WALL) != engine::navigation::tile::TileConstraint::N_WALL)
+						{
+							queue.Add({ atlas.MakeSprite(15), pos + origin, tilesize, tint, 0.0f,	depth });
+							queued |= engine::navigation::tile::TileConstraint::N_WALL;
+						}
+					}
+
+					if ((constraint & engine::navigation::tile::TileConstraint::NW) == engine::navigation::tile::TileConstraint::NW)
+					{
+						if ((queued & engine::navigation::tile::TileConstraint::NW) != engine::navigation::tile::TileConstraint::NW)
+						{
+							queue.Add({ atlas.MakeSprite(16), pos + origin, tilesize, tint, 0.0f,	depth });
+							queued |= engine::navigation::tile::TileConstraint::NW;
+						}
+					}
+
+					if ((constraint & engine::navigation::tile::TileConstraint::SW) == engine::navigation::tile::TileConstraint::SW)
+					{
+						if ((queued & engine::navigation::tile::TileConstraint::SW) != engine::navigation::tile::TileConstraint::SW)
+						{
+							queue.Add({ atlas.MakeSprite(17), pos + origin, tilesize, tint, 0.0f,	depth });
+							queued |= engine::navigation::tile::TileConstraint::SW;
+						}
+					}
+
+					if ((constraint & engine::navigation::tile::TileConstraint::SE) == engine::navigation::tile::TileConstraint::SE)
+					{
+						if ((queued & engine::navigation::tile::TileConstraint::SE) != engine::navigation::tile::TileConstraint::SE)
+						{
+							queue.Add({ atlas.MakeSprite(18), pos + origin, tilesize, tint, 0.0f,	depth });
+							queued |= engine::navigation::tile::TileConstraint::SE;
+						}
+					}
+
+					if ((constraint & engine::navigation::tile::TileConstraint::NE) == engine::navigation::tile::TileConstraint::NE)
+					{
+						if ((queued & engine::navigation::tile::TileConstraint::NE) != engine::navigation::tile::TileConstraint::NE)
+						{
+							queue.Add({ atlas.MakeSprite(19), pos + origin, tilesize, tint, 0.0f,	depth });
+							queued |= engine::navigation::tile::TileConstraint::NE;
+						}
+					}
+
+					if ((constraint & engine::navigation::tile::TileConstraint::CENTER) == engine::navigation::tile::TileConstraint::CENTER && drawCenterIfNeeded)
+					{
+						queue.Add({ atlas.MakeSprite(20), pos + origin, tilesize, tint, 0.0f,	depth });
+						queued |= engine::navigation::tile::TileConstraint::CENTER;
+					}
+
+				}
+			}
+
+		}
+
+
 	}
 }
 
@@ -453,13 +624,13 @@ namespace TestTree
 	class AnimatedTile
 	{
 	private:
-		engine::graphics::animation::Animator<engine::graphics::renderable::Sprite> m_animator;
-		std::unordered_map<std::string, engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>> m_animations;
+		engine::graphics::animation::Animator<engine::graphics::Sprite> m_animator;
+		std::unordered_map<std::string, engine::graphics::animation::Animation<engine::graphics::Sprite>> m_animations;
 		bool m_walkable;
 		int m_index;
 
 	public:
-		AnimatedTile(bool walkable, const std::string& name, const engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>& anim, int index) :
+		AnimatedTile(bool walkable, const std::string& name, const engine::graphics::animation::Animation<engine::graphics::Sprite>& anim, int index) :
 			m_walkable(walkable),
 			m_index(index)
 
@@ -476,7 +647,7 @@ namespace TestTree
 			return m_animator.IsRunning();
 		}
 
-		const engine::graphics::renderable::Sprite& GetSprite() const
+		const engine::graphics::Sprite& GetSprite() const
 		{
 			return m_animator.GetCurrent();
 		}
@@ -495,12 +666,12 @@ namespace TestTree
 	class RenderableTile
 	{
 	private:
-		Sprite m_sprite;
+		engine::graphics::Sprite m_sprite;
 		bool m_walkable;
 		int m_index;
 
 	public:
-		RenderableTile(const Sprite& sprite, bool walkable, int index) :
+		RenderableTile(const engine::graphics::Sprite& sprite, bool walkable, int index) :
 			m_sprite(sprite),
 			m_walkable(walkable),
 			m_index(index)
@@ -512,7 +683,7 @@ namespace TestTree
 			return m_index;
 		}
 
-		const Sprite& GetSprite() const
+		const engine::graphics::Sprite& GetSprite() const
 		{
 			return m_sprite;
 		}
@@ -522,15 +693,6 @@ namespace TestTree
 			return m_walkable;
 		}
 	};
-
-	class RenderableTileMap : public engine::component::tile::TileGrid<engine::component::graphics::PropHandle>
-	{
-	private:
-	public:
-
-	};
-
-
 
 	class Test
 	{
@@ -551,14 +713,19 @@ namespace TestTree
 
 		bool m_toggle;
 
-		std::vector<engine::graphics::animation::Animator<Sprite>> m_animators;
+		std::vector<engine::graphics::animation::Animator<engine::graphics::Sprite>> m_animators;
 
 		DrawQueue m_drawQueue;
 
 
+		engine::spatial::Coord m_startTile;
+		engine::spatial::Coord m_endTile;
+		std::vector<engine::spatial::Coord> m_path;
+
 	public:
 		Test() :
 			m_toggle(false)
+
 		{
 			Window::OnInitialize += Handler(this, &Test::OnInitialize);
 			Window::OnExit += Handler(this, &Test::OnExit);
@@ -606,228 +773,22 @@ namespace TestTree
 				Registry<PositionF>::Instance().Register("depth", make_unique<PositionF>(0.0f, 64.0f));
 			}
 
-			// create storages
+			// create resources
 			{
-
-				Registry<engine::component::graphics::PropSet>::Instance().Register("props", make_unique<engine::component::graphics::PropSet>()); // prop storage				
-				Registry<engine::graphics::animation::AnimationSet<Sprite>>::Instance().Register("props", make_unique<engine::graphics::animation::AnimationSet<Sprite>>()); // animation storage
+				// sprite atlases
+				SpriteAtlasFactory::Create("logic_tile", L"../Assets/12x2_384x64_tile1.png", 2, 12); // logic tile
 			}
 
-			// create sprite atlases
 			{
-				SpriteAtlasFactory::Create("tile", L"../Assets/576x384px_6x9tile_TileMap.png", 6, 9); // tile
-				SpriteAtlasFactory::Create("tree", L"../Assets/tree_1x8_1536x192.png", 1, 8); // tree
-				SpriteAtlasFactory::Create("pine_tree", L"../Assets/tree_1x8_1536x256.png", 1, 8); // pine tree
-			}
-
-			// setup resources for tree prop
-			{
-				// create animation objects and store in animation set
-				ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("tree");
-				engine::graphics::animation::AnimationSet<Sprite>& animset = Registry<engine::graphics::animation::AnimationSet<Sprite>>::Instance().Get("props");
-				animset.Register("storm", AnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 25.0f, true, PositionF{ 0.5f, 0.85f }));
-				animset.Register("idle", AnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 200.0f, true, PositionF{ 0.5f, 0.85f }));
-				animset.Register("frozen", AnimationFactory::Create(atlas, std::vector<int>{ 0 }, 1000.0f, true, PositionF{ 0.5f, 0.85f }));
-			}
-
-			// setup tree prop
-			{
-				// get our storage for easy access
-				AnimationSet<Sprite>& animset = Registry<AnimationSet<Sprite>>::Instance().Get("props");
-				engine::component::graphics::PropSet& props = Registry<engine::component::graphics::PropSet>::Instance().Get("props");
-				ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("tree");
-
-				// create prop object and assign animation set for trees. build 3 of them as animated, and 1 as simple
-				props.Register(0, std::make_unique<engine::component::graphics::AnimatedProp>(animset.MakeAnimationController()));
-				props.Register(1, std::make_unique<engine::component::graphics::AnimatedProp>(animset.MakeAnimationController()));
-				props.Register(2, std::make_unique<engine::component::graphics::AnimatedProp>(animset.MakeAnimationController()));
-				props.Register(3, std::make_unique<engine::component::graphics::SimpleProp>(atlas.MakeSprite(0, PositionF{ 0.5f, 0.85f })));
-
-				// for the 3 animated props, play different animations
-				props.MakePropHandle(0).Play("idle");
-				props.MakePropHandle(1).Play("storm");
-				props.MakePropHandle(2).Play("frozen");
-			}
-
-			// setup wall prop
-			{
-				engine::component::graphics::PropSet& props = Registry<engine::component::graphics::PropSet>::Instance().Get("props");
-				ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("tile");
-				props.Register(10, std::make_unique<engine::component::graphics::SimpleProp>(atlas.MakeSprite(41, PositionF{ 0.0f, 1.0f }))); // left corner wall
-				props.Register(11, std::make_unique<engine::component::graphics::SimpleProp>(atlas.MakeSprite(42, PositionF{ 0.0f, 1.0f }))); // center wall
-				props.Register(12, std::make_unique<engine::component::graphics::SimpleProp>(atlas.MakeSprite(43, PositionF{ 0.0f, 1.0f }))); // right corner wall
-				props.Register(13, std::make_unique<engine::component::graphics::SimpleProp>(atlas.MakeSprite(44, PositionF{ 0.0f, 1.0f }))); // island wall
-			}
-
-			// create propmap
-			{
-				Registry<PropMap>::Instance().Register("prop_map", make_unique<PropMap>());
-				PropMap& map = Registry<PropMap>::Instance().Get("prop_map");
-				map.Initialize(Registry<Size<size_t>>::Instance().Get("map_size"));
-			}
-
-			// setup tile region for floor 
-			{
-				// create our tileset
-				Registry<Tileset<RenderableTile>>::Instance().Register("tile", std::make_unique<Tileset<RenderableTile>>());
-				Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("tile");
-
-				// each sprite from atlas is a static tile (single frame), so we create tile from each sprite
-				ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("tile");
-				for (int i = 0; i < atlas.GetUVRectCount(); i++) tileset.Register(i, std::make_unique<RenderableTile>(atlas.MakeSprite(i), true, i));
-
-				// create tile region
-				Registry<TileRegion<RenderableTile>>::Instance().Register("floor", make_unique<TileRegion<RenderableTile>>());
-				TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("floor");
-
-				// load tile region by filling it with all '4' tile (empty)
-				Size<size_t> mapsize = Registry<Size<size_t>>::Instance().Get("map_size");
-				Table<string> map(mapsize, "4");
-				AsyncTileRegionLoader<RenderableTile, int> loader;
-				loader.LoadImmediate(region, map, [&tileset](const int& cell) -> Tile<RenderableTile> { return tileset.MakeTile(cell); });
-
-				// create lookup tile resolver for land map. this will be used to determine tile variant based on surrounding tiles
-				Registry<engine::tile::AutoTileResolver<RenderableTile>>::Instance().Register("floor", make_unique<engine::tile::AutoTileResolver<RenderableTile>>(region, tileset));
-				engine::tile::AutoTileResolver<RenderableTile>& resolver = Registry<engine::tile::AutoTileResolver<RenderableTile>>::Instance().Get("floor");
-
-				// configure land map auto-tile mapping
-				resolver.Register(4, engine::tile::TileVariant::Empty);
-				resolver.Register(30, engine::tile::TileVariant::Island);
-				resolver.Register(10, engine::tile::TileVariant::Full);
-
-				resolver.Register(21, engine::tile::TileVariant::NorthEdge);
-				resolver.Register(3, engine::tile::TileVariant::SouthEdge);
-				resolver.Register(29, engine::tile::TileVariant::EastEdge);
-				resolver.Register(27, engine::tile::TileVariant::WestEdge);
-
-				resolver.Register(0, engine::tile::TileVariant::NECorner);
-				resolver.Register(2, engine::tile::TileVariant::NWCorner);
-				resolver.Register(18, engine::tile::TileVariant::SECorner);
-				resolver.Register(20, engine::tile::TileVariant::SWCorner);
-
-				resolver.Register(12, engine::tile::TileVariant::Vertical);
-				resolver.Register(28, engine::tile::TileVariant::Horizontal);
-
-				resolver.Register(1, engine::tile::TileVariant::TNorth);
-				resolver.Register(19, engine::tile::TileVariant::TSouth);
-				resolver.Register(9, engine::tile::TileVariant::TEast);
-				resolver.Register(11, engine::tile::TileVariant::TWest);
-			}
-
-			// setup tile region for ceiling map
-			{
-				Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("tile");
-
 				// create tile region	
-				Registry<TileRegion<RenderableTile>>::Instance().Register("ceiling", make_unique<TileRegion<RenderableTile>>());
-				TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("ceiling");
-
-				// load tile region by filling it with all '4' tile (empty)
-				Size<size_t> mapsize = Registry<Size<size_t>>::Instance().Get("map_size");
-				Table<string> map(mapsize, "4");
-				AsyncTileRegionLoader<RenderableTile, int> loader;
-				loader.LoadImmediate(region, map, [&tileset](const int& cell) -> Tile<RenderableTile> { return tileset.MakeTile(cell); });
-
-				// create lookup tile resolver for ceiling. this will be used to determine tile variant based on surrounding tiles
-				Registry<engine::tile::AutoTileResolver<RenderableTile>>::Instance().Register("ceiling", make_unique<engine::tile::AutoTileResolver<RenderableTile>>(region, tileset));
-				engine::tile::AutoTileResolver<RenderableTile>& resolver = Registry<engine::tile::AutoTileResolver<RenderableTile>>::Instance().Get("ceiling");
-
-				// configure ceiling map auto-tile mapping
-				resolver.Register(4, engine::tile::TileVariant::Empty);
-				resolver.Register(35, engine::tile::TileVariant::Island);
-				resolver.Register(15, engine::tile::TileVariant::Full);
-
-				resolver.Register(26, engine::tile::TileVariant::NorthEdge);
-				resolver.Register(8, engine::tile::TileVariant::SouthEdge);
-				resolver.Register(34, engine::tile::TileVariant::EastEdge);
-				resolver.Register(32, engine::tile::TileVariant::WestEdge);
-
-				resolver.Register(5, engine::tile::TileVariant::NECorner);
-				resolver.Register(7, engine::tile::TileVariant::NWCorner);
-				resolver.Register(23, engine::tile::TileVariant::SECorner);
-				resolver.Register(25, engine::tile::TileVariant::SWCorner);
-
-				resolver.Register(17, engine::tile::TileVariant::Vertical);
-				resolver.Register(33, engine::tile::TileVariant::Horizontal);
-
-				resolver.Register(6, engine::tile::TileVariant::TNorth);
-				resolver.Register(24, engine::tile::TileVariant::TSouth);
-				resolver.Register(14, engine::tile::TileVariant::TEast);
-				resolver.Register(16, engine::tile::TileVariant::TWest);
-			}
-
-			// setup water tilemap
-			{
-				// create sprite atlas to be used by tilemap
-				SpriteAtlasFactory::Create("water", L"../Assets/1x1_64x64_water_background.png", 1, 1);
-				ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("water");
-
-				// create our tileset
-				Registry<Tileset<RenderableTile>>::Instance().Register("water", std::make_unique<Tileset<RenderableTile>>());
-				Tileset<RenderableTile>& tileset = Registry<Tileset<RenderableTile>>::Instance().Get("water");
-
-				tileset.Register(0, std::make_unique<RenderableTile>(atlas.MakeSprite(0), false, 0)); // water so not walkable. doesn't matter. this is background map
-
-				// create tile region
-				Registry<TileRegion<RenderableTile>>::Instance().Register("water", make_unique<TileRegion<RenderableTile>>());
-				TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("water");
-
-				// load tile region by filling it with all '0' tile
-				Table<string> map({ 20, 12 }, "0");
-				AsyncTileRegionLoader<RenderableTile, int> tileRegionLoader;
-				tileRegionLoader.LoadImmediate(region, map, [&tileset](const int& cell) -> Tile<RenderableTile> { return tileset.MakeTile(cell); });
-			}
-
-			{
-				Registry<LookupWallResolver>::Instance().Register("tile_to_wall", std::make_unique<LookupWallResolver>());
-				LookupWallResolver& tile2wallresolver = Registry<LookupWallResolver>::Instance().Get("tile_to_wall");
-
-				tile2wallresolver.Register(engine::tile::TileVariant::Empty, -1);
-				tile2wallresolver.Register(engine::tile::TileVariant::Island, 13);
-				tile2wallresolver.Register(engine::tile::TileVariant::Full, -1);
-				tile2wallresolver.Register(engine::tile::TileVariant::NorthEdge, 13);
-				tile2wallresolver.Register(engine::tile::TileVariant::SouthEdge, -1);
-				tile2wallresolver.Register(engine::tile::TileVariant::EastEdge, 12);
-				tile2wallresolver.Register(engine::tile::TileVariant::WestEdge, 10);
-				tile2wallresolver.Register(engine::tile::TileVariant::NECorner, -1);
-				tile2wallresolver.Register(engine::tile::TileVariant::NWCorner, -1);
-				tile2wallresolver.Register(engine::tile::TileVariant::SECorner, 10);
-				tile2wallresolver.Register(engine::tile::TileVariant::SWCorner, 12);
-				tile2wallresolver.Register(engine::tile::TileVariant::Vertical, -1);
-				tile2wallresolver.Register(engine::tile::TileVariant::Horizontal, 11);
-				tile2wallresolver.Register(engine::tile::TileVariant::TNorth, -1);
-				tile2wallresolver.Register(engine::tile::TileVariant::TSouth, 11);
-				tile2wallresolver.Register(engine::tile::TileVariant::TEast, -1);
-				tile2wallresolver.Register(engine::tile::TileVariant::TWest, -1);
-
-				engine::tile::AutoTileResolver<RenderableTile>& ceilingresolver = Registry<engine::tile::AutoTileResolver<RenderableTile>>::Instance().Get("ceiling");
-				ceilingresolver.TileVariantChangedEvent += engine::event::Handler(&tile2wallresolver, &LookupWallResolver::Set);
-
-				tile2wallresolver.LookupEvent += engine::event::Handler(this, &Test::OnCeilingTilePlaced);
+				Registry<ConstraintMap>::Instance().Register("constraintmap", make_unique<ConstraintMap>());
+				ConstraintMap& map = Registry<ConstraintMap>::Instance().Get("constraintmap");
+				map.Initialize(Registry<Size<size_t>>::Instance().Get("map_size"), engine::navigation::tile::TileConstraint::NONE);
 			}
 
 			// setup stopwatch to manage timing and start it
 			m_stopwatch.OnLap += Handler(this, &Test::OnLap);
 			m_stopwatch.Start();
-		}
-
-		void OnCeilingTilePlaced(const engine::spatial::Coord& coord, int index)
-		{
-			PropMap& propmap = Registry<PropMap>::Instance().Get("prop_map");
-			engine::component::graphics::PropSet& propset = Registry<engine::component::graphics::PropSet>::Instance().Get("props");
-
-			// if ceiling tile is placed, there should be no prop on this tile other than wall. so we clear it first
-			propmap.Clear(coord.row, coord.col);
-
-			// if index is not valid, means we don't have to put wall. it could be a center tile...
-			if (propset.IsValid(index))
-			{
-				propmap.Set(coord.row, coord.col, engine::navigation::tile::TileConstraint::SW, propset.MakePropHandle(index));
-			}
-			else
-			{
-				propmap.Remove(coord.row, coord.col, engine::navigation::tile::TileConstraint::SW);
-			}
 		}
 
 		void OnKeyDown(int key)
@@ -836,15 +797,11 @@ namespace TestTree
 			PositionF mapPos = Registry<PositionF>::Instance().Get("map_position");
 			SizeF tilesize = Registry<SizeF>::Instance().Get("tile_size");
 			engine::spatial::Coord coord = engine::spatial::PositionToCoord(m_mousePos - mapPos, tilesize);
-			PropMap& propmap = Registry<PropMap>::Instance().Get("prop_map");
-			engine::component::graphics::PropSet& propset = Registry<engine::component::graphics::PropSet>::Instance().Get("props");
-			TileRegion<RenderableTile>& floormap = Registry<TileRegion<RenderableTile>>::Instance().Get("floor");
-			TileRegion<RenderableTile>& ceilingmap = Registry<TileRegion<RenderableTile>>::Instance().Get("ceiling");
-			engine::tile::AutoTileResolver<RenderableTile>& floorresolver = Registry<engine::tile::AutoTileResolver<RenderableTile>>::Instance().Get("floor");
-			engine::tile::AutoTileResolver<RenderableTile>& ceilingresolver = Registry<engine::tile::AutoTileResolver<RenderableTile>>::Instance().Get("ceiling");
+			ConstraintMap& constraintmap = Registry<ConstraintMap>::Instance().Get("constraintmap");
+
 
 			// sanity check. if coord is out of bounds, bail out.
-			if (!floormap.IsInBounds(coord))
+			if (!constraintmap.IsInBounds(coord))
 			{
 				return;
 			}
@@ -853,67 +810,57 @@ namespace TestTree
 			{
 			case 27: // escape
 			{
-				{
-					floorresolver.Remove();
-					ceilingresolver.Remove();
-				}
-
-				// clear props
-				{
-					propmap.Clear();
-				}
-
+				constraintmap.Set(engine::navigation::tile::TileConstraint::NONE);
 				break;
 			}
 			case 32: // space
 			{
+				m_toggle = !m_toggle;
+
 				break;
 			}
 			case 49: // 1
 			{
-				propmap.Clear(coord);
-				floorresolver.Set(coord);
-				ceilingresolver.Remove(coord);
-
+				m_startTile = coord;
+				constraintmap.FindPath(m_startTile, m_endTile, m_path);
 				break;
 			}
 			case 50: // 2
 			{
-				propmap.Clear(coord);
-				floorresolver.Remove(coord);
-				ceilingresolver.Remove(coord);
+				m_endTile = coord;
+				constraintmap.FindPath(m_startTile, m_endTile, m_path);
 				break;
 			}
 			case 51: // 3
 			{
-				floorresolver.Set(coord);
-				ceilingresolver.Set(coord);
+				constraintmap.Set(coord, engine::navigation::tile::TileConstraint::BLOCKED);
+
 				break;
 			}
 			case 52: // 4
 			{
+				constraintmap.Append(coord, engine::navigation::tile::TileConstraint::SE);
+
 				break;
 			}
 			case 53: // 5
 			{
-				ceilingresolver.Remove(coord);
-				floorresolver.Set(coord);
-				propmap.Set(coord.row, coord.col, engine::navigation::tile::TileConstraint::CENTER, propset.MakePropHandle(1));
+				constraintmap.Append(coord, engine::navigation::tile::TileConstraint::N_WALL);
+
 				break;
 			}
 			case 54: // 6
 			{
-				propmap.Set(coord.row, coord.col, engine::navigation::tile::TileConstraint::CENTER, propset.MakePropHandle(1));
+				constraintmap.Append(coord, engine::navigation::tile::TileConstraint::NW);
+
 				break;
 			}
 			case 55: // 7
 			{
-				propmap.Set(coord.row, coord.col, engine::navigation::tile::TileConstraint::CENTER, propset.MakePropHandle(2));
 				break;
 			}
 			case 56: // 8
 			{
-				propmap.Set(coord.row, coord.col, engine::navigation::tile::TileConstraint::CENTER, propset.MakePropHandle(3));
 				break;
 			}
 
@@ -924,6 +871,104 @@ namespace TestTree
 
 		void OnMouseDown(int btn, int x, int y)
 		{
+			ConstraintMap& constraintmap = Registry<ConstraintMap>::Instance().Get("constraintmap");
+			PositionF pos = PositionF((float)x, (float)y) - Registry<PositionF>::Instance().Get("map_position");
+			SizeF tilesize = Registry<SizeF>::Instance().Get("tile_size");
+
+			engine::spatial::Coord coord = engine::spatial::PositionToCoord(pos, tilesize);
+
+
+			if (!constraintmap.IsInBounds(coord))
+			{
+				return;
+			}
+
+			if (btn == 2)
+			{
+				constraintmap.Set(coord, engine::navigation::tile::TileConstraint::NONE);
+				constraintmap.FindPath(m_startTile, m_endTile, m_path);
+				return;
+			}
+
+
+			pos.x -= tilesize.width * coord.col;
+			pos.y -= tilesize.height * coord.row;
+
+			PositionF nw(0, 0);
+			float dist = (pos - nw).Magnitude();
+
+			if (dist / tilesize.width < 0.3f)
+			{
+				constraintmap.Append(coord, engine::navigation::tile::TileConstraint::NW);
+				constraintmap.FindPath(m_startTile, m_endTile, m_path);
+				return;
+			}
+
+			PositionF ne(tilesize.width, 0);
+			dist = (pos - ne).Magnitude();
+
+			if (dist / tilesize.width < 0.3f)
+			{
+				constraintmap.Append(coord, engine::navigation::tile::TileConstraint::NE);
+				constraintmap.FindPath(m_startTile, m_endTile, m_path);
+				return;
+			}
+
+			PositionF sw(0, tilesize.height);
+			dist = (pos - sw).Magnitude();
+
+			if (dist / tilesize.width < 0.3f)
+			{
+				constraintmap.Append(coord, engine::navigation::tile::TileConstraint::SW);
+				constraintmap.FindPath(m_startTile, m_endTile, m_path);
+				return;
+			}
+
+			PositionF se(tilesize.height, tilesize.width);
+			dist = (pos - se).Magnitude();
+
+			if (dist / tilesize.width < 0.3f)
+			{
+				constraintmap.Append(coord, engine::navigation::tile::TileConstraint::SE);
+				constraintmap.FindPath(m_startTile, m_endTile, m_path);
+				return;
+			}
+
+			dist = pos.y;
+			if (dist / tilesize.width < 0.2f)
+			{
+				constraintmap.Append(coord, engine::navigation::tile::TileConstraint::N_WALL);
+				constraintmap.FindPath(m_startTile, m_endTile, m_path);
+				return;
+			}
+
+			dist = tilesize.height - pos.y;
+			if (dist / tilesize.width < 0.2f)
+			{
+				constraintmap.Append(coord, engine::navigation::tile::TileConstraint::S_WALL);
+				constraintmap.FindPath(m_startTile, m_endTile, m_path);
+				return;
+			}
+
+			dist = pos.x;
+			if (dist / tilesize.width < 0.2f)
+			{
+				constraintmap.Append(coord, engine::navigation::tile::TileConstraint::W_WALL);
+				constraintmap.FindPath(m_startTile, m_endTile, m_path);
+				return;
+			}
+
+			dist = tilesize.height - pos.x;
+			if (dist / tilesize.width < 0.2f)
+			{
+				constraintmap.Append(coord, engine::navigation::tile::TileConstraint::E_WALL);
+				constraintmap.FindPath(m_startTile, m_endTile, m_path);
+				return;
+			}
+			
+			constraintmap.Append(coord, engine::navigation::tile::TileConstraint::CENTER);
+			constraintmap.FindPath(m_startTile, m_endTile, m_path);
+
 		}
 
 		void OnMouseMove(int x, int y)
@@ -934,7 +979,6 @@ namespace TestTree
 		// this method is fired up whenever the OnLap event is triggered from stopwatch
 		void OnLap(double time)
 		{
-			Registry<engine::component::graphics::PropSet>::Instance().Get("props").Update(time);
 		}
 
 		// fun stuff. this is called on each loop of the message loop. this is where we draw!
@@ -956,27 +1000,42 @@ namespace TestTree
 					SizeF tilesize = Registry<SizeF>::Instance().Get("tile_size");
 					Size<size_t> mapsize = Registry<Size<size_t>>::Instance().Get("map_size");
 					PositionF depth = Registry<PositionF>::Instance().Get("depth");
-					TileMap<RenderableTile> floormap = Registry<TileRegion<RenderableTile>>::Instance().Get("floor").MakeTileMap();
-					TileMap<RenderableTile> ceilingmap = Registry<TileRegion<RenderableTile>>::Instance().Get("ceiling").MakeTileMap();
-					TileMap<RenderableTile> watermap = Registry<TileRegion<RenderableTile>>::Instance().Get("water").MakeTileMap();
 
-					PropMap& propMap = Registry<PropMap>::Instance().Get("prop_map");
+					ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("logic_tile");
+					ConstraintMap& constraintmap = Registry<ConstraintMap>::Instance().Get("constraintmap");
 
-					for (int row = 0; row < (int)mapsize.height; row++)
+
+					if (m_toggle)
 					{
-						m_drawQueue.Clear();
-
-						for (int col = 0; col < (int)mapsize.width; col++)
+						for (int row = 0; row < (int)mapsize.height; row++)
 						{
-							QueueDrawCommand(floormap, m_drawQueue, row, col, tilesize, pos, 1.0f, { 1,1,1,1 });
-							QueueDrawCommand(watermap, m_drawQueue, row, col, tilesize, pos, 0.0f, { 1,1,1,1 });
-							propMap.Queue(m_drawQueue, row, col, tilesize, pos, 1.0f);
-							QueueDrawCommand(ceilingmap, m_drawQueue, row, col, tilesize, pos - depth, 2.0f, { 1,1,1,1 });
-						}
+							m_drawQueue.Clear();
 
-						m_drawQueue.Sort();
-						m_drawQueue.Execute(*m_renderer);
+							for (int col = 0; col < (int)mapsize.width; col++)
+							{
+								Queue(constraintmap, m_drawQueue, atlas, tilesize, pos, 1, { 1,1,1,1 });
+							}
+
+							m_drawQueue.Sort();
+							m_drawQueue.Execute(*m_renderer);
+						}
 					}
+
+					m_drawQueue.Clear();
+					Queue(m_drawQueue, m_startTile, tilesize, pos, atlas.MakeSprite(0));
+					Queue(m_drawQueue, m_endTile, tilesize, pos, atlas.MakeSprite(6));
+					m_drawQueue.Sort();
+					m_drawQueue.Execute(*m_renderer);
+
+
+					std::vector<engine::spatial::Coord> wp = engine::navigation::tile::GetWayPoints(m_path);
+					engine::graphics::navigation::DrawWaypoints(*m_renderer, wp, tilesize, pos, { 1,1,1,1 }, 6.0f);
+
+					//wp = engine::navigation::tile::SmoothWayPoints(wp, [&tilemap](int row, int col) { return tilemap.IsInBounds(row, col) ? tilemap.Get(row, col)->IsWalkable() : false; });
+					//engine::graphics::navigation::DrawWaypoints(*m_rendererBatch, wp, m_tilesize, m_pos, { 0,1,0,1 }, 4.0f);
+
+					//wp = engine::navigation::tile::SmoothWayPoints(m_path, [&tilemap](int row, int col) { return tilemap.IsInBounds(row, col) ? tilemap.Get(row, col)->IsWalkable() : false; });
+					//engine::graphics::navigation::DrawWaypoints(*m_rendererBatch, wp, m_tilesize, m_pos, { 1,0,1,1 }, 2.0f);
 				}
 
 				m_renderer->End();

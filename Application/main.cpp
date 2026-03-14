@@ -16,7 +16,7 @@
 #include "TestActor.h"
 #include "TestPathFinding.h"
 #include "TestTree.h"
-//#include "TestProp.h"
+#include "TestProp.h"
 
 #include <iostream>
 #include <fstream>

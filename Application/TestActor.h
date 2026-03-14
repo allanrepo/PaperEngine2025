@@ -12,7 +12,7 @@
 #include <Graphics/Renderer/Renderer.h>
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Core/Input.h>
 #include <Graphics/Resource/IFontAtlas.h>
 #include <Graphics/Resource/FontAtlas.h>
@@ -36,7 +36,7 @@
 //using namespace engine::graphics::factory;
 //using namespace engine::cache;
 
-//using Sprite = engine::graphics::renderable::Sprite;
+//using Sprite = engine::graphics::Sprite;
 //using Animation = engine::graphics::animation::Animation<Sprite>;
 //using Window = engine::win32::Window;
 //using ICanvas = engine::graphics::ICanvas;
@@ -51,7 +51,21 @@ namespace TestActor
 {
 	class Test
 	{
-	private:
+		//using Animated = engine::graphics::animation::Animated<engine::graphics::Sprite, Item>;
+		//using SpriteAtlasFactory = engine::graphics::factory::SpriteAtlasFactory;
+		//using ISpriteAtlas = engine::graphics::resource::ISpriteAtlas;
+		//using SpriteAtlas = engine::graphics::resource::SpriteAtlas;
+		using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
+		using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite, Actor>;
+		using AnimationFactory = engine::graphics::factory::AnimationFactory;
+		//using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
+		//using AnimationSystem = engine::graphics::animation::AnimationSystem<engine::graphics::Sprite, Item>;
+		//using IFontAtlas = engine::graphics::resource::IFontAtlas;
+		//using FontAtlas = engine::graphics::resource::FontAtlas;
+		//using DX11TextureImpl = engine::graphics::dx11::resource::DX11TextureImpl;
+		template<typename T>
+		using Registry = engine::cache::Registry<T>;
+
 	private:
 		std::unique_ptr<win32::Window> m_window;
 		std::unique_ptr<ICanvas> m_canvas;
@@ -62,7 +76,7 @@ namespace TestActor
 
 		std::unique_ptr<Actor> m_actor;
 
-		Animation<Sprite> m_anim;
+		Animation<engine::graphics::Sprite> m_anim;
 
 		timer::StopWatch m_stopwatch;
 		double m_elapsed;
@@ -116,24 +130,18 @@ namespace TestActor
 				factory::SpriteAtlasFactory::Create("Hero", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12);
 				resource::ISpriteAtlas& atlas = cache::Registry<resource::ISpriteAtlas>::Instance().Get("Hero");
 
-				// create animation manager for actor and store in registry
-				cache::Registry<animation::AnimationManager<renderable::Sprite>>::Instance().Register("actor",std::make_unique<animation::AnimationManager<renderable::Sprite>>());
-				animation::AnimationManager<renderable::Sprite>& animManager = cache::Registry<animation::AnimationManager<renderable::Sprite>>::Instance().Get("actor");
+				// create animation set for actor and store in registry
+				Registry<AnimationSet>::Instance().Register("dust", std::make_unique<AnimationSet>());
+				AnimationSet& animset = Registry<AnimationSet>::Instance().Get("dust");
 
-				// create actor animations and store in registry
-				factory::AnimationFactory::Create("idle right", atlas, { 0, 1, 2, 3, 4, 5 }, 100, true, PositionF{0.5f, 0.65f});
-				factory::AnimationFactory::Create("idle left", atlas, { 6, 7, 8, 9, 10, 11 }, 100, true, PositionF{ 0.5f, 0.65f });
-				factory::AnimationFactory::Create("walk right", atlas, { 12, 13, 14, 15, 16, 17 }, 100, true, PositionF{ 0.5f, 0.65f });
-				factory::AnimationFactory::Create("walk left", atlas, { 18, 19, 20, 21, 22, 23, }, 100, true, PositionF{ 0.5f, 0.65f });
-
-				// load actor animations into animation manager
-				animManager.Add("idle right", cache::Registry<animation::Animation<renderable::Sprite>>::Instance().Get("idle right"));
-				animManager.Add("idle left", cache::Registry<animation::Animation<renderable::Sprite>>::Instance().Get("idle left"));
-				animManager.Add("walk right", cache::Registry<animation::Animation<renderable::Sprite>>::Instance().Get("walk right"));
-				animManager.Add("walk left", cache::Registry<animation::Animation<renderable::Sprite>>::Instance().Get("walk left"));
+				// create actor animations and store in animation set
+				animset.Register("idle right", AnimationFactory::Create(atlas, { 0, 1, 2, 3, 4, 5 }, 100, true, PositionF{0.5f, 0.65f}));
+				animset.Register("idle left", AnimationFactory::Create(atlas, { 6, 7, 8, 9, 10, 11 }, 100, true, PositionF{ 0.5f, 0.65f }));
+				animset.Register("walk right", AnimationFactory::Create(atlas, { 12, 13, 14, 15, 16, 17 }, 100, true, PositionF{ 0.5f, 0.65f }));
+				animset.Register("walk left", AnimationFactory::Create(atlas, { 18, 19, 20, 21, 22, 23, }, 100, true, PositionF{ 0.5f, 0.65f }));
 
 				// create actor 
-				m_actor = std::make_unique<Actor>(animManager, "Actor");
+				m_actor = std::make_unique<Actor>(animset, "Actor");
 
 				// set actor default state
 				m_actor->SetState<engine::state::ActorIdleState>();
@@ -174,12 +182,12 @@ namespace TestActor
 			{
 				m_rendererBatch->Begin();
 
-				m_rendererBatch->DrawRenderable(m_actor->GetSprite(), m_actor->GetPosition(), m_actor->GetSprite().GetSize(), { 1,1,1,1 }, 0);
-				//m_rendererBatch->DrawRenderable(m_actor->GetSprite(), m_actor->GetPosition(), {500, 500 }, {1,1,1,1}, 0);
+				m_rendererBatch->Draw(m_actor->GetSprite(), m_actor->GetPosition(), m_actor->GetSprite().GetSize(), { 1,1,1,1 }, 0);
+				//m_rendererBatch->Draw(m_actor->GetSprite(), m_actor->GetPosition(), {500, 500 }, {1,1,1,1}, 0);
 				m_rendererBatch->Draw(m_actor->GetPosition() - PositionF{ 4, 4 }, { 8, 8 }, { 1,0,0,1 }, 0);
 
 				std::string str = std::to_string(m_actor->GetPosition().x) + ", " + std::to_string(m_actor->GetPosition().y);
-				m_rendererBatch->DrawText(*m_FontAtlas, str, { 500, 5 }, { 1,1,1,1 });
+				m_rendererBatch->Draw(*m_FontAtlas, str, { 500, 5 }, { 1,1,1,1 });
 
 				m_rendererBatch->End();
 			}

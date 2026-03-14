@@ -3,7 +3,7 @@
 #include <State/StateMachine.h>
 #include <Spatial/Motion.h>
 #include <Spatial/Transform.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Graphics/Animation/Animation.h>
 #include <Containers/Dictionary.h>
 #include <Math/Vector.h>
@@ -38,11 +38,29 @@ namespace engine
 	using namespace engine::math;
 	using namespace engine::component;
 	using namespace engine::cache;
+	using namespace engine::graphics;
 
 	namespace component
 	{
+		class Actor;
+
+
+
 		class Actor
 		{
+			//using Animated = engine::graphics::animation::Animated<engine::graphics::Sprite, Item>;
+			//using SpriteAtlasFactory = engine::graphics::factory::SpriteAtlasFactory;
+			//using ISpriteAtlas = engine::graphics::resource::ISpriteAtlas;
+			//using SpriteAtlas = engine::graphics::resource::SpriteAtlas;
+			using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
+			using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite, Actor>;
+			//using AnimationFactory = engine::graphics::factory::AnimationFactory;
+			//using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
+			//using AnimationSystem = engine::graphics::animation::AnimationSystem<engine::graphics::Sprite, Item>;
+			//using IFontAtlas = engine::graphics::resource::IFontAtlas;
+			//using FontAtlas = engine::graphics::resource::FontAtlas;
+			//using DX11TextureImpl = engine::graphics::dx11::resource::DX11TextureImpl;
+
 		public:
 			enum class Direction
 			{
@@ -57,20 +75,18 @@ namespace engine
 			string m_name;
 			TransformF m_transform;
 			MotionF m_motion;
-			Animator<Sprite> m_animator;
 			StateMachine<Actor> m_stateMachine;
 			Direction m_direction;
-			AnimationManager<Sprite> m_animManager;
+			AnimationController m_animController;
 
 		public:
 
-			Actor(const AnimationManager<Sprite>& animManager, const std::string& name = "default") :
+			Actor(const AnimationSet& set, const std::string& name = "default") :
 				m_stateMachine(this),
 				m_name(name),
 				m_direction(Direction::Right),
-				m_animManager(animManager)
+				m_animController(&set)
 			{
-				m_animManager.Set(m_animator);
 				m_stateMachine.Set<ActorIdleState>();
 			}
 
@@ -80,34 +96,34 @@ namespace engine
 			{
 				// update state and animation manager, position
 				m_stateMachine.Update(delta);
-				m_animManager.Update(delta);
+				m_animController.Update(delta);
 				m_motion.Update(m_transform, delta);
 			}
 
 			bool PlayAnimation(const std::string& name)
 			{
-				return m_animManager.Play(name);
+				return m_animController.Play(name);
 			}
 
 			bool IsDrawable() const
 			{
-				return m_animator.IsRunning();
+				return m_animController.IsRunning();
 			}
 
-			Sprite GetSprite() const
+			engine::graphics::Sprite GetSprite() const
 			{
-				return m_animator.GetCurrent();
+				return m_animController.GetCurrent();
 			}
 
-			void SetDirectionBasedOnVelocity() 
-			{ 
+			void SetDirectionBasedOnVelocity()
+			{
 				if (m_motion.GetVelocity().x > 0) m_direction = Direction::Right;
 				else if (m_motion.GetVelocity().x < 0) m_direction = Direction::Left;
 				else m_direction = Direction::None;
-			} 
-			
-			Direction GetDirection() const 
-			{ 
+			}
+
+			Direction GetDirection() const
+			{
 				if (m_motion.GetVelocity().x > 0) return Direction::Right;
 				else if (m_motion.GetVelocity().x < 0) return Direction::Left;
 				else if (m_motion.GetVelocity().y > 0) return Direction::Right;
@@ -149,13 +165,13 @@ namespace engine
 
 
 			template<typename State, typename... Args>
-			void SetState(Args&&... args) 
+			void SetState(Args&&... args)
 			{
 				m_stateMachine.Set<State>(std::forward<Args>(args)...);
 			}
 
 			template<typename State, typename... Args>
-			void QueueState(Args&&... args) 
+			void QueueState(Args&&... args)
 			{
 				m_stateMachine.Queue<State>(std::forward<Args>(args)...);
 			}
@@ -176,7 +192,7 @@ namespace engine
 			Actor::Direction m_dir;
 
 		public:
-			ActorIdleState(Actor::Direction dir = Actor::Direction::Right):
+			ActorIdleState(Actor::Direction dir = Actor::Direction::Right) :
 				m_dir(dir)
 			{
 

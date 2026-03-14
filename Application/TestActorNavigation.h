@@ -12,7 +12,7 @@
 #include <Graphics/Renderer/Renderer.h>
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Core/Input.h>
 #include <Graphics/Resource/IFontAtlas.h>
 #include <Graphics/Resource/FontAtlas.h>
@@ -63,17 +63,17 @@ namespace TestActorNavigation
 	class RenderableTile
 	{
 	private:
-		Sprite m_sprite;
+		engine::graphics::Sprite m_sprite;
 		bool m_walkable;
 
 	public:
-		RenderableTile(const Sprite& sprite, bool walkable) :
+		RenderableTile(const engine::graphics::Sprite& sprite, bool walkable) :
 			m_sprite(sprite),
 			m_walkable(walkable)
 		{
 		}
 
-		const Sprite& GetSprite() const
+		const engine::graphics::Sprite& GetSprite() const
 		{
 			return m_sprite;
 		}
@@ -86,7 +86,10 @@ namespace TestActorNavigation
 
 	class Test
 	{
-	private:
+		using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
+		using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite, Actor>;
+		using AnimationFactory = engine::graphics::factory::AnimationFactory;
+
 	private:
 		std::unique_ptr<Window> m_window;
 		std::unique_ptr<ICanvas> m_canvas;
@@ -212,26 +215,19 @@ namespace TestActorNavigation
 				SpriteAtlasFactory::Create("actor", L"../Assets/CharacterTest_2304x1536_12x8.png", 8, 12);
 				ISpriteAtlas& atlas = cache::Registry<ISpriteAtlas>::Instance().Get("actor");
 
-				// create animation manager and store in registry. this is where we still store all animations for our actor. it will be shared by all actors instanced
-				Registry<AnimationManager<Sprite>>::Instance().Register("actor", std::make_unique<AnimationManager<Sprite>>());
-				AnimationManager<Sprite>& animManager = cache::Registry<AnimationManager<Sprite>>::Instance().Get("actor");
+				// create animation set for actor and store in registry
+				Registry<AnimationSet>::Instance().Register("dust", std::make_unique<AnimationSet>());
+				AnimationSet& animset = Registry<AnimationSet>::Instance().Get("dust");
 
-				// create actor animations and store in registry
-				AnimationFactory::Create("idle right", atlas, { 0, 1, 2, 3, 4, 5 }, 100, true, PositionF{ 0.5f, 0.65f });
-				AnimationFactory::Create("idle left", atlas, { 6, 7, 8, 9, 10, 11 }, 100, true, PositionF{ 0.5f, 0.65f });
-				AnimationFactory::Create("walk right", atlas, { 12, 13, 14, 15, 16, 17 }, 100, true, PositionF{ 0.5f, 0.65f });
-				AnimationFactory::Create("walk left", atlas, { 18, 19, 20, 21, 22, 23, }, 100, true, PositionF{ 0.5f, 0.65f });
-
-				// load actor animations into animation manager
-				animManager.Add("idle right", Registry<Animation<Sprite>>::Instance().Get("idle right"));
-				animManager.Add("idle left", Registry<Animation<Sprite>>::Instance().Get("idle left"));
-				animManager.Add("walk right", Registry<Animation<Sprite>>::Instance().Get("walk right"));
-				animManager.Add("walk left", Registry<Animation<Sprite>>::Instance().Get("walk left"));
+				// create actor animations and store in animation set
+				animset.Register("idle right", AnimationFactory::Create(atlas, { 0, 1, 2, 3, 4, 5 }, 100, true, PositionF{ 0.5f, 0.65f }));
+				animset.Register("idle left", AnimationFactory::Create(atlas, { 6, 7, 8, 9, 10, 11 }, 100, true, PositionF{ 0.5f, 0.65f }));
+				animset.Register("walk right", AnimationFactory::Create(atlas, { 12, 13, 14, 15, 16, 17 }, 100, true, PositionF{ 0.5f, 0.65f }));
+				animset.Register("walk left", AnimationFactory::Create(atlas, { 18, 19, 20, 21, 22, 23, }, 100, true, PositionF{ 0.5f, 0.65f }));
 
 				// create actor. pass our animation manager. it will make a copy of it internally but will reference to same set of animations from animManager object
-				Registry<Actor>::Instance().Register("actor", make_unique<Actor>(animManager, "actor"));
+				Registry<Actor>::Instance().Register("actor", make_unique<Actor>(animset, "actor"));
 				Actor& actor = Registry<Actor>::Instance().Get("actor");
-
 
 				// get parameters of tilemap
 				PositionF pos = Registry<PositionF>::Instance().Get("1x8_256x32_tile");
@@ -529,8 +525,8 @@ namespace TestActorNavigation
 				// render actor
 				{
 					Actor& actor = Registry<Actor>::Instance().Get("actor");
-					m_renderer->DrawRenderable(actor.GetSprite(), actor.GetPosition(), actor.GetSprite().GetSize(), { 1,1,1,1 }, 0);
-					//m_renderer->DrawRenderable(actor.GetSprite(), actor.GetPosition(), {500, 500 }, {1,1,1,1}, 0);
+					m_renderer->Draw(actor.GetSprite(), actor.GetPosition(), actor.GetSprite().GetSize(), { 1,1,1,1 }, 0);
+					//m_renderer->Draw(actor.GetSprite(), actor.GetPosition(), {500, 500 }, {1,1,1,1}, 0);
 
 					if(m_drawDebugGraph) m_renderer->Draw(actor.GetPosition() - PositionF{ 4, 4 }, { 8, 8 }, { 1,0,0,1 }, 0);
 				}

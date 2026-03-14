@@ -330,7 +330,7 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
 }
 
 // Draws a string using a font atlas at the specified position and color
-void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawText(
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
 	const engine::graphics::resource::IFontAtlas& font, // Font atlas
 	const std::string& text,                    // Text to render
 	const engine::spatial::PositionF& pos,                                 // Top-left screen position
@@ -344,17 +344,17 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawText(
 	{
 		engine::spatial::PositionF _pos = { xCurr, pos.y };
 
-		engine::graphics::renderable::Sprite glyph = font.GetGlyph(c);
+		engine::graphics::Sprite glyph = font.GetGlyph(c);
 
 		// draw the char
-		DrawRenderable(glyph, _pos, glyph.GetSize(), color, 0);
+		Draw(glyph, _pos, glyph.GetSize(), color, 0);
 
 		xCurr += glyph.GetWidth();
 	}
 }
 
-void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawRenderable(
-	const engine::graphics::renderable::IRenderable& renderable, 
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
+	const engine::graphics::Sprite& sprite,                    
 	const engine::spatial::PositionF& pos, 
 	const spatial::SizeF& size, 
 	const engine::graphics::ColorF& color, 
@@ -362,7 +362,7 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawRenderable
 )
 {
 #pragma region // binds the texture. this will only bind it if current texture is different from this texture.
-	renderable.Bind();
+	sprite.Bind();
 #pragma endregion
 
 #pragma region // set use texture flag to 1 as this draw call uses texture
@@ -370,7 +370,7 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawRenderable
 #pragma endregion
 
 #pragma region // update texture transform for this draw request. the scale and translate setting will fit the size of the texture into specified size
-	engine::math::geometry::RectF rect = renderable.GetUVRect();
+	engine::math::geometry::RectF rect = sprite.GetUVRect();
 	m_UpdateConstantBuffer.texture.scale.x = (rect.right - rect.left);
 	m_UpdateConstantBuffer.texture.scale.y = (rect.bottom - rect.top);
 	m_UpdateConstantBuffer.texture.translate.x = rect.left;
@@ -386,7 +386,7 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::DrawRenderable
 	// given position is the top-left of image. image will be rendered where its top-left is in the given position
 	// anchor is the normalized position somewhere in the image. if you want to draw the image such that the position given
 	// will be at the anchor, shift it using the given anchor
-	engine::spatial::PositionF anchor = renderable.GetAnchor();
+	engine::spatial::PositionF anchor = sprite.GetAnchor();
 	anchor.x *= size.width;
 	anchor.y *= size.height;
 

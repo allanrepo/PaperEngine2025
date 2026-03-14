@@ -36,6 +36,11 @@ namespace engine::core
 
 		virtual ~View() = default;
 
+		void Invalidate()
+		{
+			m_data = nullptr;
+		}
+
 		// check if view is valid
 		inline bool IsValid() const
 		{
@@ -61,6 +66,17 @@ namespace engine::core
 			}
 			return *m_data;
 		}
+
+		// Equality operators
+		bool operator == (const View& rhs) const
+		{
+			return m_data == rhs.m_data;
+		}
+
+		bool operator != (const View& rhs) const
+		{
+			return m_data != rhs.m_data;
+		}
 	};
 
 	template<typename T>
@@ -76,6 +92,11 @@ namespace engine::core
 		}
 
 		virtual ~Handle() = default;
+
+		void Invalidate()
+		{
+			m_data = nullptr;
+		}
 
 		// check if view is valid
 		inline bool IsValid() const
@@ -101,6 +122,17 @@ namespace engine::core
 				throw std::runtime_error("View<T>::operator* - invalid view access");
 			}
 			return *m_data;
+		}
+
+		// Equality operators
+		bool operator == (const Handle& rhs) const 
+		{
+			return m_data == rhs.m_data;
+		}
+
+		bool operator != (const Handle& rhs) const 
+		{
+			return m_data != rhs.m_data;
 		}
 	};
 }

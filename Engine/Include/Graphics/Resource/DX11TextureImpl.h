@@ -90,5 +90,8 @@ namespace engine::graphics::dx11::resource
 
 		virtual bool SaveToFile(const wchar_t* filename) override final;
 
+		virtual bool IsValid() override final;
+
+
 	};
 }

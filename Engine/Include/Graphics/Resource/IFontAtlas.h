@@ -1,5 +1,5 @@
 #pragma once
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Spatial/Size.h>
 #include <Spatial/ISizeable.h>
 #include <string>
@@ -23,9 +23,9 @@ namespace engine
 
 				virtual void Reset() = 0;
 
-				virtual engine::graphics::renderable::Sprite GetGlyph(const unsigned char character) const = 0;
+				virtual engine::graphics::Sprite GetGlyph(const unsigned char character) const = 0;
 
-				virtual engine::graphics::renderable::Sprite GetSprite() const = 0;
+				virtual engine::graphics::Sprite GetSprite() const = 0;
 
 				// get size of characters
 				virtual const float GetWidth(const unsigned char character) const = 0;

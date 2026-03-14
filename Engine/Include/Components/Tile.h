@@ -30,12 +30,12 @@
 #include <Containers/Table.h>
 #include <Spatial/Coord.h>
 
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 
 // forward declare
 namespace engine::component::tile
 {
-	template<typename T>
+	template<typename T, typename K = int>
 	class Tileset;
 
 	template<typename T>
@@ -81,11 +81,11 @@ namespace engine::component::tile
 	};
 
 	// manages registration and retrieval of tile data by ID
-	template<typename T>
+	template<typename T, typename K>
 	class Tileset 
 	{
 	protected:
-		container::Dictionary<int, std::unique_ptr<T>> m_registry;
+		container::Dictionary<K, std::unique_ptr<T>> m_registry;
 
 	public:
 		Tileset() = default;
@@ -96,29 +96,29 @@ namespace engine::component::tile
 		Tileset(Tileset&&) = default;
 		Tileset& operator=(Tileset&&) = default;
 
-		bool Register(int id, std::unique_ptr<T> data) 
+		bool Register(K id, std::unique_ptr<T> data)
 		{ 
 			return m_registry.Register(id, std::move(data));
 		}
-		bool IsValid(int id) const 
+		bool IsValid(K id) const
 		{ 
 			return m_registry.Has(id);
 		}
 		
-		const T& Get(int id) const 
+		const T& Get(K id) const 
 		{ 
 			return *m_registry.Get(id);
 		}
 
 		// creates a tile instance for the given id. returns invalid tile if id not found
-		Tile<T> MakeTile(int id) const 
+		Tile<T> MakeTile(K id) const 
 		{ 
 			return m_registry.Has(id) ? Tile<T>(m_registry.Get(id).get()) : Tile<T>();
 		}
 
 		// define iterator for our container
-		using iterator = typename container::Dictionary<int, std::unique_ptr<T>>::iterator;
-		using const_iterator = typename container::Dictionary<int, std::unique_ptr<T>>::const_iterator;
+		using iterator = typename container::Dictionary<K, std::unique_ptr<T>>::iterator;
+		using const_iterator = typename container::Dictionary<K, std::unique_ptr<T>>::const_iterator;
 
 		// iterator access
 		iterator begin() { return m_registry.begin(); }

@@ -15,10 +15,11 @@ namespace engine::graphics::resource
 		virtual ~Texture() = default;
 		virtual std::string GetTypeName() const override final;
 
-		// TODO: these are commented. but why are they here in the first place? should textures be non copyable?
-		//// cannot be copied
-		//Texture(const Texture&) = delete;
-		//Texture& operator=(const Texture&) = delete;
+		// cannot be copied, but movable
+		Texture(const Texture&) = delete;
+		Texture& operator=(const Texture&) = delete;
+		Texture(Texture&&) noexcept = default;
+		Texture& operator=(Texture&&) noexcept = default;
 
 		// initialize with data
 		virtual bool Initialize(
@@ -49,6 +50,9 @@ namespace engine::graphics::resource
 		virtual void Reset() override final;
 
 		virtual bool SaveToFile(const wchar_t* filename) override final;
+
+		virtual bool IsValid() override final;
+
 
 	private:
 		std::unique_ptr<engine::graphics::resource::ITextureImpl> m_impl;

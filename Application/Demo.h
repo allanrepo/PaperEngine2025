@@ -44,23 +44,23 @@ namespace demo
 	class RenderableTile
 	{
 	private:
-		engine::graphics::renderable::Sprite m_sprite;
+		engine::graphics::Sprite m_sprite;
 		bool m_walkable;
-		engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>* m_animator;
+		engine::graphics::animation::Animator<engine::graphics::Sprite>* m_animator;
 
 	public:
-		RenderableTile(const engine::graphics::renderable::Sprite& sprite, bool walkable, engine::graphics::animation::Animator<engine::graphics::renderable::Sprite>* animator = nullptr) :
+		RenderableTile(const engine::graphics::Sprite& sprite, bool walkable, engine::graphics::animation::Animator<engine::graphics::Sprite>* animator = nullptr) :
 			m_sprite(sprite),
 			m_walkable(walkable),
 			m_animator(animator)
 		{
 		}
 
-		const engine::graphics::renderable::Sprite& GetSprite() const
+		const engine::graphics::Sprite& GetSprite() const
 		{
 			if (m_animator)
 			{
-				return m_animator->GetCurrentFrame().element;
+				return m_animator->GetCurrent();
 			}
 			return m_sprite;
 		}
@@ -129,7 +129,7 @@ namespace demo
 							m_tilesize.height * m_scale.y
 						};
 												
-						m_renderer.DrawRenderable(tile->GetSprite(), pos, tilesize, engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, m_alpha }, 0.0f);
+						m_renderer.Draw(tile->GetSprite(), pos, tilesize, engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, m_alpha }, 0.0f);
 					}
 				}
 			}
@@ -221,7 +221,7 @@ namespace demo
 							m_tilesize.height * m_scale.y
 						};
 
-						m_renderer.DrawRenderable(
+						m_renderer.Draw(
 							tile->GetSprite(),
 							m_camera.WorldToScreen(pos),
 							tilesize,
@@ -366,7 +366,7 @@ namespace demo
 
 						pos += m_pos;
 
-						m_renderer.DrawRenderable(tile->GetSprite(), pos, tileSize, engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
+						m_renderer.Draw(tile->GetSprite(), pos, tileSize, engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
 					}
 				}
 			}
@@ -416,7 +416,7 @@ namespace demo
 
 						pos += m_pos;
 
-						m_renderer.DrawRenderable(tile->GetSprite(), pos, tileSize, engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
+						m_renderer.Draw(tile->GetSprite(), pos, tileSize, engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
 					}
 				}
 			}
@@ -484,7 +484,7 @@ namespace demo
 
 							pos += m_pos;
 
-							m_renderer.DrawRenderable(tile->GetSprite(), pos, tileSize, engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
+							m_renderer.Draw(tile->GetSprite(), pos, tileSize, engine::graphics::ColorF{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.0f);
 						}
 					}
 
@@ -551,7 +551,7 @@ namespace demo
 	{
 	private:
 		using AnimatedTile = engine::component::tile::AnimatedTile;
-		using Sprite = engine::graphics::renderable::Sprite;
+		using Sprite = engine::graphics::Sprite;
 		using Animator = engine::graphics::animation::Animator<Sprite>;
 		using Animation = engine::graphics::animation::Animation<Sprite>;
 		using AnimationFactory = engine::graphics::factory::AnimationFactory;

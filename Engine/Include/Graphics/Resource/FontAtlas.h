@@ -14,7 +14,7 @@ namespace engine
 			{
 			protected:
 				std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
-				std::vector<engine::graphics::renderable::Sprite> m_glyphs;
+				std::vector<engine::graphics::Sprite> m_glyphs;
 				
 			public:
 				FontAtlas(std::unique_ptr<engine::graphics::resource::ISpriteAtlas> spriteAtlas);
@@ -24,8 +24,8 @@ namespace engine
 
 				void Reset() override final;
 
-				engine::graphics::renderable::Sprite GetGlyph(const unsigned char character) const override final;
-				engine::graphics::renderable::Sprite GetSprite() const override final;
+				engine::graphics::Sprite GetGlyph(const unsigned char character) const override final;
+				engine::graphics::Sprite GetSprite() const override final;
 
 				// get size of characters
 				const float GetWidth(const unsigned char character) const override final;

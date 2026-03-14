@@ -33,6 +33,7 @@ namespace math
 		friend Vector operator * (T scalar, Vector rhs) { return rhs *= scalar; }
 		friend Vector operator / (Vector lhs, T scalar) { return lhs /= scalar; }
 
+		// unary minus operator. negates the vector
 		Vector operator-() const { return Vector(-x, -y); }
 
 		// Vector operations

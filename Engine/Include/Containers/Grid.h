@@ -29,7 +29,7 @@ namespace engine::container
 
 
 	template<typename T>
-	class Grid : public container::IGrid<T>
+	class Grid// : public container::IGrid<T>
 	{
 	private:
 		std::vector<T> m_data;
@@ -48,19 +48,19 @@ namespace engine::container
 		}
 
 		// returns grid width
-		size_t GetWidth() const override
+		size_t GetWidth() const 
 		{
 			return m_width;
 		}
 
 		// returns grid height
 		// if last row is incomplete (number of tiles < width), it does not count in height
-		size_t GetHeight() const override
+		size_t GetHeight() const 
 		{
 			return m_width > 0 ? (m_data.size() / m_width) : 0;
 		}
 
-		spatial::Size<size_t> GetSize() const override
+		spatial::Size<size_t> GetSize() const 
 		{
 			return spatial::Size<size_t>
 			{
@@ -69,7 +69,7 @@ namespace engine::container
 			};
 		}
 
-		bool IsInBounds(int row, int col) const override
+		bool IsInBounds(int row, int col) const 
 		{
 			return
 				row >= 0 && col >= 0 &&					// make sure rows and columns are not negatives.
@@ -88,28 +88,32 @@ namespace engine::container
 			return m_data.size();
 		}
 
-		void Add(const T& data) override
+		void Add(const T& data) 
 		{
 			m_data.push_back(data);
-
 		}
 
-		void Take(T&& data) override
+		void Add(T&& data)
 		{
 			m_data.push_back(std::move(data));
 		}
 
-		void AddRange(const std::vector<T>& data) override
+		void Take(T&& data) 
+		{
+			m_data.push_back(std::move(data));
+		}
+
+		void AddRange(const std::vector<T>& data) 
 		{
 			m_data.insert(m_data.end(), data.begin(), data.end());
 		};
 
-		void TakeRange(std::vector<T>&& data) override
+		void TakeRange(std::vector<T>&& data) 
 		{
 			m_data.insert(m_data.end(), std::make_move_iterator(data.begin()), std::make_move_iterator(data.end())); // move 
 		}
 
-		void Pop() override
+		void Pop() 
 		{
 			if (m_data.size())
 			{
@@ -117,7 +121,7 @@ namespace engine::container
 			}
 		}
 
-		const T& Get(size_t index) const override
+		const T& Get(size_t index) const 
 		{
 			if (index >= m_data.size())
 			{
@@ -126,7 +130,7 @@ namespace engine::container
 			return m_data[index];
 		}
 
-		T& Get(size_t index) override
+		T& Get(size_t index) 
 		{
 			if (index >= m_data.size())
 			{
@@ -135,17 +139,17 @@ namespace engine::container
 			return m_data[index];
 		}
 
-		void Reserve(const spatial::Size<size_t>& size) override
+		void Reserve(const spatial::Size<size_t>& size) 
 		{
 			m_data.reserve(size.width * size.height);
 		}
 
-		bool IsEmpty() const override
+		bool IsEmpty() const 
 		{
 			return m_data.empty();
 		}
 
-		void Clear() override
+		void Clear() 
 		{
 			m_data.clear();
 			// optional: doing this releases memory back to system immediately
@@ -153,12 +157,12 @@ namespace engine::container
 			m_width = 0;
 		}
 
-		bool IsInBounds(const size_t index) const override
+		bool IsInBounds(const size_t index) const 
 		{
 			return index < m_data.size();
 		}
 
-		T& Back() override
+		T& Back() 
 		{
 			if (m_data.empty())
 			{
@@ -167,7 +171,7 @@ namespace engine::container
 			return m_data.back();
 		}
 
-		const T& Back() const override
+		const T& Back() const 
 		{
 			if (m_data.empty())
 			{
@@ -176,7 +180,7 @@ namespace engine::container
 			return m_data.back();
 		}
 
-		T& Get(int row, int col) override
+		T& Get(int row, int col) 
 		{
 			if (!IsInBounds(row, col))
 			{
@@ -185,7 +189,7 @@ namespace engine::container
 			return m_data[row * m_width + col];
 		}
 
-		const T& Get(int row, int col) const override
+		const T& Get(int row, int col) const 
 		{
 			if (!IsInBounds(row, col))
 			{
@@ -195,18 +199,18 @@ namespace engine::container
 		}
 
 		// retrieves the data at Coord
-		T& Get(const engine::spatial::Coord& coord) override final
+		T& Get(const engine::spatial::Coord& coord)  
 		{
 			return Get(coord.row, coord.col);
 		}
 
 		// retrieves the data at Coord
-		const T& Get(const engine::spatial::Coord& coord) const override final
+		const T& Get(const engine::spatial::Coord& coord) const  
 		{
 			return Get(coord.row, coord.col);
 		}
 
-		void Set(int row, int col, const T& data) override
+		void Set(int row, int col, const T& data) 
 		{
 			if (!IsInBounds(row, col))
 			{
@@ -215,7 +219,16 @@ namespace engine::container
 			m_data[row * m_width + col] = data;
 		}
 
-		void Set(const engine::spatial::Coord& coord, const T& data) override
+		void Set(int row, int col, T&& data)
+		{
+			if (!IsInBounds(row, col))
+			{
+				throw std::out_of_range("index out of bounds");
+			}
+			m_data[row * m_width + col] = std::move(data);
+		}
+
+		void Set(const engine::spatial::Coord& coord, const T& data) 
 		{
 			if (!IsInBounds(coord))
 			{
@@ -224,14 +237,62 @@ namespace engine::container
 			m_data[coord.row * m_width + coord.col] = data;
 		}
 
-		void Fill(const T& data) override
+		void Set(const engine::spatial::Coord& coord, T&& data)
 		{
-			for (size_t i = 0; i < m_data.size(); i++)
+			if (!IsInBounds(coord))
 			{
-				m_data[i] = data;
+				throw std::out_of_range("index out of bounds");
 			}
+			m_data[coord.row * m_width + coord.col] = std::move(data);
 		}
 
+		//void Fill(const T& data) 
+		//{
+		//	for (size_t i = 0; i < m_data.size(); i++)
+		//	{
+		//		m_data[i] = data;
+		//	}
+		//}
 
+		// Iterator support
+		typename std::vector<T>::iterator begin() {
+			return m_data.begin();
+		}
+
+		typename std::vector<T>::iterator end() {
+			return m_data.end();
+		}
+
+		typename std::vector<T>::const_iterator begin() const {
+			return m_data.begin();
+		}
+
+		typename std::vector<T>::const_iterator end() const {
+			return m_data.end();
+		}
+
+		typename std::vector<T>::const_iterator cbegin() const {
+			return m_data.cbegin();
+		}
+
+		typename std::vector<T>::const_iterator cend() const {
+			return m_data.cend();
+		}
+
+		typename std::vector<T>::reverse_iterator rbegin() {
+			return m_data.rbegin();
+		}
+
+		typename std::vector<T>::reverse_iterator rend() {
+			return m_data.rend();
+		}
+
+		typename std::vector<T>::const_reverse_iterator rbegin() const {
+			return m_data.rbegin();
+		}
+
+		typename std::vector<T>::const_reverse_iterator rend() const {
+			return m_data.rend();
+		}
 	};
 }

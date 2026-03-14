@@ -38,7 +38,7 @@ namespace engine
 								row * tilesize.height
 							};
 
-							renderer.DrawRenderable(tile->GetSprite(), pos + origin, tilesize, color, 0.0f);
+							renderer.Draw(tile->GetSprite(), pos + origin, tilesize, color, 0.0f);
 						}
 					}
 				}
@@ -87,7 +87,7 @@ namespace engine
 								tilesize.height * scale.y
 							};
 
-							renderer.DrawRenderable(
+							renderer.Draw(
 								tile->GetSprite(),
 								pos + origin,
 								ts,

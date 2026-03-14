@@ -45,6 +45,8 @@ namespace engine::graphics::resource
 		virtual void Reset() = 0;
 
 		virtual bool SaveToFile(const wchar_t* filename) = 0;
+
+		virtual bool IsValid() = 0;
 	};
 }
 

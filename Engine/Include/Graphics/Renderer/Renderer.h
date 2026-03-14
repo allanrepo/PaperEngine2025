@@ -43,7 +43,7 @@ namespace engine::graphics::renderer
         ) override final;
 
         // Draws a string using a font atlas at the specified position and color
-        virtual void DrawText(
+        virtual void Draw(
             const engine::graphics::resource::IFontAtlas& font, // Font atlas
             const std::string& text,                    // Text to render
             const engine::spatial::PositionF& pos,                                 // Top-left screen position
@@ -51,8 +51,8 @@ namespace engine::graphics::renderer
         ) override final;
 
         // Draws a renderable quad with color tint and rotation
-        virtual void DrawRenderable(
-            const engine::graphics::renderable::IRenderable& renderable,                    // renderable object
+        virtual void Draw(
+            const engine::graphics::Sprite& sprite,                    // renderable object
             const engine::spatial::PositionF& pos,                                 // Top-left screen position
             const spatial::SizeF& size,                               // Sprite dimensions
             const engine::graphics::ColorF& color,                                   // RGBA color tint

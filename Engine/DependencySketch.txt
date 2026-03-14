@@ -89,3 +89,19 @@ or should the game code handle that responsibility?
 6. now how do we handle direction? or face direction? animation has direction too.
 
 1. ok in animation controller state, the animation clip and lambda is a pointer, so only its reference is copied, but state name and nexto is a string and gets copied. the state list is copied. correct?
+
+
+
+
+
+
+RenderableMap: public Grid<Tile>
+
+
+Tile
+- internal to RenderableMap
+- has map<T, Prop>, T = int by default
+
+Prop
+- has PositionF - position relative to Tile
+- has Handle<IRenderable>

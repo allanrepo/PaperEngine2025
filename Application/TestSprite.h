@@ -11,7 +11,7 @@
 #include <Graphics/Renderer/Renderer.h>
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Core/Input.h>
 
 namespace test
@@ -31,7 +31,7 @@ namespace test
 		std::unique_ptr<engine::win32::Window> m_window;
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
-		std::unique_ptr<engine::graphics::renderable::Sprite> m_sprite;
+		std::unique_ptr<engine::graphics::Sprite> m_sprite;
 		engine::spatial::SizeF m_spriteSize{};
 		engine::input::Input m_input;
 
@@ -84,7 +84,7 @@ namespace test
 			m_spriteSize.height = atlas.GetHeight() / 8; // assuming 8 rows
 			
 			// create sprite
-			m_sprite = std::make_unique<engine::graphics::renderable::Sprite>(atlas.MakeSprite(0));
+			m_sprite = std::make_unique<engine::graphics::Sprite>(atlas.MakeSprite(0));
 		}
 
 		void OnMouseMove(int x, int y)
@@ -103,7 +103,7 @@ namespace test
 			// recreate sprite with new UV rect
 			if (index < atlas.GetUVRectCount())
 			{
-				m_sprite = std::make_unique<engine::graphics::renderable::Sprite>(atlas.MakeSprite(index));
+				m_sprite = std::make_unique<engine::graphics::Sprite>(atlas.MakeSprite(index));
 			}
 		}
 
@@ -122,7 +122,7 @@ namespace test
 					engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("CharacterTest_2304x1536_12x8");
 
 					// draw the sprite atlas at half size
-					m_renderer->DrawRenderable(atlas.GetSprite(),
+					m_renderer->Draw(atlas.GetSprite(),
 						engine::spatial::PositionF{ 0, 0 },
 						engine::spatial::SizeF{ atlas.GetWidth()/2, atlas.GetHeight()/2},
 						engine::graphics::ColorF{ 1,1,1,1 },
@@ -130,7 +130,7 @@ namespace test
 					);
 
 					// draw the selected sprite cell next to the sprite atlas
-					m_renderer->DrawRenderable(*m_sprite,
+					m_renderer->Draw(*m_sprite,
 						engine::spatial::PositionF{ atlas.GetWidth() / 2 + 10, 0 },
 						engine::spatial::SizeF{ m_sprite->GetWidth(), m_sprite->GetHeight() },
 						engine::graphics::ColorF{ 1,1,1,1 },

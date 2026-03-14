@@ -1,6 +1,6 @@
 #pragma once
 #include <Graphics/Renderer/IRenderer.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Command/ICommand.h>
 #include <Command/CommandQueue.h>
 
@@ -85,53 +85,22 @@ namespace engine
 
 					void Execute() override
 					{
-						m_renderer.DrawText(m_font, m_text, m_pos, m_color);
+						m_renderer.Draw(m_font, m_text, m_pos, m_color);
 					}
 				};
 
-				class DrawRenderableCommand : public DrawCommandBase
+				class DrawCommand : public DrawCommandBase
 				{
 				private:
-					const ::engine::graphics::renderable::IRenderable& m_renderable;
+					const ::engine::graphics::Sprite& m_sprite;
 					engine::spatial::PositionF m_pos;
 					spatial::SizeF m_size;
 					::engine::graphics::ColorF m_color;
 					float m_rotation;
 				public:
-					DrawRenderableCommand(
-						::engine::graphics::renderer::IRenderer& renderer,
-						const ::engine::graphics::renderable::IRenderable& renderable,
-						engine::spatial::PositionF pos,
-						spatial::SizeF size,
-						::engine::graphics::ColorF color,
-						float rotation
-					) :
-						DrawCommandBase(renderer),
-						m_renderable(renderable),
-						m_pos(pos),
-						m_size(size),
-						m_color(color),
-						m_rotation(rotation)
-					{
-					}
-					void Execute() override
-					{
-						m_renderer.DrawRenderable(m_renderable, m_pos, m_size, m_color, m_rotation);
-					}
-				};
-
-				class DrawSpriteCommand : public DrawCommandBase
-				{
-				private:
-					const ::engine::graphics::renderable::Sprite m_sprite;
-					engine::spatial::PositionF m_pos;
-					spatial::SizeF m_size;
-					::engine::graphics::ColorF m_color;
-					float m_rotation;
-				public:
-					DrawSpriteCommand(
-						::engine::graphics::renderer::IRenderer& renderer,
-						const ::engine::graphics::renderable::Sprite& sprite,
+					DrawCommand(
+						engine::graphics::renderer::IRenderer& renderer,
+						const engine::graphics::Sprite& sprite,
 						engine::spatial::PositionF pos,
 						spatial::SizeF size,
 						::engine::graphics::ColorF color,
@@ -147,7 +116,38 @@ namespace engine
 					}
 					void Execute() override
 					{
-						m_renderer.DrawRenderable(m_sprite, m_pos, m_size, m_color, m_rotation);
+						m_renderer.Draw(m_sprite, m_pos, m_size, m_color, m_rotation);
+					}
+				};
+
+				class DrawSpriteCommand : public DrawCommandBase
+				{
+				private:
+					const ::engine::graphics::Sprite m_sprite;
+					engine::spatial::PositionF m_pos;
+					spatial::SizeF m_size;
+					::engine::graphics::ColorF m_color;
+					float m_rotation;
+				public:
+					DrawSpriteCommand(
+						::engine::graphics::renderer::IRenderer& renderer,
+						const ::engine::graphics::Sprite& sprite,
+						engine::spatial::PositionF pos,
+						spatial::SizeF size,
+						::engine::graphics::ColorF color,
+						float rotation
+					) :
+						DrawCommandBase(renderer),
+						m_sprite(sprite),
+						m_pos(pos),
+						m_size(size),
+						m_color(color),
+						m_rotation(rotation)
+					{
+					}
+					void Execute() override
+					{
+						m_renderer.Draw(m_sprite, m_pos, m_size, m_color, m_rotation);
 					}
 				};
 

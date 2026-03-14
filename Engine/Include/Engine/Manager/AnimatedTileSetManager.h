@@ -13,12 +13,12 @@ namespace engine
 			class AnimatedTile
 			{
 			private:
-				engine::graphics::animation::Animator<engine::graphics::renderable::Sprite> m_animator;
-				std::unordered_map<std::string, engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>> m_animations;
+				engine::graphics::animation::Animator<engine::graphics::Sprite> m_animator;
+				std::unordered_map<std::string, engine::graphics::animation::Animation<engine::graphics::Sprite>> m_animations;
 				bool m_walkable;
 
 			public:
-				AnimatedTile(bool walkable, const std::string& name, const engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>& anim) :
+				AnimatedTile(bool walkable, const std::string& name, const engine::graphics::animation::Animation<engine::graphics::Sprite>& anim) :
 					m_walkable(walkable)
 				{
 					// copy the animation into our container
@@ -33,7 +33,7 @@ namespace engine
 					return m_animator.IsRunning();
 				}
 
-				const engine::graphics::renderable::Sprite& GetSprite() const
+				const engine::graphics::Sprite& GetSprite() const
 				{
 					return m_animator.GetCurrent();
 				}

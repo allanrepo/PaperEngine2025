@@ -310,8 +310,9 @@ namespace engine::event
 
             for (auto it = m_subscribers.begin(); it != m_subscribers.end(); ++it)
             {
+                if (!(*it)->IsActive()) continue;
                 if ((*it)->Equals(&temp))
-                {
+                {              
                     (*it)->Deactivate();            // Prevent dispatch
                     m_unsubscribers.push_back(it);   // Store iterator for deferred removal
                     break;

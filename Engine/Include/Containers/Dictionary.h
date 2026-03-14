@@ -25,7 +25,12 @@ namespace engine::container
         const_iterator cend() const { return registry.cend(); }
 
         // Registers a value with a key. Returns true if inserted, false if key already exists.
-        bool Register(const Key& key, Value value) 
+        bool Register(const Key& key, Value&& value) 
+        {
+            return registry.emplace(key, std::move(value)).second;
+        }
+
+        bool Register(const Key& key, const Value& value)
         {
             return registry.emplace(key, std::move(value)).second;
         }

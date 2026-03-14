@@ -12,7 +12,7 @@
 #include <Graphics/Renderer/Renderer.h>
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Engine/Factory/SpriteAtlasFactory.h>
-#include <Graphics/Renderable/Sprite.h>
+#include <Graphics/Core/Sprite.h>
 #include <Core/Input.h>
 #include <Graphics/Resource/IFontAtlas.h>
 #include <Graphics/Resource/FontAtlas.h>
@@ -26,7 +26,6 @@
 #include <Engine/Graphics/Draw.h>
 #include <Engine/Factory/AnimationFactory.h>
 #include "Actor.h"
-#include <Graphics/Renderable/IRenderable.h>
 #include <Core/View.h>
 #include <Containers/Dictionary.h>
 #include <Algorithm/Resolvers.h>
@@ -42,7 +41,7 @@ namespace engine
 		public:
 			struct DrawInfo
 			{
-				Sprite sprite;						// what to draw
+				engine::graphics::Sprite sprite;						// what to draw
 				engine::spatial::PositionF pos;		// world position
 				engine::spatial::SizeF size;		// size on screen
 				engine::graphics::ColorF tint;		// color modulation
@@ -75,7 +74,7 @@ namespace engine
 
 				for (auto& cmd : m_batch)
 				{
-					m_renderer.DrawRenderable(cmd.sprite, cmd.pos, cmd.size, cmd.tint, cmd.rotation);
+					m_renderer.Draw(cmd.sprite, cmd.pos, cmd.size, cmd.tint, cmd.rotation);
 				}
 			}
 
@@ -110,7 +109,7 @@ namespace engine
 
 		struct DrawCommand
 		{
-			Sprite sprite;              // what to draw
+			engine::graphics::Sprite sprite;              // what to draw
 			engine::spatial::PositionF pos;    // world position
 			engine::spatial::SizeF size;       // size on screen
 			engine::graphics::ColorF tint;     // color modulation
@@ -151,7 +150,7 @@ namespace engine
 			{
 				for (auto& cmd : m_commands)
 				{
-					renderer.DrawRenderable(cmd.sprite, cmd.pos, cmd.size, cmd.tint, cmd.rotation);
+					renderer.Draw(cmd.sprite, cmd.pos, cmd.size, cmd.tint, cmd.rotation);
 				}
 			}
 
@@ -290,7 +289,7 @@ namespace engine
 
 				if (proptile.Has(engine::navigation::tile::TileConstraint::CENTER))
 				{
-					const Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::CENTER).GetSprite();
+					const engine::graphics::Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::CENTER).GetSprite();
 
 					// translate position so that the prop's anchor is at the center of the tile
 					engine::spatial::PositionF translated = pos;
@@ -316,7 +315,7 @@ namespace engine
 
 				if (proptile.Has(engine::navigation::tile::TileConstraint::NW))
 				{
-					const Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::NW).GetSprite();
+					const engine::graphics::Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::NW).GetSprite();
 
 					// no need to translate position since the prop's anchor is already at north-west corner of the tile
 
@@ -339,7 +338,7 @@ namespace engine
 
 				if (proptile.Has(engine::navigation::tile::TileConstraint::NE))
 				{
-					const Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::NE).GetSprite();
+					const engine::graphics::Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::NE).GetSprite();
 
 					// translate position so that prop's anchor is at north-east corner of the tile
 					engine::spatial::PositionF translated = pos;
@@ -363,7 +362,7 @@ namespace engine
 
 				if (proptile.Has(engine::navigation::tile::TileConstraint::SW))
 				{
-					const Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::SW).GetSprite();
+					const engine::graphics::Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::SW).GetSprite();
 
 					// translate position so that prop's anchor is at south-west corner of the tile
 					engine::spatial::PositionF translated = pos;
@@ -387,7 +386,7 @@ namespace engine
 
 				if (proptile.Has(engine::navigation::tile::TileConstraint::SE))
 				{
-					const Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::SE).GetSprite();
+					const engine::graphics::Sprite& sprite = proptile.Get(engine::navigation::tile::TileConstraint::SE).GetSprite();
 					// translate position so that prop's anchor is at south-east corner of the tile
 					engine::spatial::PositionF translated = pos;
 					translated.x += tilesize.width;
@@ -454,13 +453,13 @@ namespace TestProp
 	class AnimatedTile
 	{
 	private:
-		engine::graphics::animation::Animator<engine::graphics::renderable::Sprite> m_animator;
-		std::unordered_map<std::string, engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>> m_animations;
+		engine::graphics::animation::Animator<engine::graphics::Sprite> m_animator;
+		std::unordered_map<std::string, engine::graphics::animation::Animation<engine::graphics::Sprite>> m_animations;
 		bool m_walkable;
 		int m_index;
 
 	public:
-		AnimatedTile(bool walkable, const std::string& name, const engine::graphics::animation::Animation<engine::graphics::renderable::Sprite>& anim, int index) :
+		AnimatedTile(bool walkable, const std::string& name, const engine::graphics::animation::Animation<engine::graphics::Sprite>& anim, int index) :
 			m_walkable(walkable),
 			m_index(index)
 
@@ -477,7 +476,7 @@ namespace TestProp
 			return m_animator.IsRunning();
 		}
 
-		const engine::graphics::renderable::Sprite& GetSprite() const
+		const engine::graphics::Sprite& GetSprite() const
 		{
 			return m_animator.GetCurrent();
 		}
@@ -496,12 +495,12 @@ namespace TestProp
 	class RenderableTile
 	{
 	private:
-		Sprite m_sprite;
+		engine::graphics::Sprite m_sprite;
 		bool m_walkable;
 		int m_index;
 
 	public:
-		RenderableTile(const Sprite& sprite, bool walkable, int index) :
+		RenderableTile(const engine::graphics::Sprite& sprite, bool walkable, int index) :
 			m_sprite(sprite),
 			m_walkable(walkable),
 			m_index(index)
@@ -513,7 +512,7 @@ namespace TestProp
 			return m_index;
 		}
 
-		const Sprite& GetSprite() const
+		const engine::graphics::Sprite& GetSprite() const
 		{
 			return m_sprite;
 		}
@@ -524,7 +523,99 @@ namespace TestProp
 		}
 	};
 
+	//template<typename T>
+	//class Container//: public IContainerr<T>
+	//{
+	//	std::vector<T> m_data;
+	//	size_t m_width;
 
+	//public:
+
+	//	void Add(T&& data) 
+	//	{
+	//		m_data.push_back(std::move(data));
+	//	}
+	//	//template<typename U = T, typename = typename std::enable_if<std::is_copy_constructible<U>::value>::type>
+	//	void Add(const T& data) 
+	//	{
+	//		m_data.push_back(data);
+	//	}
+
+	//	void Set(int row, int col, const T& data) 
+	//	{
+	//		if (!IsInBounds(row, col))
+	//		{
+	//			throw std::out_of_range("index out of bounds");
+	//		}
+	//		m_data[row * m_width + col] = data;
+	//	}
+
+	//	void Set(int row, int col, T&& data)
+	//	{
+	//		if (!IsInBounds(row, col))
+	//		{
+	//			throw std::out_of_range("index out of bounds");
+	//		}
+	//		m_data[row * m_width + col] = std::move(data);
+	//	}
+
+
+	//	bool IsInBounds(int row, int col) const
+	//	{
+	//		return
+	//			row >= 0 && col >= 0 &&					// make sure rows and columns are not negatives.
+	//			col < m_width &&						// make sure column is within the grid's width
+	//			row * m_width + col < m_data.size();	// make sure if you map the row and column, it is within the grid array's range
+	//	}
+
+	//	void Fill(const T& data) 
+	//	{
+	//		for (size_t i = 0; i < m_data.size(); i++) 
+	//		{
+	//			m_data[i] = data; // copy assignment
+	//		}
+	//	}
+
+
+	//	//void Add(T& data) override
+	//	//{
+	//	//	m_data.push_back(std::move(data));
+	//	//}
+
+	//	//void Take(T&& data) override
+	//	//{
+	//	//	m_data.push_back(std::move(data));
+	//	//}
+
+	//	//void Take(T& data) override
+	//	//{
+	//	//	m_data.push_back(std::move(data));
+	//	//}
+
+	//	//virtual void AddRange(const std::vector<T>& data) = 0;
+
+	//	//virtual void TakeRange(std::vector<T>&& data) = 0;
+
+	//	//virtual void Pop() = 0;
+
+	//	//virtual const T& Get(size_t index) const = 0;
+
+	//	//virtual T& Get(size_t index) = 0;
+
+	//	//virtual void Reserve(const spatial::Size<size_t>& size) = 0;
+
+	//	//virtual size_t GetElementCount() const = 0;
+
+	//	//virtual bool IsEmpty() const = 0;
+
+	//	//virtual void Clear() = 0;
+
+	//	//virtual bool IsInBounds(const size_t index) const = 0;
+
+	//	//virtual T& Back() = 0;
+
+	//	//virtual const T& Back() const = 0;
+	//};
 
 	class Test
 	{
@@ -545,10 +636,9 @@ namespace TestProp
 
 		bool m_toggle;
 
-		std::vector<engine::graphics::animation::Animator<Sprite>> m_animators;
+		std::vector<engine::graphics::animation::Animator<engine::graphics::Sprite>> m_animators;
 
 		DrawQueue m_drawQueue;
-
 
 	public:
 		Test() :
@@ -592,6 +682,19 @@ namespace TestProp
 			m_renderer->Initialize();
 			LOG("Renderer Batch (DX11) created...");
 
+			//Container<std::unique_ptr<std::string>> grid1;
+			//grid1.Add(std::make_unique<std::string>("hello"));
+			//grid1.Set(0, 0, std::make_unique<std::string>("world"));
+			//Container<int> grid2;
+			//grid2.Add(1);
+			//grid2.Set(0, 0, 1);
+			//int a = 69;
+			//grid2.Add(a);
+			//grid2.Set(0, 0, a);
+			//Container< std::unique_ptr<engine::graphics::resource::ISpriteAtlas>> grid3;
+			//grid3.Add(std::make_unique<engine::graphics::resource::SpriteAtlas>(nullptr));
+
+
 			// set map parameters
 			{
 				Registry<SizeF>::Instance().Register("tile_size", make_unique<SizeF>(64.0f, 64.0f));
@@ -604,7 +707,7 @@ namespace TestProp
 			{
 				
 				Registry<engine::component::graphics::PropSet>::Instance().Register("props", make_unique<engine::component::graphics::PropSet>()); // prop storage				
-				Registry<engine::graphics::animation::AnimationSet<Sprite>>::Instance().Register("props", make_unique<engine::graphics::animation::AnimationSet<Sprite>>()); // animation storage
+				Registry<engine::graphics::animation::AnimationSet<engine::graphics::Sprite>>::Instance().Register("props", make_unique<engine::graphics::animation::AnimationSet<engine::graphics::Sprite>>()); // animation storage
 			}
 
 			// create sprite atlases
@@ -618,7 +721,7 @@ namespace TestProp
 			{
 				// create animation objects and store in animation set
 				ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("tree");
-				engine::graphics::animation::AnimationSet<Sprite>& animset = Registry<engine::graphics::animation::AnimationSet<Sprite>>::Instance().Get("props");
+				engine::graphics::animation::AnimationSet<engine::graphics::Sprite>& animset = Registry<engine::graphics::animation::AnimationSet<engine::graphics::Sprite>>::Instance().Get("props");
 				animset.Register("storm", AnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 25.0f, true, PositionF{ 0.5f, 0.85f }));
 				animset.Register("idle", AnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 200.0f, true, PositionF{ 0.5f, 0.85f }));
 				animset.Register("frozen", AnimationFactory::Create(atlas, std::vector<int>{ 0 }, 1000.0f, true, PositionF{ 0.5f, 0.85f }));
@@ -627,14 +730,14 @@ namespace TestProp
 			// setup tree prop
 			{
 				// get our storage for easy access
-				AnimationSet<Sprite>& animset = Registry<AnimationSet<Sprite>>::Instance().Get("props");
+				AnimationSet<engine::graphics::Sprite>& animset = Registry<AnimationSet<engine::graphics::Sprite>>::Instance().Get("props");
 				engine::component::graphics::PropSet& props = Registry<engine::component::graphics::PropSet>::Instance().Get("props");
 				ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("tree");
 
 				// create prop object and assign animation set for trees. build 3 of them as animated, and 1 as simple
-				props.Register(0, std::make_unique<engine::component::graphics::AnimatedProp>(animset.MakeAnimationController()));
-				props.Register(1, std::make_unique<engine::component::graphics::AnimatedProp>(animset.MakeAnimationController()));
-				props.Register(2, std::make_unique<engine::component::graphics::AnimatedProp>(animset.MakeAnimationController()));
+				props.Register(0, std::make_unique<engine::component::graphics::AnimatedProp>(&animset));
+				props.Register(1, std::make_unique<engine::component::graphics::AnimatedProp>(&animset));
+				props.Register(2, std::make_unique<engine::component::graphics::AnimatedProp>(&animset));
 				props.Register(3, std::make_unique<engine::component::graphics::SimpleProp>(atlas.MakeSprite(0, PositionF{ 0.5f, 0.85f })));
 
 				// for the 3 animated props, play different animations

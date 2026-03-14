@@ -24,12 +24,12 @@ int main()
 	//TestInput testInput;
 	//TestActorStateBehavior testActorStateBehavior;
 	//TestSaveTextureToFile testSaveTextureToFile;
-	testPathFinder::TestPathFinder testPathFinder;
+	//testPathFinder::TestPathFinder testPathFinder;
 	//test::TestFootprintResolver testFootprintResolver;
 	//test::TestPinchBlock testPinchBlock;
 	//test::TestGridScaling testGridScaling;
 	//TestSprite testSprite;
-	//TestRendererVisualComparison test;
+	TestRendererVisualComparison test;
 	//StressTestRenderer str;
 	//StressTestRendererWithEngine strwe;
 }

@@ -70,3 +70,8 @@ bool engine::graphics::resource::Texture::SaveToFile(const wchar_t* filename)
 {
     return m_impl->SaveToFile(filename);
 }
+
+bool engine::graphics::resource::Texture::IsValid()
+{
+    return m_impl->IsValid();
+}
