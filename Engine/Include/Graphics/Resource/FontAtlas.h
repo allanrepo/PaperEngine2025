@@ -20,7 +20,7 @@ namespace engine
 				FontAtlas(std::unique_ptr<engine::graphics::resource::ISpriteAtlas> spriteAtlas);
 				virtual ~FontAtlas() = default;
 
-				bool Initialize(const std::string& fontName = "Arial", const unsigned int fontSize = 12) override final;
+				bool Initialize(const std::string& fontName = "Arial", const size_t fontSize = 12) override final;
 
 				void Reset() override final;
 

@@ -74,6 +74,9 @@
     <ClInclude Include="TestProp.h">
       <Filter>Tests</Filter>
     </ClInclude>
+    <ClInclude Include="TestRenderable.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

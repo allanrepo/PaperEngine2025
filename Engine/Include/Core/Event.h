@@ -230,8 +230,25 @@ namespace engine::event
     private:
         std::list<IDelegate<void, Args...>*> m_subscribers;
         std::list<typename std::list<IDelegate<void, Args...>*>::iterator> m_unsubscribers;
+        bool m_dispatching;
+
+        void Flush()
+        {
+            // Sweep deferred removals
+            for (auto it : m_unsubscribers)
+            {
+                delete* it;                 // Destroy the delegate
+                m_subscribers.erase(it);    // Remove from listener list
+            }
+            m_unsubscribers.clear();
+        }
+
     public:
-        Event() = default;
+        Event() :
+            m_dispatching(false)
+        {
+
+        }
 
         virtual ~Event()
         {
@@ -258,9 +275,11 @@ namespace engine::event
             return m_subscribers.size();
         }
 
+        // dispatch
         void operator ()(const Args&... args)
         {
             // notify all listeners
+            m_dispatching = true;
             for (IDelegate<void, Args...>* subscriber : m_subscribers)
             {
                 if (subscriber && subscriber->IsActive())
@@ -268,14 +287,10 @@ namespace engine::event
                     (*subscriber)(args...);
                 }
             }
+            m_dispatching = false;
 
-            // Sweep deferred removals
-            for (auto it : m_unsubscribers)
-            {
-                delete* it;                 // Destroy the delegate
-                m_subscribers.erase(it);    // Remove from listener list
-            }
-            m_unsubscribers.clear();
+            // remove those on list now
+            Flush();
         }
 
         template <typename C>
@@ -314,7 +329,15 @@ namespace engine::event
                 if ((*it)->Equals(&temp))
                 {              
                     (*it)->Deactivate();            // Prevent dispatch
-                    m_unsubscribers.push_back(it);   // Store iterator for deferred removal
+                    if (m_dispatching)
+                    {
+                        m_unsubscribers.push_back(it);   // Store iterator for deferred removal
+                    }
+                    else
+                    {
+                        delete* it;                 // Destroy the delegate
+                        m_subscribers.erase(it);    // Remove from listener list
+                    }
                     break;
                 }
             }
@@ -329,7 +352,15 @@ namespace engine::event
                 if ((*it)->Equals(&temp))
                 {
                     (*it)->Deactivate();            // Prevent dispatch
-                    m_unsubscribers.push_back(it);   // Store iterator for deferred removal
+                    if (m_dispatching)
+                    {
+                        m_unsubscribers.push_back(it);   // Store iterator for deferred removal
+                    }
+                    else
+                    {
+                        delete* it;                 // Destroy the delegate
+                        m_subscribers.erase(it);    // Remove from listener list
+                    }
                     break;
                 }
             }
@@ -346,18 +377,21 @@ namespace engine::event
             {
                 if ((*it)->Equals(&temp))
                 {
-                    (*it)->Deactivate();
-                    m_unsubscribers.push_back(it);
+                    (*it)->Deactivate();            // Prevent dispatch
+                    if (m_dispatching)
+                    {
+                        m_unsubscribers.push_back(it);   // Store iterator for deferred removal
+                    }
+                    else
+                    {
+                        delete* it;                 // Destroy the delegate
+                        m_subscribers.erase(it);    // Remove from listener list
+                    }
                     break;
                 }
             }
         }
-
     };
-
-
-
-
 };
 
 namespace engine::event

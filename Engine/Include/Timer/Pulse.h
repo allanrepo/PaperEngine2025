@@ -87,6 +87,27 @@ namespace engine::timer
         // - OnInterval once for OneShot  
         // - OnMaxIntervalPerUpdateReached if triggers exceed cap 
         void Update(double delta);
+
+        void Pause() 
+        { 
+            m_running = false; 
+        }
+
+        void Resume() 
+        { 
+            m_running = true;  
+        }
+
+        bool IsRunning() const
+        {
+            return m_running;
+        }
+
+        void Stop()
+        {
+            m_running = false;
+            m_elapsedTimeAccumulator = 0.0;
+        }
     };
 }
 

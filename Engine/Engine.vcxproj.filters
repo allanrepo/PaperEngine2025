@@ -345,6 +345,9 @@
     <ClInclude Include="Include\Graphics\Core\Sprite.h">
       <Filter>Graphics\Core</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Engine\Factory\FontFactory.h">
+      <Filter>Engine\Factory</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">

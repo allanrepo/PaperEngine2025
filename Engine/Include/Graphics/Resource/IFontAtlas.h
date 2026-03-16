@@ -19,7 +19,7 @@ namespace engine
 			public:
 				virtual ~IFontAtlas() = default;
 
-				virtual bool Initialize(const std::string& fontName = "Arial", const unsigned int fontSize = 12) = 0;
+				virtual bool Initialize(const std::string& fontName = "Arial", const size_t fontSize = 12) = 0;
 
 				virtual void Reset() = 0;
 

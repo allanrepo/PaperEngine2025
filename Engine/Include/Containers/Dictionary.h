@@ -32,7 +32,7 @@ namespace engine::container
 
         bool Register(const Key& key, const Value& value)
         {
-            return registry.emplace(key, std::move(value)).second;
+            return registry.emplace(key, value).second;
         }
 
         // Retrieves a pointer to the value, or nullptr if not found.
@@ -94,6 +94,11 @@ namespace engine::container
         const Value& operator[](const Key& key) const
         {
             return Get(key);
+        }
+
+        const size_t Size() const
+        {
+            return registry.size();
         }
 
     private:

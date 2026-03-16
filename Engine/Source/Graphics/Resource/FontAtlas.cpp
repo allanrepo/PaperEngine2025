@@ -15,7 +15,7 @@ engine::graphics::resource::FontAtlas::FontAtlas(std::unique_ptr<engine::graphic
 
 }
 
-bool engine::graphics::resource::FontAtlas::Initialize(const string& fontName, const unsigned int fontSize)
+bool engine::graphics::resource::FontAtlas::Initialize(const string& fontName, const size_t fontSize)
 {
 
 	// ensure source data is cleaned up when it goes out of scope

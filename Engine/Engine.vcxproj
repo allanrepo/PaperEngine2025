@@ -43,6 +43,7 @@
     <ClInclude Include="Include\Engine\Engine.h" />
     <ClInclude Include="Include\Engine\Factory\AnimationFactory.h" />
     <ClInclude Include="Include\Engine\Factory\CanvasFactory.h" />
+    <ClInclude Include="Include\Engine\Factory\FontFactory.h" />
     <ClInclude Include="Include\Engine\Factory\RendererFactory.h" />
     <ClInclude Include="Include\Engine\Factory\SpriteAtlasFactory.h" />
     <ClInclude Include="Include\Engine\Factory\TextureFactory.h" />

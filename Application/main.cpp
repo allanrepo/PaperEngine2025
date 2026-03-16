@@ -17,6 +17,7 @@
 #include "TestPathFinding.h"
 #include "TestTree.h"
 #include "TestProp.h"
+#include "TestRenderable.h"
 
 #include <iostream>
 #include <fstream>
@@ -158,7 +159,7 @@ int main()
     //TestTile::Test testTile;
     //test::TestFileReader testFileReader;
     //test::TestSprite testSprite;
-    //test::TestAnimation testAnimation;
+    test::TestAnimation testAnimation;
     //demo::Demo demoInstance(std::make_unique<demo::LoadAsyncLoaderState>("..\\Assets\\256x256.csv"));
     //demo::Demo1 demoTest;
     //demo::Demo demoInstance(std::make_unique<demo::LoadTileLayerState>());
@@ -175,8 +176,9 @@ int main()
     //TestEditMap::Test testEditMap;
 	//TestEditMultiLayerMap::Test testEditMultiLayerMap;
 	//TestSpecializedTileDefinition::Test testSpecializedTileDefinition;
-	TestTree::Test testTree;
+	//TestTree::Test testTree;
 	//TestProp::Test testProp;    
+    //TestRenderable::Test testRenderable;
 
 	return 0;
 }

@@ -56,7 +56,7 @@ namespace engine
 			using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite, Actor>;
 			//using AnimationFactory = engine::graphics::factory::AnimationFactory;
 			//using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
-			//using AnimationSystem = engine::graphics::animation::AnimationSystem<engine::graphics::Sprite, Item>;
+			using AnimationSystem = engine::graphics::animation::AnimationSystem<engine::graphics::Sprite>;
 			//using IFontAtlas = engine::graphics::resource::IFontAtlas;
 			//using FontAtlas = engine::graphics::resource::FontAtlas;
 			//using DX11TextureImpl = engine::graphics::dx11::resource::DX11TextureImpl;
@@ -81,11 +81,11 @@ namespace engine
 
 		public:
 
-			Actor(const AnimationSet& set, const std::string& name = "default") :
+			Actor(const AnimationSet& set, const std::string& name = "default", AnimationSystem* sys = nullptr) :
 				m_stateMachine(this),
 				m_name(name),
 				m_direction(Direction::Right),
-				m_animController(&set)
+				m_animController(set, sys, this)
 			{
 				m_stateMachine.Set<ActorIdleState>();
 			}

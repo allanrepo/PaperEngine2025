@@ -8,17 +8,18 @@
 #include <memory>
 #include <cassert>
 #include <unordered_set>
+#include <Core/Singleton.h>
 
 namespace engine::graphics::animation
 {
-	template<typename T, typename Owner>
+	template<typename T>
 	class AnimationSystem;
 
 	template<typename T, typename Owner>
 	class AnimationController;
 
-	template<typename T, typename Owner>
-	class Animated;
+	template<typename T>
+	class AnimationSystemCache;
 
 	// represents a single frame in an animation sequence.
 	// holds the payload element T and the duration to display this frame.
@@ -64,11 +65,11 @@ namespace engine::graphics::animation
 		// Events
 		engine::event::Event<Animator&> EndEvent;
 
-		// Non-copyable, but movable
+		// Non-copyable, non-movable
 		Animator(const Animator&) = delete;
 		Animator& operator=(const Animator&) = delete;
-		Animator(Animator&&) = default;
-		Animator& operator=(Animator&&) = default;
+		Animator(Animator&&) = delete;
+		Animator& operator=(Animator&&) = delete;
 
 		Animator() :
 			m_animation(nullptr),
@@ -98,7 +99,7 @@ namespace engine::graphics::animation
 			if (!m_running || !m_animation) return;
 
 			m_elapsedTimeAccumulator += delta;
-			float currFrameDuration = m_animation->frames[m_currFrame].duration;
+			double currFrameDuration = m_animation->frames[m_currFrame].duration;
 
 			while (m_elapsedTimeAccumulator >= currFrameDuration) 
 			{
@@ -171,7 +172,7 @@ namespace engine::graphics::animation
 
 		const T& GetCurrent() const 
 		{
-			if (!IsRunning())
+			if(!m_animation || m_currFrame < 0 || static_cast<size_t>(m_currFrame) >= m_animation->frames.size())
 			{
 				throw std::runtime_error("No current frame available");
 			}
@@ -216,10 +217,12 @@ namespace engine::graphics::animation
 		AnimationSet() = default;
 		~AnimationSet() = default;
 
-		AnimationSet(const AnimationSet&) = default;
-		AnimationSet& operator=(const AnimationSet&) = default;
-		AnimationSet(AnimationSet&&) = default;
-		AnimationSet& operator=(AnimationSet&&) = default;
+		// none-copyable, non-movable. 
+		// this is because AnimationController holds view of AnimationSet. moving AnimationSet will make its View stale.
+		AnimationSet(const AnimationSet&) = delete;
+		AnimationSet& operator=(const AnimationSet&) = delete;
+		AnimationSet(AnimationSet&&) = delete;
+		AnimationSet& operator=(AnimationSet&&) = delete;
 
 		bool Register(const std::string& name, std::unique_ptr<Animation<T>> data)
 		{
@@ -241,8 +244,8 @@ namespace engine::graphics::animation
 		}
 
 		// define iterator for our container
-		using iterator = typename engine::container::Dictionary<int, std::unique_ptr<Animation<T>>>::iterator;
-		using const_iterator = typename engine::container::Dictionary<int, std::unique_ptr<Animation<T>>>::const_iterator;
+		using iterator = typename engine::container::Dictionary<std::string, std::unique_ptr<Animation<T>>>::iterator;
+		using const_iterator = typename engine::container::Dictionary<std::string, std::unique_ptr<Animation<T>>>::const_iterator;
 
 		// iterator access
 		iterator begin() { return m_registry.begin(); }
@@ -253,69 +256,55 @@ namespace engine::graphics::animation
 		const_iterator cend() const { return m_registry.cend(); }
 	};
 
-	// lightweight class that provides handle to AnimationSet's animation collection
-	// exclusively created by AnimationSet class as it is a handle to AnimationSet's internal animation collection
-	// it is lightweight so can be copied or pass by value. 
-	// works as animator component of an object. 
-	// as animator component, it conveniently contains or have access to animation collection of the AnimationSet it is associated with
 	template<typename T, typename Owner>
 	class AnimationController
 	{
 	private:
-		using AnimSet = AnimationSet<T>;
-
-		friend class AnimationSystem<T, Owner>;
-
 		Animator<T> m_animator;
-		core::View<AnimSet> m_handle;
+		core::View<AnimationSet<T>> m_set;
+		core::Handle<AnimationSystem<T>> m_system;
 		Owner* m_owner;
 
 		// event handler for our Animator's EndEvent so we can emit it as well
 		void OnAnimatorEnd(Animator<T>& animator)
 		{
-			EndEvent(*m_owner);
-		}
-		
-		// event fired up when this is destroyed. this is exclusive to AnimationSystem so AnimationSystem can perform cleanup
-		// the object itself is passed so whoever handles this event can queue it for deletion
-		engine::event::Event<AnimationController&> DestroyEvent;
-
-	public: 
-		AnimationController(const AnimSet* set, Owner* owner = nullptr) :
-			m_handle(set),
-			m_owner(owner)
-		{
-			m_animator.EndEvent += engine::event::Handler(this, &AnimationController::OnAnimatorEnd);
+			if(m_owner) EndEvent(*m_owner);
 		}
 
-		AnimationController(const engine::core::View<AnimSet>& set, Owner* owner = nullptr) :
-			m_handle(set),
+	public:
+		AnimationController(const AnimationSet<T>& set, AnimationSystem<T>* system = nullptr, Owner* owner = nullptr) :
+			m_set(&set),
+			m_system(system? system : &AnimationSystemCache<T>::Instance()),
 			m_owner(owner)
 		{
+			
+
 			m_animator.EndEvent += engine::event::Handler(this, &AnimationController::OnAnimatorEnd);
+			if (m_system.IsValid()) m_system->Register(m_animator);
 		}
 
 		~AnimationController()
 		{
+			if (m_system.IsValid()) m_system->Unregister(m_animator);
 			m_animator.EndEvent -= engine::event::Handler(this, &AnimationController::OnAnimatorEnd);
 		}
 
 		// Non-copyable, but movable
 		AnimationController(const AnimationController&) = delete;
 		AnimationController& operator=(const AnimationController&) = delete;
-		AnimationController(AnimationController&&) noexcept = default;
-		AnimationController& operator=(AnimationController&&) noexcept = default;
+		AnimationController(AnimationController&&) noexcept = delete;
+		AnimationController& operator=(AnimationController&&) noexcept = delete;
 
 		// chains end animation sequence event from Animator
 		engine::event::Event<Owner&> EndEvent;
 
 		bool Play(const std::string& key)
 		{
-			if (!m_handle.IsValid()) return false;
+			if (!m_set.IsValid()) return false;
 
-			if (m_handle->Has(key))
+			if (m_set->Has(key))
 			{
-				m_animator.Play(m_handle->Get(key));
+				m_animator.Play(m_set->Get(key));
 				return true;
 			}
 
@@ -345,20 +334,7 @@ namespace engine::graphics::animation
 
 		bool IsValid() const
 		{
-			return m_animator.IsRunning();
-		}
-
-		// decommisions the object. it will sever its connection with animation set and stop the animator. it will also call its destroy event
-		void Destroy()
-		{
-			// stop the animator
-			m_animator.Clear();
-
-			// sever from animation set
-			m_handle.Invalidate();
-
-			// invoke destroy event
-			DestroyEvent(*this);
+			return m_set.IsValid();
 		}
 
 		void SetPolicy(PlaybackPolicy policy = PlaybackPolicy::Default, int loopCount = -1)
@@ -370,221 +346,88 @@ namespace engine::graphics::animation
 		{
 			return m_animator.IsRunning();
 		}
-
-		Animated<T, Owner> MakeAnimated()
-		{
-			return Animated(this);
-		}
 	};
 
-	template<typename T, typename Owner>
-	class Animated
-	{
-		using AnimationController = engine::graphics::animation::AnimationController<T, Owner>;
-
-	private:
-		engine::core::Handle<AnimationController> m_handle;
-	public:
-		Animated(AnimationController* data = nullptr) :
-			m_handle(data)
-		{
-		}
-
-		// do we have valid animation controller? is the animation controller running?
-		bool IsValid() const
-		{
-			return m_handle.IsValid() && m_handle->IsValid();
-		}
-
-		void Update(double delta)
-		{
-			m_handle->Update(delta);
-		}
-
-		void Play(const std::string& name)
-		{
-			m_handle->Play(name);
-		}
-
-		void Play(const std::string& name, int loopCount)
-		{
-			m_handle->Play(name);
-			m_handle->SetPolicy(PlaybackPolicy::FiniteLoop, loopCount);
-		}
-
-		const T& GetCurrent() const
-		{
-			return m_handle->GetCurrent();
-		}
-
-		void SetPolicy(PlaybackPolicy policy = PlaybackPolicy::Default, int loopCount = -1)
-		{
-			m_handle->SetPolicy(policy, loopCount);
-		}
-
-		void Destroy()
-		{
-			m_handle->Destroy();
-			m_handle.Invalidate();
-		}
-
-		// equality operators. compare object's handle
-		bool operator==(const Animated& rhs) const 
-		{
-			return m_handle == rhs.m_handle;
-		}
-
-		bool operator!=(const Animated& rhs) const
-		{
-			return !(*this == rhs);
-		}
-
-		engine::event::Event<Owner&>& GetEndEvent() 
-		{
-			return m_handle->EndEvent;
-		}
-
-		void SetOwner(Owner* owner)
-		{
-			m_handle->SetOwner(owner);
-		}
-	};
-
-	template<typename T, typename Owner>
+	template<typename T>
 	class AnimationSystem
 	{
 	private:
-		using Animator = engine::graphics::animation::Animator<T>;
-		using AnimationController = engine::graphics::animation::AnimationController<T, Owner>;
-		using AnimationSet = engine::graphics::animation::AnimationSet<T>;
-		using Dictionary = engine::container::Dictionary <std::string, std::unique_ptr<AnimationController>>;
 
 	protected:
-		std::vector<std::unique_ptr<AnimationController>> m_animationControllers;
-		engine::core::View<AnimationSet> m_animationSetHandle;
-		std::unordered_set<AnimationController*> m_pendingDestroy;
+		std::vector<Animator<T>*> m_animators;
 
 	public:
-		AnimationSystem(AnimationSet* set) :
-			m_animationSetHandle(set)
+		AnimationSystem() 
 		{
 		}
 
-		~AnimationSystem() = default;
+		virtual ~AnimationSystem() = default;
 
 		// Non-copyable, but movable
 		AnimationSystem(const AnimationSystem&) = delete;
 		AnimationSystem& operator=(const AnimationSystem&) = delete;
-		AnimationSystem(AnimationSystem&&) noexcept = default;
-		AnimationSystem& operator=(AnimationSystem&&) noexcept = default;
-
-		void OnDestroy(AnimationController& ac)
-		{
-			m_pendingDestroy.emplace(&ac);
-		}
+		AnimationSystem(AnimationSystem&&) noexcept = delete;
+		AnimationSystem& operator=(AnimationSystem&&) noexcept = delete;
 
 		void Update(double delta)
 		{
-			for (auto& controller : m_animationControllers)
+			for (Animator<T>* animator : m_animators)
 			{
-				controller->Update(delta);
+				if (animator) 
+				{
+					animator->Update(delta); // or whatever method Animator exposes
+				}
+			}
+		}
+
+		void Register(Animator<T>& animator)
+		{
+			if (std::find(m_animators.begin(), m_animators.end(), &animator) == m_animators.end())
+			{
+				m_animators.push_back(&animator);
 			}
 		}
 
-		void Flush()
+		void Unregister(Animator<T>& animator)
 		{
-			// use explicit iterator type, not auto
-			typename std::vector<std::unique_ptr<AnimationController>>::iterator it = m_animationControllers.begin();
-			while (it != m_animationControllers.end())
+			// find the iterator where our animator is
+			auto it = std::find(m_animators.begin(), m_animators.end(), &animator);
+
+			// if we didn't find, bail out
+			if (it != m_animators.end())
 			{
-				// check if this controller is in the pending destroy set
-				if (m_pendingDestroy.count(it->get()) > 0)
-				{
-					// erase returns the next valid iterator
-					it = m_animationControllers.erase(it);
-				}
-				else
-				{
-					++it; // advance normally
-				}
+				// move last item into where our animator is, effectly removing from the list
+				*it = m_animators.back();
+
+				// pop the last item. we didn't lose it. the item is now where our animator use to be
+				m_animators.pop_back();
 			}
-
-			m_pendingDestroy.clear();
 		}
 
-		Animated<T, Owner> MakeAnimated(Owner* owner = nullptr)
+		size_t Size() const
 		{
-			// create animation controller
-			m_animationControllers.push_back(std::make_unique<AnimationController>(m_animationSetHandle, owner));
-
-			// subscribe to this animation controller's destroy event so we will actually delete this object
-			m_animationControllers.back()->DestroyEvent += engine::event::Handler(this, &AnimationSystem::OnDestroy);
-
-			// finally create Animated - handle to animation controller
-			return m_animationControllers.back()->MakeAnimated();
+			return m_animators.size();
 		}
+	};	
 
-		// mainly for debug purpose. it creates a handle to controller that already exists. but it does not check if index is valid so beware
-		Animated<T, Owner> GetAnimated(int i)
-		{
-			return m_animationControllers[i]->MakeAnimated();
-		}
+	template<typename T>
+	class AnimationSystemCache : public AnimationSystem<T>,  public engine::core::Singleton<AnimationSystemCache<T>>
+	{
+		// Allow Singleton to construct the global instance
+		friend class engine::core::Singleton<AnimationSystemCache<T>>;
 
-		size_t GetAnimationControllerCount() const
-		{
-			return m_animationControllers.size();
-		}
+	private:
+		std::vector<Animator<T>*> m_animators;
+
+		// Private ctor for singleton
+		AnimationSystemCache() = default;
+
+	public:
+		// Non-copyable, but movable
+		AnimationSystemCache(const AnimationSystemCache&) = delete;
+		AnimationSystemCache& operator=(const AnimationSystemCache&) = delete;
+		AnimationSystemCache(AnimationSystemCache&&) noexcept = delete;
+		AnimationSystemCache& operator=(AnimationSystemCache&&) noexcept = delete;
 	};
 
-	// TODO: deprecated. AnimationController should be used now
-	//template<typename T>
-	//class AnimationManager
-	//{
-	//private:
-	//	Animator<T>* m_animator; // playback engine (not owned)
-	//	std::unordered_map<std::string, Animation<T>*> m_animations; // available animations
-
-	//public:
-	//	AnimationManager(Animator<T>* animator = nullptr) :
-	//		m_animator(animator)
-	//	{
-	//	}
-
-	//	void Set(Animator<T>& animator)
-	//	{
-	//		m_animator = &animator;
-	//	}
-
-	//	void Add(const std::string& key, Animation<T>& anim)
-	//	{
-	//		m_animations[key] = &anim;
-	//	}
-
-	//	bool Remove(const std::string& key)
-	//	{
-	//		auto it = m_animations.find(key);
-	//		if (it != m_animations.end())
-	//		{
-	//			m_animations.erase(it);
-	//			return true;
-	//		}
-	//		return false;
-	//	}
-
-	//	bool Play(const std::string& key) const
-	//	{
-	//		auto it = m_animations.find(key);
-	//		if (it != m_animations.end())
-	//		{
-	//			m_animator->Play(*it->second);
-	//			return true;
-	//		}
-	//		return false;
-	//	}
-
-	//	void Update(double delta)
-	//	{
-	//		m_animator->Update(delta);
-	//	}
-	//};
 }

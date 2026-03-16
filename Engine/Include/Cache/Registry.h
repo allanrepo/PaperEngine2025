@@ -31,9 +31,9 @@ namespace engine
 		// the repository. In other words, the singleton repository is not just a
 		// global catalog — it is also the lifetime manager for the resources it holds.
 		template<typename T, typename K = std::string>
-		class Registry : public core::Singleton<Registry<T, K>>
+		class Registry : public engine::core::Singleton<Registry<T, K>>
 		{
-			friend class core::Singleton<Registry<T, K>>;
+			friend class engine::core::Singleton<Registry<T, K>>;
 
 		private:
 			engine::container::Dictionary<K, std::unique_ptr<T>> registry;

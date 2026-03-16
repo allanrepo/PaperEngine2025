@@ -4,7 +4,6 @@
 #include <Algorithm/Pathfinding.h>
 #include <string>
 
-
 namespace engine
 {
 	namespace component
@@ -37,7 +36,7 @@ namespace engine
 
 			public:
 				AnimatedProp(AnimationSet* set) :
-					m_animationController(set)
+					m_animationController(*set)
 				{
 				}
 

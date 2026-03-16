@@ -157,7 +157,7 @@ namespace engine::win32
 			unsigned int& height, // is this total height of the font resource if stored in texture??? TODO
 			std::vector<engine::math::geometry::RectF>& TextNormalizedCoords, // array of normalized coordinates for each character in the font, where each array contains {left, top, right, bottom} coordinates in normalized texture coordinates (0.0 to 1.0) float??? TODO
 			const std::string& name = "Arial", // font name, e.g. "Arial". we're not sure if this font name is supported. it is best to query for it first
-			const unsigned int size = 12, // font size in ??? TODO
+			const size_t size = 12, // font size in ??? TODO
 			const bool italic = false, // if true, the font will be italicized
 			const bool bold = false, // if true, the font will be bold
 			const bool underline = false, // if true, the font will be underlined
@@ -187,7 +187,7 @@ namespace engine::win32
 			SetMapMode(hDC, MM_TEXT);
 
 			// calculate actual height of font
-			int nFontHeight = MulDiv(size, (int)GetDeviceCaps(hDC, LOGPIXELSY), 72);
+			int nFontHeight = MulDiv((int)size, (int)GetDeviceCaps(hDC, LOGPIXELSY), 72);
 
 			// convert to wide string char. GDI's CreateFont takes wide string for its name parameter
 			std::wstring wname(name.begin(), name.end());
