@@ -85,7 +85,7 @@ namespace engine
 				m_stateMachine(this),
 				m_name(name),
 				m_direction(Direction::Right),
-				m_animController(set, sys, this)
+				m_animController(set, this, sys)
 			{
 				m_stateMachine.Set<ActorIdleState>();
 			}

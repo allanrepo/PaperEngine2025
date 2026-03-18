@@ -61,7 +61,7 @@ namespace test
 		PositionF pos;
 
 		Item(const AnimationSet& set, PositionF p, const std::string& name, int loopCount, AnimationSystem* system = nullptr):
-			animated(set, system, this),
+			animated(set, this, system),
 			pos(p)
 		{
 			animated.Play(name, loopCount);

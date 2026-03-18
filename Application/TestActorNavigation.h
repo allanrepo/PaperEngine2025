@@ -348,7 +348,7 @@ namespace TestActorNavigation
 			coord.col = (int)((x - pos.x) / tilesize.width);
 			coord.row = (int)((y - pos.y) / tilesize.height);
 
-			TileRegion<RenderableTile> region = Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile");
+			TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile");
 
 			// if row and col is out of bounds, bail out
 			if (!region.IsInBounds(coord)) return false;
@@ -382,7 +382,7 @@ namespace TestActorNavigation
 			Coord coord = PositionToMapCoord(pos);
 
 			// if row and col is out of bounds, bail out
-			TileRegion<RenderableTile> region = Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile");
+			TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile");
 			if (!region.IsInBounds(coord)) return false;
 
 			// is target tile walkable?
@@ -404,7 +404,7 @@ namespace TestActorNavigation
 			if (!GetTileFromPos(curr, false, currTile)) return false;
 
 			// get region extents of our tilemap. we will feed it into path finder			
-			TileRegion<RenderableTile> region = Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile");
+			TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile");
 			math::geometry::Rect<int> map = { 0, 0, (int)region.GetWidth(), (int)region.GetHeight() };
 
 			// find path
@@ -496,7 +496,7 @@ namespace TestActorNavigation
 				// render tilemap
 				{
 					// get our tile region and make tilemap out of it
-					TileRegion<RenderableTile> region = Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile");
+					TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile");
 					TileMap<RenderableTile> tilemap = region.MakeTileMap();
 
 					// get tilemap parameters
@@ -508,7 +508,7 @@ namespace TestActorNavigation
 				}
 
 				{
-					TileRegion<RenderableTile> region = Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile");
+					TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile");
 					PositionF pos = Registry<PositionF>::Instance().Get("1x8_256x32_tile");
 					SizeF tilesize = Registry<SizeF>::Instance().Get("1x8_256x32_tile");
 

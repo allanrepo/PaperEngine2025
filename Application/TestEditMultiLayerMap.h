@@ -565,7 +565,7 @@ namespace TestEditMultiLayerMap
 
 				// draw water background map
 				{
-					TileRegion<RenderableTile> region = Registry<TileRegion<RenderableTile>>::Instance().Get("1x1_64x64_water_background");
+					TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("1x1_64x64_water_background");
 					TileMap<RenderableTile> tilemap = region.MakeTileMap();
 
 					// get tilemap parameters
@@ -577,7 +577,7 @@ namespace TestEditMultiLayerMap
 
 				// draw water splash map
 				{
-					TileRegion<AnimatedTile> region = Registry<TileRegion<AnimatedTile>>::Instance().Get("water_splash");
+					TileRegion<AnimatedTile>& region = Registry<TileRegion<AnimatedTile>>::Instance().Get("water_splash");
 					TileMap<AnimatedTile> tilemap = region.MakeTileMap();
 
 					// get tilemap parameters
@@ -589,7 +589,7 @@ namespace TestEditMultiLayerMap
 
 				// draw first level map
 				{
-					TileRegion<RenderableTile> region = Registry<TileRegion<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
+					TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("576x384px_6x9tile_TileMap");
 					TileMap<RenderableTile> tilemap = region.MakeTileMap();
 
 					// get tilemap parameters
@@ -601,7 +601,7 @@ namespace TestEditMultiLayerMap
 
 				// draw wall map
 				{
-					TileRegion<RenderableTile> region = Registry<TileRegion<RenderableTile>>::Instance().Get("wall_map");
+					TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("wall_map");
 					TileMap<RenderableTile> tilemap = region.MakeTileMap();
 
 					// get tilemap parameters
@@ -613,7 +613,7 @@ namespace TestEditMultiLayerMap
 
 				// draw hill map
 				{
-					TileRegion<RenderableTile> region = Registry<TileRegion<RenderableTile>>::Instance().Get("hill_map");
+					TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("hill_map");
 					TileMap<RenderableTile> tilemap = region.MakeTileMap();
 
 					// get tilemap parameters

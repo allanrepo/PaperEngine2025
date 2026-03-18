@@ -272,13 +272,11 @@ namespace engine::graphics::animation
 		}
 
 	public:
-		AnimationController(const AnimationSet<T>& set, AnimationSystem<T>* system = nullptr, Owner* owner = nullptr) :
+		AnimationController(const AnimationSet<T>& set, Owner* owner = nullptr, AnimationSystem<T>* system = nullptr) :
 			m_set(&set),
 			m_system(system? system : &AnimationSystemCache<T>::Instance()),
 			m_owner(owner)
 		{
-			
-
 			m_animator.EndEvent += engine::event::Handler(this, &AnimationController::OnAnimatorEnd);
 			if (m_system.IsValid()) m_system->Register(m_animator);
 		}
