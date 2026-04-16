@@ -44,7 +44,7 @@ namespace engine
 				}
 			};
 
-			class AnimatedTileset : public engine::component::tile::Tileset<AnimatedTile>
+			class AnimatedTileset : public engine::component::tile1::Tileset<AnimatedTile>
 			{
 			public:
 				void Update(double delta)
@@ -67,9 +67,9 @@ namespace engine
 			// Update all animators in all tilesets
 			void Update(double delta)
 			{
-				for (std::pair<const std::string, std::unique_ptr<engine::component::tile::Tileset<AnimatedTile>>>& tileset : m_tilesets)
+				for (std::pair<const std::string, std::unique_ptr<engine::component::tile1::Tileset<AnimatedTile>>>& tileset : m_tilesets)
 				{
-					engine::component::tile::Tileset<AnimatedTile>& ts = *tileset.second;
+					engine::component::tile1::Tileset<AnimatedTile>& ts = *tileset.second;
 
 					for (std::pair<const int, std::unique_ptr<AnimatedTile>>& tile : ts)
 					{

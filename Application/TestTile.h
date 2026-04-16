@@ -75,8 +75,8 @@ namespace TestTile
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		std::unique_ptr<MockSpriteAtlas> m_spriteAtlas;
 		engine::timer::StopWatch m_stopwatch;
-		engine::component::tile::Tileset<RenderableTile> m_tileset;
-		engine::component::tile::TileGrid<RenderableTile> m_tilegrid;
+		engine::component::tile1::Tileset<RenderableTile> m_tileset;
+		engine::component::tile1::TileGrid<RenderableTile> m_tilegrid;
 		engine::spatial::SizeF m_tileSize{ 32.0f, 32.0f };
 
 	public:
@@ -153,7 +153,7 @@ namespace TestTile
 				tileLoader.LoadImmediate(
 					m_tilegrid,
 					table,
-					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile1::Tile<RenderableTile>
 					{
 						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
 						return m_tileset.MakeTile(cell);
@@ -245,13 +245,13 @@ namespace TestTile
 			return uvs;
 		}
 
-		void RenderTiles(engine::component::tile::TileGrid<RenderableTile>& TileGrid)
+		void RenderTiles(engine::component::tile1::TileGrid<RenderableTile>& TileGrid)
 		{
 			for (int row = 0; row < TileGrid.GetHeight(); ++row)
 			{
 				for (int col = 0; col < TileGrid.GetWidth(); ++col)
 				{
-					const engine::component::tile::Tile<RenderableTile>& tile = TileGrid.Get(row, col);
+					const engine::component::tile1::Tile<RenderableTile>& tile = TileGrid.Get(row, col);
 					if (tile.IsValid())
 					{
 						m_renderer->Draw(

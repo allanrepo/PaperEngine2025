@@ -183,7 +183,7 @@ void demo::Demo::DrawStatisticsCommand(const std::list<std::string> &logs)
 	}
 }
 
-void demo::Demo::RenderTileGridCommand(engine::component::tile::TileGrid<RenderableTile>& tilegrid, float alpha)
+void demo::Demo::RenderTileGridCommand(engine::component::tile1::TileGrid<RenderableTile>& tilegrid, float alpha)
 {
 	std::unique_ptr<DrawTileGridCommand> cmd =
 		std::make_unique<DrawTileGridCommand>(
@@ -214,7 +214,7 @@ void demo::Demo::RenderTileGridCommand(engine::component::tile::TileGrid<Rendera
 				continue;
 			}
 
-			const engine::component::tile::Tile<RenderableTile>& tile = tilegrid.Get(row, col);
+			const engine::component::tile1::Tile<RenderableTile>& tile = tilegrid.Get(row, col);
 			if (tile.IsValid())
 			{
 				engine::spatial::PositionF pos =
@@ -238,7 +238,7 @@ void demo::Demo::RenderTileGridCommand(engine::component::tile::TileGrid<Rendera
 	}
 }
 
-void demo::Demo::RenderTileRegionCommand(engine::component::tile::TileRegion<RenderableTile>& region, float alpha)
+void demo::Demo::RenderTileRegionCommand(engine::component::tile1::TileRegion<RenderableTile>& region, float alpha)
 {
 	std::unique_ptr<DrawTileRegionCommand> cmd =
 		std::make_unique<DrawTileRegionCommand>(
@@ -249,7 +249,7 @@ void demo::Demo::RenderTileRegionCommand(engine::component::tile::TileRegion<Ren
 	Engine().CommandQueue().Enqueue(std::move(cmd));
 }
 
-void demo::Demo::RenderTileLayerCommand(engine::component::tile::TileLayer<RenderableTile>& layer, float alpha)
+void demo::Demo::RenderTileLayerCommand(engine::component::tile1::TileLayer<RenderableTile>& layer, float alpha)
 {
 	std::unique_ptr<DrawTileLayerCommand> cmd =
 		std::make_unique<DrawTileLayerCommand>(
@@ -318,7 +318,7 @@ void demo::DemoState::Enter(Demo& owner)
 		owner.TileMapManager().LoadImmediate(
 			"map_splashAnim",
 			"..\\Assets\\16x16_2.csv",
-			[&owner](const int& cell) -> engine::component::tile::Tile<AnimatedTile>
+			[&owner](const int& cell) -> engine::component::tile1::Tile<AnimatedTile>
 			{
 				return owner.TileSetManager().MakeTile("splashTileset", cell);
 			});
@@ -326,7 +326,7 @@ void demo::DemoState::Enter(Demo& owner)
 		owner.TileMapManager().LoadImmediate(
 			"demoTileMap",
 			"..\\Assets\\16x16Map.csv",
-			[&owner](const int& cell) -> engine::component::tile::Tile<AnimatedTile>
+			[&owner](const int& cell) -> engine::component::tile1::Tile<AnimatedTile>
 			{
 				return owner.TileSetManager().MakeTile("576x384TileSet", cell);
 			});
@@ -334,7 +334,7 @@ void demo::DemoState::Enter(Demo& owner)
 		owner.TileMapManager().LoadImmediate(
 			"map_1",
 			"..\\Assets\\16x16_1.csv",
-			[&owner](const int& cell) -> engine::component::tile::Tile<AnimatedTile>
+			[&owner](const int& cell) -> engine::component::tile1::Tile<AnimatedTile>
 			{
 				return owner.TileSetManager().MakeTile("576x384TileSet", cell);
 			});
@@ -508,7 +508,7 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 		owner.TileMapManager().LoadImmediate(
 			"map_splashAnim",
 			"..\\Assets\\16x16_2.csv",
-			[&owner](const int& cell) -> engine::component::tile::Tile<AnimatedTile>
+			[&owner](const int& cell) -> engine::component::tile1::Tile<AnimatedTile>
 			{
 				return owner.TileSetManager().MakeTile("splashTileset", cell);
 			});
@@ -516,7 +516,7 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 		owner.TileMapManager().LoadImmediate(
 			"demoTileMap",
 			"..\\Assets\\16x16Map.csv",
-			[&owner](const int& cell) -> engine::component::tile::Tile<AnimatedTile>
+			[&owner](const int& cell) -> engine::component::tile1::Tile<AnimatedTile>
 			{
 				return owner.TileSetManager().MakeTile("576x384TileSet", cell);
 			});
@@ -524,7 +524,7 @@ void demo::DemoStateCameraMap::Enter(Demo& owner)
 		owner.TileMapManager().LoadImmediate(
 			"map_1",
 			"..\\Assets\\16x16_1.csv",
-			[&owner](const int& cell) -> engine::component::tile::Tile<AnimatedTile>
+			[&owner](const int& cell) -> engine::component::tile1::Tile<AnimatedTile>
 			{
 				return owner.TileSetManager().MakeTile("576x384TileSet", cell);
 			});

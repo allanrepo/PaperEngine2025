@@ -347,8 +347,8 @@ namespace engine
 			{
 			private:
 				const engine::container::Table<std::string>* m_table;
-				std::function<component::tile::Tile<T>(const U&)> m_tileLoader;
-				component::tile::TileGrid<T>* m_grid;
+				std::function<component::tile1::Tile<T>(const U&)> m_tileLoader;
+				component::tile1::TileGrid<T>* m_grid;
 				bool m_isDone;
 				size_t m_currTile;
 				size_t m_totalTiles;
@@ -372,10 +372,10 @@ namespace engine
 
 				// blocking load: consumes the entire table in one shot 
 				// internally calls Begin() and repeatedly Update() until all tiles are loaded.
-				component::tile::TileGrid<T>& LoadImmediate(
-					component::tile::TileGrid<T>& grid,
+				component::tile1::TileGrid<T>& LoadImmediate(
+					component::tile1::TileGrid<T>& grid,
 					const engine::container::Table<std::string>& table,
-					std::function<component::tile::Tile<T>(const U&)> tileLoader,
+					std::function<component::tile1::Tile<T>(const U&)> tileLoader,
 					size_t maxTilesPerUpdate = 0xFF,
 					double maxTimePerUpdateMS = 1.0
 				)
@@ -412,9 +412,9 @@ namespace engine
 				// throws if table has no rows or columns.
 				void Begin(
 					const std::string& label,
-					component::tile::TileGrid<T>& grid,
+					component::tile1::TileGrid<T>& grid,
 					const engine::container::Table<std::string>& table,
-					std::function<component::tile::Tile<T>(const U&)> tileLoader
+					std::function<component::tile1::Tile<T>(const U&)> tileLoader
 				)
 				{
 					// handle error if csv table has no rows
@@ -459,7 +459,7 @@ namespace engine
 
 						// at this point we now have valid row and col tile. get the tile object and load it
 						std::string cell = m_table->Get(m_currTile);
-						component::tile::Tile<T> tile = m_tileLoader(std::stoi(cell));
+						component::tile1::Tile<T> tile = m_tileLoader(std::stoi(cell));
 						m_grid->Add(tile);
 
 						// move to next col tile
@@ -499,10 +499,10 @@ namespace engine
 
 				// blocking load: consumes the entire table in one shot 
 				// internally calls Begin() and repeatedly Update() until all tiles are loaded.
-				component::tile::TileRegion<T>& LoadImmediate(
-					component::tile::TileRegion<T>& region,
+				component::tile1::TileRegion<T>& LoadImmediate(
+					component::tile1::TileRegion<T>& region,
 					const engine::container::Table<std::string>& table,
-					std::function<engine::component::tile::Tile<T>(const U&)> tileLoader,
+					std::function<engine::component::tile1::Tile<T>(const U&)> tileLoader,
 					size_t maxTilesPerUpdate = 0xFF,
 					double maxTimePerUpdateMS = 1.0
 				)
@@ -540,9 +540,9 @@ namespace engine
 				// throws if table has no rows or columns.
 				void Begin(
 					std::string label,
-					component::tile::TileRegion<T>& region,
+					component::tile1::TileRegion<T>& region,
 					const engine::container::Table<std::string>& table,
-					std::function<engine::component::tile::Tile<T>(const U&)> tileLoader
+					std::function<engine::component::tile1::Tile<T>(const U&)> tileLoader
 				)
 				{
 					m_asyncTileGridLoader.Begin(label, region.Get(), table, tileLoader);
@@ -610,8 +610,8 @@ namespace engine
 			{
 			private:
 				const engine::container::Table<std::string>* m_table;
-				std::function<engine::component::tile::Tile<T>(const U&)> m_tileLoader;
-				engine::component::tile::TileLayer<T>* m_layer;
+				std::function<engine::component::tile1::Tile<T>(const U&)> m_tileLoader;
+				engine::component::tile1::TileLayer<T>* m_layer;
 				bool m_isDone;
 				spatial::Size<size_t> m_regionSize;
 				spatial::Size<size_t> m_layerSize;
@@ -629,7 +629,7 @@ namespace engine
 					m_currRegionSize.width = std::min<size_t>(m_regionSize.width, m_table->GetWidth() - m_currRegion.col * m_regionSize.width);
 					m_currRegionSize.height = std::min<size_t>(m_regionSize.height, m_table->GetHeight() - m_currRegion.row * m_regionSize.height);
 
-					component::tile::TileRegion<T> region(m_currRegionSize.width);
+					component::tile1::TileRegion<T> region(m_currRegionSize.width);
 					m_layer->Take(std::move(region));
 				}
 
@@ -656,10 +656,10 @@ namespace engine
 
 				void Begin(
 					const std::string& label,
-					engine::component::tile::TileLayer<T>& layer,
+					engine::component::tile1::TileLayer<T>& layer,
 					const engine::container::Table<std::string>& table,
 					const spatial::Size<size_t>& regionSize,
-					std::function<engine::component::tile::Tile<T>(const U&)> tileLoader
+					std::function<engine::component::tile1::Tile<T>(const U&)> tileLoader
 				)
 				{
 					// handle error if csv table has no rows
@@ -771,9 +771,9 @@ namespace engine
 
 						std::string cell = m_table->Get(mapRow, mapCol);
 
-						component::tile::Tile<T> tile = m_tileLoader(std::stoi(cell));
+						component::tile1::Tile<T> tile = m_tileLoader(std::stoi(cell));
 
-						component::tile::TileRegion<T>& region = m_layer->Get(m_currRegion);
+						component::tile1::TileRegion<T>& region = m_layer->Get(m_currRegion);
 						region.Add(tile);
 						m_currTile.col++;
 						m_loadedTiles++;
@@ -792,11 +792,11 @@ namespace engine
 				
 				// Blocking load: consumes the entire table in one shot.
 				// Internally calls Begin() and repeatedly Update() until all tiles are loaded.
-				component::tile::TileLayer<T>& SyncLoadAll(
-					component::tile::TileLayer<T>& layer,
+				component::tile1::TileLayer<T>& SyncLoadAll(
+					component::tile1::TileLayer<T>& layer,
 					const engine::container::Table<std::string>& table,
 					const spatial::Size<size_t>& regionSize,
-					std::function<component::tile::Tile<T>(const U&)> tileLoader,
+					std::function<component::tile1::Tile<T>(const U&)> tileLoader,
 					double maxTimePerUpdateMS = 1.0
 				)
 				{
@@ -884,7 +884,7 @@ namespace engine
 				// loaders
 				io::AsyncFileReader m_fileReader;
 				engine::loader::tile::AsyncTileLayerLoader<T, U> m_tileLayerLoader;
-				engine::loader::container::AsyncContainerClearer<engine::component::tile::Tile<T>> m_tileRegionClearer;
+				engine::loader::container::AsyncContainerClearer<engine::component::tile1::Tile<T>> m_tileRegionClearer;
 				engine::loader::container::AsyncContainerClearer<std::string> m_tableClearer;
 
 				// current loader pointer
@@ -897,11 +897,11 @@ namespace engine
 				engine::container::Table<std::string> m_table;
 
 				// references
-				std::function<component::tile::Tile<T>(const U&)> m_tileLoader;
+				std::function<component::tile1::Tile<T>(const U&)> m_tileLoader;
 				spatial::Size<size_t> m_regionSize;
 
 				// target layer
-				component::tile::TileLayer<T>* m_layer;
+				component::tile1::TileLayer<T>* m_layer;
 
 				// states
 				bool m_isFinished;
@@ -935,8 +935,8 @@ namespace engine
 				bool Open(
 					const std::string& filename,
 					const spatial::Size<size_t>& regionSize,
-					std::function<component::tile::Tile<T>(const U&)> tileLoader,
-					component::tile::TileLayer<T>& layer
+					std::function<component::tile1::Tile<T>(const U&)> tileLoader,
+					component::tile1::TileLayer<T>& layer
 				)
 				{
 					m_tileLoader = tileLoader;
@@ -1054,11 +1054,11 @@ namespace engine
 			class AsyncTileLayerClearer : public engine::loader::IAsyncLoader
 			{
 			private:
-				engine::component::tile::TileLayer<T>* m_layer;
+				engine::component::tile1::TileLayer<T>* m_layer;
 				size_t m_total;
 				std::string m_label;
 				bool m_isDone;
-				engine::loader::container::AsyncContainerClearer<engine::component::tile::Tile<T>> m_tileRegionClearer;
+				engine::loader::container::AsyncContainerClearer<engine::component::tile1::Tile<T>> m_tileRegionClearer;
 
 				// for debug purposes only, we can add a delay to simulate longer processing time
 				double m_delayMS = 0.0;
@@ -1077,7 +1077,7 @@ namespace engine
 
 				void Begin(
 					const std::string& label,
-					engine::component::tile::TileLayer<T>& layer,
+					engine::component::tile1::TileLayer<T>& layer,
 					double delayMS = 0.0
 				)
 				{
@@ -1180,7 +1180,7 @@ namespace engine
 				// loaders
 				io::AsyncFileReader m_fileReader;
 				engine::loader::tile::AsyncTileRegionLoader<T, U> m_tileRegionLoader;
-				engine::loader::container::AsyncContainerClearer<engine::component::tile::Tile<T>> m_tileRegionClearer;
+				engine::loader::container::AsyncContainerClearer<engine::component::tile1::Tile<T>> m_tileRegionClearer;
 				engine::loader::container::AsyncContainerClearer<std::string> m_tableClearer;
 
 				// current loader pointer
@@ -1193,10 +1193,10 @@ namespace engine
 				engine::container::Table<std::string> m_table;
 
 				// references
-				std::function<component::tile::Tile<T>(const U&)> m_tileLoader;
+				std::function<component::tile1::Tile<T>(const U&)> m_tileLoader;
 
 				// target region
-				component::tile::TileRegion<T>* m_region;
+				component::tile1::TileRegion<T>* m_region;
 
 				// states
 				bool m_isFinished;
@@ -1238,8 +1238,8 @@ namespace engine
 
 				bool Open(
 					const std::string& filename,
-					std::function<component::tile::Tile<T>(const U&)> tileLoader,
-					component::tile::TileRegion<T>& region
+					std::function<component::tile1::Tile<T>(const U&)> tileLoader,
+					component::tile1::TileRegion<T>& region
 				)
 				{
 					// make sure we can open the file first. if not, don't bother
@@ -1256,7 +1256,7 @@ namespace engine
 					// error if region object is invalid
 					if (!m_region)
 					{
-						throw std::exception("AsyncCSVMapToTileRegionLoader::Open - component::tile::TileRegion<T> is null");
+						throw std::exception("AsyncCSVMapToTileRegionLoader::Open - component::tile1::TileRegion<T> is null");
 					}
 
 					// let's start with clearing table first just in case
@@ -1362,8 +1362,8 @@ namespace engine
 			
 				bool LoadImmediate(
 					const std::string& filename,
-					std::function<component::tile::Tile<T>(const U&)> tileLoader,
-					component::tile::TileRegion<T>& region
+					std::function<component::tile1::Tile<T>(const U&)> tileLoader,
+					component::tile1::TileRegion<T>& region
 				)
 				{
 					if (!Open(filename, tileLoader, region))

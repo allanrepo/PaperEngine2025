@@ -10,7 +10,7 @@ namespace engine
 		class TileSetManager
 		{
 		protected:
-			engine::container::Dictionary<std::string, std::unique_ptr<engine::component::tile::Tileset<T>>> m_tilesets;
+			engine::container::Dictionary<std::string, std::unique_ptr<engine::component::tile1::Tileset<T>>> m_tilesets;
 
 		public:
 			bool Create(const std::string& name)
@@ -19,7 +19,7 @@ namespace engine
 				{
 					return false;
 				}
-				m_tilesets[name] = std::make_unique<engine::component::tile::Tileset<T>>();
+				m_tilesets[name] = std::make_unique<engine::component::tile1::Tileset<T>>();
 
 				return true;
 			}
@@ -34,7 +34,7 @@ namespace engine
 			}
 
 			// creates a tile instance for the given id. returns invalid tile if id not found
-			engine::component::tile::Tile<T> MakeTile(const std::string& name, int id) const
+			engine::component::tile1::Tile<T> MakeTile(const std::string& name, int id) const
 			{
 				if (!m_tilesets.Has(name))
 				{

@@ -348,6 +348,21 @@
     <ClInclude Include="Include\Engine\Factory\FontFactory.h">
       <Filter>Engine\Factory</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Graphics\Core\Animated.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Core\IAnimated.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Core\IRenderable.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\Core\Renderable.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Spatial\ObjectGrid.h">
+      <Filter>Spatial</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">

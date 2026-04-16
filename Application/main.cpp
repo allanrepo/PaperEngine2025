@@ -177,8 +177,8 @@ int main()
 	//TestEditMultiLayerMap::Test testEditMultiLayerMap;
 	//TestSpecializedTileDefinition::Test testSpecializedTileDefinition;
 	//TestTree::Test testTree;
-	//TestProp::Test testProp;    
-    TestRenderable::Test testRenderable;
+	TestProp::Test testProp;    
+    //TestRenderable::Test testRenderable;
 
 	return 0;
 }

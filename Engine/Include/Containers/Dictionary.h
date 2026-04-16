@@ -5,13 +5,23 @@
 
 namespace engine::container
 {
+    // design consideration:
     // this class mimics the Dictionary from C#.
+    // copyable and movable to match STL container design
     template<typename Key = std::string, typename Value = std::string>
     class Dictionary
     {
     public:
 		Dictionary() = default;
 		~Dictionary() = default;
+
+        // allow copy
+        Dictionary(const Dictionary&) = default;
+        Dictionary& operator=(const Dictionary&) = default;
+
+        // allow move
+        Dictionary(Dictionary&&) noexcept = default;
+        Dictionary& operator=(Dictionary&&) noexcept = default;
 
         using iterator = typename std::unordered_map<Key, Value>::iterator;
         using const_iterator = typename std::unordered_map<Key, Value>::const_iterator;

@@ -20,13 +20,13 @@ namespace demo
 		engine::loader::tile::AsyncTileMapLoader<RenderableTile, int> m_tileMapLoader;
 
 		engine::loader::tile::AsyncTileLayerClearer<RenderableTile> m_tileLayerClearer;
-		engine::loader::container::AsyncContainerClearer<engine::component::tile::Tile<RenderableTile>> m_tileGridClearer;
+		engine::loader::container::AsyncContainerClearer<engine::component::tile1::Tile<RenderableTile>> m_tileGridClearer;
 		engine::loader::container::AsyncContainerClearer<std::string> m_tableClearer;
 
 		engine::utilities::parser::CSVParser m_csvParser;
 
-		std::unique_ptr<engine::component::tile::TileGrid<RenderableTile>> m_grid;
-		std::unique_ptr<engine::component::tile::TileRegion<RenderableTile>> m_region;
+		std::unique_ptr<engine::component::tile1::TileGrid<RenderableTile>> m_grid;
+		std::unique_ptr<engine::component::tile1::TileRegion<RenderableTile>> m_region;
 		engine::container::Table<std::string> m_table;
 
 		std::string m_filePath;
@@ -38,8 +38,8 @@ namespace demo
 		bool m_isFinished;
 
 		std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
-		std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> m_tileset;
-		std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> m_layer;
+		std::unique_ptr<engine::component::tile1::Tileset<RenderableTile>> m_tileset;
+		std::unique_ptr<engine::component::tile1::TileLayer<RenderableTile>> m_layer;
 
 	public:
 		LoadAsyncLoaderState(const std::string& filePath);
@@ -55,16 +55,16 @@ namespace demo
 	{
 	private:
 		engine::performance::FrameRateMonitor m_frameRateMonitor;
-		std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> m_tileSet;
-		std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> m_layer;
+		std::unique_ptr<engine::component::tile1::Tileset<RenderableTile>> m_tileSet;
+		std::unique_ptr<engine::component::tile1::TileLayer<RenderableTile>> m_layer;
 		engine::spatial::SizeF m_viewportSize;
 
 		void OnResize(size_t width, size_t height);
 
 	public:
 		RenderAsyncLoaderState(
-			std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> layer,
-			std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> tileSet
+			std::unique_ptr<engine::component::tile1::TileLayer<RenderableTile>> layer,
+			std::unique_ptr<engine::component::tile1::Tileset<RenderableTile>> tileSet
 		);
 		virtual ~RenderAsyncLoaderState();
 

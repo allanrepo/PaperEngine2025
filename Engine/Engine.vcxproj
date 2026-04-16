@@ -53,13 +53,17 @@
     <ClInclude Include="Include\Engine\Manager\TileMapManager.h" />
     <ClInclude Include="Include\Engine\Manager\TileSetManager.h" />
     <ClInclude Include="Include\Graphics\Animation\Animation.h" />
+    <ClInclude Include="Include\Graphics\Core\Animated.h" />
     <ClInclude Include="Include\Graphics\Core\Canvas.h" />
     <ClInclude Include="Include\Graphics\Core\Color.h" />
     <ClInclude Include="Include\Graphics\Core\DX11CanvasImpl.h" />
     <ClInclude Include="Include\Graphics\Core\DX11Core.h" />
+    <ClInclude Include="Include\Graphics\Core\IAnimated.h" />
     <ClInclude Include="Include\Graphics\Core\ICanvas.h" />
     <ClInclude Include="Include\Graphics\Core\ICanvasImpl.h" />
+    <ClInclude Include="Include\Graphics\Core\IRenderable.h" />
     <ClInclude Include="Include\Graphics\Core\Primitives.h" />
+    <ClInclude Include="Include\Graphics\Core\Renderable.h" />
     <ClInclude Include="Include\Graphics\Core\Sprite.h" />
     <ClInclude Include="Include\Graphics\IO\DX11ImageFileHelper.h" />
     <ClInclude Include="Include\Graphics\Renderable\RenderSurface.h" />
@@ -89,6 +93,7 @@
     <ClInclude Include="Include\Spatial\IResizeable.h" />
     <ClInclude Include="Include\Spatial\ISizeable.h" />
     <ClInclude Include="Include\Spatial\Motion.h" />
+    <ClInclude Include="Include\Spatial\ObjectGrid.h" />
     <ClInclude Include="Include\Spatial\Position.h" />
     <ClInclude Include="Include\Spatial\Size.h" />
     <ClInclude Include="Include\Spatial\Transform.h" />

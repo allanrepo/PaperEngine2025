@@ -17,8 +17,8 @@ namespace demo
 		bool m_isFinished;
 
 		std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
-		std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> m_tileset;
-		std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> m_layer;
+		std::unique_ptr<engine::component::tile1::Tileset<RenderableTile>> m_tileset;
+		std::unique_ptr<engine::component::tile1::TileLayer<RenderableTile>> m_layer;
 
 	public:
 		LoadTileLayerState();
@@ -35,17 +35,17 @@ namespace demo
 	private:
 		engine::performance::FrameRateMonitor m_frameRateMonitor;
 		std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
-		std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> m_tileSet;
-		std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> m_layer;
+		std::unique_ptr<engine::component::tile1::Tileset<RenderableTile>> m_tileSet;
+		std::unique_ptr<engine::component::tile1::TileLayer<RenderableTile>> m_layer;
 		engine::spatial::SizeF m_viewportSize;
 
 		void OnResize(size_t width, size_t height);
 
 	public:
 		RenderTileLayerState(
-			std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> layer,
+			std::unique_ptr<engine::component::tile1::TileLayer<RenderableTile>> layer,
 			std::unique_ptr<engine::graphics::resource::ISpriteAtlas> spriteAtlas,
-			std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> tileSet
+			std::unique_ptr<engine::component::tile1::Tileset<RenderableTile>> tileSet
 		);
 		virtual ~RenderTileLayerState();
 

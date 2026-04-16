@@ -33,7 +33,7 @@
 #include <Graphics/Core/Sprite.h>
 
 // forward declare
-namespace engine::component::tile
+namespace engine::component::tile1
 {
 	template<typename T, typename K = int>
 	class Tileset;
@@ -54,7 +54,7 @@ namespace engine::component::tile
 	class TileMap;
 };
 
-namespace engine::component::tile
+namespace engine::component::tile1
 {
 	// tile instance holds a reference to tile data from tileset
 	// lightweight view into tile data 
@@ -792,3 +792,288 @@ namespace engine::component::tile
 
 }
 
+namespace engine
+{
+	namespace tile
+	{
+		// Lightweight view that holds a pointer to tile data and an integer index. 
+		// Intended to be cheap to copy and to outlive callers only while the Tileset remains alive.
+		// Provides GetIndex() to retrieve the tileset key for the view.
+		template<typename T>
+		class Tile : public core::View<T>
+		{
+			template<typename T>
+			friend class Tileset;
+			int m_index;
+
+		protected:
+			Tile(int index, T* data = nullptr) :
+				core::View<T>(data),
+				m_index(index)
+			{
+			}
+
+		public:
+			~Tile() = default;
+
+			Tile(const Tile&) = default;
+			Tile& operator=(const Tile&) = default;
+			Tile(Tile&&) = default;
+			Tile& operator=(Tile&&) = default;
+
+			const int GetIndex() const
+			{
+				return m_index;
+			}
+
+			int GetIndex()
+			{
+				return m_index;
+			}
+		};
+		
+		// Description:
+		// Owns tile data in a dictionary keyed by int. 
+		// Provides registration, lookup, iteration, and a factory MakeTile(int) that returns a Tile<T> view.
+		// Uses m_invalidIndex to represent an invalid tile index.
+		// 
+		// Design consideration:
+		// index is set to int. use resolver or lookup for indices other than int
+		// Tileset is designed to outlive those who gets Tile reference from it.
+		template<typename T>
+		class Tileset
+		{
+		protected:
+			container::Dictionary<int, std::unique_ptr<T>> m_registry;
+
+			int m_invalidIndex;
+
+		public:
+			Tileset(int invalidIndex = -1) :
+				m_invalidIndex(invalidIndex)
+			{
+			}
+
+			~Tileset() = default;
+
+			// non copyable, non movable
+			Tileset(const Tileset&) = delete;
+			Tileset& operator=(const Tileset&) = delete;
+			Tileset(Tileset&&) = delete;
+			Tileset& operator=(Tileset&&) = delete;
+
+			bool Register(int id, std::unique_ptr<T> data)
+			{
+				if (id == m_invalidIndex)
+				{
+					throw std::out_of_range("Tileset::Register - index is invalid");
+				}
+				return m_registry.Register(id, std::move(data));
+			}
+
+			bool IsValid(int id) const
+			{
+				return m_registry.Has(id);
+			}
+
+			const T* Get(int id) const
+			{
+				return m_registry.Has(id) ? m_registry.Get(id).get() : nullptr;
+			}
+
+			// Find the key for a given Tile<T>
+			int GetIndex(const Tile<T>& tile) const
+			{
+				if (!tile.IsValid())
+				{
+					return m_invalidIndex;
+				}
+
+				for (const auto& [id, data] : m_registry)
+				{
+					if (tile.m_data == data.get())
+					{
+						return id;
+					}
+				}
+				return m_invalidIndex; // not found
+			}
+
+			// creates a tile instance for the given id. returns invalid tile if id not found
+			Tile<T> MakeTile(int id) const
+			{
+				return m_registry.Has(id) ? Tile<T>(id, m_registry.Get(id).get()) : Tile<T>(m_invalidIndex);
+			}
+
+			// define iterator for our container
+			using iterator = typename container::Dictionary<int, std::unique_ptr<T>>::iterator;
+			using const_iterator = typename container::Dictionary<int, std::unique_ptr<T>>::const_iterator;
+
+			// iterator access
+			iterator begin() { return m_registry.begin(); }
+			iterator end() { return m_registry.end(); }
+			const_iterator begin() const { return m_registry.begin(); }
+			const_iterator end() const { return m_registry.end(); }
+			const_iterator cbegin() const { return m_registry.cbegin(); }
+			const_iterator cend() const { return m_registry.cend(); }
+		};
+
+#pragma region // TileGrid - tile grid represents a 2d grid of tiles
+		template<typename T>
+		class TileGrid
+		{
+		private:
+#pragma region // parameters
+			engine::container::Grid<Tile<T>> m_map;
+#pragma endregion
+
+		public:
+#pragma region // constructor/destructor
+			TileGrid() :
+				m_map(0)
+			{
+			}
+#pragma endregion
+
+#pragma region // non copyable, non movable
+			TileGrid(const TileGrid&) = delete;
+			TileGrid& operator=(const TileGrid&) = delete;
+			TileGrid(TileGrid&&) = delete;
+			TileGrid& operator=(TileGrid&&) = delete;
+#pragma endregion
+
+#pragma region // size query
+			// returns grid width
+			size_t GetWidth() const
+			{
+				return m_map.GetWidth();
+			}
+
+			// returns grid height. includes last row even if it is incomplete
+			size_t GetHeight() const
+			{
+				return m_map.GetHeight();
+			}
+
+			spatial::Size<size_t> GetSize() const
+			{
+				return m_map.GetSize();
+			}
+
+			size_t GetElementCount() const
+			{
+				return m_map.GetElementCount();
+			}
+
+			bool IsEmpty() const
+			{
+				return m_map.IsEmpty();
+			}
+#pragma endregion
+
+#pragma region // bound checks
+			bool IsInBounds(int row, int col) const
+			{
+				return m_map.IsInBounds(row, col);
+			}
+
+			// overload for Coord input
+			bool IsInBounds(const engine::spatial::Coord& Coord) const
+			{
+				return m_map.IsInBounds(Coord.row, Coord.col);
+			}
+#pragma endregion
+
+#pragma region // accessors
+			Tile<T>& Get(int row, int col)
+			{
+				return m_map.Get(row, col);
+			}
+
+			const Tile<T>& Get(int row, int col) const
+			{
+				return m_map.Get(row, col);
+			}
+
+			// retrieves the data at Coord
+			Tile<T>& Get(const engine::spatial::Coord& coord)
+			{
+				return m_map.Get(coord.row, coord.col);
+			}
+
+			// retrieves the data at Coord
+			const Tile<T>& Get(const engine::spatial::Coord& coord) const
+			{
+				return m_map.Get(coord.row, coord.col);
+			}
+#pragma endregion
+
+#pragma region // replace value
+			void Set(int row, int col, const Tile<T>& data)
+			{
+				m_map.Set(row, col, data);
+			}
+
+			void Set(int row, int col, Tile<T>&& data)
+			{
+				m_map.Set(row, col, std::move(data));
+			}
+
+			void Set(const engine::spatial::Coord& coord, const Tile<T>& data)
+			{
+				m_map.Set(coord, data);
+			}
+
+			void Set(const engine::spatial::Coord& coord, Tile<T>&& data)
+			{
+				m_map.Set(coord, std::move(data));
+			}
+#pragma endregion
+
+#pragma region // iterator support
+			typename std::vector<Tile<T>>::iterator begin() { return m_map.begin(); }
+			typename std::vector<Tile<T>>::iterator end() { return m_map.end(); }
+			typename std::vector<Tile<T>>::const_iterator begin() const { return m_map.begin(); }
+			typename std::vector<Tile<T>>::const_iterator end() const { return m_map.end(); }
+			typename std::vector<Tile<T>>::const_iterator cbegin() const { return m_map.cbegin(); }
+			typename std::vector<Tile<T>>::const_iterator cend() const { return m_map.cend(); }
+			typename std::vector<Tile<T>>::reverse_iterator rbegin() { return m_map.rbegin(); }
+			typename std::vector<Tile<T>>::reverse_iterator rend() { return m_map.rend(); }
+			typename std::vector<Tile<T>>::const_reverse_iterator rbegin() const { return m_map.rbegin(); }
+			typename std::vector<Tile<T>>::const_reverse_iterator rend() const { return m_map.rend(); }
+#pragma endregion
+
+#pragma region // content management
+			void Reserve(const spatial::Size<size_t>& size)
+			{
+				m_map.Reserve(size);
+			}
+
+			void Clear()
+			{
+				m_map.Clear();
+			}
+
+			// copy only, no move option. expects T to be copyable or else
+			void Initialize(size_t width, size_t height, const Tile<T>& data)
+			{
+				m_map.Clear();
+				m_map.SetWidth(width);
+				m_map.Reserve({ width, height });
+
+				for (size_t i = 0; i < width * height; ++i)
+				{
+					m_map.Add(data);
+				}
+			}
+
+			void Initialize(engine::spatial::Size<size_t> size, const Tile<T>& data)
+			{
+				Initialize(size.width, size.height, data);
+			}
+#pragma endregion
+
+		};
+#pragma endregion
+	}
+}

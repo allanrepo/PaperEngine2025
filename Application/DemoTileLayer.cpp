@@ -31,7 +31,7 @@ void demo::LoadTileLayerState::Enter(Demo& owner)
 	}
 
 	// create tileset for tilemap and register tiles
-	m_tileset = std::make_unique<engine::component::tile::Tileset<RenderableTile>>();
+	m_tileset = std::make_unique<engine::component::tile1::Tileset<RenderableTile>>();
 	m_tileset->Register(0, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(0), true)); // walkable
 	m_tileset->Register(1, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(1), false)); // obstacle
 	m_tileset->Register(2, std::make_unique<RenderableTile>(m_spriteAtlas->MakeSprite(2), false)); // obstacle
@@ -39,7 +39,7 @@ void demo::LoadTileLayerState::Enter(Demo& owner)
 
 
 	// create our layer object
-	m_layer = std::make_unique <engine::component::tile::TileLayer<RenderableTile>>();
+	m_layer = std::make_unique <engine::component::tile1::TileLayer<RenderableTile>>();
 
 
 	std::unique_ptr<engine::job::JobChain> jobChain = std::make_unique<engine::job::JobChain>(owner.Engine().JobQueue());
@@ -53,7 +53,7 @@ void demo::LoadTileLayerState::Enter(Demo& owner)
 				m_tileMapLoader.Open(
 					"..\\Assets\\256x256.csv",
 					{ 128, 128 },
-					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile1::Tile<RenderableTile>
 					{
 						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
 						return m_tileset->MakeTile(cell);
@@ -79,7 +79,7 @@ void demo::LoadTileLayerState::Enter(Demo& owner)
 				m_tileMapLoader.Open(
 					"..\\Assets\\256x256.csv",
 					{ 64, 64 },
-					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile1::Tile<RenderableTile>
 					{
 						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
 						return m_tileset->MakeTile(cell);
@@ -146,9 +146,9 @@ bool demo::LoadTileLayerState::IsFinished(Demo& owner)
 
 #pragma region RenderTileLayerState
 demo::RenderTileLayerState::RenderTileLayerState(
-	std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> layer,
+	std::unique_ptr<engine::component::tile1::TileLayer<RenderableTile>> layer,
 	std::unique_ptr<engine::graphics::resource::ISpriteAtlas> spriteAtlas,
-	std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> tileSet
+	std::unique_ptr<engine::component::tile1::Tileset<RenderableTile>> tileSet
 ) :
 	m_layer(std::move(layer)),
 	m_spriteAtlas(std::move(spriteAtlas)),

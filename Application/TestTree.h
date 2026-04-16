@@ -161,7 +161,7 @@ namespace engine
 
 		template<typename T>
 		void QueueDrawCommand(
-			engine::component::tile::TileMap<T>& map,
+			engine::component::tile1::TileMap<T>& map,
 			DrawQueue& queue,
 			int row, int col,
 			const engine::spatial::SizeF& tilesize,
@@ -175,7 +175,7 @@ namespace engine
 				return;
 			}
 
-			const engine::component::tile::Tile<T>& tile = map.Get(row, col);
+			const engine::component::tile1::Tile<T>& tile = map.Get(row, col);
 			if (tile.IsValid())
 			{
 				engine::spatial::PositionF origin =
@@ -293,7 +293,7 @@ namespace engine
 		};
 
 
-		class LogicSet: public engine::component::tile::Tileset<LogicHandle, engine::navigation::tile::TileConstraint>
+		class LogicSet: public engine::component::tile1::Tileset<LogicHandle, engine::navigation::tile::TileConstraint>
 		{
 		protected:
 		public:
@@ -597,7 +597,7 @@ namespace TestTree
 	using namespace engine::event;
 	using namespace engine::graphics::dx11::renderer;
 	using namespace engine::graphics::dx11;
-	using namespace engine::component::tile;
+	using namespace engine::component::tile1;
 	using namespace engine::graphics::factory;
 	using namespace engine::graphics::resource;
 	using namespace engine::container;

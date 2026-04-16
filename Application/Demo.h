@@ -75,7 +75,7 @@ namespace demo
 	{
 	private:
 		engine::spatial::PositionF m_pos;
-		engine::component::tile::TileMap<T> m_tilemap;
+		engine::component::tile1::TileMap<T> m_tilemap;
 		engine::spatial::SizeF m_tilesize;
 		float m_alpha;
 		engine::math::VecF m_scale;
@@ -84,7 +84,7 @@ namespace demo
 	public:
 		DrawTileMapCommand(
 			engine::graphics::renderer::IRenderer& renderer,
-			engine::component::tile::TileMap<T> tilemap,
+			engine::component::tile1::TileMap<T> tilemap,
 			engine::spatial::PositionF pos = {50.0f, 50.0f},
 			engine::spatial::SizeF tilesize = { 8.0f, 8.0f },
 			engine::math::VecF offset = {0,0},
@@ -112,7 +112,7 @@ namespace demo
 						continue;
 					}
 
-					const engine::component::tile::Tile<T>& tile = m_tilemap.Get(row, col);
+					const engine::component::tile1::Tile<T>& tile = m_tilemap.Get(row, col);
 					if (tile.IsValid())
 					{
 						engine::spatial::PositionF pos =
@@ -141,7 +141,7 @@ namespace demo
 	{
 	private:
 		engine::spatial::PositionF m_pos;
-		engine::component::tile::TileMap<T> m_tilemap;
+		engine::component::tile1::TileMap<T> m_tilemap;
 		engine::spatial::SizeF m_tilesize;
 		float m_alpha;
 		engine::math::VecF m_scale;
@@ -151,7 +151,7 @@ namespace demo
 	public:
 		DrawTileMapOnViewPortCommand(
 			engine::graphics::renderer::IRenderer& renderer,
-			engine::component::tile::TileMap<T> tilemap,
+			engine::component::tile1::TileMap<T> tilemap,
 			engine::spatial::CameraF& camera,
 			engine::spatial::PositionF pos = { 50.0f, 50.0f },
 			engine::spatial::SizeF tilesize = { 8.0f, 8.0f },
@@ -195,7 +195,7 @@ namespace demo
 					}
 
 					// get the tile
-					const engine::component::tile::Tile<T>& tile = m_tilemap.Get(row, col);
+					const engine::component::tile1::Tile<T>& tile = m_tilemap.Get(row, col);
 
 					// defensive. we're never sure if the tile has valid sprite, so do check
 					if (tile.IsValid())
@@ -267,7 +267,7 @@ namespace demo
 
 		template<typename T>
 		void RenderTileMapCommand(
-			engine::component::tile::TileMap<T> map,
+			engine::component::tile1::TileMap<T> map,
 			engine::spatial::PositionF pos = { 50.0f, 50.0f },
 			engine::spatial::SizeF tilesize = { 8.0f, 8.0f },
 			engine::math::VecF offset = { 0,0 },
@@ -289,7 +289,7 @@ namespace demo
 
 		template<typename T>
 		void RenderTileMapOnViewPortCommand(
-			engine::component::tile::TileMap<T> map,
+			engine::component::tile1::TileMap<T> map,
 			engine::spatial::CameraF& camera,
 			engine::spatial::PositionF pos = { 50.0f, 50.0f },
 			engine::spatial::SizeF tilesize = { 8.0f, 8.0f },
@@ -311,9 +311,9 @@ namespace demo
 			m_engine.CommandQueue().Enqueue(std::move(cmd));
 		}
 
-		void RenderTileGridCommand(engine::component::tile::TileGrid<RenderableTile>& tilegrid, float alpha = 1.0f);
-		void RenderTileRegionCommand(engine::component::tile::TileRegion<RenderableTile>& tilegrid, float alpha = 1.0f);
-		void RenderTileLayerCommand(engine::component::tile::TileLayer<RenderableTile>& tilegrid, float alpha = 1.0f);
+		void RenderTileGridCommand(engine::component::tile1::TileGrid<RenderableTile>& tilegrid, float alpha = 1.0f);
+		void RenderTileRegionCommand(engine::component::tile1::TileRegion<RenderableTile>& tilegrid, float alpha = 1.0f);
+		void RenderTileLayerCommand(engine::component::tile1::TileLayer<RenderableTile>& tilegrid, float alpha = 1.0f);
 
 		void SetState(std::unique_ptr<engine::state::State<Demo>> state);
 		void QueueState(std::unique_ptr<engine::state::State<Demo>> state);
@@ -327,12 +327,12 @@ namespace demo
 	{
 	private:
 		engine::spatial::PositionF m_pos;
-		engine::component::tile::TileGrid<RenderableTile>& m_tilegrid;
+		engine::component::tile1::TileGrid<RenderableTile>& m_tilegrid;
 
 	public:
 		DrawTileGridCommand(
 			engine::graphics::renderer::IRenderer& renderer,
-			engine::component::tile::TileGrid<RenderableTile>& tilegrid,
+			engine::component::tile1::TileGrid<RenderableTile>& tilegrid,
 			engine::spatial::PositionF pos,
 			float alpha = 1.0f
 			) :
@@ -355,7 +355,7 @@ namespace demo
 						continue;
 					}
 
-					const engine::component::tile::Tile<RenderableTile>& tile = m_tilegrid.Get(row, col);
+					const engine::component::tile1::Tile<RenderableTile>& tile = m_tilegrid.Get(row, col);
 					if (tile.IsValid())
 					{
 						engine::spatial::PositionF pos =
@@ -377,12 +377,12 @@ namespace demo
 	{
 	private:
 		engine::spatial::PositionF m_pos;
-		engine::component::tile::TileRegion<RenderableTile>& m_region;
+		engine::component::tile1::TileRegion<RenderableTile>& m_region;
 
 	public:
 		DrawTileRegionCommand(
 			engine::graphics::renderer::IRenderer& renderer,
-			engine::component::tile::TileRegion<RenderableTile>& region,
+			engine::component::tile1::TileRegion<RenderableTile>& region,
 			engine::spatial::PositionF pos,
 			float alpha = 1.0f
 		) :
@@ -405,7 +405,7 @@ namespace demo
 						continue;
 					}
 
-					const engine::component::tile::Tile<RenderableTile>& tile = m_region.Get(row, col);
+					const engine::component::tile1::Tile<RenderableTile>& tile = m_region.Get(row, col);
 					if (tile.IsValid())
 					{
 						engine::spatial::PositionF pos =
@@ -427,12 +427,12 @@ namespace demo
 	{
 	private:
 		engine::spatial::PositionF m_pos;
-		engine::component::tile::TileLayer<RenderableTile>& m_layer;
+		engine::component::tile1::TileLayer<RenderableTile>& m_layer;
 
 	public:
 		DrawTileLayerCommand(
 			engine::graphics::renderer::IRenderer& renderer,
-			engine::component::tile::TileLayer<RenderableTile>& layer,
+			engine::component::tile1::TileLayer<RenderableTile>& layer,
 			engine::spatial::PositionF pos,
 			float alpha = 1.0f
 		) :
@@ -455,7 +455,7 @@ namespace demo
 				size_t regionPosX = 0;
 				for (int currRegionCol = 0; currRegionCol < regionCols; currRegionCol++)
 				{
-					engine::component::tile::TileRegion<RenderableTile>& region = m_layer.Get(currRegionRow, currRegionCol);
+					engine::component::tile1::TileRegion<RenderableTile>& region = m_layer.Get(currRegionRow, currRegionCol);
 
 					size_t regionCols = region.GetWidth();
 					size_t regionRows = region.GetHeight();
@@ -470,7 +470,7 @@ namespace demo
 								continue;
 							}
 
-							const engine::component::tile::Tile<RenderableTile>& tile = region.Get(currTileRow, currTileCol);
+							const engine::component::tile1::Tile<RenderableTile>& tile = region.Get(currTileRow, currTileCol);
 							if (!tile.IsValid())
 							{
 								continue;

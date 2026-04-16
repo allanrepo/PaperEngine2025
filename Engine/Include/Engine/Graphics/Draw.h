@@ -14,7 +14,7 @@ namespace engine
 			template<typename T>
 			void DrawTileMap(
 				engine::graphics::renderer::IRenderer& renderer,
-				const engine::component::tile::TileMap<T>& tilemap,
+				const engine::component::tile1::TileMap<T>& tilemap,
 				const engine::spatial::SizeF& tilesize,
 				const engine::spatial::PositionF& pos,
 				const engine::graphics::ColorF& color
@@ -29,7 +29,7 @@ namespace engine
 							continue;
 						}
 
-						const engine::component::tile::Tile<T>& tile = tilemap.Get(row, col);
+						const engine::component::tile1::Tile<T>& tile = tilemap.Get(row, col);
 						if (tile.IsValid())
 						{
 							engine::spatial::PositionF origin =
@@ -48,7 +48,7 @@ namespace engine
 			template<typename T>
 			void DrawTileMap(
 				engine::graphics::renderer::IRenderer& renderer,
-				const engine::component::tile::TileMap<T>& tilemap,
+				const engine::component::tile1::TileMap<T>& tilemap,
 				const engine::spatial::SizeF& tilesize,
 				const engine::spatial::PositionF& pos,
 				const engine::graphics::ColorF& color,
@@ -67,7 +67,7 @@ namespace engine
 						}
 
 						// get the tile
-						const engine::component::tile::Tile<T>& tile = tilemap.Get(row, col);
+						const engine::component::tile1::Tile<T>& tile = tilemap.Get(row, col);
 
 						// defensive. we're never sure if the tile has valid sprite, so do check
 						if (tile.IsValid())

@@ -1,6 +1,9 @@
 #pragma once
 #include <Spatial/Position.h>
 #include <Spatial/Size.h>
+#include <unordered_map>
+#include <vector>
+#include <functional>
 
 namespace engine
 {
@@ -35,5 +38,24 @@ namespace engine
 				static_cast<int>(position.x / tilesize.width)
 			);
 		}
+
+		inline const engine::spatial::PositionF CoordToPosition(const engine::spatial::Coord& coord, const spatial::SizeF& tilesize)
+		{
+			return engine::spatial::PositionF(
+				coord.col * tilesize.width,
+				coord.row * tilesize.height
+			);
+		}
 	}
+}
+
+namespace std 
+{
+	template<> struct hash<engine::spatial::Coord> 
+	{
+		size_t operator()(engine::spatial::Coord const& c) const noexcept 
+		{
+			return (static_cast<size_t>(c.row) << 32) ^ static_cast<size_t>(static_cast<unsigned>(c.col));
+		}
+	};
 }

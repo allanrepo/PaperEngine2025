@@ -138,7 +138,7 @@ namespace TestPathFinding
 		engine::spatial::SizeF m_tilesize;
 
 		
-		std::unique_ptr<engine::component::tile::TileRegion<TileDefinition>> m_regionTD;
+		std::unique_ptr<engine::component::tile1::TileRegion<TileDefinition>> m_regionTD;
 		engine::navigation::tile::PathFinder m_pathFinder;
 		engine::spatial::Coord m_startTile;
 		engine::spatial::Coord m_goalTile;
@@ -149,7 +149,7 @@ namespace TestPathFinding
 
 		bool m_useTileNavigationResolver;
 
-		std::unique_ptr<engine::component::tile::TileRegion<RenderableTile>> m_regionRT;
+		std::unique_ptr<engine::component::tile1::TileRegion<RenderableTile>> m_regionRT;
 
 
 	public:
@@ -312,11 +312,11 @@ namespace TestPathFinding
 			// create tilemap with TileDefinition 
 			{
 				// create tileset and store in cache
-				engine::cache::Registry<engine::component::tile::Tileset<TileDefinition>>::Instance().Register("TileDefinition", std::make_unique<engine::component::tile::Tileset<TileDefinition>>());
+				engine::cache::Registry<engine::component::tile1::Tileset<TileDefinition>>::Instance().Register("TileDefinition", std::make_unique<engine::component::tile1::Tileset<TileDefinition>>());
 
 				// define tiles
 				engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("12x2_384x64_tile");
-				engine::component::tile::Tileset<TileDefinition>& tileset = engine::cache::Registry<engine::component::tile::Tileset<TileDefinition>>::Instance().Get("TileDefinition");
+				engine::component::tile1::Tileset<TileDefinition>& tileset = engine::cache::Registry<engine::component::tile1::Tileset<TileDefinition>>::Instance().Get("TileDefinition");
 
 				tileset.Register(0, std::make_unique<TileDefinition>("td", atlas.MakeSprite(0), engine::navigation::tile::TileConstraint::NONE)); // walkable
 				tileset.Register(1, std::make_unique<TileDefinition>("td", atlas.MakeSprite(1), engine::navigation::tile::TileConstraint::NONE)); // obstacle
@@ -344,12 +344,12 @@ namespace TestPathFinding
 				engine::container::Table<std::string> map({ 24, 16 }, "0");
 
 				// create tile region
-				m_regionTD = std::make_unique<engine::component::tile::TileRegion<TileDefinition>>();
+				m_regionTD = std::make_unique<engine::component::tile1::TileRegion<TileDefinition>>();
 
 				// load tile region with our table data
 				engine::loader::tile::AsyncTileRegionLoader<TileDefinition, int> tileRegionLoader;
 				tileRegionLoader.LoadImmediate(*m_regionTD, map,
-					[this, &tileset](const int& cell) -> engine::component::tile::Tile<TileDefinition>
+					[this, &tileset](const int& cell) -> engine::component::tile1::Tile<TileDefinition>
 					{
 						return tileset.MakeTile(cell);
 					});	
@@ -395,8 +395,8 @@ namespace TestPathFinding
 			// create tilemap with RenderableTile 
 			{
 				// create tileset
-				engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Register("RenderableTile", std::make_unique<engine::component::tile::Tileset<RenderableTile>>());
-				engine::component::tile::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Get("RenderableTile");
+				engine::cache::Registry<engine::component::tile1::Tileset<RenderableTile>>::Instance().Register("RenderableTile", std::make_unique<engine::component::tile1::Tileset<RenderableTile>>());
+				engine::component::tile1::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile1::Tileset<RenderableTile>>::Instance().Get("RenderableTile");
 
 				// get our sprite atlas
 				engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("12x2_384x64_tile");
@@ -419,12 +419,12 @@ namespace TestPathFinding
 				engine::container::Table<std::string> map({ 24, 16 }, "7");
 
 				// create tile region
-				m_regionRT = std::make_unique<engine::component::tile::TileRegion<RenderableTile>>();
+				m_regionRT = std::make_unique<engine::component::tile1::TileRegion<RenderableTile>>();
 
 				// load tile region with our table data
 				engine::loader::tile::AsyncTileRegionLoader<RenderableTile, int> tileRegionLoader;
 				tileRegionLoader.LoadImmediate(*m_regionRT, map,
-					[this, &tileset](const int& cell) -> engine::component::tile::Tile<RenderableTile>
+					[this, &tileset](const int& cell) -> engine::component::tile1::Tile<RenderableTile>
 					{
 						return tileset.MakeTile(cell);
 					});
@@ -463,7 +463,7 @@ namespace TestPathFinding
 			case 49: // 1
 				if (m_useTileNavigationResolver)
 				{
-					engine::component::tile::Tileset<TileDefinition>& tileset = engine::cache::Registry<engine::component::tile::Tileset<TileDefinition>>::Instance().Get("TileDefinition");
+					engine::component::tile1::Tileset<TileDefinition>& tileset = engine::cache::Registry<engine::component::tile1::Tileset<TileDefinition>>::Instance().Get("TileDefinition");
 
 					// remove all obstacles
 					for (int row = 0; row < m_regionTD->GetHeight(); row++)
@@ -479,7 +479,7 @@ namespace TestPathFinding
 				}
 				else
 				{
-					engine::component::tile::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Get("RenderableTile");
+					engine::component::tile1::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile1::Tileset<RenderableTile>>::Instance().Get("RenderableTile");
 					// remove all obstacles
 					for (int row = 0; row < m_regionRT->GetHeight(); row++)
 					{
@@ -516,7 +516,7 @@ namespace TestPathFinding
 				if (m_regionTD->Get(row, col)->IsBlocked()) return;
 
 				// reset the map to all walkable
-				engine::component::tile::Tileset<TileDefinition>& tileset = engine::cache::Registry<engine::component::tile::Tileset<TileDefinition>>::Instance().Get("TileDefinition");
+				engine::component::tile1::Tileset<TileDefinition>& tileset = engine::cache::Registry<engine::component::tile1::Tileset<TileDefinition>>::Instance().Get("TileDefinition");
 
 				if (btn == 1)
 				{
@@ -561,7 +561,7 @@ namespace TestPathFinding
 				if (!m_regionRT->Get(row, col)->IsWalkable()) return;
 
 				// reset the map to all walkable
-				engine::component::tile::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile::Tileset<RenderableTile>>::Instance().Get("RenderableTile");
+				engine::component::tile1::Tileset<RenderableTile>& tileset = engine::cache::Registry<engine::component::tile1::Tileset<RenderableTile>>::Instance().Get("RenderableTile");
 
 				if (btn == 1)
 				{
@@ -649,7 +649,7 @@ namespace TestPathFinding
 				if (m_useTileNavigationResolver)
 				{
 					// get the tile region
-					engine::component::tile::TileMap<TileDefinition> tilemap = m_regionTD->MakeTileMap();
+					engine::component::tile1::TileMap<TileDefinition> tilemap = m_regionTD->MakeTileMap();
 
 					// draw the tile region
 					engine::graphics::tile::DrawTileMap(*m_rendererBatch, tilemap, m_tilesize, m_pos, { 1,1,1,1 });
@@ -677,7 +677,7 @@ namespace TestPathFinding
 				// draw RenderableTile region
 				else
 				{
-					engine::component::tile::TileMap<RenderableTile> tilemap = m_regionRT->MakeTileMap();
+					engine::component::tile1::TileMap<RenderableTile> tilemap = m_regionRT->MakeTileMap();
 
 					engine::graphics::tile::DrawTileMap(*m_rendererBatch, tilemap, m_tilesize, m_pos, { 1,1,1,1 });
 
@@ -727,7 +727,7 @@ namespace TestPathFinding
 		template<typename T>
 		void DrawNavigation(
 			engine::graphics::renderer::IRenderer& renderer,
-			const engine::component::tile::TileMap<T>& tilemap,
+			const engine::component::tile1::TileMap<T>& tilemap,
 			const engine::spatial::SizeF& tilesize,
 			const engine::spatial::PositionF& pos,
 			const engine::graphics::ColorF& color,

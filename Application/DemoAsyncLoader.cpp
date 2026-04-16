@@ -36,7 +36,7 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 	LOG("Sprite atlas created...");
 
 	// create tileset for tilemap and register tiles
-	m_tileset = std::make_unique<engine::component::tile::Tileset<RenderableTile>>();
+	m_tileset = std::make_unique<engine::component::tile1::Tileset<RenderableTile>>();
 	m_tileset->Register(0, std::make_unique<RenderableTile>(atlas.MakeSprite(0), true)); // walkable
 	m_tileset->Register(1, std::make_unique<RenderableTile>(atlas.MakeSprite(1), false)); // obstacle
 	m_tileset->Register(2, std::make_unique<RenderableTile>(atlas.MakeSprite(2), false)); // obstacle
@@ -56,9 +56,9 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 	m_csvParser.ParseRemainingEvent += engine::event::Handler(&m_table, &engine::container::Table<std::string>::AddRange);
 
 	// create our tile objects
-	m_layer = std::make_unique <engine::component::tile::TileLayer<RenderableTile>>();
-	m_grid = std::make_unique <engine::component::tile::TileGrid<RenderableTile>>();
-	m_region = std::make_unique <engine::component::tile::TileRegion<RenderableTile>>();
+	m_layer = std::make_unique <engine::component::tile1::TileLayer<RenderableTile>>();
+	m_grid = std::make_unique <engine::component::tile1::TileGrid<RenderableTile>>();
+	m_region = std::make_unique <engine::component::tile1::TileRegion<RenderableTile>>();
 
 
 	// define job to read map file in chunks
@@ -77,7 +77,7 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 			[this]()
 			{
 				m_tileGridLoader.Begin("Loading TileGrid", *m_grid.get(), m_table,  
-					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile1::Tile<RenderableTile>
 					{						
 						return m_tileset->MakeTile(cell);
 					});
@@ -95,7 +95,7 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 			[this]()
 			{
 				m_tileRegionLoader.Begin("Loading TileRegion", *m_region.get(), m_table, 
-					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile1::Tile<RenderableTile>
 					{
 						return m_tileset->MakeTile(cell);
 					});
@@ -113,7 +113,7 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 			[this]()
 			{
 				m_tileLayerLoader.Begin("Loading TileLayer", *m_layer.get(), m_table, { 32, 32 },
-					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile1::Tile<RenderableTile>
 					{
 						return m_tileset->MakeTile(cell);
 					});
@@ -178,7 +178,7 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 				m_tileMapLoader.Open(
 					m_filePath,
 					{ 128, 128 },
-					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile1::Tile<RenderableTile>
 					{
 						return m_tileset->MakeTile(cell);
 					},
@@ -220,7 +220,7 @@ void demo::LoadAsyncLoaderState::Enter(Demo& owner)
 			{
 				m_asyncCSVMapToTileRegionLoader.Open(
 					m_filePath,
-					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile1::Tile<RenderableTile>
 					{
 						return m_tileset->MakeTile(cell);
 					},
@@ -301,8 +301,8 @@ bool demo::LoadAsyncLoaderState::IsFinished(Demo& owner)
 
 #pragma region RenderAsyncLoaderState
 demo::RenderAsyncLoaderState::RenderAsyncLoaderState(
-	std::unique_ptr<engine::component::tile::TileLayer<RenderableTile>> layer,
-	std::unique_ptr<engine::component::tile::Tileset<RenderableTile>> tileSet
+	std::unique_ptr<engine::component::tile1::TileLayer<RenderableTile>> layer,
+	std::unique_ptr<engine::component::tile1::Tileset<RenderableTile>> tileSet
 ) :
 	m_layer(std::move(layer)),
 	m_tileSet(std::move(tileSet))

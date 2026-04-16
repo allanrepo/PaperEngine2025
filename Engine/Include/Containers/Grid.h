@@ -2,6 +2,7 @@
 #include <Spatial/ISizeable.h>
 #include <Containers/Container.h>
 #include <Spatial/Coord.h>
+#include <stdexcept>
 
 namespace engine::container
 {
@@ -26,8 +27,6 @@ namespace engine::container
 
 		virtual void Set(const engine::spatial::Coord& coord, const T& data) = 0;
 	};
-
-
 
 	template<typename T>
 	class Grid

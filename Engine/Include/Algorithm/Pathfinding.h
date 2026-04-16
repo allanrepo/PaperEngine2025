@@ -1,6 +1,8 @@
 ﻿#pragma once
 #include <Spatial/Coord.h>
+#include <Spatial/Size.h>
 #include <Math/Rect.h>
+#include <Containers/Grid.h>
 #include <functional>
 #include <memory>
 #include <queue>
@@ -516,6 +518,211 @@ namespace engine::navigation
 
 			return smoothed;
 		}
+
+
+#pragma region // ConstraintGrid - grid that stores constraint value of each cell. it also has pathfinding feature
+		class ConstraintGrid
+		{
+			using Coord = engine::spatial::Coord;
+			using Grid = engine::container::Grid<TileConstraint>;
+			using Rect = engine::math::geometry::Rect<int>;
+			using Size = engine::spatial::Size<size_t>;
+
+		private:
+#pragma region // parameters
+			Grid m_map;
+			PathFinder m_pathFinder;
+			TileConstraint m_default;
+
+#pragma endregion
+
+		public:
+#pragma region // constructor, destructors, copy, move assignment operators
+			ConstraintGrid() :
+				m_pathFinder(
+					std::make_unique<TileNavigationResolver>(
+						[this](int row, int col) -> TileConstraint
+						{
+							return m_map.Get(row, col);
+						}),
+					true
+				),
+				m_default(TileConstraint::NONE)
+			{
+			}
+#pragma endregion
+
+#pragma region // accessors
+			TileConstraint Get(int row, int col) const
+			{
+				return m_map.Get(row, col);
+			}
+
+			TileConstraint Get(const Coord& coord) const
+			{
+				return m_map.Get(coord);
+			}
+#pragma endregion
+
+#pragma region // path finding
+			bool FindPath(const Coord& start, const Coord& end, std::vector<Coord>& path)
+			{
+				Rect map = { 0, 0, (int)m_map.GetWidth(), (int)m_map.GetHeight() };
+
+				return m_pathFinder.FindPath(
+					map,
+					start,
+					end,
+					path
+				);
+			}
+#pragma endregion
+
+#pragma region // content management
+			void Reset()
+			{
+				m_map.Clear();
+			}
+
+			void Clear()
+			{
+				Fill(m_default);
+			}
+
+			void Initialize(size_t width, size_t height, TileConstraint constraint)
+			{
+				Reset();
+				m_map.SetWidth(width);
+				m_map.Reserve({ width, height });
+
+				for (size_t i = 0; i < width * height; ++i)
+				{
+					m_map.Add(constraint);
+				}
+			}
+
+			void Initialize(Size size, TileConstraint constraint)
+			{
+				Initialize(size.width, size.height, constraint);
+			}
+
+			void Fill(TileConstraint constraint)
+			{
+				for (int row = 0; row < m_map.GetHeight(); row++)
+				{
+					for (int col = 0; col < m_map.GetWidth(); col++)
+					{
+						m_map.Set(row, col, constraint);
+					}
+				}
+			}
+
+			void Set(int row, int col, TileConstraint constraint)
+			{
+				m_map.Set(row, col, constraint);
+			}
+
+			void Set(const Coord& coord, TileConstraint constraint)
+			{
+				m_map.Set(coord, constraint);
+			}
+
+			void SetDefault(TileConstraint constraint)
+			{
+				m_default = constraint;
+			}
+
+			void Replace(TileConstraint oldValue, TileConstraint newValue)
+			{
+				for (int row = 0; row < m_map.GetHeight(); row++)
+				{
+					for (int col = 0; col < m_map.GetWidth(); col++)
+					{
+						if (m_map.Get(row, col) == oldValue)  // exact match
+						{
+							m_map.Set(row, col, newValue);
+						}
+					}
+				}
+			}
+
+			void AddFlag(int row, int col, TileConstraint constraint)
+			{
+				m_map.Set(row, col, m_map.Get(row, col) | constraint);
+			}
+
+			void AddFlag(const Coord& coord, TileConstraint constraint)
+			{
+				m_map.Set(coord, m_map.Get(coord) | constraint);
+			}
+
+			bool HasFlag(int row, int col, TileConstraint constraint) const
+			{
+				return (m_map.Get(row, col) & constraint) != TileConstraint::NONE;
+			}
+
+			// Clear the given flag(s) at row/col. No return value; no check whether anything changed.
+			void RemoveFlag(int row, int col, TileConstraint constraint) noexcept
+			{
+				TileConstraint current = m_map.Get(row, col);
+				TileConstraint updated = static_cast<TileConstraint>(current & ~constraint);
+				m_map.Set(row, col, updated);
+			}
+
+			// Clear the given flag(s) at Coord
+			void RemoveFlag(const Coord& coord, TileConstraint constraint) noexcept
+			{
+				RemoveFlag(coord.row, coord.col, constraint);
+			}
+
+
+
+#pragma endregion
+
+#pragma region // bound checks
+			bool IsInBounds(int row, int col) const
+			{
+				return m_map.IsInBounds(row, col);
+			}
+
+			bool IsInBounds(const engine::spatial::Coord& coord) const
+			{
+				return m_map.IsInBounds(coord);
+			}
+#pragma endregion
+
+#pragma region // size query
+			// returns grid width
+			size_t GetWidth() const
+			{
+				return m_map.GetWidth();
+			}
+
+			// returns grid height. includes last row even if it is incomplete
+			size_t GetHeight() const
+			{
+				return m_map.GetHeight();
+			}
+
+			Size GetSize() const
+			{
+				return m_map.GetSize();
+			}
+
+			size_t GetElementCount() const
+			{
+				return m_map.GetElementCount();
+			}
+
+			bool IsEmpty() const
+			{
+				return m_map.IsEmpty();
+			}
+#pragma endregion
+		};
+
+#pragma endregion
+
 	}
 }
 

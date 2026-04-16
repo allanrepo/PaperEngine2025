@@ -41,7 +41,7 @@ namespace TestActorNavigation
 	using namespace engine::event;
 	using namespace engine::graphics::dx11::renderer;
 	using namespace engine::graphics::dx11;
-	using namespace engine::component::tile;
+	using namespace engine::component::tile1;
 	using namespace engine::graphics::factory;
 	using namespace engine::graphics::resource;
 	using namespace engine::container;

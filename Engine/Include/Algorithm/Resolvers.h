@@ -33,7 +33,7 @@ namespace engine
 				m_keyValues[key] = value;
 			}
 
-			void Set(T param, K key)
+			void Resolve(T param, K key)
 			{
 				if (!m_keyValues.Has(key)) return;
 

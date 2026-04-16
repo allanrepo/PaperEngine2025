@@ -18,12 +18,12 @@ namespace engine
 				Loaded
 			};
 
-			using TileLoader = std::function<engine::component::tile::Tile<T>(const int&)>;
+			using TileLoader = std::function<engine::component::tile1::Tile<T>(const int&)>;
 
 		private:
-			engine::container::Dictionary<std::string, std::unique_ptr<engine::component::tile::TileRegion<T>>> m_regions;
+			engine::container::Dictionary<std::string, std::unique_ptr<engine::component::tile1::TileRegion<T>>> m_regions;
 			engine::container::Dictionary<std::string, engine::loader::tile::AsyncCSVMapToTileRegionLoader<T, int>> m_loaders;
-			engine::container::Dictionary<std::string, std::unique_ptr<engine::component::tile::Tileset<T>>> m_tilesets;
+			engine::container::Dictionary<std::string, std::unique_ptr<engine::component::tile1::Tileset<T>>> m_tilesets;
 
 			TileLoader m_defaultTileLoader;
 
@@ -39,7 +39,7 @@ namespace engine
 				const std::string& mapName,
 				const std::string& filename,
 				engine::job::JobQueue& jobQueue, 
-				std::function<engine::component::tile::Tile<T>(const int&)> tileLoader = nullptr
+				std::function<engine::component::tile1::Tile<T>(const int&)> tileLoader = nullptr
 				)
 			{
 				// if no valid tile loader, throw
@@ -58,7 +58,7 @@ namespace engine
 				if (!m_regions.Has(mapName))
 				{
 					// create our tileregion as unique pointer
-					std::unique_ptr<engine::component::tile::TileRegion<T>> region = std::make_unique<engine::component::tile::TileRegion<T>>();
+					std::unique_ptr<engine::component::tile1::TileRegion<T>> region = std::make_unique<engine::component::tile1::TileRegion<T>>();
 
 					// move it to our map
 					m_regions[mapName] = std::move(region);
@@ -87,7 +87,7 @@ namespace engine
 			bool LoadImmediate(
 				const std::string& mapName,
 				const std::string& filename,
-				std::function<engine::component::tile::Tile<T>(const int&)> tileLoader = nullptr
+				std::function<engine::component::tile1::Tile<T>(const int&)> tileLoader = nullptr
 			)
 			{
 				// if no valid tile loader, throw
@@ -106,7 +106,7 @@ namespace engine
 				if (!m_regions.Has(mapName))
 				{
 					// create our tileregion as unique pointer
-					std::unique_ptr<engine::component::tile::TileRegion<T>> region = std::make_unique<engine::component::tile::TileRegion<T>>();
+					std::unique_ptr<engine::component::tile1::TileRegion<T>> region = std::make_unique<engine::component::tile1::TileRegion<T>>();
 
 					// move it to our map
 					m_regions[mapName] = std::move(region);
@@ -147,7 +147,7 @@ namespace engine
 				return true;
 			}
 
-			engine::component::tile::TileMap<T> GetTileMap(const std::string& mapName)
+			engine::component::tile1::TileMap<T> GetTileMap(const std::string& mapName)
 			{
 				return m_regions[mapName]->MakeTileMap();
 			}

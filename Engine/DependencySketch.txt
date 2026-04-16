@@ -105,3 +105,57 @@ Tile
 Prop
 - has PositionF - position relative to Tile
 - has Handle<IRenderable>
+
+
+AutoTileResolver 
+    - TileGrid provides method to set a specific coord to set its tile.
+    - provides method to set a specific coord in tilegrid to set its tile.
+    - it also resolves the new tile values of its neighboring tiles and calls set to update them too
+then it
+
+TileGrid (grass tile map)
+- provides method to set a specific coord to set its tile.
+- provides method to check if a specific coord is valid or not (in bounds)
+- provides method to get the tile at a specific coord
+
+AutoTileResolver 
+- given coord from TileGrid, set its tile and resolve the new tile values of its neighboring tiles and call set to update them too
+- it only knows tile index and their corresponding tile variant e.g. corner, center, island, edge, etc. but it does not know anything about Tileset or tile definitions  
+- it evaluates the current index of a given coordinate of a TileGrid and determines the new tile index as well as tile indices of its neighboring coordinates
+- it then pass those indices to TileGrid so TileGrid can update the tile via Tileset. These are all done by callbacks so AutoTileResolver knows nothing about TileGrid or Tileset 
+
+TileGrid(another tilemap but renders animated water flush/wave tiles. usually placed alongside grass tiles that are edge, corner, beach)
+- provides method to set a specific coord to set its tile.
+- provides method to check if a specific coord is valid or not (in bounds)
+- provides method to get the tile at a specific coord
+
+LookUpResolver
+- generic class that store a map of tile index to tile variant.
+- it exposes a method "Resolve" that takes in a tile index and returns the corresponding tile variant. 
+- this method can subscribe to AutoTileResolver so when it resolves a coordinate, Resolve method is called to get the tile variant for that coordinate.
+- this class then fires up its own event to pass the corresponding index to its listener.
+
+so you have a TileGrid for grass tile map that hooks up its methods to AutoTileResolver.
+then the LoopUpResolver maps the tile variants where it can place water splash tiles
+the LookUpResolver subscribes to AutoTileResolver so when a grass tile changes, LookUpResolver can change water tile map if needed a water splash tile to place
+
+
+IAnimated
+IRenderable
+Renderable
+
+engine
+    tile
+        Tile
+        Tileset
+    grid
+        TileGrid
+        ObjectGrid
+        ConstraintGrid
+
+
+
+- why Sprite is friend to RenderSurface?
+
+
+

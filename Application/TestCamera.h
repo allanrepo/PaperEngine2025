@@ -57,8 +57,8 @@ namespace TestCamera
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		//std::unique_ptr<engine::graphics::resource::ISpriteAtlas> m_spriteAtlas;
 		engine::timer::StopWatch m_stopwatch;
-		engine::component::tile::Tileset<RenderableTile> m_tileset;
-		engine::component::tile::TileGrid<RenderableTile> m_tilegrid;
+		engine::component::tile1::Tileset<RenderableTile> m_tileset;
+		engine::component::tile1::TileGrid<RenderableTile> m_tilegrid;
 		engine::spatial::SizeF m_tileSize{ 32.0f, 32.0f };
 		engine::spatial::CameraF m_camera;
 		engine::spatial::PositionF m_lastMousePos;
@@ -179,7 +179,7 @@ namespace TestCamera
 				tileLoader.LoadImmediate(
 					m_tilegrid,
 					table,
-					[this](const int& cell) -> engine::component::tile::Tile<RenderableTile>
+					[this](const int& cell) -> engine::component::tile1::Tile<RenderableTile>
 					{
 						// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
 						return m_tileset.MakeTile(cell);
@@ -200,7 +200,7 @@ namespace TestCamera
 			//m_tilegrid = app::utilities::io::TileGridLoader<RenderableTile, int>::LoadFromCSV(
 			//	"../Assets/32x32Map.csv",
 			//	m_tileset,
-			//	[](int row, int col, const int& cell, const component::tile::Tileset<RenderableTile>& tileset) -> component::tile::Tile<RenderableTile>
+			//	[](int row, int col, const int& cell, const component::tile1::Tileset<RenderableTile>& tileset) -> component::tile1::Tile<RenderableTile>
 			//	{
 			//		// this is safe. tileset will return "empty" tile if id is invalid. "empty" means does not have reference to tile data. tile is invalid
 			//		return tileset.MakeTile(cell);
@@ -301,7 +301,7 @@ namespace TestCamera
 		}
 
 
-		void RenderTiles(engine::component::tile::TileGrid<RenderableTile>& tilegrid, float alpha = 1.0f)
+		void RenderTiles(engine::component::tile1::TileGrid<RenderableTile>& tilegrid, float alpha = 1.0f)
 		{
 			engine::math::geometry::RectF vp = m_camera.GetViewport();
 			engine::spatial::PositionF camPos = m_camera.GetPosition();
@@ -320,7 +320,7 @@ namespace TestCamera
 						continue;
 					}
 
-					const engine::component::tile::Tile<RenderableTile>& tile = tilegrid.Get(row, col);
+					const engine::component::tile1::Tile<RenderableTile>& tile = tilegrid.Get(row, col);
 					if (tile.IsValid())
 					{
 						engine::spatial::PositionF pos =
