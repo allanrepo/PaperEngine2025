@@ -5,14 +5,14 @@
 #include <Cache/Registry.h>
 #include <memory>
 
-using namespace engine::graphics::dx11;
-
 namespace engine::graphics
 {
 	class CanvasFactory
     {
     public:
         static std::unique_ptr<engine::graphics::ICanvas> Create();
+
+        static bool Create(const std::string& name);
     };
 }
 

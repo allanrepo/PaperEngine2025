@@ -60,7 +60,7 @@ namespace TestRenderable
 	using IRenderable = engine::graphics::IRenderable;
 	using Animated = engine::graphics::Animated;
 	using Renderable = engine::graphics::Renderable;
-	using ConstraintGrid = engine::navigation::tile::ConstraintGrid;
+	using NavigationGrid = engine::navigation::tile::NavigationGrid;
 
 	template <typename K, typename T>
 	using ObjectGrid = engine::spatial::ObjectGrid<K, T>;
@@ -80,8 +80,8 @@ namespace TestRenderable
 	template<typename T>
 	using Size = engine::spatial::Size<T>;
 
-	using AutoTileResolver = engine::tile1::AutoTileResolver;
-	using TileVariant = engine::tile1::TileVariant;
+	using AutoTileResolver = engine::tile::AutoTileResolver;
+	using TileVariant = engine::tile::TileVariant;
 
 	template<typename T, typename K, typename V>
 	using LookupResolver = engine::algorithm::LookupResolver<T, K, V>;
@@ -103,7 +103,7 @@ namespace TestRenderable
 	private:
 		TileGrid<IRenderable> m_tilemap;                       // your tile layer
 		ObjectGrid<TileConstraint, IRenderable> m_objectmap;      // objects that sit on top
-		ConstraintGrid m_constraintmap;                        // movement/pathfinding
+		NavigationGrid m_constraintmap;                        // movement/pathfinding
 		Tileset<IRenderable>* m_tileset;                      // reference for tile data and auto tile resolver
 		AutoTileResolver m_autoTileResolver;                      // resolves tile index based on surrounding tiles for auto tiling
 
@@ -195,7 +195,7 @@ namespace TestRenderable
 
 		//TileGrid<IRenderable>& TileMap() { return m_tilemap; }
 		//ObjectGrid<std::string, IRenderable>& ObjectMap() { return m_objectmap; }
-		//ConstraintGrid& ConstraintMap() { return m_constraintmap; }
+		//NavigationGrid& ConstraintMap() { return m_constraintmap; }
 	};
 #pragma endregion
 
@@ -872,8 +872,8 @@ namespace TestRenderable
 			// setup constraint grid
 			{
 				// create constraint map
-				Registry<ConstraintGrid>::Instance().Register("constraints", make_unique<ConstraintGrid>());
-				ConstraintGrid& constraintmap = Registry<ConstraintGrid>::Instance().Get("constraints");
+				Registry<NavigationGrid>::Instance().Register("constraints", make_unique<NavigationGrid>());
+				NavigationGrid& constraintmap = Registry<NavigationGrid>::Instance().Get("constraints");
 
 				// set its size and fill with NONE
 				Size<size_t>& mapsize = Registry<Size<size_t>>::Instance().Get("map_size");
@@ -924,7 +924,7 @@ namespace TestRenderable
 			engine::spatial::Coord coord = engine::spatial::PositionToCoord(m_mousePos - mapPos, tilesize);
 			ObjectGrid<TileConstraint, IRenderable>& props = Registry<ObjectGrid<TileConstraint, IRenderable>>::Instance().Get("props");
 			AnimationSet& animset = Registry<AnimationSet>::Instance().Get("tree");
-			ConstraintGrid& constraintmap = Registry<ConstraintGrid>::Instance().Get("constraints");
+			NavigationGrid& constraintmap = Registry<NavigationGrid>::Instance().Get("constraints");
 			Size<size_t>& mapsize = Registry<Size<size_t>>::Instance().Get("map_size");
 			TileGrid<IRenderable>& tilegrid = Registry<TileGrid<IRenderable>>::Instance().Get("tile");
 
@@ -1027,7 +1027,7 @@ namespace TestRenderable
 			engine::spatial::Coord coord = engine::spatial::PositionToCoord(m_mousePos - mapPos, tilesize);
 
 			// if click is out of bounds, ignore
-			ConstraintGrid& constraintmap = Registry<ConstraintGrid>::Instance().Get("constraints");
+			NavigationGrid& constraintmap = Registry<NavigationGrid>::Instance().Get("constraints");
 			if (!constraintmap.IsInBounds(coord)) return;
 
 			if (btn == 1)
@@ -1112,7 +1112,7 @@ namespace TestRenderable
 								Sprite sprite = renderable->GetSprite();
 								PositionF translated = pos;
 
-								// translate position so that the prop's anchor is at the center of the tile									
+								// translate position so that the prop's pivot is at the center of the tile									
 								translated.x += tilesize.width / 2.0f;
 								translated.y += tilesize.height / 2.0f;
 
@@ -1135,7 +1135,7 @@ namespace TestRenderable
 								Sprite sprite = renderable->GetSprite();
 								PositionF translated = pos;
 
-								// translate position so that prop's anchor is at south-west corner of the tile
+								// translate position so that prop's pivot is at south-west corner of the tile
 								translated.y += tilesize.height;
 
 								// get the top-left position of this tile in world (tilemap) coordinate.
@@ -1160,7 +1160,7 @@ namespace TestRenderable
 
 						//		if (key == TileConstraint::CENTER)
 						//		{
-						//			// translate position so that the prop's anchor is at the center of the tile									
+						//			// translate position so that the prop's pivot is at the center of the tile									
 						//			translated.x += tilesize.width / 2.0f;
 						//			translated.y += tilesize.height / 2.0f;
 
@@ -1170,7 +1170,7 @@ namespace TestRenderable
 						//		}
 						//		else if (key == TileConstraint::SW)
 						//		{
-						//			// translate position so that prop's anchor is at south-west corner of the tile
+						//			// translate position so that prop's pivot is at south-west corner of the tile
 						//			translated.y += tilesize.height;
 
 						//			// get the top-left position of this tile in world (tilemap) coordinate.
@@ -1205,7 +1205,7 @@ namespace TestRenderable
 				m_renderer->Draw(Registry<IFontAtlas>::Instance().Get("font"), msg, { 600, 5 }, { 1,1,1,1 });
 
 				engine::spatial::Coord coord = engine::spatial::PositionToCoord(m_mousePos - pos, tilesize);
-				ConstraintGrid& constraintmap = Registry<ConstraintGrid>::Instance().Get("constraints");
+				NavigationGrid& constraintmap = Registry<NavigationGrid>::Instance().Get("constraints");
 				if (constraintmap.IsInBounds(coord))
 				{
 					TileConstraint tc = constraintmap.Get(coord);

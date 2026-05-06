@@ -172,3 +172,16 @@ LRESULT CALLBACK engine::win32::WindowBase::staticWindowProc(HWND hWnd, UINT uMs
 	else return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }
 
+void engine::win32::WindowBase::ShowCursor(bool show)
+{
+	// Win32 ShowCursor uses an internal counter, so we normalize it
+	if (show)
+	{
+		while (::ShowCursor(TRUE) < 0);
+	}
+	else
+	{
+		while (::ShowCursor(FALSE) >= 0);
+	}
+}
+

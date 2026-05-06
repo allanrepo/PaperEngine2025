@@ -19,12 +19,12 @@ namespace navigation
 		};
 
 		// Represents the occupied area (footprint) of an actor on a tilemap.
-		// Holds position, size, and anchor, and can produce a Rect<T> for collision/clearance checks.
+		// Holds position, size, and pivot, and can produce a Rect<T> for collision/clearance checks.
 		struct Footprint
 		{
 			spatial::PosF position;				// Anchor position in world space
 			spatial::SizeF size;				// Width/height of the footprint
-			Anchor anchor = Anchor::Center;     // Anchor point for position interpretation
+			Anchor pivot = Anchor::Center;     // Anchor point for position interpretation
 
 			// Returns the axis-aligned rectangle representing the footprint in world space.
 			math::geometry::RectF GetRect() const;
@@ -50,7 +50,7 @@ namespace navigation
 				float epsilon = 0.01f,													// Tolerance for floating-point edge cases
 				float maxHorizontalNudge = 1.0f,										// Maximum horizontal distance allowed for nudging
 				float maxVerticalNudge = 1.0f,											// Maximum vertical distance allowed for nudging
-				bool allowAnchorOverlap = false,										// Whether anchors may overlap blocked tiles
+				bool allowAnchorOverlap = false,										// Whether pivots may overlap blocked tiles
 				CostStrategy costStrategy = CostStrategy::NormalizedEuclidianSquared	// cost calculation strategy
 			);
 
@@ -58,7 +58,7 @@ namespace navigation
 			bool IsValid(
 				const component::tile::TileLayer& tileLayer,			// Tile layer to operate on
 				const spatial::SizeF& tileSize,                         // Size of each tile in world units
-				const Footprint& footPrint						// Footprint bounds (position, size, anchor)
+				const Footprint& footPrint						// Footprint bounds (position, size, pivot)
 			) const;
 
 

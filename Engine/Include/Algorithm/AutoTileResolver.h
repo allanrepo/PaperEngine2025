@@ -6,7 +6,7 @@
 
 namespace engine
 {
-	namespace tile
+	namespace tile2
 	{
 		// UML diagram :
 		//  +--------------------------+       fires event      +-----------------------+
@@ -323,7 +323,7 @@ namespace engine
 
 namespace engine
 {
-	namespace tile1
+	namespace tile
 	{
 		// UML diagram :
 		//  +--------------------------+       fires event      +-----------------------+

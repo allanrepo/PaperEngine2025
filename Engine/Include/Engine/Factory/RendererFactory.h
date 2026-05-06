@@ -1,15 +1,12 @@
 #pragma once
 #include <memory>
 #include <string>
-//#include <Graphics/Renderer/IRenderer.h>
 #include <Graphics/Renderer/DX11RendererBatchImpl.h>
 #include <Graphics/Renderer/DX11RendererImmediateImpl.h>
 #include <Cache/Registry.h>
 #include <Containers/Dictionary.h>
 #include <Core/Factory.h>
 #include <Graphics/Renderer/Renderer.h>
-
-using namespace engine;
 
 namespace engine::graphics::factory
 {
@@ -86,5 +83,17 @@ namespace engine::graphics::factory
 
             return Renderer;
         }
+
+        static bool Create(const std::string& name)
+        {
+            std::unique_ptr<engine::graphics::renderer::IRenderer> Renderer = Create();
+            if (!Renderer)
+            {
+                return false;
+            }
+            cache::Registry<engine::graphics::renderer::IRenderer>::Instance().Register(name, std::move(Renderer));
+			return true;
+        }
+
     };
 }

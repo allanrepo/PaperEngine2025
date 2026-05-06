@@ -1,6 +1,7 @@
 #pragma once
 #include <Containers/Dictionary.h>
 #include <Spatial/Size.h>
+#include <Containers/Grid.h>
 #include <vector>
 
 
@@ -105,7 +106,7 @@ namespace engine
 					}
 				}
 
-				// execute a predicate on every object of a given key in the cell. useful for iterating through objects of a specified key
+				// execute a predicate on every object of a given key in the cell. useful for iterating through all objects of a specified key
 				// predicate exposes the object that belongs to the specified key
 				template<typename Predicate>
 				void ForEach(const K& key, Predicate func)
@@ -379,6 +380,7 @@ namespace engine
 
 #pragma region // iteration
 			// execute a predicate for all the objects given cell coordinate regardless of their keys
+			// useful for iterating through all objects in a cell specified by row and col
 			// the predicate exposes reference to object and corresponding key
 			template<typename Predicate>
 			void ForEach(int row, int col, Predicate func)

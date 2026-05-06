@@ -1,0 +1,17 @@
+-1,	0,	TileVariant::Empty
+0,	1,	TileVariant::Island
+-1,	2,	TileVariant::Full
+0,	3,	TileVariant::NorthEdge
+0,	4,	TileVariant::SouthEdge
+0,	5,	TileVariant::EastEdge
+0,	6,	TileVariant::WestEdge
+0,	7,	TileVariant::NECorner
+0,	8,	TileVariant::NWCorner
+0,	9,	TileVariant::SECorner
+0,	10,	TileVariant::SWCorner
+0,	11,	TileVariant::Vertical
+0,	12,	TileVariant::Horizontal
+0,	13,	TileVariant::TNorth
+0,	14,	TileVariant::TSouth
+0,	15,	TileVariant::TEast
+0,	16,	TileVariant::TWest

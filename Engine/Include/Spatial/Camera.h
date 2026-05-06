@@ -8,7 +8,7 @@ namespace engine::spatial
 	// a 2d camera abstraction for world-to-screen transformations.
 	//
 	// the Camera defines a viewport rectangle in screen space and a position in world space.
-	// it ensures the viewport (anchored at m_position as its top-left corner in world space)
+	// it ensures the viewport (pivoted at m_position as its top-left corner in world space)
 	// stays fully inside the world bounds. It provides methods to move, center, and clamp
 	// the camera, as well as to convert coordinates between world space and screen space.
 	//
@@ -39,7 +39,7 @@ namespace engine::spatial
 		// the total size of the world/map
 		spatial::Size<T> m_worldSize;
 
-		// clamps camera position so that the viewport rectangle, anchored at m_position 
+		// clamps camera position so that the viewport rectangle, pivoted at m_position 
 		// as its top-left position in world space, stays fully inside the world bounds.
 		// camera position is clamped between 0 and world.size - viewport.size
 		void ClampToBounds()

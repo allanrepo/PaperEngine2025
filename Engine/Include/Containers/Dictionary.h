@@ -40,9 +40,21 @@ namespace engine::container
             return registry.emplace(key, std::move(value)).second;
         }
 
-        bool Register(const Key& key, const Value& value)
+        // forces value to be stored at given key, replacing any existing value if key already exists
+        bool Set(const Key& key, const Value& value)
         {
             return registry.emplace(key, value).second;
+        }
+
+        // forces value to be stored at given key, replacing any existing value if key already exists
+        void Set(const Key& key, Value&& value)
+        {
+            registry.insert_or_assign(key, std::move(value));
+        }
+
+        void Overwrite(const Key& key, const Value& value)
+        {
+            registry.insert_or_assign(key, value);
         }
 
         // Retrieves a pointer to the value, or nullptr if not found.

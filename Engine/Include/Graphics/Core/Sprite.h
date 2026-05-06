@@ -45,14 +45,14 @@ namespace engine::graphics
 		engine::math::geometry::RectF m_rect;
 		engine::spatial::SizeF m_size;
 		core::View<engine::graphics::resource::ITexture> m_view;
-		engine::spatial::PositionF m_anchor;
+		engine::spatial::PositionF m_pivot;
 
 		friend class engine::graphics::resource::SpriteAtlas;
 		friend class engine::graphics::renderable::RenderSurface;
 
 	protected:
 		// use this constructor if you have the sprite atlas and the source rect
-		Sprite(const engine::graphics::resource::ITexture* texture, const engine::math::geometry::RectF& rect, const engine::spatial::PositionF& anchor = { 0,0 });
+		Sprite(const engine::graphics::resource::ITexture* texture, const engine::math::geometry::RectF& rect, const engine::spatial::PositionF& pivot = { 0,0 });
 
 	public:
 		~Sprite() = default;
@@ -60,8 +60,13 @@ namespace engine::graphics
 		// Sprite methods
 		bool IsValid() const;
 		engine::math::geometry::RectF GetUVRect() const;
-		void SetAnchor(const engine::spatial::PositionF& pos);
-		engine::spatial::PositionF GetAnchor() const;
+		void SetPivot(const engine::spatial::PositionF& pos);
+		engine::spatial::PositionF GetPivot() const;
+		void SetPivotInPixels(const engine::spatial::PositionF& pixelPos);
+		engine::spatial::PositionF GetPivotInPixels() const;
+
+		// helper method to generate an "empty" or "invalid" sprite
+		static Sprite MakeInvalidSprite();
 
 		// IBindable methods
 		void Bind() const override final;
@@ -73,8 +78,6 @@ namespace engine::graphics
 		spatial::SizeF GetSize() const override final;
 
 	};
-
-
 
 }
 

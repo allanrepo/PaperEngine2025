@@ -21,7 +21,10 @@ namespace engine
 			{
 			}
 
-			virtual ~AsyncFileReader() = default;
+			virtual ~AsyncFileReader()
+			{
+				Close();
+			}
 
 			const std::string& GetFileName() const
 			{

@@ -905,6 +905,11 @@ namespace engine
 				return m_registry.Has(id) ? Tile<T>(id, m_registry.Get(id).get()) : Tile<T>(m_invalidIndex);
 			}
 
+			Tile<T> MakeInvalidTile() const
+			{
+				return Tile<T>(m_invalidIndex);
+			}
+
 			// define iterator for our container
 			using iterator = typename container::Dictionary<int, std::unique_ptr<T>>::iterator;
 			using const_iterator = typename container::Dictionary<int, std::unique_ptr<T>>::const_iterator;

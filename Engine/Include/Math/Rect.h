@@ -97,3 +97,21 @@ namespace engine
 	}
 }
 
+namespace std
+{
+	// STL container classes that uses key for mapping e.g. std::unordered_map requires has function to map a key to a bucker quickly
+	// if Rect<T> is used as key, the STL container will certainly look for a has function for it, and this is why we need to define one here
+	template<typename T>
+	struct hash<engine::math::geometry::Rect<T>>
+	{
+		size_t operator()(const engine::math::geometry::Rect<T>& r) const noexcept
+		{
+			size_t h1 = std::hash<T>{}(r.left);
+			size_t h2 = std::hash<T>{}(r.top);
+			size_t h3 = std::hash<T>{}(r.right);
+			size_t h4 = std::hash<T>{}(r.bottom);
+
+			return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3);
+		}
+	};
+}

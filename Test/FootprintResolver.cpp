@@ -485,7 +485,7 @@ navigation::tile::FootprintResolver::FootprintResolver(
 	float epsilon,													// Tolerance for floating-point edge cases
 	float maxHorizontalNudge,										// Maximum horizontal distance allowed for nudging
 	float maxVerticalNudge,											// Maximum vertical distance allowed for nudging
-	bool allowAnchorOverlap,										// Whether anchors may overlap blocked tiles
+	bool allowAnchorOverlap,										// Whether pivots may overlap blocked tiles
 	CostStrategy costStrategy										// cost calculation strategy
 ) :
 	m_epsilon(epsilon),
@@ -512,7 +512,7 @@ navigation::tile::FootprintResolver::FootprintResolver(
 // Returns the axis-aligned rectangle representing the footprint in world space.
 math::geometry::RectF navigation::tile::Footprint::GetRect() const
 {
-	switch (anchor)
+	switch (pivot)
 	{
 	case Anchor::Center:
 		return {
@@ -564,10 +564,10 @@ math::geometry::RectF navigation::tile::Footprint::GetRect() const
 bool navigation::tile::FootprintResolver::IsValid(
 	const component::tile::TileLayer& tileLayer,			// Tile layer to operate on
 	const spatial::SizeF& tileSize,                         // Size of each tile in world units
-	const Footprint& footPrint						// Footprint bounds (position, size, anchor)
+	const Footprint& footPrint						// Footprint bounds (position, size, pivot)
 ) const
 {
-	// get the footprint rect based on anchor which is assumed to be in world space (tilemap coordinate)
+	// get the footprint rect based on pivot which is assumed to be in world space (tilemap coordinate)
 	math::geometry::RectF footPrintBounds = footPrint.GetRect();
 
 	// calculate the tile coordinates covered by the footprint
@@ -609,19 +609,19 @@ bool navigation::tile::FootprintResolver::TryResolve(
 		return true; // already safe
 	}
 
-	// get the footprint rect based on anchor which is assumed to be in world space (tilemap coordinate)
+	// get the footprint rect based on pivot which is assumed to be in world space (tilemap coordinate)
 	math::geometry::RectF footPrintBounds = footPrint.GetRect();
 
-	// quick reject: if anchor position of footprint is inside an unwalkable tile, then no point trying to nudge
+	// quick reject: if pivot position of footprint is inside an unwalkable tile, then no point trying to nudge
 	if (!m_allowAnchorOverlap)
 	{
-		component::tile::TileCoord anchorTileCoord
+		component::tile::TileCoord pivotTileCoord
 		{
 			static_cast<int>(std::floor(footPrint.position.y / tileSize.height)),
 			static_cast<int>(std::floor(footPrint.position.x / tileSize.width))
 		};
 
-		if (!tileLayer.IsValidTile(anchorTileCoord) || !m_isWalkable(anchorTileCoord.row, anchorTileCoord.col))
+		if (!tileLayer.IsValidTile(pivotTileCoord) || !m_isWalkable(pivotTileCoord.row, pivotTileCoord.col))
 		{
 			return false; // center position is inside an unwalkable tile
 		}

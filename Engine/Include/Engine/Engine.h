@@ -146,6 +146,7 @@ namespace engine
 		{
 			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::DrawQuadCommand>(*m_renderer, pos, size, color, rot));
 		}
+
 		void QueueDrawSpriteCommand(::engine::graphics::Sprite sprite, engine::spatial::PositionF pos, spatial::SizeF size, ::engine::graphics::ColorF color, float rot)
 		{
 			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::DrawSpriteCommand>(*m_renderer, sprite, pos, size, color, rot));

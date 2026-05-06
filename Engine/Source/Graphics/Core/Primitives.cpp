@@ -37,7 +37,7 @@ void engine::graphics::primitives::DrawLineSegment(
 	engine::spatial::PositionF position = lineSegmentCenterPoint + start;
 
 	// finally, we need to adjust the position to account for the thickness of the line. we want it to be centered on the line segment
-	position -= engine::math::VecF(0, thickness / 2.0f);
+	position -= engine::math::VecF(0.0f, thickness / 2.0f);
 
 	// define the line segment's rectangle size. this is the size of the line segment before rotation is applied
 	engine::spatial::SizeF size{ length, thickness };

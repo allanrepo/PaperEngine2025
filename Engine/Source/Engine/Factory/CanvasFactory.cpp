@@ -1,7 +1,5 @@
 #include <Engine/Factory/CanvasFactory.h>
 
-//using namespace engine;
-
 std::unique_ptr<engine::graphics::ICanvas> engine::graphics::CanvasFactory::Create()
 {
     // get environment config from cache
@@ -25,4 +23,17 @@ std::unique_ptr<engine::graphics::ICanvas> engine::graphics::CanvasFactory::Crea
         loaded = true;
     }
     return engine::core::Factory <std::string, engine::graphics::Canvas> ::Instance().Create(typeName);
+}
+
+bool engine::graphics::CanvasFactory::Create(const std::string& name)
+{
+    std::unique_ptr<ICanvas> canvas = Create();
+
+    if (!canvas)
+    {
+        return false;
+    }
+
+    cache::Registry<ICanvas>::Instance().Register(name, std::move(canvas));
+    return true;
 }

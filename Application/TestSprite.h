@@ -131,7 +131,7 @@ namespace test
 
 					// draw the selected sprite cell next to the sprite atlas
 					m_renderer->Draw(*m_sprite,
-						engine::spatial::PositionF{ atlas.GetWidth() / 2 + 10, 0 },
+						engine::spatial::PositionF{ atlas.GetWidth() / 2.0f + 10.0f, 0.0f },
 						engine::spatial::SizeF{ m_sprite->GetWidth(), m_sprite->GetHeight() },
 						engine::graphics::ColorF{ 1,1,1,1 },
 						0

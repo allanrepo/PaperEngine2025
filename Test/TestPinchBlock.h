@@ -94,7 +94,7 @@ namespace test
 					// if this position is safe (no collision with any obstacle) then this tile is walkable. 
 					// if not safe (collides with an obstacle), we'll try to nudge
 					navigation::tile::Footprint fp;
-					fp.anchor = navigation::tile::Anchor::Center;
+					fp.pivot = navigation::tile::Anchor::Center;
 					fp.position.x = NextCol * m_tileSize.width + m_tileSize.width / 2;
 					fp.position.y = NextRow * m_tileSize.height + m_tileSize.height / 2;
 					fp.size = m_startFP.size;
@@ -286,7 +286,7 @@ namespace test
 			m_fontLarge->Initialize("Arial", 24);
 
 			m_goalFP.size = m_startFP.size = { 75, 75 };
-			m_goalFP.anchor = m_startFP.anchor = navigation::tile::Anchor::Center;
+			m_goalFP.pivot = m_startFP.pivot = navigation::tile::Anchor::Center;
 			m_goalFP.position = m_startFP.position = { -10000, -10000 };
 		}
 
@@ -308,7 +308,7 @@ namespace test
 			// calculate waypoints
 			{
 				navigation::tile::Footprint fp;
-				fp.anchor = navigation::tile::Anchor::Center;
+				fp.pivot = navigation::tile::Anchor::Center;
 				fp.size = m_startFP.size;
 
 				m_wayPoints.clear();

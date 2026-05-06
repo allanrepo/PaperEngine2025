@@ -221,6 +221,44 @@ namespace engine::container
 		typename std::vector<T>::reverse_iterator rend() { return m_data.rend(); }
 		typename std::vector<T>::const_reverse_iterator rbegin() const { return m_data.rbegin(); }
 		typename std::vector<T>::const_reverse_iterator rend() const { return m_data.rend(); }
+
+		template<typename Predicate>
+		void ForEach(Predicate func)
+		{
+			size_t height = GetHeight();
+			for (size_t row = 0; row < height; ++row)
+			{
+				for (size_t col = 0; col < m_width; ++col)
+				{
+					size_t index = row * m_width + col;
+
+					// guard for incomplete last row
+					if (index >= m_data.size()) return;
+					
+					func(row, col, m_data[index]);
+				}
+			}
+		}
+
+		template<typename Predicate>
+		void ForEach(Predicate func) const
+		{
+			size_t height = GetHeight();
+			for (size_t row = 0; row < height; ++row)
+			{
+				for (size_t col = 0; col < m_width; ++col)
+				{
+					size_t index = row * m_width + col;
+					
+					// guard for incomplete last row
+					if (index >= m_data.size()) return;
+
+					func(row, col, m_data[index]);
+				}
+			}
+		}
+
+
 #pragma endregion
 
 #pragma region // content management
@@ -266,6 +304,36 @@ namespace engine::container
 			if (m_data.size())
 			{
 				m_data.pop_back();
+			}
+		}
+
+		void Initialize(size_t width, size_t height, const T& data)
+		{
+			Clear();
+			SetWidth(width);
+			Reserve({ width, height });
+
+			m_data.resize(width * height, data);
+		}
+
+		void Initialize(const engine::spatial::Size<size_t> size, const T& data)
+		{
+			Initialize(size.width, size.height, data);
+		}
+
+		template<typename Factory, typename = std::enable_if_t<std::is_invocable_v<Factory, size_t, size_t>>>
+		void Initialize(size_t width, size_t height, Factory factory)
+		{
+			Clear();
+			SetWidth(width);
+			Reserve({ width, height });
+
+			for (size_t row = 0; row < height; ++row)
+			{
+				for (size_t col = 0; col < width; ++col)
+				{
+					m_data.push_back(factory(row, col));
+				}
 			}
 		}
 

@@ -31,19 +31,19 @@ namespace engine
 			Coord() : row(0), col(0) {}
 		};
 
-		inline const Coord PositionToCoord(const engine::spatial::PositionF& position, const spatial::SizeF& tilesize)
+		inline const Coord PositionToCoord(const engine::spatial::PositionF& position, const spatial::SizeF& cellsize)
 		{
 			return engine::spatial::Coord(
-				static_cast<int>(position.y / tilesize.height),
-				static_cast<int>(position.x / tilesize.width)
+				static_cast<int>(position.y / cellsize.height),
+				static_cast<int>(position.x / cellsize.width)
 			);
 		}
 
-		inline const engine::spatial::PositionF CoordToPosition(const engine::spatial::Coord& coord, const spatial::SizeF& tilesize)
+		inline const engine::spatial::PositionF CoordToPosition(const engine::spatial::Coord& coord, const spatial::SizeF& cellsize)
 		{
 			return engine::spatial::PositionF(
-				coord.col * tilesize.width,
-				coord.row * tilesize.height
+				coord.col * cellsize.width,
+				coord.row * cellsize.height
 			);
 		}
 	}

@@ -1,6 +1,7 @@
 #pragma once
 #include <cmath>
 #include <cassert>
+#include <functional>
 
 namespace engine
 {
@@ -72,13 +73,38 @@ namespace engine
 			{
 				return std::abs(x) < tolerance && std::abs(y) < tolerance;
 			}
+
+			constexpr Vector Scale(const Vector& rhs) const noexcept
+			{
+				return Vector
+				{
+					x * rhs.x,
+					y * rhs.y
+				};
+			}
 		};
 
 
 		template<typename T>
 		using Vec = Vector<T>;
-
 		using VecF = Vec<float>;
 	}
+}
+
+// STL container classes that uses key for mapping e.g. std::unordered_map requires has function to map a key to a bucker quickly
+// if Vector<T> is used as key, the STL container will certainly look for a has function for it, and this is why we need to define one here
+namespace std
+{
+	template <typename T>
+	struct hash<engine::math::Vector<T>>
+	{
+		size_t operator()(const engine::math::Vector<T>& v) const noexcept
+		{
+			size_t h1 = std::hash<T>{}(v.x);
+			size_t h2 = std::hash<T>{}(v.y);
+
+			return h1 ^ (h2 << 1); // combine
+		}
+	};
 }
 

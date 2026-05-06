@@ -20,7 +20,7 @@ namespace engine
 			{
 			public:
 				// creates an animation object loading all the sprites of given atlas with a fixed duration across all frames
-				static Animation Create(const ISpriteAtlas& atlas, float duration, bool loop, const PositionF& anchor = PositionF{0,0})
+				static Animation Create(const ISpriteAtlas& atlas, float duration, bool loop, const PositionF& pivot = PositionF{0,0})
 				{
 					std::vector<int> indice;
 					for (int i = 0; i < atlas.GetUVRectCount(); i++)
@@ -28,11 +28,11 @@ namespace engine
 						indice.push_back(i);
 					}
 
-					return Create(atlas, indice, duration, loop, anchor);
+					return Create(atlas, indice, duration, loop, pivot);
 				}
 
 				// creates an animation object loading specified list of sprites of given atlas with a fixed duration across all frames
-				static Animation Create(const ISpriteAtlas& atlas, std::vector<int> indice, float duration, bool loop, const PositionF& anchor = PositionF{ 0,0 })
+				static Animation Create(const ISpriteAtlas& atlas, std::vector<int> indice, float duration, bool loop, const PositionF& pivot = PositionF{ 0,0 })
 				{
 					Animation anim;
 					anim.loop = loop;
@@ -44,7 +44,7 @@ namespace engine
 
 						// get sprite from each UV index in tilemap sprite atlas
 						Sprite sprite = atlas.MakeSprite(i);
-						sprite.SetAnchor(anchor);
+						sprite.SetPivot(pivot);
 
 						// create animation. these tilemaps are static. so their animations are 1 frame only
 						anim.frames.push_back({ sprite, duration });
@@ -54,9 +54,9 @@ namespace engine
 
 				// creates an animation object loading specified list of sprites of given atlas with a fixed duration across all frames. 
 				// store this animation in cache with given name as key. return true if successfully registered in cache, false otherwise (e.g. if name already exists in cache)
-				static bool Create(const std::string& name, const ISpriteAtlas& atlas, std::vector<int> indice, float duration, bool loop, const PositionF& anchor = PositionF{ 0,0 })
+				static bool Create(const std::string& name, const ISpriteAtlas& atlas, std::vector<int> indice, float duration, bool loop, const PositionF& pivot = PositionF{ 0,0 })
 				{
-					Animation anim = Create(atlas, indice, duration, loop, anchor);
+					Animation anim = Create(atlas, indice, duration, loop, pivot);
 					anim.loop = loop;
 
 					// register this animation in cache
@@ -65,10 +65,10 @@ namespace engine
 
 				// creates an animation object loading all the sprites of given atlas with a fixed duration across all frames.
 				// store this animation in cache with given name as key. return true if successfully registered in cache, false otherwise (e.g. if name already exists in cache)
-				static bool Create(const std::string& name, const ISpriteAtlas& atlas, float duration, bool loop, const PositionF& anchor = PositionF{ 0,0 })
+				static bool Create(const std::string& name, const ISpriteAtlas& atlas, float duration, bool loop, const PositionF& pivot = PositionF{ 0,0 })
 				{
 					// create animation object.
-					Animation anim = Create(atlas, duration, loop, anchor);
+					Animation anim = Create(atlas, duration, loop, pivot);
 					anim.loop = loop;
 
 					// register this animation in cache

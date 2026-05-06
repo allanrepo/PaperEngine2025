@@ -109,6 +109,16 @@ namespace engine::navigation
 			return lhs;
 		}
 
+		inline bool HasFlag(TileConstraint value, TileConstraint flag)
+		{
+			return (value & flag) != TileConstraint::NONE;
+		}
+
+		inline bool IsBlocked(TileConstraint value)
+		{
+			return value == TileConstraint::BLOCKED;
+		}
+
 		// a more sophisticated resolver for maps with complex tile constraints (walls, corners, half‑triangles, blocked centers).
 		// how it works:
 		//	uses a std::function<TileConstraint(int row, int col)> to retrieve a tile’s constraint bitmask.
@@ -520,8 +530,8 @@ namespace engine::navigation
 		}
 
 
-#pragma region // ConstraintGrid - grid that stores constraint value of each cell. it also has pathfinding feature
-		class ConstraintGrid
+#pragma region // NavigationGrid - grid that stores constraint value of each cell. it also has pathfinding feature
+		class NavigationGrid
 		{
 			using Coord = engine::spatial::Coord;
 			using Grid = engine::container::Grid<TileConstraint>;
@@ -538,7 +548,7 @@ namespace engine::navigation
 
 		public:
 #pragma region // constructor, destructors, copy, move assignment operators
-			ConstraintGrid() :
+			NavigationGrid() :
 				m_pathFinder(
 					std::make_unique<TileNavigationResolver>(
 						[this](int row, int col) -> TileConstraint
@@ -579,11 +589,6 @@ namespace engine::navigation
 #pragma endregion
 
 #pragma region // content management
-			void Reset()
-			{
-				m_map.Clear();
-			}
-
 			void Clear()
 			{
 				Fill(m_default);
@@ -591,7 +596,7 @@ namespace engine::navigation
 
 			void Initialize(size_t width, size_t height, TileConstraint constraint)
 			{
-				Reset();
+				m_map.Clear();
 				m_map.SetWidth(width);
 				m_map.Reserve({ width, height });
 
@@ -719,6 +724,30 @@ namespace engine::navigation
 				return m_map.IsEmpty();
 			}
 #pragma endregion
+
+#pragma region // debugging
+
+			void Validate() const
+			{
+				for (int row = 0; row < (int)m_map.GetHeight(); ++row)
+				{
+					for (int col = 0; col < (int)m_map.GetWidth(); ++col)
+					{
+						if (!m_map.IsInBounds(row, col))
+							throw std::runtime_error("NavigationGrid::Validate - out of bounds access detected");
+
+						TileConstraint value = m_map.Get(row, col);
+
+						// optional: sanity check enum validity
+						// (only useful if you define allowed mask)
+						// if (value < TileConstraint::NONE)
+						//     throw std::runtime_error("Invalid TileConstraint value");
+					}
+				}
+			}
+
+#pragma endregion
+
 		};
 
 #pragma endregion

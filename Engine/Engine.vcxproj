@@ -29,6 +29,7 @@
     <ClInclude Include="Include\Command\ICommand.h" />
     <ClInclude Include="Include\Components\Prop.h" />
     <ClInclude Include="Include\Components\Tile.h" />
+    <ClInclude Include="Include\Containers\Bucket.h" />
     <ClInclude Include="Include\Containers\Container.h" />
     <ClInclude Include="Include\Containers\Dictionary.h" />
     <ClInclude Include="Include\Containers\Grid.h" />
@@ -83,6 +84,7 @@
     <ClInclude Include="Include\Graphics\Resource\SpriteAtlas.h" />
     <ClInclude Include="Include\Graphics\Resource\Texture.h" />
     <ClInclude Include="Include\IO\ASyncFileReader.h" />
+    <ClInclude Include="Include\IO\CSVFileParser.h" />
     <ClInclude Include="Include\Job\IJob.h" />
     <ClInclude Include="Include\Job\Job.h" />
     <ClInclude Include="Include\Math\Rect.h" />

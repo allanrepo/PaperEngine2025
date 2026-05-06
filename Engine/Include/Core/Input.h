@@ -151,5 +151,17 @@ namespace engine::input
 			// clear input event queue
 			events.clear();
 		}
+
+		bool IsMouseHeld(unsigned int btn) const
+		{
+			assert(btn < mouseState.size());
+			return mouseState[btn];
+		}
+
+		bool IsKeyHeld(unsigned int key) const
+		{
+			assert(key < keyState.size());
+			return keyState[key];
+		}
 	};
 }

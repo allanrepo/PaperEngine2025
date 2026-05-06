@@ -57,7 +57,7 @@ namespace TestProp
 	using IRenderable = engine::graphics::IRenderable;
 	using Animated = engine::graphics::Animated;
 	using Renderable = engine::graphics::Renderable;
-	using ConstraintGrid = engine::navigation::tile::ConstraintGrid;
+	using NavigationGrid = engine::navigation::tile::NavigationGrid;
 
 	template <typename K, typename T>
 	using ObjectGrid = engine::spatial::ObjectGrid<K, T>;
@@ -77,8 +77,8 @@ namespace TestProp
 	template<typename T>
 	using Size = engine::spatial::Size<T>;
 
-	using AutoTileResolver = engine::tile1::AutoTileResolver;
-	using TileVariant = engine::tile1::TileVariant;
+	using AutoTileResolver = engine::tile::AutoTileResolver;
+	using TileVariant = engine::tile::TileVariant;
 
 	template<typename T, typename K, typename V>
 	using LookupResolver = engine::algorithm::LookupResolver<T, K, V>;
@@ -382,8 +382,8 @@ namespace TestProp
 			// setup constraint grid
 			{
 				// create constraint map
-				Registry<ConstraintGrid>::Instance().Register("constraints", make_unique<ConstraintGrid>());
-				ConstraintGrid& constraintmap = Registry<ConstraintGrid>::Instance().Get("constraints");
+				Registry<NavigationGrid>::Instance().Register("constraints", make_unique<NavigationGrid>());
+				NavigationGrid& constraintmap = Registry<NavigationGrid>::Instance().Get("constraints");
 
 				// set its size and fill with NONE
 				Size<size_t>& mapsize = Registry<Size<size_t>>::Instance().Get("map_size");
@@ -410,7 +410,7 @@ namespace TestProp
 			// set initial state of the world
 			{
 				AutoTileResolver& tileresolver = Registry<AutoTileResolver>::Instance().Get("tile");
-				ConstraintGrid& constraintmap = Registry<ConstraintGrid>::Instance().Get("constraints");
+				NavigationGrid& constraintmap = Registry<NavigationGrid>::Instance().Get("constraints");
 				Size<size_t>& mapsize = Registry<Size<size_t>>::Instance().Get("map_size");
 				tileresolver.Set(mapsize);
 				constraintmap.Fill(TileConstraint::NONE); // nothing is walkable since we remove all floor tile
@@ -439,7 +439,7 @@ namespace TestProp
 			engine::spatial::Coord coord = engine::spatial::PositionToCoord(m_mousePos - mapPos, tilesize);
 			ObjectGrid<TileConstraint, IRenderable>& props = Registry<ObjectGrid<TileConstraint, IRenderable>>::Instance().Get("props");
 			AnimationSet& animset = Registry<AnimationSet>::Instance().Get("tree");
-			ConstraintGrid& constraintmap = Registry<ConstraintGrid>::Instance().Get("constraints");
+			NavigationGrid& constraintmap = Registry<NavigationGrid>::Instance().Get("constraints");
 			Size<size_t>& mapsize = Registry<Size<size_t>>::Instance().Get("map_size");
 			TileGrid<IRenderable>& tilegrid = Registry<TileGrid<IRenderable>>::Instance().Get("tile");
 
@@ -502,7 +502,7 @@ namespace TestProp
 			Coord bottomRight = engine::spatial::PositionToCoord(pos + PositionF(buildingSize.width, buildingSize.height) - mapPos, tilesize);
 
 			// check if all 4 corners are on valid floor tiles. if not, we cannot place building here
-			ConstraintGrid& constraintmap = Registry<ConstraintGrid>::Instance().Get("constraints");
+			NavigationGrid& constraintmap = Registry<NavigationGrid>::Instance().Get("constraints");
 			if (!constraintmap.IsInBounds(topLeft) ||
 				!constraintmap.IsInBounds(bottomRight))
 			{
@@ -510,17 +510,17 @@ namespace TestProp
 				return;
 			}
 
-			// get our building coords  list and clear it first 
-			std::vector<Coord>& buildingCoords = Registry<std::vector<Coord>>::Instance().Get("building_coords");
-			buildingCoords.clear();
+			//// get our building coords  list and clear it first 
+			//std::vector<Coord>& buildingCoords = Registry<std::vector<Coord>>::Instance().Get("building_coords");
+			//buildingCoords.clear();
 
-			for (int col = topLeft.col; col <= bottomRight.col; col++)
-			{
-				for (int row = topLeft.row; row <= bottomRight.row; row++)
-				{
-					buildingCoords.push_back({ row, col });
-				}
-			}
+			//for (int col = topLeft.col; col <= bottomRight.col; col++)
+			//{
+			//	for (int row = topLeft.row; row <= bottomRight.row; row++)
+			//	{
+			//		buildingCoords.push_back({ row, col });
+			//	}
+			//}
 
 			SizeF subTileSize = tilesize / 3.0f;
 			Coord subTopLeft = engine::spatial::PositionToCoord(pos - mapPos, subTileSize);
@@ -555,7 +555,7 @@ namespace TestProp
 
 
 			// if click is out of bounds, ignore
-			ConstraintGrid& constraintmap = Registry<ConstraintGrid>::Instance().Get("constraints");
+			NavigationGrid& constraintmap = Registry<NavigationGrid>::Instance().Get("constraints");
 			if (!constraintmap.IsInBounds(coord)) return;
 
 			// what did we click? left button? right button?
@@ -763,7 +763,7 @@ namespace TestProp
 				TileGrid<IRenderable>& tilegrid = Registry<TileGrid<IRenderable>>::Instance().Get("tile");
 				TileGrid<IRenderable>& splashgrid = Registry<TileGrid<IRenderable>>::Instance().Get("splash");
 				ObjectGrid<TileConstraint, IRenderable>& props = Registry<ObjectGrid<TileConstraint, IRenderable>>::Instance().Get("props");
-				ConstraintGrid& constraintmap = Registry<ConstraintGrid>::Instance().Get("constraints");
+				NavigationGrid& constraintmap = Registry<NavigationGrid>::Instance().Get("constraints");
 
 				// draw tiles in order of their depth (Y) so that tiles with higher Y (lower on the screen) are drawn after 
 				// tiles with lower Y (higher on the screen) to create proper overlapping. props will be drawn in between floor 
@@ -796,7 +796,7 @@ namespace TestProp
 								Sprite sprite = renderable->GetSprite();
 								PositionF translated = pos;
 
-								// translate position so that the prop's anchor is at the center of the tile									
+								// translate position so that the prop's pivot is at the center of the tile									
 								translated.x += tilesize.width / 2.0f;
 								translated.y += tilesize.height / 2.0f;
 
@@ -819,7 +819,7 @@ namespace TestProp
 								Sprite sprite = renderable->GetSprite();
 								PositionF translated = pos;
 
-								// translate position so that prop's anchor is at south-west corner of the tile
+								// translate position so that prop's pivot is at south-west corner of the tile
 								translated.y += tilesize.height;
 
 								// get the top-left position of this tile in world (tilemap) coordinate.
@@ -857,13 +857,13 @@ namespace TestProp
 							translated.x += col * tilesize.width;
 							translated.y += row * tilesize.height;
 
-							// translate position so that the prop's anchor is at the center of the tile									
+							// translate position so that the prop's pivot is at the center of the tile									
 							translated.x += tilesize.width / 2.0f - subTileSize.width / 2.0f;
 							translated.y += tilesize.height / 2.0f - subTileSize.height / 2.0f;
 
 							// get the top-left position of this tile in world (tilemap) coordinate.
 
-							m_renderer->Draw(translated, subTileSize, { 1,0,0,1 }, 0.0f); // debug: draw a red dot at the anchor point of the prop
+							m_renderer->Draw(translated, subTileSize, { 1,0,0,1 }, 0.0f); // debug: draw a red dot at the pivot point of the prop
 
 						}
 
@@ -874,10 +874,10 @@ namespace TestProp
 							translated.x += col * tilesize.width;
 							translated.y += row * tilesize.height;
 
-							// translate position so that the prop's anchor is at the SW of the tile									
+							// translate position so that the prop's pivot is at the SW of the tile									
 							translated.y += tilesize.height - subTileSize.height;
 
-							m_renderer->Draw(translated, subTileSize, { 1,1,0,1 }, 0.0f); // debug: draw a red dot at the anchor point of the prop
+							m_renderer->Draw(translated, subTileSize, { 1,1,0,1 }, 0.0f); // debug: draw a red dot at the pivot point of the prop
 						}
 
 						if ((int)(constraint & TileConstraint::NE))
@@ -887,10 +887,10 @@ namespace TestProp
 							translated.x += col * tilesize.width;
 							translated.y += row * tilesize.height;
 
-							// translate position so that the prop's anchor is at the NE of the tile									
+							// translate position so that the prop's pivot is at the NE of the tile									
 							translated.x += tilesize.width - subTileSize.width;
 
-							m_renderer->Draw(translated, subTileSize, { 1,0,1,1 }, 0.0f); // debug: draw a red dot at the anchor point of the prop
+							m_renderer->Draw(translated, subTileSize, { 1,0,1,1 }, 0.0f); // debug: draw a red dot at the pivot point of the prop
 						}
 
 						if ((int)(constraint & TileConstraint::SE))
@@ -900,11 +900,11 @@ namespace TestProp
 							translated.x += col * tilesize.width;
 							translated.y += row * tilesize.height;
 
-							// translate position so that the prop's anchor is at the SE of the tile									
+							// translate position so that the prop's pivot is at the SE of the tile									
 							translated.x += tilesize.width - subTileSize.width;
 							translated.y += tilesize.height - subTileSize.height;
 
-							m_renderer->Draw(translated, subTileSize, { 0.5f,.5f,1,1 }, 0.0f); // debug: draw a red dot at the anchor point of the prop
+							m_renderer->Draw(translated, subTileSize, { 0.5f,.5f,1,1 }, 0.0f); // debug: draw a red dot at the pivot point of the prop
 						}
 
 
@@ -915,7 +915,7 @@ namespace TestProp
 							translated.x += col * tilesize.width;
 							translated.y += row * tilesize.height;
 
-							m_renderer->Draw(translated, subTileSize, { 0.5f,0.5f,1,1 }, 0.0f); // debug: draw a red dot at the anchor point of the prop
+							m_renderer->Draw(translated, subTileSize, { 0.5f,0.5f,1,1 }, 0.0f); // debug: draw a red dot at the pivot point of the prop
 						}
 
 						if ((int)(constraint & TileConstraint::N))
@@ -925,10 +925,10 @@ namespace TestProp
 							translated.x += col * tilesize.width;
 							translated.y += row * tilesize.height;
 
-							// translate position so that the prop's anchor is at the north of the tile									
+							// translate position so that the prop's pivot is at the north of the tile									
 							translated.x += tilesize.width / 2.0f - subTileSize.width / 2.0f;
 
-							m_renderer->Draw(translated, subTileSize, { 0.5f,1,0.5f,1 }, 0.0f); // debug: draw a red dot at the anchor point of the prop
+							m_renderer->Draw(translated, subTileSize, { 0.5f,1,0.5f,1 }, 0.0f); // debug: draw a red dot at the pivot point of the prop
 						}
 						if((int)(constraint & TileConstraint::S))
 						{
@@ -936,11 +936,11 @@ namespace TestProp
 							PositionF translated = pos;
 							translated.x += col * tilesize.width;
 							translated.y += row * tilesize.height;
-							// translate position so that the prop's anchor is at the south of the tile									
+							// translate position so that the prop's pivot is at the south of the tile									
 							translated.x += tilesize.width / 2.0f - subTileSize.width / 2.0f;
 							translated.y += tilesize.height - subTileSize.height;
 
-							m_renderer->Draw(translated, subTileSize, { 0.5f,1,0.5f,1 }, 0.0f); // debug: draw a red dot at the anchor point of the prop
+							m_renderer->Draw(translated, subTileSize, { 0.5f,1,0.5f,1 }, 0.0f); // debug: draw a red dot at the pivot point of the prop
 						}
 						if((int)(constraint & TileConstraint::E))
 						{
@@ -948,10 +948,10 @@ namespace TestProp
 							PositionF translated = pos;
 							translated.x += col * tilesize.width;
 							translated.y += row * tilesize.height;
-							// translate position so that the prop's anchor is at the east of the tile									
+							// translate position so that the prop's pivot is at the east of the tile									
 							translated.x += tilesize.width - subTileSize.width;
 							translated.y += tilesize.height / 2.0f - subTileSize.height / 2.0f;
-							m_renderer->Draw(translated, subTileSize, { 0.5f,1,0.5f,1 }, 0.0f); // debug: draw a red dot at the anchor point of the prop
+							m_renderer->Draw(translated, subTileSize, { 0.5f,1,0.5f,1 }, 0.0f); // debug: draw a red dot at the pivot point of the prop
 						}
 						if((int)(constraint & TileConstraint::W))
 						{
@@ -959,9 +959,9 @@ namespace TestProp
 							PositionF translated = pos;
 							translated.x += col * tilesize.width;
 							translated.y += row * tilesize.height;
-							// translate position so that the prop's anchor is at the west of the tile									
+							// translate position so that the prop's pivot is at the west of the tile									
 							translated.y += tilesize.height / 2.0f - subTileSize.height / 2.0f;
-							m_renderer->Draw(translated, subTileSize, { 0.5f,1,0.5f,1 }, 0.0f); // debug: draw a red dot at the anchor point of the prop
+							m_renderer->Draw(translated, subTileSize, { 0.5f,1,0.5f,1 }, 0.0f); // debug: draw a red dot at the pivot point of the prop
 						}
 					}
 				}
@@ -982,7 +982,7 @@ namespace TestProp
 						PositionF translated = pos;
 						translated.x += key.col * tilesize.width;
 						translated.y += key.row * tilesize.height;
-						m_renderer->Draw(translated, tilesize, { 1,1,0,0.5f }, 0.0f); // debug: draw a red dot at the anchor point of the prop
+						m_renderer->Draw(translated, tilesize, { 1,1,0,0.5f }, 0.0f); // debug: draw a red dot at the pivot point of the prop
 
 						for (Coord& subTile: vec)
 						{
@@ -994,7 +994,7 @@ namespace TestProp
 
 							SizeF halfSubTileSize = subTileSize / 2.0f;
 
-							m_renderer->Draw(subTranslated, halfSubTileSize, { 1,0,0,0.3f }, 0.0f); // debug: draw a red dot at the anchor point of the prop
+							m_renderer->Draw(subTranslated, halfSubTileSize, { 1,0,0,0.3f }, 0.0f); // debug: draw a red dot at the pivot point of the prop
 						}
 					}
 
@@ -1002,7 +1002,7 @@ namespace TestProp
 					SizeF buildingSize = Registry<SizeF>::Instance().Get("building_size");
 					PositionF pos = m_mousePos;
 					pos -= PositionF(buildingSize.width / 2.0f, buildingSize.height / 2.0f);
-					m_renderer->Draw(pos, buildingSize, { 1,1,1,0.5f }, 0.0f); // debug: draw a red dot at the anchor point of the prop
+					m_renderer->Draw(pos, buildingSize, { 1,1,1,0.5f }, 0.0f); // debug: draw a red dot at the pivot point of the prop
 				}
 
 				std::string msg = "Animators (Cache): " + std::to_string(AnimationSystemCache::Instance().Size());

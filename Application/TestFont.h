@@ -175,7 +175,7 @@ namespace TestFont
 						{
 							for (int row = 0; row < 32; row++)
 							{
-								renderer->Draw(*m_FontAtlas, m_text, engine::spatial::PositionF{ 50, 50 + row * 25.0f }, engine::graphics::ColorF{ 1,1,1,1 });
+								renderer->Draw(*m_FontAtlas, m_text, engine::spatial::PositionF{ 50.0f, 50 + row * 25.0f }, engine::graphics::ColorF{ 1,1,1,1 });
 							}
 							break;
 						}

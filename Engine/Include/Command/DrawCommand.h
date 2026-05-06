@@ -3,6 +3,7 @@
 #include <Graphics/Core/Sprite.h>
 #include <Command/ICommand.h>
 #include <Command/CommandQueue.h>
+#include <algorithm>
 
 namespace engine
 {
@@ -151,8 +152,6 @@ namespace engine
 					}
 				};
 
-
-
 				class SetClipRegionCommand : public DrawCommandBase
 				{
 				private:
@@ -178,6 +177,64 @@ namespace engine
 							m_renderer.SetClipRegion(m_region);
 						}
 						m_renderer.EnableClipping(m_enable);
+					}
+				};
+
+				class DrawSortedSpritesCommand : public DrawCommandBase
+				{
+				public:
+					struct Item
+					{
+						engine::graphics::Sprite sprite;	// what to draw
+						engine::spatial::PositionF pos;		// world position
+						engine::spatial::SizeF size;		// size on screen
+						engine::graphics::ColorF tint;		// color modulation
+						float rotation;						// rotation angle
+						float depth;						// depth value	
+					};
+
+				private:
+					std::vector<Item> m_items;
+
+				public:
+					DrawSortedSpritesCommand(
+						engine::graphics::renderer::IRenderer& renderer,
+						size_t capacity
+					) :
+						DrawCommandBase(renderer)
+					{
+						m_items.reserve(capacity);
+					}
+
+					void Add(const Item& item)
+					{
+						m_items.push_back(item);
+					}
+
+					void Sort()
+					{
+						std::sort(m_items.begin(), m_items.end(),
+							[](const Item& a, const Item& b)
+							{
+								// if depth is not same, e.g. lower and higher tile, higher tile (b) has higher depth than lower tile (a). draw lower tile first
+								if (a.depth != b.depth) return a.depth < b.depth;
+
+								// if same depth, whichever is farthest from screen(a) gets drawn first. nearest from screen (b) is drawn last
+								return a.pos.y < b.pos.y; // depth by Y
+							});
+					}
+
+					void Execute() override
+					{
+						for (auto& item : m_items)
+						{
+							m_renderer.Draw(item.sprite, item.pos, item.size, item.tint, item.rotation);
+						}
+					}
+
+					void Clear()
+					{
+						m_items.clear();
 					}
 				};
 			};

@@ -151,11 +151,41 @@ engine
     grid
         TileGrid
         ObjectGrid
-        ConstraintGrid
+        NavigationGrid
 
 
 
 - why Sprite is friend to RenderSurface?
 
 
+TileGrid
+ObjectGrid
+TileGrid
+ObjectGrid
+    TileGrid
+TileGrid
+ObjectGrid
+TileGrid
+    TileGrid
+    TileGrid
 
+
+    this is where the tension seems to be on AutoTileSystem
+    - tilegrid owns tiles
+    - system needs to find out if given coord needs to change tile 
+    - using config, it can identify the tile index of the new tile it will replace the current one of the given coord
+    - but in order to fully set the new tile, it needs to access tileset to acquire the actual tile
+    - if the system is only responsible to update the tile of given coord, it can just simply return index and let caller set the tile
+    - but it is also responsible for updating neighbor tiles. so that's the main tension is....
+
+
+    again, seems we're complicating it. look at original AutoTileResolver
+    - it is fully dependent on lambdas. no coupling at all right?
+    - but what is the issue with it? in constructor, it requires we need to pass lambdas. 
+    - once lambdas are set, we cannot change it. 
+    - now imagine if does it not the case. the lambdas are null by default, meaning resolver is non operational
+    - then when we use it, we need to pass context, which contains the lambdas + config
+    - maybe even config can be encapsulated by lambdas
+    - now who owns the context? who defines it? mayber the TileLayer?
+    - so when TileLayer needs to be evaluated by AutoTileResolver, just pass its context. 
+    - this makes AutoTileResolver stateless. what do you think?

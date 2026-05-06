@@ -35,9 +35,10 @@ namespace engine
 
 			void Resolve(T param, K key)
 			{
-				if (!m_keyValues.Has(key)) return;
+				V value;
+				if (!m_keyValues.TryGetValue(key, value)) return;
 
-				LookupEvent(param, m_keyValues[key]);
+				LookupEvent(param, value);
 			}
 
 			engine::event::Event<T, V> LookupEvent;

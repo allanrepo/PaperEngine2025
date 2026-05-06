@@ -1,3 +1,5 @@
+
+#include "TestMapEditor.h"
 #include "TestCamera.h"
 #include "TestTile.h"
 #include "TestAnimation.h"
@@ -6,7 +8,7 @@
 #include "TestCanvas.h"
 #include "TestEngine.h"
 #include "TestWin32.h"
-#include "TestEditMultiLayerMap.h"
+//#include "TestEditMultiLayerMap.h"
 #include "TestActorNavigation.h"
 #include "Demo.h"
 #include "DemoTileLayer.h"
@@ -15,7 +17,7 @@
 #include "DemoTileMap.h"
 #include "TestActor.h"
 #include "TestPathFinding.h"
-#include "TestTree.h"
+//#include "TestTree.h"
 #include "TestProp.h"
 #include "TestRenderable.h"
 
@@ -177,8 +179,9 @@ int main()
 	//TestEditMultiLayerMap::Test testEditMultiLayerMap;
 	//TestSpecializedTileDefinition::Test testSpecializedTileDefinition;
 	//TestTree::Test testTree;
-	TestProp::Test testProp;    
+	//TestProp::Test testProp;    
     //TestRenderable::Test testRenderable;
+	TestMapEditor::Test testMapEditor;  
 
 	return 0;
 }

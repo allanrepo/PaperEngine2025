@@ -16,6 +16,8 @@ namespace engine::win32
 		virtual void Close() = 0;
 
 		virtual void SetClientSize(int width, int height) = 0;
+
+		virtual void ShowCursor(bool show) = 0;
 	};
 }
 

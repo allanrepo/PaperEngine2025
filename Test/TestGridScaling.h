@@ -244,7 +244,7 @@ namespace test
 			// calculate waypoints
 			{
 				navigation::tile::Footprint fp;
-				fp.anchor = navigation::tile::Anchor::Center;
+				fp.pivot = navigation::tile::Anchor::Center;
 				fp.size = m_startFP.size;
 
 				m_wayPoints.clear();
