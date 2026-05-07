@@ -725,8 +725,23 @@ namespace engine::navigation
 			}
 #pragma endregion
 
-#pragma region // debugging
+#pragma region // iteration
+			template<typename Predicate>
+			void ForEach(int row, int col, Predicate func)
+			{
+				if (!IsInBounds(row, col)) return;
+				func(m_map.Get(row, col));
+			}
 
+			template<typename Predicate>
+			void ForEach(int row, int col, Predicate func) const
+			{
+				if (!IsInBounds(row, col)) return;
+				func(m_map.Get(row, col));
+			}
+#pragma endregion
+
+#pragma region // debugging
 			void Validate() const
 			{
 				for (int row = 0; row < (int)m_map.GetHeight(); ++row)

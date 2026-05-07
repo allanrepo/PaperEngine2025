@@ -90,6 +90,31 @@ namespace engine
 					bottom += dy;
 				}
 
+				bool Intersects(const Rect<T>& other) const
+				{
+					return !(right <= other.left ||
+						left >= other.right ||
+						bottom <= other.top ||
+						top >= other.bottom);
+				}
+
+				Rect<T> GetOverlap(const Rect<T>& other) const
+				{
+					Rect<T> r{};
+
+					r.left = std::max<T>(left, other.left);
+					r.top = std::max<T>(top, other.top);
+					r.right = std::min<T>(right, other.right);
+					r.bottom = std::min<T>(bottom, other.bottom);
+
+					return r;
+				}
+
+				bool HasArea() const
+				{
+					return GetWidth() > 0 && GetHeight() > 0;
+				}
+
 			};
 
 			using RectF = engine::math::geometry::Rect<float>;

@@ -189,3 +189,32 @@ TileGrid
     - now who owns the context? who defines it? mayber the TileLayer?
     - so when TileLayer needs to be evaluated by AutoTileResolver, just pass its context. 
     - this makes AutoTileResolver stateless. what do you think?
+
+    GAMEPLAY / TILEMAP LAYER
+--------------------------------
+
+1. Query overlapped tiles
+
+2. For each tile:
+    - compute overlapped subcells
+    - generate DATA (tile constraint)
+
+3. Inspect existing occupants
+
+4. Compare DATA externally
+    - overlap?
+    - collision?
+    - partial overlap?
+    - movement block?
+
+5. Decide which objects to evict
+
+6. Apply removals
+
+7. Apply additions
+
+
+CONTAINER LAYER
+--------------------------------
+
+Store associations only.

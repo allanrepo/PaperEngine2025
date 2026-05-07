@@ -217,6 +217,12 @@ namespace engine
 			{
 				return m_objectToCoord.TryGetValue(object, outCoord);
 			}
+
+			size_t GetObjectCount() const
+			{
+				return m_objectToCoord.Size();
+			}
+
 #pragma endregion
 
 #pragma region // initialization

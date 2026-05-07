@@ -33,9 +33,9 @@ namespace engine
 
 		inline const Coord PositionToCoord(const engine::spatial::PositionF& position, const spatial::SizeF& cellsize)
 		{
-			return engine::spatial::Coord(
-				static_cast<int>(position.y / cellsize.height),
-				static_cast<int>(position.x / cellsize.width)
+			return Coord(
+				static_cast<int>(std::floor(position.y / cellsize.height)),
+				static_cast<int>(std::floor(position.x / cellsize.width))
 			);
 		}
 
