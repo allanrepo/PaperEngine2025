@@ -410,17 +410,17 @@ namespace TestMapEditor
 	public:
 		// the "aabb" or boundingbox already implies overlap. the cellsize and gridsize implies we're querying a grid/map
 		static std::vector<Coord> QueryCells(
-			const RectF& aabb,
+			const RectF& boundingbox,
 			const SizeF& cellsize,
 			const Size<size_t> gridsize)
 		{
 			// ------------------------------------------------------------
 			// 1. Normalize AABB (safety against flipped rectangles)
 			// ------------------------------------------------------------
-			const float left = std::min<float>(aabb.left, aabb.right);
-			const float right = std::max<float>(aabb.left, aabb.right);
-			const float top = std::min<float>(aabb.top, aabb.bottom);
-			const float bottom = std::max<float>(aabb.top, aabb.bottom);
+			const float left = std::min<float>(boundingbox.left, boundingbox.right);
+			const float right = std::max<float>(boundingbox.left, boundingbox.right);
+			const float top = std::min<float>(boundingbox.top, boundingbox.bottom);
+			const float bottom = std::max<float>(boundingbox.top, boundingbox.bottom);
 
 			// ------------------------------------------------------------
 			// 2. Convert world bounds -> cell coordinates
@@ -2650,13 +2650,14 @@ namespace TestMapEditor
 		RectF boundingBox;
 		CollisionShape collisionShape;
 
-		Prop(std::unique_ptr<IRenderable> r, const PositionF& p, const ColorF& c, const VecF& s, const RectF& fp, const RectF& bb) :
+		Prop(std::unique_ptr<IRenderable> r, const ColorF& c, const VecF& s, const RectF& fp, const RectF& bb) :
 			renderable(std::move(r)),
-			position(p),
+			position({}),
 			scale(s),
 			color(c),
 			footprint(fp),
-			boundingBox(bb)
+			boundingBox(bb),
+			collisionShape({})
 		{
 		}
 
@@ -2871,16 +2872,15 @@ namespace TestMapEditor
 		{
 			m_currPlacement = def;
 
-			m_preview = CreateAnimatedProp({ 0,0 }, assets);
+			m_preview = CreateAnimatedProp(assets);
 		}
 
-		std::unique_ptr<Prop> CreateAnimatedProp(const PositionF& position, AssetManager& assets)
+		std::unique_ptr<Prop> CreateAnimatedProp(AssetManager& assets)
 		{
 			auto& animSet = assets.Get<AnimationSet<Sprite>>(m_currPlacement.animationSet);
 
 			return std::make_unique<Prop>(
 				std::make_unique<Animated>(animSet, m_currPlacement.animation),
-				position,
 				m_currPlacement.color,
 				m_currPlacement.scale,
 				m_currPlacement.footprint,
@@ -2983,7 +2983,6 @@ namespace TestMapEditor
 		SpatialOccupancyGrid<Prop, Dummy> m_BoundingBoxGrid;
 
 	public:
-		//View<MultiOccupancyGrid<Prop>> BoundingBoxLayer;
 		View<NavigationGrid> NavigationLayer;
 
 	public:
@@ -2993,7 +2992,6 @@ namespace TestMapEditor
 			m_position(0, 0),
 			m_size(0, 0),
 			m_tileSize(0, 0),
-			//BoundingBoxLayer(&m_BoundingBoxGrid),
 			NavigationLayer(&m_navGrid)
 		{
 		}
@@ -3036,19 +3034,6 @@ namespace TestMapEditor
 			InitializeEvent(m_position, m_size, m_tileSize);
 
 			return true;
-		}
-
-		PositionF ScreenToWorldPosition(const PositionF& screenPos) const
-		{
-			return screenPos - m_position;
-		}
-
-		PositionF ScreenToTilePosition(const PositionF& screenPos) const
-		{
-			PositionF mouseWorldPos = screenPos - m_position;
-			Coord coord = PositionToCoord(mouseWorldPos, m_tileSize);
-			PositionF coordTopLeftWorldPos = CoordToPosition(coord, m_tileSize);
-			return mouseWorldPos - coordTopLeftWorldPos;
 		}
 
 		Size<size_t> GetSize() const
@@ -3094,19 +3079,6 @@ namespace TestMapEditor
 				}
 			);
 
-			//// get tiles occupied by this prop 
-			//std::vector<Coord> tilesOccupiedByProp = m_FootPrintGrid.GetOccupiedCells(prop);
-
-			//for (const Coord& coord : tilesOccupiedByProp)
-			//{
-			//	// get the constraint of the prop in the given coord.
-			//	// this is a strict method. it's gonna throw error if there is no prop in this coord
-			//	TileConstraint constraint = m_FootPrintGrid.Get(prop, coord);
-
-			//	// remove that constraint in the coord
-			//	m_navGrid.RemoveFlag(coord, constraint);
-			//}
-
 			// remove this object from spatial occupancy grid
 			m_FootPrintGrid.Remove(prop);
 
@@ -3129,6 +3101,7 @@ namespace TestMapEditor
 				return false;
 			}
 
+			// sanity check. we already have this prop. why are we placing again. how is this even possible!
 			if (m_objectLayer.Has(prop.get()))
 			{
 				throw std::exception("why do we already have this object???");
@@ -3138,7 +3111,7 @@ namespace TestMapEditor
 			RectF footprint = prop->GetScaledFootprintWorld(worldPos);
 
 			// get list of subcells this footprint overlaps
-			std::vector<Coord> subcells = GridQuery::QueryCells(footprint, m_tileSize /3.0f, m_size * 3);
+			std::vector<Coord> subcells = QueryCoords(footprint, m_tileSize / 3.0f);
 
 			// iterate through each of these sub cells and get constraints. then build constraints for each cells
 			Dictionary<Coord, TileConstraint> constraints;
@@ -3146,6 +3119,9 @@ namespace TestMapEditor
 			{
 				// calculate the actual tile coord in map
 				Coord tileCoord = { subcell.row / 3, subcell.col / 3 };
+
+				// QueryCoords does not clamp collection of tile coords within grid size, so there might be coords that are invalid. skip it
+				if (!IsInBounds(tileCoord)) continue;
 
 				// calculate the sub tile coord relative to this tile
 				Coord subCoord = { subcell.row % 3, subcell.col % 3 };
@@ -3165,7 +3141,7 @@ namespace TestMapEditor
 			{
 				Coord coord = constraintsPerCell.first;
 
-				m_FootPrintGrid.ForEach(coord, [constraintsPerCell, &toEvict](Prop* prop, TileConstraint constraint)
+				ForEachFootprint(coord, [constraintsPerCell, &toEvict](Prop* prop, TileConstraint constraint)
 					{
 						// if they overlap, we will remove this prop
 						TileConstraint tc = constraintsPerCell.second & constraint;
@@ -3175,20 +3151,6 @@ namespace TestMapEditor
 						}
 					}
 				);
-
-				//// get all the existing props that occupy this cell
-				//const std::vector<Occupant<Prop, TileConstraint>>& occupants = m_FootPrintGrid.Get(coord);
-
-				//// check if this prop overlap this existing prop
-				//for(Occupant occupant: occupants)
-				//{
-				//	// if they overlap, we will remove this prop
-				//	TileConstraint tc = constraintsPerCell.second & occupant.data;
-				//	if (tc != TileConstraint::NONE)
-				//	{
-				//		toEvict.insert(occupant.object);
-				//	}
-				//}
 			}
 
 			// remove props overlapped by new prop
@@ -3197,7 +3159,6 @@ namespace TestMapEditor
 				Remove(prop);
 			}
 
-			std::vector<Coord> cells;
 			for (auto& constraintsPerCell : constraints)
 			{
 				// place the new prop into navigation grid
@@ -3206,17 +3167,21 @@ namespace TestMapEditor
 				m_navGrid.AddFlag(coord, constraint);
 
 				// place in footprint
-				m_FootPrintGrid.Add(prop.get(), coord, constraint);
-
-				cells.push_back(coord);
+				AddFootprint(prop.get(), coord, constraint);
 			}
 
 			// bounding box
 			RectF boundingBox = prop->GetScaledBoundingBoxWorld(worldPos, true);
-			std::vector<Coord> boundingBoxTiles = GridQuery::QueryCells(boundingBox, m_tileSize, m_size);
+			std::vector<Coord> boundingBoxTiles = QueryCoords(boundingBox, m_tileSize);
 
 			// add the new object into bounding box occupancy grid
-			for (Coord coord : boundingBoxTiles) m_BoundingBoxGrid.Add(prop.get(), coord, {});
+			for (Coord coord : boundingBoxTiles)
+			{
+				// QueryCoords does not clamp collection of tile coords within grid size, so there might be coords that are invalid. skip it
+				if (!IsInBounds(coord)) continue;
+
+				AddBoundingBox(prop.get(), coord);
+			}
 
 			// get the world position of the tile where prop will be store. this will be tile's top-left position in world
 			PositionF coordTopLeftWorldPos = CoordToPosition(coord, m_tileSize);
@@ -3228,15 +3193,10 @@ namespace TestMapEditor
 			prop->position = propPosInTile;
 
 			// add the actual object into our object layer
-			m_objectLayer.Add(coord, std::move(prop));
+			AddProp(coord, std::move(prop));
 
 			return true;
 		}
-
-		//std::vector<Prop*> QueryBoundingBoxOverlaps(const Coord& coord) const
-		//{
-		//	return m_BoundingBoxGrid.Get(coord);
-		//}
 
 		bool Remove(const PositionF& worldPosition)
 		{
@@ -3249,51 +3209,9 @@ namespace TestMapEditor
 			// is the position within bounds of the world? if not, bail out
 			Coord coord = PositionToCoord(worldPosition, m_tileSize);
 
-			// given the coord. get all the props in this coord where their bounding box intersects
-			//std::vector<Prop*> candidates = m_BoundingBoxGrid.Get(coord);
-			//if (candidates.empty()) return {};
-			//std::vector<Occupant<Prop, Dummy>> candidateOccupants = m_BoundingBoxGrid.Get(coord);
-			//if (candidateOccupants.empty()) return {};
-
 			// if there are props, iterate through them and find the ones whose bounding box intersects with the cursor position (in world coordinate). return all intersecting objects. 
 			Prop* topMostProp = nullptr;
 			RectF topMostPropBoundingBox{};
-			////for (Prop* candidate : candidates)
-			//for (Occupant<Prop, Dummy>& candidateOccupant : candidateOccupants)
-			//{
-			//	Prop* candidate = candidateOccupant.object;
-
-			//	// find the coordinate of the cell that owns this prop 
-			//	Coord propCoordOwner;
-			//	if (!TryGetCoord(candidate, propCoordOwner))
-			//	{
-			//		// if this prop does not exist in the map, throw. this must be a bug. 
-			//		// how did we find pointer to this object in bounding box grid? where is the actual object stored?
-			//		throw std::out_of_range("PropSelectionSystem::SelectAtPoint() - prop does not exist in the map but we have pointer to it. where is it stored?!");
-			//	}
-
-			//	// get the object's position. the object's position is relative to the cell in the map it is stored. 
-			//	PositionF propPosInTileOwner = candidate->GetPosition(true);
-
-			//	// get the world position of this object by adding the object's position relative to tile with the top-left position of the tile in world coordinate
-			//	PositionF propPosInWorld = propPosInTileOwner + CoordToPosition(propCoordOwner, m_tileSize);
-
-			//	// get this bounding box of the object in world coordinates
-			//	RectF objectBoundingBox = candidate->GetScaledBoundingBoxWorld(propPosInWorld, true);
-
-			//	// broad phase collision check: check if the mouse cursor (in world coordinate) is intersecting with the bounding box already in world coordinate. 
-			//	if (!objectBoundingBox.Contains(worldPosition)) continue;
-
-			//	// TODO:implement narrow phase collision check and execute here
-
-			//	// if so, compare its depth with current candidate for top most and replace candidate if this one is higher (lower on the screen)
-			//	if (topMostProp == nullptr || objectBoundingBox.bottom >= topMostPropBoundingBox.bottom)
-			//	{
-			//		topMostProp = candidate;
-			//		topMostPropBoundingBox = objectBoundingBox;
-			//	}
-			//}
-
 			m_BoundingBoxGrid.ForEachObject(coord, [this, &topMostProp, &topMostPropBoundingBox, worldPosition](Prop* candidate)
 				{
 					Coord propCoordOwner;
@@ -3338,16 +3256,15 @@ namespace TestMapEditor
 			return true;
 		}
 
-		//std::vector<Prop*> QueryFootprintOverlaps(const std::vector<Coord>& coord) const
-		//{
-		//	// if there are objects the new footprint overlaps, get their references
-		//	return m_FootPrintGrid.Get(coord);
-		//}
-
 		// try to get tile coordinate of a given prop. if prop is invalid, return false
 		bool TryGetCoord(Prop* prop, spatial::Coord& coord) const
 		{
 			return m_objectLayer.TryGetCoord(prop, coord);
+		}
+
+		bool Has(Prop* prop) const
+		{
+			return m_objectLayer.Has(prop);
 		}
 
 		void Validate() const
@@ -3371,6 +3288,34 @@ namespace TestMapEditor
 			if (!IsInBounds(row, col)) return;
 
 			m_navGrid.ForEach(row, col, func);
+		}
+
+		template<typename Func>
+		void ForEachFootprint(const Coord& coord, Func func)
+		{
+			m_FootPrintGrid.ForEach(coord, func);
+		}
+
+		template<typename Func>
+		void ForEachPropInBoundingBox(const Coord& coord, Func func)
+		{
+			m_BoundingBoxGrid.ForEachObject(coord, func);
+		}
+
+		void AddProp(const Coord& coord, std::unique_ptr<Prop> prop)
+		{
+			m_objectLayer.Add(coord, std::move(prop));
+		}
+
+		void AddFootprint(Prop* prop, const Coord& coord, TileConstraint constraint)
+		{
+			m_FootPrintGrid.Add(prop, coord, constraint);
+			m_navGrid.AddFlag(coord, constraint);
+		}
+
+		void AddBoundingBox(Prop* prop, const Coord& coord)
+		{
+			m_BoundingBoxGrid.Add(prop, coord, {});
 		}
 
 	};
@@ -3740,22 +3685,9 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // WorldMap
-	class WorldMap
+#pragma region // WorldTransform
+	class WorldTransform
 	{
-	private:
-		class PropMapView
-		{
-		private:
-			View<PropMap> m_view;
-
-		public:
-			PropMapView(PropMap& map) :
-				m_view(&map)
-			{
-			}
-		};
-
 	private:
 		// top-left position of the world in screen space. this is basically the camera position.
 		PositionF m_position;
@@ -3764,27 +3696,30 @@ namespace TestMapEditor
 		Size<size_t> m_size;
 
 		// size of each tile in pixels. 
-		SizeF m_tileSize;
-
-		PropMap m_propMap;
+		SizeF m_tilesize;
 
 	public:
-		WorldMap() :
+		WorldTransform():
 			m_position(0, 0),
 			m_size(0, 0),
-			m_tileSize(0, 0)
+			m_tilesize(0, 0)
 		{
 		}
 
+		void SetSize(const Size<size_t>& size)
+		{
+			m_size = size;
+		}
 
-		bool Initialize(const PositionF& position, const Size<size_t>& size, const SizeF& tilesize)
+		void SetTileSize(const SizeF& tilesize)
+		{
+			m_tilesize = tilesize;
+		}
+
+		void SetPosition(const PositionF& position)
 		{
 			m_position = position;
-			m_size = size;
-			m_tileSize = tilesize;
-
-			return m_propMap.Initialize(position, size, tilesize);
-		}	
+		}
 
 		Size<size_t> GetSize() const
 		{
@@ -3793,7 +3728,7 @@ namespace TestMapEditor
 
 		SizeF GetTileSize() const
 		{
-			return m_tileSize;
+			return m_tilesize;
 		}
 
 		PositionF GetPosition() const
@@ -3801,12 +3736,83 @@ namespace TestMapEditor
 			return m_position;
 		}
 
+		size_t GetWidth() const
+		{
+			return m_size.width;
+		}
+
+		size_t GetHeight() const
+		{
+			return m_size.height;
+		}
+
+		PositionF WorldToTileCoordinate(const PositionF& worldPosition) const
+		{
+			// get the tile coord where the world position intersects
+			Coord coord = PositionToCoord(worldPosition, m_tilesize);
+
+			// get the tile's top-left position in the world
+			PositionF coordTopLeftWorldPos = CoordToPosition(coord, m_tilesize);
+
+			// translate the world position into this tile's local coordinate
+			return worldPosition - coordTopLeftWorldPos;
+		}
+
+		Coord WorldToTileCoord(const PositionF& worldPosition) const
+		{
+			return PositionToCoord(worldPosition, m_tilesize);
+		}
+
+	};
+#pragma endregion
+
+#pragma region // WorldMap
+	class WorldMap
+	{
+	private:
+		class PropMapView
+		{
+		private:
+			View<PropMap1> m_view;
+
+		public:
+			PropMapView(PropMap1& map) :
+				m_view(&map)
+			{
+			}
+		};
+
+	private:
+
+		WorldTransform m_worldTransform;
+		
+		PropMap1 m_propMap;
+
+	public:
+		WorldMap()
+		{
+		}
+
+		const WorldTransform& GetTransform() const
+		{
+			return m_worldTransform;
+		}
+
+		bool Initialize(const PositionF& position, const Size<size_t>& size, const SizeF& tilesize)
+		{
+			m_worldTransform.SetPosition(position);
+			m_worldTransform.SetSize(size);
+			m_worldTransform.SetTileSize(tilesize);
+
+			return m_propMap.Initialize(m_worldTransform.GetPosition(), m_worldTransform.GetSize(), m_worldTransform.GetTileSize());
+		}	
+
 		bool IsInBounds(int row, int col) const
 		{
 			return
 				row >= 0 && col >= 0 &&		// make sure rows and columns are not negatives.
-				col < m_size.width &&		// make sure column is within the grid's width
-				row < m_size.height;	// make sure row is within the grid's height
+				col < m_worldTransform.GetWidth() &&		// make sure column is within the grid's width
+				row < m_worldTransform.GetHeight();	// make sure row is within the grid's height
 		}
 
 		bool IsInBounds(const Coord& coord) const
@@ -3816,8 +3822,7 @@ namespace TestMapEditor
 
 		bool IsInBounds(const PositionF& worldPosition) const
 		{
-			Coord coord = PositionToCoord(worldPosition, m_tileSize);
-			return IsInBounds(coord);
+			return IsInBounds(m_worldTransform.WorldToTileCoord(worldPosition));
 		}
 
 		void Validate() const
@@ -3843,11 +3848,64 @@ namespace TestMapEditor
 			m_propMap.ForEachTileConstraint(row, col, func);
 		}
 
-		std::vector<Prop*> QueryFootprintOverlaps(const PositionF& worldPosition) const
+		bool Place(std::unique_ptr<Prop> prop, const PositionF& worldPosition)
 		{
-			// get the tile coordinate this world position is in
-			Coord coord = PositionToCoord(worldPosition, m_tileSize);
+			return m_propMap.Place(std::move(prop), worldPosition);
 		}
+
+		bool Remove(const PositionF& worldPosition)
+		{
+			return m_propMap.Remove(worldPosition);
+		}
+
+		std::string GetDebugInfo() const
+		{
+			return m_propMap.GetDebugInfo();
+		}
+		
+		bool Has(Prop* prop) const
+		{
+			return m_propMap.Has(prop);
+		}
+
+		template<typename Func>
+		void ForEachFootprint(const Coord& coord, Func func)
+		{
+			m_propMap.ForEachFootprint(coord, func);
+		}
+
+		template<typename Func>
+		void ForEachPropInBoundingBox(const Coord& coord, Func func)
+		{
+			m_propMap.ForEachPropInBoundingBox(coord, func);
+		}
+
+		void AddProp(const Coord& coord, std::unique_ptr<Prop> prop)
+		{
+			m_propMap.AddProp(coord, std::move(prop));
+		}
+
+		void AddFootprint(Prop* prop, const Coord& coord, TileConstraint constraint)
+		{
+			m_propMap.AddFootprint(prop, coord, constraint);
+		}
+
+		void AddBoundingBox(Prop* prop, const Coord& coord)
+		{
+			m_propMap.AddBoundingBox(prop, coord);
+		}
+
+		void Remove(Prop* prop)
+		{
+			m_propMap.Remove(prop);
+		}
+
+		// try to get tile coordinate of a given prop. if prop is invalid, return false
+		bool TryGetCoord(Prop* prop, spatial::Coord& coord) const
+		{
+			return m_propMap.TryGetCoord(prop, coord);
+		}
+
 	};
 #pragma endregion
 
@@ -3860,31 +3918,211 @@ namespace TestMapEditor
 		{
 		}
 
-		static bool Place(WorldMap& map, std::unique_ptr<Prop> prop, const PositionF& worldPosition)
+		// this sets the rule on how to interpret map's spatial data into tile constraint
+		// placement system defines this. right now, it interprets that a tile is composed of 3x3 subcells
+		// each cell corresponds to a tile constraint bit. there are 9 bits - center, corner, edges
+		// this methods determines which subcells in the map the footprint overlaps with.
+		// these subcells are translated into tile constraint bits. all bits found per coord is merged
+		// to form the tile's tile constraint.
+		static Dictionary<Coord, TileConstraint> BuildConstraints(const WorldMap& world, const RectF& footprint)
 		{
+			// get list of subcells this footprint overlaps
+			std::vector<Coord> subcells = QueryCoords(footprint, world.GetTransform().GetTileSize() / 3.0f);
+
+			Dictionary<Coord, TileConstraint> constraintsPerCoord;
+			for (Coord& subcell : subcells)
+			{
+				// calculate the actual tile coord in map
+				Coord tileCoord = { subcell.row / 3, subcell.col / 3 };
+
+				// QueryCoords does not clamp collection of tile coords within grid size, so there might be coords that are invalid. skip it
+				if (!world.IsInBounds(tileCoord)) continue;
+
+				// calculate the sub tile coord relative to this tile
+				Coord subCoord = { subcell.row % 3, subcell.col % 3 };
+
+				TileConstraint bit = SubCellToConstraint(subCoord.row, subCoord.col);
+
+				if (!constraintsPerCoord.Has(tileCoord))
+				{
+					constraintsPerCoord.Register(tileCoord, TileConstraint::NONE);
+				}
+				constraintsPerCoord[tileCoord] |= bit;
+			}
+			return constraintsPerCoord;
+		}
+
+		static bool Place(WorldMap& world, std::unique_ptr<Prop> prop, const PositionF& worldPosition)
+		{
+			// --------------------------------------------------------------------------------
+			// VALIDATION
+			// --------------------------------------------------------------------------------
+
 			// validate the position is within bounds of the world. if not, bail out
-			if (!map.IsInBounds(worldPosition))
+			if (!world.IsInBounds(worldPosition))
 			{
 				return false;
 			}
 
+			// sanity check. we already have this prop. why are we placing again. how is this even possible!
+			if (world.Has(prop.get()))
+			{
+				throw std::runtime_error("why do we already have this object???");
+			}
+
+			// --------------------------------------------------------------------------------
+			// COMPUTE DATA
+			// --------------------------------------------------------------------------------
+
 			// get prop's footprint in world coordinate
 			RectF footprint = prop->GetScaledFootprintWorld(worldPosition);
 
-			// get all the props that overlapped with the footprint
+			// given the footprint, extract all the coords that intersects with footprint and their corresponding tile constraint value after footprint is placed
+			Dictionary<Coord, TileConstraint> constraintsPerCoord = BuildConstraints(world, footprint);
 
-			// if there are any, remove them from the map (for now we just remove everything. later we can have more complex rules/policies about what to remove and what to keep)
+			// iterate through each cells the prop overlapped. we will check if the props in these cells are overlapped by the new prop
+			std::unordered_set<Prop*> toEvict;
+			for (auto& constraintsPerCell : constraintsPerCoord)
+			{
+				Coord coord = constraintsPerCell.first;
 
-			// place the new prop into the map (this will update all necessary systems in the map like navigation grid and occupancy grid)
+				// what we're doing here is we are comparing each of the coord in map that the footprint intersected. 
+				// each coord is occupied by existing prop, and these props have their corresponding tile constraint in this coord
+				// we then compare the tile constraint of existing prop in this coord to the new tile constraint when footprint is applied
+				// if these tile constraints overlaps (any constraint bits are both high), the prop
+				world.ForEachFootprint(coord, [constraintsPerCell, &toEvict](Prop* prop, TileConstraint constraint)
+					{
+						// if they overlap, we will remove this prop
+						TileConstraint tc = constraintsPerCell.second & constraint;
+						if (tc != TileConstraint::NONE)
+						{
+							toEvict.insert(prop);
+						}
+					});
+			}
 
+			// --------------------------------------------------------------------------------
+			// REMOVE OVERLAPS (RULE)
+			// --------------------------------------------------------------------------------
+
+			// remove props overlapped by new prop
+			for (Prop* prop : toEvict)
+			{
+				world.Remove(prop);
+			}
+
+			// --------------------------------------------------------------------------------
+			// APPLY PLACEMENT
+			// --------------------------------------------------------------------------------
+
+			for (auto& constraintsPerCell : constraintsPerCoord)
+			{
+				// place the new prop into navigation grid
+				Coord coord = constraintsPerCell.first;
+				TileConstraint constraint = constraintsPerCell.second;
+
+				// place in footprint and update navigation grid with this constraint
+				world.AddFootprint(prop.get(), coord, constraint);
+			}
+
+			// bounding box
+			RectF boundingBox = prop->GetScaledBoundingBoxWorld(worldPosition, true);
+			std::vector<Coord> boundingBoxTiles = QueryCoords(boundingBox, world.GetTransform().GetTileSize());
+
+			// add the new object into bounding box occupancy grid
+			for (Coord coord : boundingBoxTiles)
+			{
+				// QueryCoords does not clamp collection of tile coords within grid size, so there might be coords that are invalid. skip it
+				if (!world.IsInBounds(coord)) continue;
+
+				world.AddBoundingBox(prop.get(), coord);
+			}
+
+			Coord coord = PositionToCoord(worldPosition, world.GetTransform().GetTileSize());
+
+			// get the world position of the tile where prop will be store. this will be tile's top-left position in world
+			PositionF coordTopLeftWorldPos = CoordToPosition(coord, world.GetTransform().GetTileSize());
+
+			// now we translate the world position into position relative to this tile coordinate
+			PositionF propPosInTile = worldPosition - coordTopLeftWorldPos;
+
+			// then we set it as position of this prop
+			prop->position = propPosInTile;
+
+			// add the actual object into our object layer
+			world.AddProp(coord, std::move(prop));
 
 			return true;
 		}
 
-		static bool Remove(WorldMap& map, const PositionF& worldPosition)
+		static bool Remove(WorldMap& world, const PositionF& worldPosition)
 		{
-			return true;
+			// --------------------------------------------------------------------------------
+			// VALIDATION
+			// --------------------------------------------------------------------------------
+			
+			// Bounds check (early)
+			if (!world.IsInBounds(worldPosition))
+			{
+				return false;
+			}
 
+			// --------------------------------------------------------------------------------
+			// COMPUTE DATA. GET TOP MOST PROP THE POSITION INTERSECT
+			// --------------------------------------------------------------------------------
+
+			// get the tile coord in map where world position intersect
+			Coord coord = world.GetTransform().WorldToTileCoord(worldPosition);
+
+			// if there are props, iterate through them and find the ones whose bounding box intersects with the cursor position (in world coordinate). return all intersecting objects. 
+			Prop* topMostProp = nullptr;
+			RectF topMostPropBoundingBox{};
+			world.ForEachPropInBoundingBox(coord, [&world, &topMostProp, &topMostPropBoundingBox, worldPosition](Prop* candidate)
+				{
+					Coord propCoordOwner;
+					if (!world.TryGetCoord(candidate, propCoordOwner))
+					{
+						// if this prop does not exist in the map, throw. this must be a bug. 
+						// how did we find pointer to this object in bounding box grid? where is the actual object stored?
+						throw std::out_of_range("PropSelectionSystem::SelectAtPoint() - prop does not exist in the map but we have pointer to it. where is it stored?!");
+					}
+
+					// get the object's position. the object's position is relative to the cell in the map it is stored. 
+					PositionF propPosInTileOwner = candidate->GetPosition(true);
+
+					// get the world position of this object by adding the object's position relative to tile with the top-left position of the tile in world coordinate
+					PositionF propPosInWorld = propPosInTileOwner + CoordToPosition(propCoordOwner, world.GetTransform().GetTileSize());
+
+					// get this bounding box of the object in world coordinates
+					RectF objectBoundingBox = candidate->GetScaledBoundingBoxWorld(propPosInWorld, true);
+
+					// broad phase collision check: check if the mouse cursor (in world coordinate) is intersecting with the bounding box already in world coordinate. 
+					if (!objectBoundingBox.Contains(worldPosition)) return;
+
+					// TODO:implement narrow phase collision check and execute here
+
+					// if so, compare its depth with current candidate for top most and replace candidate if this one is higher (lower on the screen)
+					if (topMostProp == nullptr || objectBoundingBox.bottom >= topMostPropBoundingBox.bottom)
+					{
+						topMostProp = candidate;
+						topMostPropBoundingBox = objectBoundingBox;
+					}
+				}
+			);
+
+			// it is possible that there is no candidate prop that actually was selected. note that candidates are only based on props that belongs to 
+			// the tiles. it does not mean that any of them will intersect with the position. that is why the candidates need to do a broad phase check 
+			// via their bounding box (and later narrow phase check with their collision shape).
+			if (topMostProp == nullptr) return false;
+
+			// --------------------------------------------------------------------------------
+			// APPLY REMOVE
+			// --------------------------------------------------------------------------------
+
+			// Apply removal (delegate to PropMap / WorldState)
+			world.Remove(topMostProp);
+
+			return true;
 		}
 
 		void CalculateTileConstraint(const RectF& footprint, const RectF& tile)
@@ -4017,11 +4255,13 @@ namespace TestMapEditor
 			fp.bottom = fp.top + m_footprint.height;
 
 			SizeF cellsize(m_tile.GetWidth() / 3.0f, m_tile.GetHeight() / 3.0f);
-			std::vector<Coord> coords = GridQuery::QueryCells(fp, cellsize, Size<size_t>(3,3));
+			std::vector<Coord> coords = QueryCoords(fp, cellsize);
 
 			SizeF tilesize(m_tile.GetSize());
 			for (Coord coord : coords)
 			{
+				if (coord.col < 0 || coord.col >= 3 || coord.row < 0 || coord.row >= 3) continue;
+
 				PositionF pos(tilesize.width / 3.0f * coord.col, tilesize.height / 3.0f * coord.row);
 				pos += PositionF(m_tile.GetWidth() / 3.0f * 0.125f, m_tile.GetHeight() / 3.0f * 0.125f);
 				pos += m_tile.GetTopLeft();
@@ -4205,13 +4445,13 @@ namespace TestMapEditor
 			// left click to place grass tile
 			if (btn == 1)
 			{
-				PositionF worldPos = ScreenToWorld(m_mousePos, m_worldMap.GetPosition());
-				Coord coord = ScreenToTileCoord(m_mousePos, m_worldMap.GetPosition(), m_worldMap.GetTileSize());
-				PositionF tilePos = CoordToPosition(coord, m_worldMap.GetTileSize());
+				PositionF worldPos = ScreenToWorld(m_mousePos, m_worldMap.GetTransform().GetPosition());
+				Coord coord = ScreenToTileCoord(m_mousePos, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize());
+				PositionF tilePos = CoordToPosition(coord, m_worldMap.GetTransform().GetTileSize());
 
 				//PropPlacementSystem::Place(m_worldMap, m_placementTool.CreateAnimatedProp(tilePos, m_assets), worldPos);
 
-				PropPlacementSystem::Place(m_propMap, m_placementTool.CreateAnimatedProp(m_propMap.ScreenToTilePosition(m_mousePos), m_assets), m_propMap.ScreenToWorldPosition(m_mousePos));
+				PropPlacementSystem::Place(m_propMap, m_placementTool.CreateAnimatedProp(m_assets), m_propMap.ScreenToWorldPosition(m_mousePos));
 
 				return;
 
@@ -4356,16 +4596,16 @@ namespace TestMapEditor
 				{ 2, 1, TileConstraint::S  },
 				{ 2, 2, TileConstraint::SE }
 			};
-
-			SizeF subTileSize(map.GetTileSize().width / 3.0f, m_worldMap.GetTileSize().height / 3.0f);
+		
+			SizeF subTileSize(map.GetTransform().GetTileSize().width / 3.0f, map.GetTransform().GetTileSize().height / 3.0f);
 
 			// visual tweak (same as yours)
 			VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
 			SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
 
-			for (int row = 0; row < (int)map.GetSize().height; ++row)
+			for (int row = 0; row < (int)map.GetTransform().GetSize().height; ++row)
 			{
-				for (int col = 0; col < (int)map.GetSize().width; ++col)
+				for (int col = 0; col < (int)map.GetTransform().GetSize().width; ++col)
 				{
 					map.ForEachTileConstraint(row, col, [row, col, &map, subTileSize, shift, overlaySize, &renderer](TileConstraint constraint)
 						{ 
@@ -4373,7 +4613,7 @@ namespace TestMapEditor
 							if (constraint == TileConstraint::NONE) return;
 
 							// top-left of this tile in world space
-							PositionF tileWorldPos = CoordToPosition({ row, col }, map.GetTileSize()) + map.GetPosition();
+							PositionF tileWorldPos = CoordToPosition({ row, col }, map.GetTransform().GetTileSize()) + map.GetTransform().GetPosition();
 
 							// iterate 3x3 subcells
 							for (const auto& offset : offsets)
@@ -4494,7 +4734,7 @@ namespace TestMapEditor
 		AssetManager m_assets;
 		TileLayer m_gridTileLayer;
 		TileLayer m_fineGridTileLayer;
-		PropMap1 m_propMap;
+		WorldMap m_worldMap;
 
 		PropBrushTool m_placementTool;
 		PropPlacementSystem m_propPlacer;
@@ -4521,8 +4761,7 @@ namespace TestMapEditor
 			// set placement tool default placement
 			m_placementTool.SetBrush(NormalPineTree, m_assets);
 
-			//m_worldMap.Initialize(m_assets.Get<PositionF>("map_position"), m_assets.Get<Size<size_t>>("map_size"), m_assets.Get<SizeF>("tile_size"));
-			m_propMap.Initialize(m_assets.Get<PositionF>("map_position"), m_assets.Get<Size<size_t>>("map_size"), m_assets.Get<SizeF>("tile_size"));
+			m_worldMap.Initialize(m_assets.Get<PositionF>("map_position"), m_assets.Get<Size<size_t>>("map_size"), m_assets.Get<SizeF>("tile_size"));
 
 			// initialize grid tile layer. fill it with its only tile
 			auto& grassTileset = m_assets.Get<Tileset<IRenderable>>("grass_tileset");
@@ -4541,7 +4780,7 @@ namespace TestMapEditor
 			m_stateMachine.OnUpdate(dt);
 
 			// this is for debugging only. validate every frame to ensure our containers are in good state
-			m_propMap.Validate();
+			m_worldMap.Validate();
 		}
 
 		void OnKeyDown(int key) override
@@ -4636,8 +4875,9 @@ namespace TestMapEditor
 			// left click to place grass tile
 			if (btn == 1)
 			{
-				PositionF worldPos = ScreenToWorld(m_mousePos, m_propMap.GetPosition());
-				m_propMap.Place(m_placementTool.CreateAnimatedProp({}, m_assets), worldPos);
+				PositionF worldPos = ScreenToWorld(m_mousePos, m_worldMap.GetTransform().GetPosition());
+				//m_worldMap.Place(m_placementTool.CreateAnimatedProp(m_assets), worldPos);
+				PropPlacementSystem::Place(m_worldMap, m_placementTool.CreateAnimatedProp(m_assets), worldPos);
 
 				return;
 			}
@@ -4645,8 +4885,9 @@ namespace TestMapEditor
 			else if (btn == 2)
 			{
 				// immediate goal is to find the top-most object that intersects with the mouse cursor in this cell and remove it.
-				PositionF worldPos = ScreenToWorld(m_mousePos, m_propMap.GetPosition());
-				m_propMap.Remove(worldPos);
+				PositionF worldPos = ScreenToWorld(m_mousePos, m_worldMap.GetTransform().GetPosition());
+				//m_worldMap.Remove(worldPos);
+				PropPlacementSystem::Remove(m_worldMap, worldPos);
 
 				return;
 			}
@@ -4667,14 +4908,15 @@ namespace TestMapEditor
 			auto& tilesize = m_assets.Get<SizeF>("tile_size");
 			auto& mapPos = m_assets.Get<PositionF>("map_position");
 
-			for (int row = 0; row < (int)m_propMap.m_objectLayer.GetHeight(); row++)
+			Size<size_t> mapSize = m_worldMap.GetTransform().GetSize();
+			for (int row = 0; row < (int)mapSize.height; row++)
 			{
-				for (int col = 0; col < (int)m_propMap.m_objectLayer.GetWidth(); col++)
+				for (int col = 0; col < (int)mapSize.width; col++)
 				{
 					Coord coord(row, col);
 					PositionF tileScreenPos = CoordToPosition(coord, tilesize) + mapPos;
 
-					m_propMap.ForEachProp(row, col, [&drawCommand, &tileScreenPos](Prop* prop)
+					m_worldMap.ForEachProp(row, col, [&drawCommand, &tileScreenPos](Prop* prop)
 						{
 							prop->QueueForDraw(drawCommand, tileScreenPos, 1);
 						});
@@ -4715,10 +4957,9 @@ namespace TestMapEditor
 				//mapLayerRenderer.Draw();
 				//mapLayerRenderer.SetColor(color);
 
-				//DrawNavigationGridOverlay(renderer, m_worldMap);
-				DrawNavigationGridOverlay(renderer, m_propMap.m_navGrid, mapPos, m_propMap.GetTileSize());
+				DrawNavigationGridOverlay(renderer, m_worldMap);
 
-				std::string msg = m_propMap.GetDebugInfo();
+				std::string msg = m_worldMap.GetDebugInfo();
 
 				renderer.Draw(m_assets.Get<IFontAtlas>("font"), msg, { 400, 5 }, { 1,1,1,1 });
 
@@ -4753,15 +4994,15 @@ namespace TestMapEditor
 				{ 2, 2, TileConstraint::SE }
 			};
 
-			SizeF subTileSize(map.GetTileSize().width / 3.0f, map.GetTileSize().height / 3.0f);
+			SizeF subTileSize(map.GetTransform().GetTileSize().width / 3.0f, map.GetTransform().GetTileSize().height / 3.0f);
 
 			// visual tweak (same as yours)
 			VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
 			SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
 
-			for (int row = 0; row < (int)map.GetSize().height; ++row)
+			for (int row = 0; row < (int)map.GetTransform().GetSize().height; ++row)
 			{
-				for (int col = 0; col < (int)map.GetSize().width; ++col)
+				for (int col = 0; col < (int)map.GetTransform().GetSize().width; ++col)
 				{
 					map.ForEachTileConstraint(row, col, [row, col, &map, subTileSize, shift, overlaySize, &renderer](TileConstraint constraint)
 						{
@@ -4769,7 +5010,7 @@ namespace TestMapEditor
 							if (constraint == TileConstraint::NONE) return;
 
 							// top-left of this tile in world space
-							PositionF tileWorldPos = CoordToPosition({ row, col }, map.GetTileSize()) + map.GetPosition();
+							PositionF tileWorldPos = CoordToPosition({ row, col }, map.GetTransform().GetTileSize()) + map.GetTransform().GetPosition();
 
 							// iterate 3x3 subcells
 							for (const auto& offset : offsets)

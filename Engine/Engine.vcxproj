@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Graveyard\graveyard.h" />
     <ClInclude Include="Include\Algorithm\AutoTileResolver.h" />
     <ClInclude Include="Include\Algorithm\Pathfinding.h" />
     <ClInclude Include="Include\Algorithm\Resolvers.h" />
@@ -98,6 +99,7 @@
     <ClInclude Include="Include\Spatial\ObjectGrid.h" />
     <ClInclude Include="Include\Spatial\Position.h" />
     <ClInclude Include="Include\Spatial\Size.h" />
+    <ClInclude Include="Include\Spatial\Spatial.h" />
     <ClInclude Include="Include\Spatial\Transform.h" />
     <ClInclude Include="Include\State\State.h" />
     <ClInclude Include="Include\State\StateMachine.h" />

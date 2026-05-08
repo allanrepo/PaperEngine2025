@@ -85,6 +85,9 @@
     <Filter Include="Engine\Graphics">
       <UniqueIdentifier>{e822ef6c-4a38-4e4e-a383-d12974eedbcb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Graveyard">
+      <UniqueIdentifier>{3159b084-413f-4367-ade0-16e720077511}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Core\Event.h">
@@ -368,6 +371,12 @@
     </ClInclude>
     <ClInclude Include="Include\IO\CSVFileParser.h">
       <Filter>IO</Filter>
+    </ClInclude>
+    <ClInclude Include="Graveyard\graveyard.h">
+      <Filter>Graveyard</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Spatial\Spatial.h">
+      <Filter>Spatial</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
