@@ -247,7 +247,6 @@ namespace engine
 #pragma endregion
 
 #pragma region // content management
-
 			void Add(int row, int col, std::unique_ptr<T> object)
 			{
 				// we do this so we can move the actual object into the grid and keep the pointer for dictionary. 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <IO/CSVFileParser.h>
 #include <Containers/Bucket.h>
 #include <Win32/Window.h>
@@ -145,7 +145,7 @@ namespace TestMapEditor
 	// - passing AutoTileContext AutoTileConfig makes the class as a versatile tool, not tied to any specific object. it can be easily reused
 	// - AutoTileContext contains only lambda to allow accessing the data (map) that needs to be resolved without directly knowing the types of the data
 	// - AutoTileConfig is a separate data to pass and not part of AutoTileContext because it defines the rules on how data (map) is resolved
-	// - AutoTileContext is �where/how do I operate?� while AutoTileConfig is �what rules do I follow?�
+	// - AutoTileContext is “where/how do I operate?” while AutoTileConfig is “what rules do I follow?”
 	// - we define AutoTileConfig directly from map object (TileGrid, Tileset) but AutoTileConfig is not always tied into it.
 	// - it is possible for multiple map object to share AutoTileConfig, meaning it is a stand alone data
 	class AutoTileSystem
@@ -471,41 +471,82 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // MultiOccupantGrid
-	template<typename T, typename DATA>
-	struct TileOccupant
-	{
-		T* object = nullptr;
+#pragma region // SpatialOccupancyGrid
 
-		DATA data;
-	};
-
-	//container should NOT decide validity
-	//container should NOT evict
-	//container should NOT understand overlap
-	//container should NOT understand tile constraints
-	//container should NOT understand subcells
-	//container should NOT normalize gameplay semantics
+	// -----------------------------------------------------------------------------
+	// SpatialOccupancyGrid
+	//
+	// A bidirectional spatial index for objects occupying discrete grid cells.
+	//
+	// Core responsibilities:
+	//  - Track which objects occupy which grid cells
+	//  - Track which cells each object occupies
+	//  - Provide fast lookup: cell → objects, object → cells
+	//  - Store optional per-cell metadata (DATA)
+	//
+	// Design philosophy:
+	//  - This is a *spatial association system*, not a gameplay system
+	//  - It does NOT decide validity, overlap, or collision rules
+	//  - It does NOT enforce game logic constraints
+	//  - It only maintains consistent spatial mappings
+	//
+	// Typical use cases:
+	//  - Tile footprint tracking
+	//  - Selection systems (click picking)
+	//  - Collision broad-phase indexing
+	//  - Navigation constraint sources
+	// -----------------------------------------------------------------------------
 	template<typename T, typename DATA>
-	class MultiOccupantGrid
+	class SpatialOccupancyGrid
 	{
 	private:
-		// object -> occupied cells
+		// -----------------------------------------------------------------------------
+		// Occupant
+		//
+		// Represents an object occupying a single grid cell, with optional per-cell
+		// metadata.
+		//
+		// This is an internal structure used by SpatialOccupancyGrid.
+		// It is NOT exposed outside the grid to avoid leaking implementation details.
+		// -----------------------------------------------------------------------------
+		template<typename T, typename DATA>
+		struct Occupant
+		{
+			T* object = nullptr;
+			DATA data;
+		};
+
+		// -------------------------------------------------------------------------
+		// Object → Cells mapping
+		//
+		// Used for fast removal and reverse lookup:
+		// "Where is this object located in the grid?"
+		// -------------------------------------------------------------------------
 		Dictionary<T*, std::vector<Coord>> m_objects;
 
-		// cell -> occupants
-		Grid<std::vector<TileOccupant<T, DATA>>> m_grid;
+		// -------------------------------------------------------------------------
+		// Cell → Occupants mapping
+		//
+		// Each grid cell stores a list of objects occupying it.
+		// -------------------------------------------------------------------------
+		Grid<std::vector<Occupant<T, DATA>>> m_grid;
 
 	public:
-		MultiOccupantGrid() = default;
-		~MultiOccupantGrid() = default;
+		SpatialOccupancyGrid() = default;
+		~SpatialOccupancyGrid() = default;
 
+
+		// -------------------------------------------------------------------------
+		// Initialize
+		//
+		// Creates a grid with fixed dimensions and clears all associations.
+		// -------------------------------------------------------------------------
 		void Initialize(size_t width, size_t height)
 		{
 			m_grid.Initialize(
 				width,
 				height,
-				std::vector<TileOccupant<T, DATA>>());
+				std::vector<Occupant<T, DATA>>());
 
 			m_objects.Clear();
 		}
@@ -515,6 +556,9 @@ namespace TestMapEditor
 			Initialize(size.width, size.height);
 		}
 
+		// -------------------------------------------------------------------------
+		// size query
+		// -------------------------------------------------------------------------
 		Size<size_t> GetSize() const
 		{
 			return m_grid.GetSize();
@@ -525,16 +569,17 @@ namespace TestMapEditor
 			return m_objects.Size();
 		}
 
-		// ------------------------------------------------------------------------
+		// -------------------------------------------------------------------------
 		// Add
 		//
-		// design:
-		// - container does NOT evaluate DATA
-		// - container does NOT resolve overlap
-		// - container does NOT evict
-		// - container only stores associations
-		// - same object cannot exist twice in same tile
-		// ------------------------------------------------------------------------
+		// Registers an object in a specific cell with associated metadata.
+		//
+		// Rules:
+		//  - Does NOT resolve overlap
+		//  - Does NOT validate gameplay rules
+		//  - Does NOT evict existing occupants
+		//  - Enforces uniqueness: one object per cell
+		// -------------------------------------------------------------------------
 		bool Add(
 			T* object,
 			const Coord& cell,
@@ -542,8 +587,7 @@ namespace TestMapEditor
 		{
 			if (!object)
 			{
-				throw std::runtime_error(
-					"MultiOccupancyGrid::Add() - null object");
+				throw std::runtime_error("SpatialOccupancyGrid::Add() - null object");
 			}
 
 			if (!m_grid.IsInBounds(cell))
@@ -557,7 +601,7 @@ namespace TestMapEditor
 			auto it = std::find_if(
 				bucket.begin(),
 				bucket.end(),
-				[&](const TileOccupant<T, DATA>& occupant)
+				[&](const Occupant<T, DATA>& occupant)
 				{
 					return occupant.object == object;
 				});
@@ -565,15 +609,11 @@ namespace TestMapEditor
 			// strict. the caller must be responsible to remove this object if it already exists in this cell
 			if (it != bucket.end())
 			{
-				throw std::runtime_error(
-					"MultiOccupancyGrid::Add() - object already exists in tile");
+				throw std::runtime_error("SpatialOccupancyGrid::Add() - object already exists in tile");
 			}
 
 			// store occupant
-			bucket.push_back({
-				object,
-				data
-				});
+			bucket.push_back({object, data});
 
 			// remember object occupancy
 			if (!m_objects.Has(object))
@@ -607,7 +647,7 @@ namespace TestMapEditor
 			if (!object)
 			{
 				throw std::runtime_error(
-					"MultiOccupancyGrid::Remove() - null object");
+					"SpatialOccupancyGrid::Remove() - null object");
 			}
 
 			if (!m_grid.IsInBounds(cell))
@@ -620,7 +660,7 @@ namespace TestMapEditor
 			auto it = std::remove_if(
 				bucket.begin(),
 				bucket.end(),
-				[&](const TileOccupant<T, DATA>& occupant)
+				[&](const Occupant<T, DATA>& occupant)
 				{
 					return occupant.object == object;
 				});
@@ -636,7 +676,7 @@ namespace TestMapEditor
 			if (removedCount != 1)
 			{
 				throw std::runtime_error(
-					"MultiOccupancyGrid::Remove() - duplicate occupants detected");
+					"SpatialOccupancyGrid::Remove() - duplicate occupants detected");
 			}
 
 			bucket.erase(it, bucket.end());
@@ -645,7 +685,7 @@ namespace TestMapEditor
 			if (!m_objects.Has(object))
 			{
 				throw std::runtime_error(
-					"MultiOccupancyGrid::Remove() - object missing from m_objects");
+					"SpatialOccupancyGrid::Remove() - object missing from m_objects");
 			}
 
 			auto& occupiedCells = m_objects.Get(object);
@@ -658,7 +698,7 @@ namespace TestMapEditor
 			if (coordIt == occupiedCells.end())
 			{
 				throw std::runtime_error(
-					"MultiOccupancyGrid::Remove() - cell missing from object mapping");
+					"SpatialOccupancyGrid::Remove() - cell missing from object mapping");
 			}
 
 			occupiedCells.erase(coordIt, occupiedCells.end());
@@ -669,7 +709,7 @@ namespace TestMapEditor
 				if (!m_objects.Unregister(object))
 				{
 					throw std::runtime_error(
-						"MultiOccupancyGrid::Remove() - failed to unregister object");
+						"SpatialOccupancyGrid::Remove() - failed to unregister object");
 				}
 			}
 
@@ -684,7 +724,7 @@ namespace TestMapEditor
 			if (!m_objects.Has(object))
 			{
 				throw std::runtime_error(
-					"MultiOccupancyGrid::Remove(T*) - object not found");
+					"SpatialOccupancyGrid::Remove(T*) - object not found");
 			}
 
 			// copy because Remove(object, cell)
@@ -695,8 +735,7 @@ namespace TestMapEditor
 			{
 				if (!Remove(object, cell))
 				{
-					throw std::runtime_error(
-						"MultiOccupancyGrid::Remove(T*) - failed removing object from cell");
+					throw std::runtime_error("SpatialOccupancyGrid::Remove(T*) - failed removing object from cell");
 				}
 			}
 		}
@@ -707,33 +746,19 @@ namespace TestMapEditor
 		}
 
 		// ------------------------------------------------------------------------
-		// Get occupants in cell
-		// ------------------------------------------------------------------------
-		const std::vector<TileOccupant<T, DATA>>& Get(const Coord& cell) const
-		{
-			if (!m_grid.IsInBounds(cell))
-			{
-				throw std::runtime_error("MultiOccupancyGrid::Get() - invalid cell");
-			}
-
-			return m_grid.Get(cell);
-		}
-
-		// ------------------------------------------------------------------------
 		// Get data of a given object in a given cell
 		// ------------------------------------------------------------------------
 		const DATA& Get(T* object, const Coord& cell) const
 		{
 			if (!m_grid.IsInBounds(cell))
 			{
-				throw std::runtime_error("MultiOccupancyGrid::Get() - invalid cell");
+				throw std::runtime_error("SpatialOccupancyGrid::Get() - invalid cell");
 			}
 
-			// get all occupants in this cell
-			const std::vector<TileOccupant<T, DATA>>& occupants = Get(cell);
+			const auto& occupants = m_grid.Get(cell);
 
 			// find the occupant that is our object
-			for (const TileOccupant<T, DATA>& occupant : occupants)
+			for (const Occupant<T, DATA>& occupant : occupants)
 			{
 				if (occupant.object == object)
 				{
@@ -741,7 +766,7 @@ namespace TestMapEditor
 				}
 			}
 			// we're not sure if this method requires specified cell guarantees object exist. but for now, let's be strict and make it so to avoid silent failures
-			throw std::exception("the specified object does not exist in the given coord");
+			throw std::runtime_error("the specified object does not exist in the given coord");
 		}
 
 		// ------------------------------------------------------------------------
@@ -757,14 +782,70 @@ namespace TestMapEditor
 			return m_objects.Get(object);
 		}
 
+		// -------------------------------------------------------------------------
+		// Iterate cells a given object occupies
+		// -------------------------------------------------------------------------
+		template<typename Func>
+		void ForEachCell(T* object, Func func) const
+		{
+			if (!m_objects.Has(object))
+			{
+				throw std::runtime_error("SpatialOccupancyGrid::ForEachCell() - invalid cell");
+			}
+
+			// this returns reference to cells
+			const std::vector<Coord>& cells = m_objects.Get(object);
+
+			for (const Coord& coord : cells)
+			{
+				func(coord);
+			}
+		}
+
+		// -------------------------------------------------------------------------
+		// Iterate objects in a cell (object only)
+		// -------------------------------------------------------------------------
+		template<typename Func>
+		void ForEachObject(const Coord& cell, Func func) const
+		{
+			if (!m_grid.IsInBounds(cell))
+			{
+				throw std::runtime_error("SpatialOccupancyGrid::ForEachObject() - invalid cell");
+			}
+
+			const auto& occupants = m_grid.Get(cell);
+
+			for (const auto& occupant : occupants)
+			{
+				func(occupant.object);
+			}
+		}
+
+		// -------------------------------------------------------------------------
+		// Iterate objects + data in a cell
+		// -------------------------------------------------------------------------
+		template<typename Func>
+		void ForEach(const Coord& cell, Func func) const
+		{
+			if (!m_grid.IsInBounds(cell))
+			{
+				throw std::runtime_error("SpatialOccupancyGrid::Get() - invalid cell");
+			}
+
+			const auto& occupants = m_grid.Get(cell);
+
+			for (const auto& occupant : occupants)
+			{
+				func(occupant.object, occupant.data);
+			}
+		}
+
 		// ------------------------------------------------------------------------
 		// Validation
 		// ------------------------------------------------------------------------
 		void Validate() const
 		{
-			// ------------------------------------------------------------
 			// OBJECT -> GRID
-			// ------------------------------------------------------------
 			for (const auto& [object, cells] : m_objects)
 			{
 				if (!object)
@@ -786,7 +867,7 @@ namespace TestMapEditor
 					auto it = std::find_if(
 						bucket.begin(),
 						bucket.end(),
-						[&](const TileOccupant<T, DATA>& occupant)
+						[&](const Occupant<T, DATA>& occupant)
 						{
 							return occupant.object == object;
 						});
@@ -799,14 +880,12 @@ namespace TestMapEditor
 				}
 			}
 
-			// ------------------------------------------------------------
 			// GRID -> OBJECT
-			// ------------------------------------------------------------
 			m_grid.ForEach(
 				[&](
 					size_t row,
 					size_t col,
-					const std::vector<TileOccupant<T, DATA>>& bucket)
+					const std::vector<Occupant<T, DATA>>& bucket)
 				{
 					Coord cell
 					{
@@ -848,7 +927,7 @@ namespace TestMapEditor
 
 #pragma endregion
 
-#pragma region // MultiOccupancyGrid
+#pragma region // MultiOccupancyGrid [GRAVEYARD] used for Bounding Box Grid. but later used a more common class system. just keeping in case i need something like this in future
 	// design considerations:
 	// - cells to be occupied are filtered to be unique so duplicates are normalized
 	// - 
@@ -948,14 +1027,14 @@ namespace TestMapEditor
 			return m_objects.Set(object, validCells);
 		}
 
-		// design consideration:
-		// difference from Add() - this removes existing objects that overlaps this new object
-		// - validate cells first. make sure is in bounds and has no duplicates. bail out if no valid cells. 
-		// - identify existing objects that overlaps this new object
-		// 
-		// - if object to occupy already exist in this grid, vacate it first. this ensures occupants are unique. 
-		// - this is like "moving" the object from old to new location
-		// - update each cell to contain this object
+		//design consideration:
+		//difference from Add() - this removes existing objects that overlaps this new object
+		//- validate cells first. make sure is in bounds and has no duplicates. bail out if no valid cells. 
+		//- identify existing objects that overlaps this new object
+		//
+		//- if object to occupy already exist in this grid, vacate it first. this ensures occupants are unique. 
+		//- this is like "moving" the object from old to new location
+		//- update each cell to contain this object
 		bool Occupy(T* object, const std::vector<Coord>& cells)
 		{
 			// -------------------------------------------------------------------------------
@@ -1042,7 +1121,7 @@ namespace TestMapEditor
 			// let's be strict here. this method expects the object exist. 
 			if (!m_objects.Has(object))
 			{
-				throw std::runtime_error("MultiOccupancyGrid::Vacate(T*) - object to remove not found");
+				throw std::runtime_error("SpatialOccupancyGrid::Vacate(T*) - object to remove not found");
 			}
 
 			// get the cells occupied by this object. we know this object exist in m_objects, so it must have a valid set of cells.
@@ -1054,7 +1133,7 @@ namespace TestMapEditor
 			{
 				if (!m_grid.IsInBounds(cell))
 				{
-					throw std::runtime_error("MultiOccupancyGrid::Vacate(T*) - invalid cell");
+					throw std::runtime_error("SpatialOccupancyGrid::Vacate(T*) - invalid cell");
 				}
 
 				// get all the objects that occupy this cell
@@ -1071,7 +1150,7 @@ namespace TestMapEditor
 					// if not, it means there is a data inconsistency between m_objects and m_grid.
 					if (removedCount != 1)
 					{
-						throw std::runtime_error("MultiOccupancyGrid::Vacate(T*) - found " + std::to_string(removedCount) + " instances of object. potential data inconsistency between m_objects and m_grid");
+						throw std::runtime_error("SpatialOccupancyGrid::Vacate(T*) - found " + std::to_string(removedCount) + " instances of object. potential data inconsistency between m_objects and m_grid");
 					}
 
 					// found one match
@@ -1081,7 +1160,7 @@ namespace TestMapEditor
 				{
 					// let's be strict here. if we can't find this object in the cell that it's supposed to occupy,
 					// it means there is a data inconsistency between m_objects and m_grid.
-					throw std::runtime_error("MultiOccupancyGrid::Vacate(T*) - failed to find object in the cell it occupies. potential data inconsistency between m_objects and m_grid");
+					throw std::runtime_error("SpatialOccupancyGrid::Vacate(T*) - failed to find object in the cell it occupies. potential data inconsistency between m_objects and m_grid");
 				}
 			}
 
@@ -1368,7 +1447,7 @@ namespace TestMapEditor
 
 		// TODO:
 		// returning vector<Coord> by value can be expensive if the list of cells occupied by an object is large. 
-		// fine if we ensure cells occupied by an object is usually small. observe
+		// fine if we ensure cells occupied by an object is usually small.
 		std::vector<Coord> GetOccupiedTiles(T* object) const
 		{
 			static const std::vector<Coord> empty;
@@ -2884,6 +2963,7 @@ namespace TestMapEditor
 				m_view->Validate();
 			}
 		};
+
 	private:
 		// top-left position of the world in screen space. this is basically the camera position.
 		PositionF m_position;
@@ -2894,14 +2974,16 @@ namespace TestMapEditor
 		// size of each tile in pixels. 
 		SizeF m_tileSize;
 
+		struct Dummy {};
+
 	public:
 		BucketGrid<Prop> m_objectLayer;
 		NavigationGrid m_navGrid;
-		MultiOccupantGrid<Prop, TileConstraint> m_FootPrintGrid;
-		MultiOccupancyGrid<Prop> m_BoundingBoxGrid;
+		SpatialOccupancyGrid<Prop, TileConstraint> m_FootPrintGrid;
+		SpatialOccupancyGrid<Prop, Dummy> m_BoundingBoxGrid;
 
 	public:
-		View<MultiOccupancyGrid<Prop>> BoundingBoxLayer;
+		//View<MultiOccupancyGrid<Prop>> BoundingBoxLayer;
 		View<NavigationGrid> NavigationLayer;
 
 	public:
@@ -2911,7 +2993,7 @@ namespace TestMapEditor
 			m_position(0, 0),
 			m_size(0, 0),
 			m_tileSize(0, 0),
-			BoundingBoxLayer(&m_BoundingBoxGrid),
+			//BoundingBoxLayer(&m_BoundingBoxGrid),
 			NavigationLayer(&m_navGrid)
 		{
 		}
@@ -3000,24 +3082,36 @@ namespace TestMapEditor
 
 		void Remove(Prop* prop)
 		{
-			// get tiles occupied by this prop 
-			std::vector<Coord> tilesOccupiedByProp = m_FootPrintGrid.GetOccupiedCells(prop);
+			// iterate through tiles occupied by prop
+			m_FootPrintGrid.ForEachCell(prop, [this, &prop](Coord coord) 
+				{
+					// get the constraint of the prop in the given coord.
+					// this is a strict method. it's gonna throw error if there is no prop in this coord
+					TileConstraint constraint = m_FootPrintGrid.Get(prop, coord);
 
-			for (const Coord& coord : tilesOccupiedByProp)
-			{
-				// get the constraint of the prop in the given coord.
-				// this is a strict method. it's gonna throw error if there is no prop in this coord
-				TileConstraint constraint = m_FootPrintGrid.Get(prop, coord);
+					// remove that constraint for this coord in navigation grid
+					m_navGrid.RemoveFlag(coord, constraint);
+				}
+			);
 
-				// remove that constraint in the coord
-				m_navGrid.RemoveFlag(coord, constraint);
-			}
+			//// get tiles occupied by this prop 
+			//std::vector<Coord> tilesOccupiedByProp = m_FootPrintGrid.GetOccupiedCells(prop);
+
+			//for (const Coord& coord : tilesOccupiedByProp)
+			//{
+			//	// get the constraint of the prop in the given coord.
+			//	// this is a strict method. it's gonna throw error if there is no prop in this coord
+			//	TileConstraint constraint = m_FootPrintGrid.Get(prop, coord);
+
+			//	// remove that constraint in the coord
+			//	m_navGrid.RemoveFlag(coord, constraint);
+			//}
 
 			// remove this object from spatial occupancy grid
 			m_FootPrintGrid.Remove(prop);
 
 			// remove this object from bounding box occupancy grid
-			m_BoundingBoxGrid.Vacate(prop);
+			m_BoundingBoxGrid.Remove(prop);
 
 			// remove this object from object layer
 			m_objectLayer.Remove(prop);
@@ -3071,19 +3165,30 @@ namespace TestMapEditor
 			{
 				Coord coord = constraintsPerCell.first;
 
-				// get all the existing props that occupy this cell
-				const std::vector<TileOccupant<Prop, TileConstraint>>& occupants = m_FootPrintGrid.Get(coord);
-
-				// check if this prop overlap this existing prop
-				for(TileOccupant occupant: occupants)
-				{
-					// if they overlap, we will remove this prop
-					TileConstraint tc = constraintsPerCell.second & occupant.data;
-					if (tc != TileConstraint::NONE)
+				m_FootPrintGrid.ForEach(coord, [constraintsPerCell, &toEvict](Prop* prop, TileConstraint constraint)
 					{
-						toEvict.insert(occupant.object);
+						// if they overlap, we will remove this prop
+						TileConstraint tc = constraintsPerCell.second & constraint;
+						if (tc != TileConstraint::NONE)
+						{
+							toEvict.insert(prop);
+						}
 					}
-				}
+				);
+
+				//// get all the existing props that occupy this cell
+				//const std::vector<Occupant<Prop, TileConstraint>>& occupants = m_FootPrintGrid.Get(coord);
+
+				//// check if this prop overlap this existing prop
+				//for(Occupant occupant: occupants)
+				//{
+				//	// if they overlap, we will remove this prop
+				//	TileConstraint tc = constraintsPerCell.second & occupant.data;
+				//	if (tc != TileConstraint::NONE)
+				//	{
+				//		toEvict.insert(occupant.object);
+				//	}
+				//}
 			}
 
 			// remove props overlapped by new prop
@@ -3111,7 +3216,7 @@ namespace TestMapEditor
 			std::vector<Coord> boundingBoxTiles = GridQuery::QueryCells(boundingBox, m_tileSize, m_size);
 
 			// add the new object into bounding box occupancy grid
-			m_BoundingBoxGrid.Add(prop.get(), boundingBoxTiles);
+			for (Coord coord : boundingBoxTiles) m_BoundingBoxGrid.Add(prop.get(), coord, {});
 
 			// get the world position of the tile where prop will be store. this will be tile's top-left position in world
 			PositionF coordTopLeftWorldPos = CoordToPosition(coord, m_tileSize);
@@ -3128,10 +3233,10 @@ namespace TestMapEditor
 			return true;
 		}
 
-		std::vector<Prop*> QueryBoundingBoxOverlaps(const Coord& coord) const
-		{
-			return m_BoundingBoxGrid.Get(coord);
-		}
+		//std::vector<Prop*> QueryBoundingBoxOverlaps(const Coord& coord) const
+		//{
+		//	return m_BoundingBoxGrid.Get(coord);
+		//}
 
 		bool Remove(const PositionF& worldPosition)
 		{
@@ -3145,44 +3250,82 @@ namespace TestMapEditor
 			Coord coord = PositionToCoord(worldPosition, m_tileSize);
 
 			// given the coord. get all the props in this coord where their bounding box intersects
-			std::vector<Prop*> candidates = m_BoundingBoxGrid.Get(coord);
-			if (candidates.empty()) return {};
+			//std::vector<Prop*> candidates = m_BoundingBoxGrid.Get(coord);
+			//if (candidates.empty()) return {};
+			//std::vector<Occupant<Prop, Dummy>> candidateOccupants = m_BoundingBoxGrid.Get(coord);
+			//if (candidateOccupants.empty()) return {};
 
 			// if there are props, iterate through them and find the ones whose bounding box intersects with the cursor position (in world coordinate). return all intersecting objects. 
 			Prop* topMostProp = nullptr;
 			RectF topMostPropBoundingBox{};
-			for (Prop* candidate : candidates)
-			{
-				// find the coordinate of the cell that owns this prop 
-				Coord propCoordOwner;
-				if (!TryGetCoord(candidate, propCoordOwner))
+			////for (Prop* candidate : candidates)
+			//for (Occupant<Prop, Dummy>& candidateOccupant : candidateOccupants)
+			//{
+			//	Prop* candidate = candidateOccupant.object;
+
+			//	// find the coordinate of the cell that owns this prop 
+			//	Coord propCoordOwner;
+			//	if (!TryGetCoord(candidate, propCoordOwner))
+			//	{
+			//		// if this prop does not exist in the map, throw. this must be a bug. 
+			//		// how did we find pointer to this object in bounding box grid? where is the actual object stored?
+			//		throw std::out_of_range("PropSelectionSystem::SelectAtPoint() - prop does not exist in the map but we have pointer to it. where is it stored?!");
+			//	}
+
+			//	// get the object's position. the object's position is relative to the cell in the map it is stored. 
+			//	PositionF propPosInTileOwner = candidate->GetPosition(true);
+
+			//	// get the world position of this object by adding the object's position relative to tile with the top-left position of the tile in world coordinate
+			//	PositionF propPosInWorld = propPosInTileOwner + CoordToPosition(propCoordOwner, m_tileSize);
+
+			//	// get this bounding box of the object in world coordinates
+			//	RectF objectBoundingBox = candidate->GetScaledBoundingBoxWorld(propPosInWorld, true);
+
+			//	// broad phase collision check: check if the mouse cursor (in world coordinate) is intersecting with the bounding box already in world coordinate. 
+			//	if (!objectBoundingBox.Contains(worldPosition)) continue;
+
+			//	// TODO:implement narrow phase collision check and execute here
+
+			//	// if so, compare its depth with current candidate for top most and replace candidate if this one is higher (lower on the screen)
+			//	if (topMostProp == nullptr || objectBoundingBox.bottom >= topMostPropBoundingBox.bottom)
+			//	{
+			//		topMostProp = candidate;
+			//		topMostPropBoundingBox = objectBoundingBox;
+			//	}
+			//}
+
+			m_BoundingBoxGrid.ForEachObject(coord, [this, &topMostProp, &topMostPropBoundingBox, worldPosition](Prop* candidate)
 				{
-					// if this prop does not exist in the map, throw. this must be a bug. 
-					// how did we find pointer to this object in bounding box grid? where is the actual object stored?
-					throw std::out_of_range("PropSelectionSystem::SelectAtPoint() - prop does not exist in the map but we have pointer to it. where is it stored?!");
+					Coord propCoordOwner;
+					if (!TryGetCoord(candidate, propCoordOwner))
+					{
+						// if this prop does not exist in the map, throw. this must be a bug. 
+						// how did we find pointer to this object in bounding box grid? where is the actual object stored?
+						throw std::out_of_range("PropSelectionSystem::SelectAtPoint() - prop does not exist in the map but we have pointer to it. where is it stored?!");
+					}
+
+					// get the object's position. the object's position is relative to the cell in the map it is stored. 
+					PositionF propPosInTileOwner = candidate->GetPosition(true);
+
+					// get the world position of this object by adding the object's position relative to tile with the top-left position of the tile in world coordinate
+					PositionF propPosInWorld = propPosInTileOwner + CoordToPosition(propCoordOwner, m_tileSize);
+
+					// get this bounding box of the object in world coordinates
+					RectF objectBoundingBox = candidate->GetScaledBoundingBoxWorld(propPosInWorld, true);
+
+					// broad phase collision check: check if the mouse cursor (in world coordinate) is intersecting with the bounding box already in world coordinate. 
+					if (!objectBoundingBox.Contains(worldPosition)) return;
+
+					// TODO:implement narrow phase collision check and execute here
+
+					// if so, compare its depth with current candidate for top most and replace candidate if this one is higher (lower on the screen)
+					if (topMostProp == nullptr || objectBoundingBox.bottom >= topMostPropBoundingBox.bottom)
+					{
+						topMostProp = candidate;
+						topMostPropBoundingBox = objectBoundingBox;
+					}
 				}
-
-				// get the object's position. the object's position is relative to the cell in the map it is stored. 
-				PositionF propPosInTileOwner = candidate->GetPosition(true);
-
-				// get the world position of this object by adding the object's position relative to tile with the top-left position of the tile in world coordinate
-				PositionF propPosInWorld = propPosInTileOwner + CoordToPosition(propCoordOwner, m_tileSize);
-
-				// get this bounding box of the object in world coordinates
-				RectF objectBoundingBox = candidate->GetScaledBoundingBoxWorld(propPosInWorld, true);
-
-				// broad phase collision check: check if the mouse cursor (in world coordinate) is intersecting with the bounding box already in world coordinate. 
-				if (!objectBoundingBox.Contains(worldPosition)) continue;
-
-				// TODO:implement narrow phase collision check and execute here
-
-				// if so, compare its depth with current candidate for top most and replace candidate if this one is higher (lower on the screen)
-				if (topMostProp == nullptr || objectBoundingBox.bottom >= topMostPropBoundingBox.bottom)
-				{
-					topMostProp = candidate;
-					topMostPropBoundingBox = objectBoundingBox;
-				}
-			}
+			);
 
 			// it is possible that there is no candidate prop that actually was selected. note that candidates are only based on props that belongs to 
 			// the tiles. it does not mean that any of them will intersect with the position. that is why the candidates need to do a broad phase check 
@@ -3279,7 +3422,7 @@ namespace TestMapEditor
 		NavigationGrid m_navGrid;
 		OccupancyGrid<Prop> m_FootPrintGrid;
 		MultiOccupancyGrid<Prop> m_BoundingBoxGrid;
-		MultiOccupantGrid<Prop, TileConstraint> m_FootprintLayer;
+		SpatialOccupancyGrid<Prop, TileConstraint> m_FootprintLayer;
 
 	public:
 		FootprintGridView FootprintLayer;
