@@ -88,6 +88,9 @@
     <Filter Include="Graveyard">
       <UniqueIdentifier>{3159b084-413f-4367-ade0-16e720077511}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Scene">
+      <UniqueIdentifier>{ae9e8a48-c532-46f0-a8f8-daa76113be72}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Core\Event.h">
@@ -377,6 +380,15 @@
     </ClInclude>
     <ClInclude Include="Include\Spatial\Spatial.h">
       <Filter>Spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Engine\Loader\SpriteAtlasLoader.h">
+      <Filter>Engine\Loader</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Spatial\SpatialOccupancyGrid.h">
+      <Filter>Spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Scene\Scene.h">
+      <Filter>Scene</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

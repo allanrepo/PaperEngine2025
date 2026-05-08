@@ -38,6 +38,9 @@
 #include <Spatial/ObjectGrid.h>
 #include <Algorithm/Pathfinding.h>
 #include <Core/View.h>
+#include <Engine/Loader/SpriteAtlasLoader.h>
+#include <Spatial/SpatialOccupancyGrid.h>
+#include <Scene/Scene.h>
 
 namespace TestMapEditor
 {
@@ -86,6 +89,12 @@ namespace TestMapEditor
 	using RectF = engine::math::geometry::RectF;
 	using CSVFileParser = engine::io::CSVFileParser;
 	using NavigationGrid = engine::navigation::tile::NavigationGrid;
+	using SpriteAtlasLoader = engine::graphics::loader::SpriteAtlasLoader;
+	using Scene = engine::scene::Scene;
+	using SceneManager = engine::scene::SceneManager;
+
+	template<typename T, typename U>
+	using SpatialOccupancyGrid = engine::spatial::SpatialOccupancyGrid<T, U>;
 
 	template<typename T>
 	using View = engine::core::View<T>;
@@ -400,886 +409,6 @@ namespace TestMapEditor
 					Remove(ctx, autoTileConfig, Coord(row, col));
 				}
 			}
-		}
-	};
-#pragma endregion
-
-#pragma region // GridQuery
-	class GridQuery
-	{
-	public:
-		// the "aabb" or boundingbox already implies overlap. the cellsize and gridsize implies we're querying a grid/map
-		static std::vector<Coord> QueryCells(
-			const RectF& boundingbox,
-			const SizeF& cellsize,
-			const Size<size_t> gridsize)
-		{
-			// ------------------------------------------------------------
-			// 1. Normalize AABB (safety against flipped rectangles)
-			// ------------------------------------------------------------
-			const float left = std::min<float>(boundingbox.left, boundingbox.right);
-			const float right = std::max<float>(boundingbox.left, boundingbox.right);
-			const float top = std::min<float>(boundingbox.top, boundingbox.bottom);
-			const float bottom = std::max<float>(boundingbox.top, boundingbox.bottom);
-
-			// ------------------------------------------------------------
-			// 2. Convert world bounds -> cell coordinates
-			// ------------------------------------------------------------
-			Coord minCell = PositionToCoord({ left, top }, cellsize);
-			Coord maxCell = PositionToCoord({ right, bottom }, cellsize);
-
-			// ------------------------------------------------------------
-			// 3. Normalize cell ordering
-			// ------------------------------------------------------------
-			int startRow = std::min<int>(minCell.row, maxCell.row);
-			int endRow = std::max<int>(minCell.row, maxCell.row);
-
-			int startCol = std::min<int>(minCell.col, maxCell.col);
-			int endCol = std::max<int>(minCell.col, maxCell.col);
-
-			// ------------------------------------------------------------
-			// 4. Clamp to grid bounds (avoid negative / overflow access)
-			// ------------------------------------------------------------
-			startRow = std::max<int>(0, startRow);
-			startCol = std::max<int>(0, startCol);
-
-			endRow = std::min<int>(static_cast<int>(gridsize.height) - 1, endRow);
-			endCol = std::min<int>(static_cast<int>(gridsize.width) - 1, endCol);
-
-			// ------------------------------------------------------------
-			// 5. Early exit if no overlap
-			// ------------------------------------------------------------
-			if (startRow > endRow || startCol > endCol)
-				return {};
-
-			// ------------------------------------------------------------
-			// 6. Collect cells
-			// ------------------------------------------------------------
-			std::vector<Coord> result;
-			result.reserve((endRow - startRow + 1) * (endCol - startCol + 1));
-
-			for (int row = startRow; row <= endRow; ++row)
-			{
-				for (int col = startCol; col <= endCol; ++col)
-				{
-					result.push_back({ row, col });
-				}
-			}
-
-			return result;
-		}
-	};
-#pragma endregion
-
-#pragma region // SpatialOccupancyGrid
-
-	// -----------------------------------------------------------------------------
-	// SpatialOccupancyGrid
-	//
-	// A bidirectional spatial index for objects occupying discrete grid cells.
-	//
-	// Core responsibilities:
-	//  - Track which objects occupy which grid cells
-	//  - Track which cells each object occupies
-	//  - Provide fast lookup: cell → objects, object → cells
-	//  - Store optional per-cell metadata (DATA)
-	//
-	// Design philosophy:
-	//  - This is a *spatial association system*, not a gameplay system
-	//  - It does NOT decide validity, overlap, or collision rules
-	//  - It does NOT enforce game logic constraints
-	//  - It only maintains consistent spatial mappings
-	//
-	// Typical use cases:
-	//  - Tile footprint tracking
-	//  - Selection systems (click picking)
-	//  - Collision broad-phase indexing
-	//  - Navigation constraint sources
-	// -----------------------------------------------------------------------------
-	template<typename T, typename DATA>
-	class SpatialOccupancyGrid
-	{
-	private:
-		// -----------------------------------------------------------------------------
-		// Occupant
-		//
-		// Represents an object occupying a single grid cell, with optional per-cell
-		// metadata.
-		//
-		// This is an internal structure used by SpatialOccupancyGrid.
-		// It is NOT exposed outside the grid to avoid leaking implementation details.
-		// -----------------------------------------------------------------------------
-		template<typename T, typename DATA>
-		struct Occupant
-		{
-			T* object = nullptr;
-			DATA data;
-		};
-
-		// -------------------------------------------------------------------------
-		// Object → Cells mapping
-		//
-		// Used for fast removal and reverse lookup:
-		// "Where is this object located in the grid?"
-		// -------------------------------------------------------------------------
-		Dictionary<T*, std::vector<Coord>> m_objects;
-
-		// -------------------------------------------------------------------------
-		// Cell → Occupants mapping
-		//
-		// Each grid cell stores a list of objects occupying it.
-		// -------------------------------------------------------------------------
-		Grid<std::vector<Occupant<T, DATA>>> m_grid;
-
-	public:
-		SpatialOccupancyGrid() = default;
-		~SpatialOccupancyGrid() = default;
-
-
-		// -------------------------------------------------------------------------
-		// Initialize
-		//
-		// Creates a grid with fixed dimensions and clears all associations.
-		// -------------------------------------------------------------------------
-		void Initialize(size_t width, size_t height)
-		{
-			m_grid.Initialize(
-				width,
-				height,
-				std::vector<Occupant<T, DATA>>());
-
-			m_objects.Clear();
-		}
-
-		void Initialize(Size<size_t> size)
-		{
-			Initialize(size.width, size.height);
-		}
-
-		// -------------------------------------------------------------------------
-		// size query
-		// -------------------------------------------------------------------------
-		Size<size_t> GetSize() const
-		{
-			return m_grid.GetSize();
-		}
-
-		size_t GetObjectCount() const
-		{
-			return m_objects.Size();
-		}
-
-		// -------------------------------------------------------------------------
-		// Add
-		//
-		// Registers an object in a specific cell with associated metadata.
-		//
-		// Rules:
-		//  - Does NOT resolve overlap
-		//  - Does NOT validate gameplay rules
-		//  - Does NOT evict existing occupants
-		//  - Enforces uniqueness: one object per cell
-		// -------------------------------------------------------------------------
-		bool Add(
-			T* object,
-			const Coord& cell,
-			const DATA& data)
-		{
-			if (!object)
-			{
-				throw std::runtime_error("SpatialOccupancyGrid::Add() - null object");
-			}
-
-			if (!m_grid.IsInBounds(cell))
-			{
-				return false;
-			}
-
-			auto& bucket = m_grid.Get(cell);
-
-			// object already exists in this tile?
-			auto it = std::find_if(
-				bucket.begin(),
-				bucket.end(),
-				[&](const Occupant<T, DATA>& occupant)
-				{
-					return occupant.object == object;
-				});
-
-			// strict. the caller must be responsible to remove this object if it already exists in this cell
-			if (it != bucket.end())
-			{
-				throw std::runtime_error("SpatialOccupancyGrid::Add() - object already exists in tile");
-			}
-
-			// store occupant
-			bucket.push_back({object, data});
-
-			// remember object occupancy
-			if (!m_objects.Has(object))
-			{
-				m_objects.Set(object, {});
-			}
-
-			auto& occupiedCells = m_objects.Get(object);
-
-			// enforce unique coords
-			auto coordIt = std::find(
-				occupiedCells.begin(),
-				occupiedCells.end(),
-				cell);
-
-			if (coordIt == occupiedCells.end())
-			{
-				occupiedCells.push_back(cell);
-			}
-
-			return true;
-		}
-
-		// ------------------------------------------------------------------------
-		// Remove object from specific cell
-		// ------------------------------------------------------------------------
-		bool Remove(
-			T* object,
-			const Coord& cell)
-		{
-			if (!object)
-			{
-				throw std::runtime_error(
-					"SpatialOccupancyGrid::Remove() - null object");
-			}
-
-			if (!m_grid.IsInBounds(cell))
-			{
-				return false;
-			}
-
-			auto& bucket = m_grid.Get(cell);
-
-			auto it = std::remove_if(
-				bucket.begin(),
-				bucket.end(),
-				[&](const Occupant<T, DATA>& occupant)
-				{
-					return occupant.object == object;
-				});
-
-			if (it == bucket.end())
-			{
-				return false;
-			}
-
-			auto removedCount =
-				std::distance(it, bucket.end());
-
-			if (removedCount != 1)
-			{
-				throw std::runtime_error(
-					"SpatialOccupancyGrid::Remove() - duplicate occupants detected");
-			}
-
-			bucket.erase(it, bucket.end());
-
-			// update reverse lookup
-			if (!m_objects.Has(object))
-			{
-				throw std::runtime_error(
-					"SpatialOccupancyGrid::Remove() - object missing from m_objects");
-			}
-
-			auto& occupiedCells = m_objects.Get(object);
-
-			auto coordIt = std::remove(
-				occupiedCells.begin(),
-				occupiedCells.end(),
-				cell);
-
-			if (coordIt == occupiedCells.end())
-			{
-				throw std::runtime_error(
-					"SpatialOccupancyGrid::Remove() - cell missing from object mapping");
-			}
-
-			occupiedCells.erase(coordIt, occupiedCells.end());
-
-			// cleanup empty object entry
-			if (occupiedCells.empty())
-			{
-				if (!m_objects.Unregister(object))
-				{
-					throw std::runtime_error(
-						"SpatialOccupancyGrid::Remove() - failed to unregister object");
-				}
-			}
-
-			return true;
-		}
-
-		// ------------------------------------------------------------------------
-		// Remove object from all occupied cells
-		// ------------------------------------------------------------------------
-		void Remove(T* object)
-		{
-			if (!m_objects.Has(object))
-			{
-				throw std::runtime_error(
-					"SpatialOccupancyGrid::Remove(T*) - object not found");
-			}
-
-			// copy because Remove(object, cell)
-			// mutates m_objects
-			auto cells = m_objects.Get(object);
-
-			for (const auto& cell : cells)
-			{
-				if (!Remove(object, cell))
-				{
-					throw std::runtime_error("SpatialOccupancyGrid::Remove(T*) - failed removing object from cell");
-				}
-			}
-		}
-
-		bool Has(T* object) const
-		{
-			return m_objects.Has(object);
-		}
-
-		// ------------------------------------------------------------------------
-		// Get data of a given object in a given cell
-		// ------------------------------------------------------------------------
-		const DATA& Get(T* object, const Coord& cell) const
-		{
-			if (!m_grid.IsInBounds(cell))
-			{
-				throw std::runtime_error("SpatialOccupancyGrid::Get() - invalid cell");
-			}
-
-			const auto& occupants = m_grid.Get(cell);
-
-			// find the occupant that is our object
-			for (const Occupant<T, DATA>& occupant : occupants)
-			{
-				if (occupant.object == object)
-				{
-					return occupant.data;
-				}
-			}
-			// we're not sure if this method requires specified cell guarantees object exist. but for now, let's be strict and make it so to avoid silent failures
-			throw std::runtime_error("the specified object does not exist in the given coord");
-		}
-
-		// ------------------------------------------------------------------------
-		// Get occupied cells of object
-		// ------------------------------------------------------------------------
-		std::vector<Coord> GetOccupiedCells(T* object) const
-		{
-			if (!m_objects.Has(object))
-			{
-				return {};
-			}
-
-			return m_objects.Get(object);
-		}
-
-		// -------------------------------------------------------------------------
-		// Iterate cells a given object occupies
-		// -------------------------------------------------------------------------
-		template<typename Func>
-		void ForEachCell(T* object, Func func) const
-		{
-			if (!m_objects.Has(object))
-			{
-				throw std::runtime_error("SpatialOccupancyGrid::ForEachCell() - invalid cell");
-			}
-
-			// this returns reference to cells
-			const std::vector<Coord>& cells = m_objects.Get(object);
-
-			for (const Coord& coord : cells)
-			{
-				func(coord);
-			}
-		}
-
-		// -------------------------------------------------------------------------
-		// Iterate objects in a cell (object only)
-		// -------------------------------------------------------------------------
-		template<typename Func>
-		void ForEachObject(const Coord& cell, Func func) const
-		{
-			if (!m_grid.IsInBounds(cell))
-			{
-				throw std::runtime_error("SpatialOccupancyGrid::ForEachObject() - invalid cell");
-			}
-
-			const auto& occupants = m_grid.Get(cell);
-
-			for (const auto& occupant : occupants)
-			{
-				func(occupant.object);
-			}
-		}
-
-		// -------------------------------------------------------------------------
-		// Iterate objects + data in a cell
-		// -------------------------------------------------------------------------
-		template<typename Func>
-		void ForEach(const Coord& cell, Func func) const
-		{
-			if (!m_grid.IsInBounds(cell))
-			{
-				throw std::runtime_error("SpatialOccupancyGrid::Get() - invalid cell");
-			}
-
-			const auto& occupants = m_grid.Get(cell);
-
-			for (const auto& occupant : occupants)
-			{
-				func(occupant.object, occupant.data);
-			}
-		}
-
-		// ------------------------------------------------------------------------
-		// Validation
-		// ------------------------------------------------------------------------
-		void Validate() const
-		{
-			// OBJECT -> GRID
-			for (const auto& [object, cells] : m_objects)
-			{
-				if (!object)
-				{
-					throw std::runtime_error(
-						"Validate() - null object");
-				}
-
-				for (const auto& cell : cells)
-				{
-					if (!m_grid.IsInBounds(cell))
-					{
-						throw std::runtime_error(
-							"Validate() - object has invalid cell");
-					}
-
-					const auto& bucket = m_grid.Get(cell);
-
-					auto it = std::find_if(
-						bucket.begin(),
-						bucket.end(),
-						[&](const Occupant<T, DATA>& occupant)
-						{
-							return occupant.object == object;
-						});
-
-					if (it == bucket.end())
-					{
-						throw std::runtime_error(
-							"Validate() - object missing from tile");
-					}
-				}
-			}
-
-			// GRID -> OBJECT
-			m_grid.ForEach(
-				[&](
-					size_t row,
-					size_t col,
-					const std::vector<Occupant<T, DATA>>& bucket)
-				{
-					Coord cell
-					{
-						(int)row,
-						(int)col
-					};
-
-					for (const auto& occupant : bucket)
-					{
-						if (!occupant.object)
-						{
-							throw std::runtime_error(
-								"Validate() - null occupant");
-						}
-
-						if (!m_objects.Has(occupant.object))
-						{
-							throw std::runtime_error(
-								"Validate() - occupant missing from object map");
-						}
-
-						const auto& cells =
-							m_objects.Get(occupant.object);
-
-						auto it = std::find(
-							cells.begin(),
-							cells.end(),
-							cell);
-
-						if (it == cells.end())
-						{
-							throw std::runtime_error(
-								"Validate() - tile missing from object mapping");
-						}
-					}
-				});
-		}
-	};
-
-#pragma endregion
-
-#pragma region // MultiOccupancyGrid [GRAVEYARD] used for Bounding Box Grid. but later used a more common class system. just keeping in case i need something like this in future
-	// design considerations:
-	// - cells to be occupied are filtered to be unique so duplicates are normalized
-	// - 
-	template<typename T>
-	class MultiOccupancyGrid
-	{
-	private:
-		Dictionary<T*, std::vector<Coord>> m_objects;
-		Grid<std::vector<T*>> m_grid;
-
-	public:
-		MultiOccupancyGrid() = default;
-		~MultiOccupancyGrid() = default;
-
-		void Initialize(size_t width, size_t height)
-		{
-			m_grid.Initialize(width, height, std::vector<T*>());
-			m_objects.Clear();
-		}
-
-		void Initialize(Size<size_t> size)
-		{
-			Initialize(size.width, size.height);
-		}
-
-		Size<size_t> GetSize() const
-		{
-			return m_grid.GetSize();
-		}
-
-		size_t GetObjectCount() const
-		{
-			return m_objects.Size();
-		}
-
-		// design consideration:
-		// - validate cells first. make sure is in bounds and has no duplicates. bail out if no valid cells
-		// - if object to occupy already exist in this grid, vacate it first. this ensures occupants are unique. 
-		// - this is like "moving" the object from old to new location
-		// - update each cell to contain this object
-		bool Add(T* object, const std::vector<Coord>& cells)
-		{
-			// -------------------------------------------------------------------------------
-			// 1. VALIDATE CELLS. MAKE SURE WE HAVE VALID CELL TO OCCUPY BEFORE MUTATING
-			// -------------------------------------------------------------------------------
-			// validate cells first. if all cells are invalid, we won't add this object to the grid and we won't store it in m_objects since it is not really occupying any cell in the grid.
-			std::vector<Coord> validCells;
-			std::unordered_set<Coord> uniqueCells;
-			for (const auto& cell : cells)
-			{
-				// we can have invalid cells in the list of cells to occupy. we will just skip those invalid cells and only occupy valid cells.
-				// in case selected area in grid is occupied by object is partially out of bounds, we will just occupy the valid portion 
-				// of the area and ignore the out of bounds portion.
-				if (!m_grid.IsInBounds(cell)) continue;
-
-				// remember valid cells 
-				// note that we're also storing the cell in a set to ensure we avoid having duplicate cells in our valid cells.
-				// this is to handle scenario where cells contain duplicate coords e.g.  (1,1), (1,1), (2,2), (2,2)
-				if (uniqueCells.insert(cell).second)
-				{
-					validCells.push_back(cell);
-				}
-			}			 
-
-			// if no valid cells, object cannot be added. bail out
-			if (validCells.empty()) return false;
-
-			// -------------------------------------------------------------------------------
-			// 2. REMOVE THIS OBJECT IF ALREADY EXIST TO ENSURE OCCUPANTS ARE UNIQUE
-			// -------------------------------------------------------------------------------			
-			// let's enforce design rule where objects are unique in this grid. if we are adding an object that already exists, 
-			// we will treat this as updating the cells occupied by this object. so we will remove previous footprint of this object 
-			// and add new footprint of this object.
-			if (m_objects.Has(object))
-			{
-				Vacate(object);
-			}
-
-			// -------------------------------------------------------------------------------
-			// 3. OBJECT TO OCCUPY VALID CELLS IN GRID
-			// -------------------------------------------------------------------------------		
-			// write into grid. since cells are valid, it guarantees the new object will occupy these cells
-			for (const auto& cell : validCells)
-			{
-				// since this is Add() method, we allow multiple objects to occupy the same cell. 
-				// but we don't want to have duplicate entry of the same object in the same cell, so we check if this object already exist 
-				// in the cell before we add it. if it already exists, we throw error because this is likely a bug from caller side. 
-				auto& bucket = m_grid.Get(cell);
-				if (std::find(bucket.begin(), bucket.end(), object) != bucket.end())
-				{
-					throw std::runtime_error("Add(T*, const std::vector<Coord>&) - duplicate object in cell");
-				}
-				bucket.push_back(object);
-			}
-
-			// object occupies these cells. no need to check if valid cells are empty since we already check in the beginning
-			return m_objects.Set(object, validCells);
-		}
-
-		//design consideration:
-		//difference from Add() - this removes existing objects that overlaps this new object
-		//- validate cells first. make sure is in bounds and has no duplicates. bail out if no valid cells. 
-		//- identify existing objects that overlaps this new object
-		//
-		//- if object to occupy already exist in this grid, vacate it first. this ensures occupants are unique. 
-		//- this is like "moving" the object from old to new location
-		//- update each cell to contain this object
-		bool Occupy(T* object, const std::vector<Coord>& cells)
-		{
-			// -------------------------------------------------------------------------------
-			// 1. VALIDATE CELLS. IDENTIFY EXISTING OBJECTS THAT OVERLAPS. 
-			// -------------------------------------------------------------------------------
-			// let's validate first before mutating our containers
-			std::vector<Coord> validCells;
-			std::unordered_set<T*> toEvict;
-			std::unordered_set<Coord> uniqueCells;
-			for (const auto& cell : cells)
-			{
-				// we can have invalid cells in the list of cells to occupy. we will just skip those invalid cells and only occupy valid cells.
-				// in case selected area in grid is occupied by object is partially out of bounds, we will just occupy the valid portion 
-				// of the area and ignore the out of bounds portion.
-				if (!m_grid.IsInBounds(cell)) continue;
-
-				// is there existing object in this cell? if yes, we queue it for eviction. even if the object found is same as object that is 
-				// trying to occupy, we queue it. this is like "moving" the object from old location to new location. 
-				// so we are vacating the object from old position, then later we will add it back into new location
-				for (T* existing : m_grid.Get(cell))
-				{
-					toEvict.insert(existing);
-				}
-
-				// remember valid cells 
-				// note that we're also storing the cell in a set to ensure we avoid having duplicate cells in our valid cells.
-				// this is to handle scenario where cells contain duplicate coords e.g.  (1,1), (1,1), (2,2), (2,2)
-				if (uniqueCells.insert(cell).second)
-				{
-					validCells.push_back(cell);
-				}
-			}
-
-			// if there are no valid cells to occupy, then this object cannot occupy. bail out
-			if (validCells.empty()) return false;
-
-			// -------------------------------------------------------------------------------
-			// 2. REMOVE EXISTING OBJECTS THAT OVERLAPS NEW OBJECT. 
-			// -------------------------------------------------------------------------------
-			// evict objects (except the one that is occupying) found in cells we 're trying to occupy. 
-			// we choose to vacate rather than throw error because if there is really discrepancy between m_objects and m_grid, 
-			// Vacate() will likely throw error anyways
-			for (T* obj : toEvict)
-			{
-				Vacate(obj);
-			}
-
-			// -------------------------------------------------------------------------------
-			// 3. REMOVE THIS OBJECT IF ALREADY EXIST TO ENSURE OCCUPANTS ARE UNIQUE
-			// -------------------------------------------------------------------------------
-			// let's enforce design rule where objects are unique in this grid. if we are adding an object that already exists, 
-			// we will treat this as updating the cells occupied by this object. so we will remove previous footprint of this object 
-			// and add new footprint of this object.
-			// note that if this object's current location is overlapped by the new location it is trying to occupy, then it is already 
-			// vacated since it will be in toEvict list. but in case it is not, we vacate it here.
-			// regardless, we are doing it safely by checking first if it exist before vacating. 
-			if (m_objects.Has(object))
-			{
-				Vacate(object);
-			}
-
-			// -------------------------------------------------------------------------------
-			// 4. OBJECT TO OCCUPY VALID CELLS IN GRID
-			// -------------------------------------------------------------------------------	
-			// new object occupies this cell. we also defer this because if we do this first then evict existing objects after, 
-			// we will end up vacating the new object that we just set in the grid since it occupies the same cell as existing objects.
-			for (const auto& cell : validCells)
-			{
-				auto& bucket = m_grid.Get(cell);
-				if (!bucket.empty())
-				{
-					throw std::runtime_error("Occupy(T*, const std::vector<Coord>&) - cell not empty after eviction");
-				}
-
-				bucket.push_back(object);
-			}
-
-			// object occupies these cells. no need to check if valid cells are empty since we already check in the beginning
-			return m_objects.Set(object, validCells);
-		}
-
-		void Vacate(T* object)
-		{
-			// let's be strict here. this method expects the object exist. 
-			if (!m_objects.Has(object))
-			{
-				throw std::runtime_error("SpatialOccupancyGrid::Vacate(T*) - object to remove not found");
-			}
-
-			// get the cells occupied by this object. we know this object exist in m_objects, so it must have a valid set of cells.
-			const auto& cells = m_objects.Get(object);
-
-			// remove this object from all cells it occupies in the grid. since we allow multiple objects to occupy the same cell,
-			// we need to find and remove this object from the list of objects in each cell it occupies.
-			for (const auto& cell : cells)
-			{
-				if (!m_grid.IsInBounds(cell))
-				{
-					throw std::runtime_error("SpatialOccupancyGrid::Vacate(T*) - invalid cell");
-				}
-
-				// get all the objects that occupy this cell
-				auto& bucket = m_grid.Get(cell);
-
-				// shift non-matching elements forward and returns an iterator to the new logical end.
-				auto it = std::remove(bucket.begin(), bucket.end(), object);
-				if (it != bucket.end()) 
-				{
-					// checks how many elements were removed by calculating the distance between the new logical end and the actual end of the bucket.
-					auto removedCount = std::distance(it, bucket.end());
-
-					// since we expect only one instance of this object in the bucket, we can be strict and check if removedCount is exactly 1. 
-					// if not, it means there is a data inconsistency between m_objects and m_grid.
-					if (removedCount != 1)
-					{
-						throw std::runtime_error("SpatialOccupancyGrid::Vacate(T*) - found " + std::to_string(removedCount) + " instances of object. potential data inconsistency between m_objects and m_grid");
-					}
-
-					// found one match
-					bucket.erase(it, bucket.end());
-				}
-				else 
-				{
-					// let's be strict here. if we can't find this object in the cell that it's supposed to occupy,
-					// it means there is a data inconsistency between m_objects and m_grid.
-					throw std::runtime_error("SpatialOccupancyGrid::Vacate(T*) - failed to find object in the cell it occupies. potential data inconsistency between m_objects and m_grid");
-				}
-			}
-
-			// be strict here. we already vacated cells for this object in grid, if we fail to unregister this object from m_objects, 
-			// it means there is a data inconsistency between m_objects and m_grid.
-			if (!m_objects.Unregister(object))
-			{
-				throw std::runtime_error("OccupancyGrid::Vacate(T*) - failed to unregister object from m_objects");
-			}
-		}
-
-		bool Has(T* object) const
-		{
-			return m_objects.Has(object);
-		}
-
-		// get objects that occupies these cells
-		std::vector<T*> Get(const std::vector<Coord>& cells) const
-		{
-			std::vector<T*> result;
-
-			for (const auto& cell : cells)
-			{
-				// skip invalid coord
-				if (!m_grid.IsInBounds(cell)) continue;
-
-				// get the bucket of objects in this cell. these are the objects that occupy this cell. 
-				// since we allow multiple objects to occupy the same cell, we need to iterate through this bucket 
-				// and add all unique objects to our result.
-				const auto& bucket = m_grid.Get(cell);
-				for (T* obj : bucket)
-				{
-					if (std::find(result.begin(), result.end(), obj) == result.end())
-					{
-						result.push_back(obj);
-					}
-				}
-			}
-
-			// returns list of unique objects found in cells given
-			return result;
-		}
-
-		// get objects that occupies this cell
-		std::vector<T*> Get(const Coord& cell) const
-		{
-			if (m_grid.IsInBounds(cell))
-			{
-				return m_grid.Get(cell);
-			}
-			return std::vector<T*>();
-		}
-
-		// get cell coords that are occupied by this object
-		std::vector<Coord> GetOccupiedTiles(T* object) const
-		{
-			std::vector<Coord> result;
-
-			if (!m_objects.Has(object))
-			{
-				return result;
-			}
-
-			return m_objects.Get(object);
-		}
-
-		void Validate() const
-		{
-			// 1. OBJECT -> GRID CHECK
-			for (const auto& [obj, cells] : m_objects)
-			{
-				if (!obj)
-				{
-					throw std::runtime_error("Validate: null object in m_objects");
-				}
-
-				for (const auto& cell : cells)
-				{
-					if (!m_grid.IsInBounds(cell))
-					{
-						throw std::runtime_error("Validate: object has out-of-bounds cell");
-					}
-
-					const auto& bucket = m_grid.Get(cell);
-
-					auto it = std::find(bucket.begin(), bucket.end(), obj);
-					if (it == bucket.end())
-					{
-						throw std::runtime_error("Validate: object missing from grid cell it owns");
-					}
-				}
-			}
-
-			// 2. GRID -> OBJECT CHECK
-			m_grid.ForEach([&](size_t row, size_t col, const std::vector<T*>& bucket)
-				{
-					Coord cell{ (int)row, (int)col };
-
-					for (T* obj : bucket)
-					{
-						if (!obj)
-						{
-							throw std::runtime_error("Validate: null object in grid cell");
-						}
-
-						if (!m_objects.Has(obj))
-						{
-							throw std::runtime_error("Validate: grid contains object not in m_objects");
-						}
-
-						const auto& cells = m_objects.Get(obj);
-
-						auto it = std::find(cells.begin(), cells.end(), cell);
-						if (it == cells.end())
-						{
-							throw std::runtime_error("Validate: grid cell not listed in object mapping");
-						}
-					}
-				});
 		}
 	};
 #pragma endregion
@@ -2103,56 +1232,6 @@ namespace TestMapEditor
 
 #pragma endregion
 
-#pragma region // SpriteAtlasLoader - factory only creates the object and creates its UV rects. loader "loads data" e.g. image file into the object
-	class SpriteAtlasLoader
-	{
-	public:
-		static ISpriteAtlas& Load(
-			const std::string& name,
-			const std::wstring& filepath,
-			const size_t row, const size_t col
-		)
-		{
-			auto& registry = Registry<ISpriteAtlas>::Instance();
-
-			// if we don't have sprite atlas with this key in our registry, create one
-			if (!registry.Has(name))
-			{
-				// using factory, create sprite atlas
-				std::unique_ptr<ISpriteAtlas> atlas = SpriteAtlasFactory::Create(filepath, row, col);
-
-				// register into cache
-				registry.Register(name, std::move(atlas));
-			}
-
-			// return its reference
-			return registry.Get(name);
-		}
-
-		static ISpriteAtlas& Load(
-			const std::string& name,
-			const std::wstring& filepath,
-			const std::vector<engine::math::geometry::RectF>& uvs
-		)
-		{
-			auto& registry = Registry<ISpriteAtlas>::Instance();
-
-			// if we don't have sprite atlas with this key in our registry, create one
-			if (!registry.Has(name))
-			{
-				// using factory, create sprite atlas
-				std::unique_ptr<ISpriteAtlas> atlas = SpriteAtlasFactory::Create(filepath, uvs);
-
-				// register into cache
-				registry.Register(name, std::move(atlas));
-			}
-
-			// return its reference
-			return registry.Get(name);
-		}
-	};
-#pragma endregion
-
 #pragma region // TilesetLoader. assumes Tileset is of IRenderable type
 	class TilesetLoader
 	{
@@ -2408,223 +1487,25 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // Scene
-	class Scene
-	{
-	public:
-		virtual ~Scene() = default;
-
-		// lifecycle
-		virtual void OnEnter() {}
-		virtual void OnExit() {}
-
-		// main loop
-		virtual void OnUpdate(double delta) {}
-		virtual void OnRender() {}
-
-		// input (event-based)
-		virtual void OnKeyDown(int key) {}
-		virtual void OnKeyUp(int key) {}
-
-		virtual void OnMouseDown(int btn, int x, int y) {}
-		virtual void OnMouseUp(int btn, int x, int y) {}
-		virtual void OnMouseMove(int x, int y) {}
-
-		virtual void OnInputEvent(const InputEvent& inputEvent) {}
-	};
-#pragma endregion
-
-#pragma region // SceneManager
-//#include <memory>
-//#include <unordered_map>
-//#include <string>
-//#include <cassert>
-	class SceneManager
-	{
-	private:
-		Dictionary<std::string, std::unique_ptr<Scene>> m_scenes;
-		Scene* m_activeScene = nullptr;
-
-	public:
-		// Create and register scene
-		template<typename T, typename... Args>
-		void CreateScene(const std::string& name, Args&&... args)
-		{
-			static_assert(std::is_base_of<Scene, T>::value, "T must derive from Scene");
-
-			m_scenes[name] = std::make_unique<T>(std::forward<Args>(args)...);
-		}
-
-		// Switch active scene
-		void SetActive(const std::string& name)
-		{
-			if (!m_scenes.Has(name))
-			{
-				return;
-			}
-
-			if (m_activeScene)
-			{
-				m_activeScene->OnExit();
-			}
-
-			m_activeScene = m_scenes[name].get();
-
-			if (m_activeScene)
-			{
-				m_activeScene->OnEnter();
-			}
-		}
-
-		Scene* GetActive()
-		{
-			return m_activeScene;
-		}
-
-		// Main loop forwarding
-		void OnUpdate(double delta)
-		{
-			if (m_activeScene) 
-			{
-				m_activeScene->OnUpdate(delta);
-			}
-		}
-
-		void OnRender()
-		{
-			if (m_activeScene)
-			{
-				m_activeScene->OnRender();
-			}
-		}
-
-		// Input forwarding
-		void OnKeyDown(int key)
-		{
-			if (m_activeScene)
-			{
-				m_activeScene->OnKeyDown(key);
-			}
-		}
-
-		void OnKeyUp(int key)
-		{
-			if (m_activeScene)
-			{
-				m_activeScene->OnKeyUp(key);
-			}
-		}
-
-		void OnMouseDown(int btn, int x, int y)
-		{
-			if (m_activeScene)
-			{
-				m_activeScene->OnMouseDown(btn, x, y);
-			}
-		}
-
-		void OnMouseUp(int btn, int x, int y)
-		{
-			if (m_activeScene)
-			{
-				m_activeScene->OnMouseUp(btn, x, y);
-			}
-		}
-
-		void OnMouseMove(int x, int y)
-		{
-			if (m_activeScene)
-			{
-				m_activeScene->OnMouseMove(x, y);
-			}
-		}
-
-		void OnInputEvent(const InputEvent& inputEvent)
-		{
-			if (m_activeScene)
-			{
-				m_activeScene->OnInputEvent(inputEvent);
-			}
-		}
-	};
-#pragma endregion
-
 #pragma region // helper methods
 
-	//inline static std::vector<Coord> GetOverlappedTiles(
-	//	const RectF& aabb,
-	//	const SizeF& tilesize,
-	//	const Size<size_t> mapsize)
+	//// TODO: put on navigation namespace along with NavigationGrid and TileConstraint but as a static helper
+	//inline static TileConstraint SubCellToConstraint(int r, int c)
 	//{
-	//	// get top-left and bottom-right coords
-	//	Coord p0 = PositionToCoord(aabb.GetTopLeft(), tilesize);
-	//	Coord p1 = PositionToCoord(aabb.GetBottomRight(), tilesize);
-
-	//	// do this in case aabb is flipped, meaning top-left is the bottom-right and vice versa
-	//	Coord topLeft =
+	//	static const TileConstraint table[9] =
 	//	{
-	//		std::min<int>(p0.row, p1.row),
-	//		std::min<int>(p0.col, p1.col)
+	//		TileConstraint::NW, TileConstraint::N,  TileConstraint::NE,
+	//		TileConstraint::W,  TileConstraint::CENTER, TileConstraint::E,
+	//		TileConstraint::SW, TileConstraint::S,  TileConstraint::SE
 	//	};
 
-	//	Coord bottomRight =
+	//	if (r < 0 || r >= 3 || c < 0 || c >= 3)
 	//	{
-	//		std::max<int>(p0.row, p1.row),
-	//		std::max<int>(p0.col, p1.col)
-	//	};
-
-	//	// clamp top-left to be 0,0 or greater only
-	//	int startRow = std::max<int>(0, topLeft.row);
-	//	int startCol = std::max<int>(0, topLeft.col);
-
-	//	// clamp bottom-right to be max,max or less only
-	//	int endRow = std::min<int>((int)mapsize.height - 1, bottomRight.row);
-	//	int endCol = std::min<int>((int)mapsize.width - 1, bottomRight.col);
-
-	//	// start and end row and column are now guaranteed to be valid coords. no need to check for bounds
-
-	//	std::vector<Coord> result;
-	//	for (int row = startRow; row <= endRow; ++row)
-	//	{
-	//		for (int col = startCol; col <= endCol; ++col)
-	//		{
-	//			result.push_back({ row, col });
-	//		}
+	//		return TileConstraint::NONE;
 	//	}
 
-	//	return result;
+	//	return table[r * 3 + c];
 	//}
-
-
-	inline static PositionF ScreenToWorld(const PositionF& screen, const PositionF& position) 
-	{
-		return screen - position;
-	}
-
-	inline static Coord ScreenToTileCoord(const PositionF& screen, const PositionF& position, const SizeF& tileSize)
-	{
-		PositionF worldPos = ScreenToWorld(screen, position);
-		return PositionToCoord(worldPos, tileSize);
-	}
-
-
-	// TODO: put on navigation namespace along with NavigationGrid and TileConstraint but as a static helper
-	inline static TileConstraint SubCellToConstraint(int r, int c)
-	{
-		static const TileConstraint table[9] =
-		{
-			TileConstraint::NW, TileConstraint::N,  TileConstraint::NE,
-			TileConstraint::W,  TileConstraint::CENTER, TileConstraint::E,
-			TileConstraint::SW, TileConstraint::S,  TileConstraint::SE
-		};
-
-		if (r < 0 || r >= 3 || c < 0 || c >= 3)
-		{
-			return TileConstraint::NONE;
-		}
-
-		return table[r * 3 + c];
-	}
 #pragma endregion
 
 #pragma region // Prop
@@ -2938,61 +1819,28 @@ namespace TestMapEditor
 
 #pragma endregion
 
-#pragma region // PropMap1
-	class PropMap1
+#pragma region // NavigationSystem
+	class NavigationSystem
+	{
+
+	};
+#pragma endregion
+
+#pragma region // PropMap
+	class PropMap
 	{
 	private:
-		class FootprintGridView
-		{
-		private:
-			View<OccupancyGrid<Prop>> m_view;
-
-		public:
-			FootprintGridView(OccupancyGrid<Prop>& grid) :
-				m_view(&grid) 
-			{
-			}
-
-			std::vector<Prop*> Get(const std::vector<Coord>& cells) const
-			{
-				return m_view->Get(cells);
-			}
-
-			void Validate() const
-			{
-				m_view->Validate();
-			}
-		};
-
-	private:
-		// top-left position of the world in screen space. this is basically the camera position.
-		PositionF m_position;
-
-		// size of the world in tiles
-		Size<size_t> m_size;
-
-		// size of each tile in pixels. 
-		SizeF m_tileSize;
-
 		struct Dummy {};
 
-	public:
 		BucketGrid<Prop> m_objectLayer;
 		NavigationGrid m_navGrid;
 		SpatialOccupancyGrid<Prop, TileConstraint> m_FootPrintGrid;
 		SpatialOccupancyGrid<Prop, Dummy> m_BoundingBoxGrid;
 
 	public:
-		View<NavigationGrid> NavigationLayer;
-
-	public:
 		engine::event::Event<const PositionF&, const Size<size_t>&, const SizeF&> InitializeEvent;
 
-		PropMap1() :
-			m_position(0, 0),
-			m_size(0, 0),
-			m_tileSize(0, 0),
-			NavigationLayer(&m_navGrid)
+		PropMap()
 		{
 		}
 
@@ -3008,61 +1856,24 @@ namespace TestMapEditor
 			return debugInfo;
 		}
 
-		PositionF GetPosition() const
-		{
-			return m_position;
-		}
 
 		bool Initialize(const PositionF& position, const Size<size_t>& size, const SizeF& tilesize)
 		{
-			m_position = position;
-			m_size = size;
-			m_tileSize = tilesize;
-
 			// initialize bucket grid
-			m_objectLayer.Initialize(m_size);
+			m_objectLayer.Initialize(size);
 
 			// initialize navigation grid. fill it with none meaning all tiles are walkable (no constraints)
-			m_navGrid.Initialize(m_size, TileConstraint::NONE);
+			m_navGrid.Initialize(size, TileConstraint::NONE);
 
 			// initialize footprint grid. 
-			m_FootPrintGrid.Initialize(m_size.width, m_size.height);
+			m_FootPrintGrid.Initialize(size.width, size.height);
 
 			// initialize bounding box grid
-			m_BoundingBoxGrid.Initialize(m_size.width, m_size.height);
+			m_BoundingBoxGrid.Initialize(size.width, size.height);
 
-			InitializeEvent(m_position, m_size, m_tileSize);
+			InitializeEvent(position, size, tilesize);
 
 			return true;
-		}
-
-		Size<size_t> GetSize() const
-		{
-			return m_size;
-		}
-
-		SizeF GetTileSize() const
-		{
-			return m_tileSize;
-		}
-
-		bool IsInBounds(int row, int col) const
-		{
-			return
-				row >= 0 && col >= 0 &&		// make sure rows and columns are not negatives.
-				col < m_size.width &&		// make sure column is within the grid's width
-				row < m_size.height;	// make sure row is within the grid's height
-		}
-
-		bool IsInBounds(const Coord& coord) const
-		{
-			return IsInBounds(coord.row, coord.col);
-		}
-
-		bool IsInBounds(const PositionF& worldPosition) const
-		{
-			Coord coord = PositionToCoord(worldPosition, m_tileSize);
-			return IsInBounds(coord);
 		}
 
 		void Remove(Prop* prop)
@@ -3089,173 +1900,6 @@ namespace TestMapEditor
 			m_objectLayer.Remove(prop);
 		}
 
-		// places a given prop into the map at given position. 
-		// it takes context which contains all necessary information for placing the prop into different systems.
-		// this should be called only by editing tools or placement system.
-		bool Place(std::unique_ptr<Prop> prop, const PositionF& worldPos)
-		{
-			// get tile coord where the position intersects. validate it
-			Coord coord = PositionToCoord(worldPos, m_tileSize);
-			if (!IsInBounds(coord))
-			{
-				return false;
-			}
-
-			// sanity check. we already have this prop. why are we placing again. how is this even possible!
-			if (m_objectLayer.Has(prop.get()))
-			{
-				throw std::exception("why do we already have this object???");
-			}
-
-			// get prop's footprint in world position
-			RectF footprint = prop->GetScaledFootprintWorld(worldPos);
-
-			// get list of subcells this footprint overlaps
-			std::vector<Coord> subcells = QueryCoords(footprint, m_tileSize / 3.0f);
-
-			// iterate through each of these sub cells and get constraints. then build constraints for each cells
-			Dictionary<Coord, TileConstraint> constraints;
-			for (Coord& subcell : subcells)
-			{
-				// calculate the actual tile coord in map
-				Coord tileCoord = { subcell.row / 3, subcell.col / 3 };
-
-				// QueryCoords does not clamp collection of tile coords within grid size, so there might be coords that are invalid. skip it
-				if (!IsInBounds(tileCoord)) continue;
-
-				// calculate the sub tile coord relative to this tile
-				Coord subCoord = { subcell.row % 3, subcell.col % 3 };
-
-				TileConstraint bit = SubCellToConstraint(subCoord.row, subCoord.col);
-
-				if (!constraints.Has(tileCoord))
-				{
-					constraints.Register(tileCoord, TileConstraint::NONE);
-				}
-				constraints[tileCoord] |= bit;
-			}
-
-			// iterate through each cells the prop overlapped. we will check if the props in these cells are overlapped by the new prop
-			std::unordered_set<Prop*> toEvict;
-			for (auto& constraintsPerCell : constraints)
-			{
-				Coord coord = constraintsPerCell.first;
-
-				ForEachFootprint(coord, [constraintsPerCell, &toEvict](Prop* prop, TileConstraint constraint)
-					{
-						// if they overlap, we will remove this prop
-						TileConstraint tc = constraintsPerCell.second & constraint;
-						if (tc != TileConstraint::NONE)
-						{
-							toEvict.insert(prop);
-						}
-					}
-				);
-			}
-
-			// remove props overlapped by new prop
-			for (Prop* prop : toEvict)
-			{
-				Remove(prop);
-			}
-
-			for (auto& constraintsPerCell : constraints)
-			{
-				// place the new prop into navigation grid
-				Coord coord = constraintsPerCell.first;
-				TileConstraint constraint = constraintsPerCell.second;
-				m_navGrid.AddFlag(coord, constraint);
-
-				// place in footprint
-				AddFootprint(prop.get(), coord, constraint);
-			}
-
-			// bounding box
-			RectF boundingBox = prop->GetScaledBoundingBoxWorld(worldPos, true);
-			std::vector<Coord> boundingBoxTiles = QueryCoords(boundingBox, m_tileSize);
-
-			// add the new object into bounding box occupancy grid
-			for (Coord coord : boundingBoxTiles)
-			{
-				// QueryCoords does not clamp collection of tile coords within grid size, so there might be coords that are invalid. skip it
-				if (!IsInBounds(coord)) continue;
-
-				AddBoundingBox(prop.get(), coord);
-			}
-
-			// get the world position of the tile where prop will be store. this will be tile's top-left position in world
-			PositionF coordTopLeftWorldPos = CoordToPosition(coord, m_tileSize);
-
-			// now we translate the world position into position relative to this tile coordinate
-			PositionF propPosInTile = worldPos - coordTopLeftWorldPos;
-
-			// then we set it as position of this prop
-			prop->position = propPosInTile;
-
-			// add the actual object into our object layer
-			AddProp(coord, std::move(prop));
-
-			return true;
-		}
-
-		bool Remove(const PositionF& worldPosition)
-		{
-			// Bounds check (early)
-			if (!IsInBounds(worldPosition))
-			{
-				return false;
-			}
-
-			// is the position within bounds of the world? if not, bail out
-			Coord coord = PositionToCoord(worldPosition, m_tileSize);
-
-			// if there are props, iterate through them and find the ones whose bounding box intersects with the cursor position (in world coordinate). return all intersecting objects. 
-			Prop* topMostProp = nullptr;
-			RectF topMostPropBoundingBox{};
-			m_BoundingBoxGrid.ForEachObject(coord, [this, &topMostProp, &topMostPropBoundingBox, worldPosition](Prop* candidate)
-				{
-					Coord propCoordOwner;
-					if (!TryGetCoord(candidate, propCoordOwner))
-					{
-						// if this prop does not exist in the map, throw. this must be a bug. 
-						// how did we find pointer to this object in bounding box grid? where is the actual object stored?
-						throw std::out_of_range("PropSelectionSystem::SelectAtPoint() - prop does not exist in the map but we have pointer to it. where is it stored?!");
-					}
-
-					// get the object's position. the object's position is relative to the cell in the map it is stored. 
-					PositionF propPosInTileOwner = candidate->GetPosition(true);
-
-					// get the world position of this object by adding the object's position relative to tile with the top-left position of the tile in world coordinate
-					PositionF propPosInWorld = propPosInTileOwner + CoordToPosition(propCoordOwner, m_tileSize);
-
-					// get this bounding box of the object in world coordinates
-					RectF objectBoundingBox = candidate->GetScaledBoundingBoxWorld(propPosInWorld, true);
-
-					// broad phase collision check: check if the mouse cursor (in world coordinate) is intersecting with the bounding box already in world coordinate. 
-					if (!objectBoundingBox.Contains(worldPosition)) return;
-
-					// TODO:implement narrow phase collision check and execute here
-
-					// if so, compare its depth with current candidate for top most and replace candidate if this one is higher (lower on the screen)
-					if (topMostProp == nullptr || objectBoundingBox.bottom >= topMostPropBoundingBox.bottom)
-					{
-						topMostProp = candidate;
-						topMostPropBoundingBox = objectBoundingBox;
-					}
-				}
-			);
-
-			// it is possible that there is no candidate prop that actually was selected. note that candidates are only based on props that belongs to 
-			// the tiles. it does not mean that any of them will intersect with the position. that is why the candidates need to do a broad phase check 
-			// via their bounding box (and later narrow phase check with their collision shape).
-			if (topMostProp == nullptr) return false;
-
-			// Apply removal (delegate to PropMap / WorldState)
-			Remove(topMostProp);
-
-			return true;
-		}
-
 		// try to get tile coordinate of a given prop. if prop is invalid, return false
 		bool TryGetCoord(Prop* prop, spatial::Coord& coord) const
 		{
@@ -3277,16 +1921,12 @@ namespace TestMapEditor
 		template<typename Predicate>
 		void ForEachProp(int row, int col, Predicate func)
 		{
-			if (!IsInBounds(row, col)) return;
-
 			m_objectLayer.ForEach(row, col, func);
 		}
 
 		template<typename Predicate>
 		void ForEachTileConstraint(int row, int col, Predicate func) const
 		{
-			if (!IsInBounds(row, col)) return;
-
 			m_navGrid.ForEach(row, col, func);
 		}
 
@@ -3322,366 +1962,16 @@ namespace TestMapEditor
 
 #pragma endregion
 
-#pragma region // PropMap
-	class PropMap
+#pragma region // TerrainMap
+	class TerrainMap
 	{
 	private:
-		class FootprintGridView
-		{
-		private:
-			View<OccupancyGrid<Prop>> m_view;
-
-		public:
-			FootprintGridView(OccupancyGrid<Prop>& grid) :
-				m_view(&grid)
-			{
-			}
-
-			std::vector<Prop*> Get(const std::vector<Coord>& cells) const
-			{
-				return m_view->Get(cells);
-			}
-
-			void Validate() const
-			{
-				m_view->Validate();
-			}
-		};
-
-		struct Occupant
-		{
-		};
-
-	private:
-		// top-left position of the world in screen space. this is basically the camera position.
-		PositionF m_position;
-
-		// size of the world in tiles
-		Size<size_t> m_size;
-
-		// size of each tile in pixels. 
-		SizeF m_tileSize;
 
 	public:
-		BucketGrid<Prop> m_objectLayer;
-		NavigationGrid m_navGrid;
-		OccupancyGrid<Prop> m_FootPrintGrid;
-		MultiOccupancyGrid<Prop> m_BoundingBoxGrid;
-		SpatialOccupancyGrid<Prop, TileConstraint> m_FootprintLayer;
-
-	public:
-		FootprintGridView FootprintLayer;
-		View<MultiOccupancyGrid<Prop>> BoundingBoxLayer;
-		View<NavigationGrid> NavigationLayer;
-
-	public:
-		engine::event::Event<const PositionF&, const Size<size_t>&, const SizeF&> InitializeEvent;
-
-		PropMap() :
-			m_position(0, 0),
-			m_size(0, 0),
-			m_tileSize(0, 0),
-			FootprintLayer(m_FootPrintGrid),
-			BoundingBoxLayer(&m_BoundingBoxGrid),
-			NavigationLayer(&m_navGrid)
-		{
-		}
-
 		bool Initialize(const PositionF& position, const Size<size_t>& size, const SizeF& tilesize)
 		{
-			m_position = position;
-			m_size = size;
-			m_tileSize = tilesize;
-
-			// initialize bucket grid
-			m_objectLayer.Initialize(m_size);
-
-			// initialize navigation grid. fill it with none meaning all tiles are walkable (no constraints)
-			m_navGrid.Initialize(m_size, TileConstraint::NONE);
-
-			// initialize footprint grid. 
-			m_FootPrintGrid.Initialize(m_size.width * 3, m_size.height * 3);
-
-			// initialize bounding box grid
-			m_BoundingBoxGrid.Initialize(m_size.width, m_size.height);
-
-			InitializeEvent(m_position, m_size, m_tileSize);
-
 			return true;
 		}
-
-		PositionF ScreenToWorldPosition(const PositionF& screenPos) const
-		{
-			return screenPos - m_position;
-		}
-
-		PositionF ScreenToTilePosition(const PositionF& screenPos) const
-		{
-			PositionF mouseWorldPos = screenPos - m_position;
-			Coord coord = PositionToCoord(mouseWorldPos, m_tileSize);
-			PositionF coordTopLeftWorldPos = CoordToPosition(coord, m_tileSize);
-			return mouseWorldPos - coordTopLeftWorldPos;
-		}
-
-		Size<size_t> GetSize() const
-		{
-			return m_size;
-		}
-
-		SizeF GetTileSize() const
-		{
-			return m_tileSize;
-		}
-
-		SizeF GetRefinedTileSize() const
-		{
-			return m_tileSize / 3.0f;
-		}
-
-		Size<size_t> GetRefinedSize() const
-		{
-			return m_FootPrintGrid.GetSize();
-		}
-
-		bool IsInBounds(int row, int col) const
-		{
-			return
-				row >= 0 && col >= 0 &&		// make sure rows and columns are not negatives.
-				col < m_size.width &&		// make sure column is within the grid's width
-				row < m_size.height;	// make sure row is within the grid's height
-		}
-
-		bool IsInBounds(const Coord& coord) const
-		{
-			return IsInBounds(coord.row, coord.col);
-		}
-
-		bool IsInBounds(const PositionF& worldPosition) const
-		{
-			Coord coord = PositionToCoord(worldPosition, m_tileSize);
-			return IsInBounds(coord);
-		}
-
-		//std::vector<Coord> QueryTilesOverlappedByFootprint(const RectF& worldRect) const
-		//{
-		//	// get all the subtiles the footprint overlapped
-		//	return GetOverlappedTiles(worldRect, m_tileSize / 3.0f, m_FootPrintGrid.GetSize());
-		//}
-
-		//std::vector<Coord> QueryTilesOverlappedByBoundingBox(const RectF& worldRect) const
-		//{
-		//	return GetOverlappedTiles(worldRect, m_tileSize, m_BoundingBoxGrid.GetSize());
-		//}
-
-		// removes a given prop from the map. this is basically the reverse of PlaceProp.
-		// it just blindly remove prop from all systems without checking for anything. 
-		// make sure to call this method only when you know exactly which prop you want to remove.
-		// this should be called only by editing tools or placement system
-		void Remove(Prop* prop)
-		{
-			// 2. remove this object from navigation grid
-			std::vector<Coord> subTilesOccupiedByPropToRemove = m_FootPrintGrid.GetOccupiedTiles(prop);
-			for (const Coord& coord : subTilesOccupiedByPropToRemove)
-			{
-				// coord is a subtile coord in world (map). get the parent tile coord
-				Coord tileCoord = { coord.row / 3, coord.col / 3 };
-
-				// calculate the sub tile coord relative to this tile
-				Coord subCoord = { coord.row % 3, coord.col % 3 };
-
-				TileConstraint bit = SubCellToConstraint(subCoord.row, subCoord.col);
-
-				m_navGrid.RemoveFlag(tileCoord, bit);
-			}
-
-			// 3. remove this object from spatial occupancy grid
-			m_FootPrintGrid.Vacate(prop);
-
-			// 4. remove this object from bounding box occupancy grid
-			m_BoundingBoxGrid.Vacate(prop);
-
-			// 1. remove this object from object layer
-			m_objectLayer.Remove(prop);
-
-		}
-
-		// places a given prop into the map at given position. 
-		// it takes context which contains all necessary information for placing the prop into different systems.
-		// this should be called only by editing tools or placement system.
-		bool Place(std::unique_ptr<Prop> object, const PropPlacementContext& ctx)
-		{
-			// set the tile constraints of navigation grid where the new object is going to be placed
-			for (const Coord& subCoordWorld : ctx.footprintTiles)
-			{
-				// calculate the actual tile coord in map
-				Coord tileCoord = { subCoordWorld.row / 3, subCoordWorld.col / 3 };
-
-				// calculate the sub tile coord relative to this tile
-				Coord subCoord = { subCoordWorld.row % 3, subCoordWorld.col % 3 };
-
-				TileConstraint bit = SubCellToConstraint(subCoord.row, subCoord.col);
-
-				// then apply it
-				m_navGrid.AddFlag(tileCoord, bit);
-			}
-
-			// add the new object into footprint grid
-			m_FootPrintGrid.Occupy(object.get(), ctx.footprintTiles);
-
-			// add the new object into bounding box occupancy grid
-			m_BoundingBoxGrid.Add(object.get(), ctx.boundingBoxTiles);
-
-			// add the new object into object layer (bucket grid)
-			Coord coord = PositionToCoord(ctx.worldPosition, m_tileSize);
-			m_objectLayer.Add(coord, std::move(object));
-
-			return true;
-		}
-
-		std::vector<Prop*> QueryBoundingBoxOverlaps(const Coord& coord) const
-		{
-			return m_BoundingBoxGrid.Get(coord);
-		}
-
-		std::vector<Prop*> QueryFootprintOverlaps(const std::vector<Coord>& coord) const
-		{
-			// if there are objects the new footprint overlaps, get their references
-			return m_FootPrintGrid.Get(coord);
-		}
-
-		// try to get tile coordinate of a given prop. if prop is invalid, 
-		bool TryGetCoord(Prop* prop, spatial::Coord& coord) const
-		{
-			return m_objectLayer.TryGetCoord(prop, coord);
-		}
-
-		void Validate() const
-		{
-			m_navGrid.Validate();
-			m_FootPrintGrid.Validate();
-			m_BoundingBoxGrid.Validate();
-		}
-
-		template<typename Predicate>
-		void ForEachProp(int row, int col, Predicate func)
-		{
-			if (!IsInBounds(row, col)) return;
-
-			m_objectLayer.ForEach(row, col, func);
-		}
-
-		template<typename Predicate>
-		void ForEachTileConstraint(int row, int col, Predicate func) const
-		{
-			if (!IsInBounds(row, col)) return;
-
-			m_navGrid.ForEach(row, col, func);
-		}
-
-	};
-
-#pragma endregion
-
-#pragma region // PropSelectionSystem
-	class PropSelectionSystem
-	{
-	public:
-		static std::vector<Prop*> SelectAtPoint(PropMap& map, const PositionF& worldPosition)
-		{
-			// is the position within bounds of the world? if not, bail out
-			Coord coord = PositionToCoord(worldPosition, map.GetTileSize());
-
-			// get props that occupies the tile coord where the point is. bail out when there is no selected props
-			std::vector<Prop*> candidates = map.QueryBoundingBoxOverlaps(coord);
-			if (candidates.empty()) return {};
-
-			// if there are objects, iterate through them and find the ones whose bounding box intersects with the cursor position (in world coordinate). return all intersecting objects. 
-			std::vector<Prop*> selected{};
-			for (Prop* candidate : candidates)
-			{
-				// find the coordinate of the cell that owns this prop 
-				Coord propCoordOwner;
-				if (!map.TryGetCoord(candidate, propCoordOwner))
-				{
-					// if this prop does not exist in the map, throw. this must be a bug. 
-					// how did we find pointer to this object in bounding box grid? where is the actual object stored?
-					throw std::out_of_range("PropSelectionSystem::SelectAtPoint() - prop does not exist in the map but we have pointer to it. where is it stored?!");
-				}
-
-				// get the object's position. the object's position is relative to the cell in the map it is stored. 
-				PositionF propPosInTileOwner = candidate->GetPosition(true);
-
-				// get the world position of this object by adding the object's position relative to tile with the top-left position of the tile in world coordinate
-				PositionF propPosInWorld = propPosInTileOwner + CoordToPosition(propCoordOwner, map.GetTileSize());
-
-				// get this bounding box of the object in world coordinates
-				RectF objectBoundingBox = candidate->GetScaledBoundingBoxWorld(propPosInWorld, true);
-
-				// broad phase collision check: check if the mouse cursor (in world coordinate) is intersecting with the bounding box already in world coordinate. 
-				if (!objectBoundingBox.Contains(worldPosition)) continue;
-
-				// TODO:implement narrow phase collision check and execute here
-
-				selected.push_back(candidate);
-			}
-
-			return selected;
-		}
-
-		static Prop* SelectTopMostAtPoint(PropMap& map, const PositionF& worldPosition)
-		{
-			// is the position within bounds of the world? if not, bail out
-			Coord coord = PositionToCoord(worldPosition, map.GetTileSize());
-
-			// get props that occupies the tile coord where the point is. bail out when there is no selected props
-			std::vector<Prop*> candidates = map.QueryBoundingBoxOverlaps(coord);
-			if (candidates.empty()) return {};
-
-			// if there are objects, iterate through them and find the ones whose bounding box intersects with the cursor position (in world coordinate). return all intersecting objects. 
-			Prop* topMostProp = nullptr;
-			RectF topMostPropBoundingBox{};
-			for (Prop* candidate : candidates)
-			{
-				// find the coordinate of the cell that owns this prop 
-				Coord propCoordOwner;
-				if (!map.TryGetCoord(candidate, propCoordOwner))
-				{
-					// if this prop does not exist in the map, throw. this must be a bug. 
-					// how did we find pointer to this object in bounding box grid? where is the actual object stored?
-					throw std::out_of_range("PropSelectionSystem::SelectAtPoint() - prop does not exist in the map but we have pointer to it. where is it stored?!");
-				}
-
-				// get the object's position. the object's position is relative to the cell in the map it is stored. 
-				PositionF propPosInTileOwner = candidate->GetPosition(true);
-
-				// get the world position of this object by adding the object's position relative to tile with the top-left position of the tile in world coordinate
-				PositionF propPosInWorld = propPosInTileOwner + CoordToPosition(propCoordOwner, map.GetTileSize());
-
-				// get this bounding box of the object in world coordinates
-				RectF objectBoundingBox = candidate->GetScaledBoundingBoxWorld(propPosInWorld, true);
-
-				// broad phase collision check: check if the mouse cursor (in world coordinate) is intersecting with the bounding box already in world coordinate. 
-				if (!objectBoundingBox.Contains(worldPosition)) continue;
-
-				// TODO:implement narrow phase collision check and execute here
-
-				// if so, compare its depth with current candidate for top most and replace candidate if this one is higher (lower on the screen)
-				if (topMostProp == nullptr || objectBoundingBox.bottom >= topMostPropBoundingBox.bottom)
-				{
-					topMostProp = candidate;
-					topMostPropBoundingBox = objectBoundingBox;
-				}
-			}
-
-			return topMostProp;
-		}
-	};
-#pragma endregion
-
-#pragma region // NavigationSystem
-	class NavigationSystem
-	{
-
 	};
 #pragma endregion
 
@@ -3746,7 +2036,7 @@ namespace TestMapEditor
 			return m_size.height;
 		}
 
-		PositionF WorldToTileCoordinate(const PositionF& worldPosition) const
+		PositionF WorldToTileSpace(const PositionF& worldPosition) const
 		{
 			// get the tile coord where the world position intersects
 			Coord coord = PositionToCoord(worldPosition, m_tilesize);
@@ -3763,6 +2053,17 @@ namespace TestMapEditor
 			return PositionToCoord(worldPosition, m_tilesize);
 		}
 
+		// given tile coord and a position local to this tile, translate the local position into world position
+		PositionF TileToWorldPosition(const Coord& coord, const PositionF& localPosition) const
+		{
+			return localPosition + CoordToPosition(coord, m_tilesize);
+		}
+
+		PositionF ScreenToWorld(const PositionF& screen) const
+		{
+			return screen - m_position;
+		}
+
 	};
 #pragma endregion
 
@@ -3770,23 +2071,10 @@ namespace TestMapEditor
 	class WorldMap
 	{
 	private:
-		class PropMapView
-		{
-		private:
-			View<PropMap1> m_view;
 
-		public:
-			PropMapView(PropMap1& map) :
-				m_view(&map)
-			{
-			}
-		};
-
-	private:
-
-		WorldTransform m_worldTransform;
-		
-		PropMap1 m_propMap;
+		WorldTransform m_worldTransform;		
+		PropMap m_propMap;
+		TerrainMap m_terrainMap;
 
 	public:
 		WorldMap()
@@ -3804,7 +2092,9 @@ namespace TestMapEditor
 			m_worldTransform.SetSize(size);
 			m_worldTransform.SetTileSize(tilesize);
 
-			return m_propMap.Initialize(m_worldTransform.GetPosition(), m_worldTransform.GetSize(), m_worldTransform.GetTileSize());
+			if (!m_propMap.Initialize(m_worldTransform.GetPosition(), m_worldTransform.GetSize(), m_worldTransform.GetTileSize())) return false;
+
+			return true;
 		}	
 
 		bool IsInBounds(int row, int col) const
@@ -3848,16 +2138,6 @@ namespace TestMapEditor
 			m_propMap.ForEachTileConstraint(row, col, func);
 		}
 
-		bool Place(std::unique_ptr<Prop> prop, const PositionF& worldPosition)
-		{
-			return m_propMap.Place(std::move(prop), worldPosition);
-		}
-
-		bool Remove(const PositionF& worldPosition)
-		{
-			return m_propMap.Remove(worldPosition);
-		}
-
 		std::string GetDebugInfo() const
 		{
 			return m_propMap.GetDebugInfo();
@@ -3880,22 +2160,37 @@ namespace TestMapEditor
 			m_propMap.ForEachPropInBoundingBox(coord, func);
 		}
 
-		void AddProp(const Coord& coord, std::unique_ptr<Prop> prop)
+		void InsertProp(
+			std::unique_ptr<Prop> prop, 
+			const Coord& coord, 
+			const std::vector<Coord>& boundingBoxCells,
+			const Dictionary<Coord, TileConstraint>& coordToConstraints
+		)
 		{
+			// this prop to occupy respective coord in footprint layer in propmap
+			for (auto& constraintsPerCell : coordToConstraints)
+			{
+				// place the new prop into navigation grid
+				Coord coord = constraintsPerCell.first;
+				TileConstraint constraint = constraintsPerCell.second;
+
+				// place in footprint and update navigation grid with this constraint
+				m_propMap.AddFootprint(prop.get(), coord, constraint);
+			}
+
+			// this prop to occupy respective coord in bounding box layer in propmap
+			for (Coord coord : boundingBoxCells)
+			{
+				if (!IsInBounds(coord)) continue;
+
+				m_propMap.AddBoundingBox(prop.get(), coord);
+			}
+
+			// add the actual prop object into prop map
 			m_propMap.AddProp(coord, std::move(prop));
 		}
 
-		void AddFootprint(Prop* prop, const Coord& coord, TileConstraint constraint)
-		{
-			m_propMap.AddFootprint(prop, coord, constraint);
-		}
-
-		void AddBoundingBox(Prop* prop, const Coord& coord)
-		{
-			m_propMap.AddBoundingBox(prop, coord);
-		}
-
-		void Remove(Prop* prop)
+		void RemoveProp(Prop* prop)
 		{
 			m_propMap.Remove(prop);
 		}
@@ -3906,6 +2201,110 @@ namespace TestMapEditor
 			return m_propMap.TryGetCoord(prop, coord);
 		}
 
+		bool TryGetWorldPosition(Prop* prop, PositionF& position) const
+		{
+			Coord coord;
+			if (!TryGetCoord(prop, coord))
+			{
+				return false;
+			}
+
+			position = m_worldTransform.TileToWorldPosition(coord, prop->GetPosition(true));
+			return true;
+		}
+
+	};
+#pragma endregion
+
+#pragma region // PropSelectionSystem
+	class PropSelectionSystem
+	{
+	public:
+		static std::vector<Prop*> SelectAtPoint(WorldMap& world, const PositionF& worldPosition)
+		{
+			// get the tile coord in map where world position intersect
+			Coord coord = world.GetTransform().WorldToTileCoord(worldPosition);
+
+			// Bounds check (early)
+			if (!world.IsInBounds(worldPosition))
+			{
+				return {};
+			}
+
+			// given the tile coord in worldmap where the specified world position intersects, iterate through the props where their bounding box overlaps this tile coord
+			std::vector<Prop*> selected{};
+			world.ForEachPropInBoundingBox(coord, [&world, &selected, worldPosition](Prop* candidate)
+				{
+					// get the world position of this prop
+					PositionF propPosInWorld; 
+					if(!world.TryGetWorldPosition(candidate, propPosInWorld))
+					{ 
+						// if this prop does not exist in the map, throw. this must be a bug. 
+						// how did we find pointer to this object in bounding box grid? where is the actual object stored?
+						throw std::out_of_range("PropSelectionSystem::SelectAtPoint() - prop does not exist in the map but we have pointer to it. where is it stored?!");
+					}						
+
+					// get this bounding box of this prop in world coordinates
+					RectF objectBoundingBox = candidate->GetScaledBoundingBoxWorld(propPosInWorld, true);
+
+					// broad phase collision check: check if the mouse cursor (in world coordinate) is intersecting with the bounding box already in world coordinate. 
+					if (!objectBoundingBox.Contains(worldPosition)) return;
+
+					// TODO:implement narrow phase collision check and execute here
+
+					selected.push_back(candidate);
+				}
+			);
+
+			return selected;
+		}
+
+		static Prop* SelectTopMostAtPoint(WorldMap& world, const PositionF& worldPosition)
+		{
+			// get the tile coord in map where world position intersect
+			Coord coord = world.GetTransform().WorldToTileCoord(worldPosition);
+
+			// Bounds check (early)
+			if (!world.IsInBounds(worldPosition))
+			{
+				return nullptr;
+			}
+			// if there are props, iterate through them and find the ones whose bounding box intersects with the cursor position (in world coordinate). return all intersecting objects. 
+			Prop* topMostProp = nullptr;
+			RectF topMostPropBoundingBox{};
+			world.ForEachPropInBoundingBox(coord, [&world, &topMostProp, &topMostPropBoundingBox, worldPosition](Prop* candidate)
+				{
+					// get the world position of this prop
+					PositionF propPosInWorld;
+					if (!world.TryGetWorldPosition(candidate, propPosInWorld))
+					{
+						// if this prop does not exist in the map, throw. this must be a bug. 
+						// how did we find pointer to this object in bounding box grid? where is the actual object stored?
+						throw std::out_of_range("PropSelectionSystem::SelectAtPoint() - prop does not exist in the map but we have pointer to it. where is it stored?!");
+					}
+
+					// get this bounding box of the object in world coordinates
+					RectF objectBoundingBox = candidate->GetScaledBoundingBoxWorld(propPosInWorld, true);
+
+					// broad phase collision check: check if the mouse cursor (in world coordinate) is intersecting with the bounding box already in world coordinate. 
+					if (!objectBoundingBox.Contains(worldPosition)) return;
+
+					// TODO:implement narrow phase collision check and execute here
+
+					// if so, compare its depth with current candidate for top most and replace candidate if this one is higher (lower on the screen)
+					if (topMostProp == nullptr || objectBoundingBox.bottom >= topMostPropBoundingBox.bottom)
+					{
+						topMostProp = candidate;
+						topMostPropBoundingBox = objectBoundingBox;
+					}
+				}
+			);
+
+			// it is possible that there is no candidate prop that actually was selected. note that candidates are only based on props that belongs to 
+			// the tiles. it does not mean that any of them will intersect with the position. that is why the candidates need to do a broad phase check 
+			// via their bounding box (and later narrow phase check with their collision shape).
+			return topMostProp;
+		}
 	};
 #pragma endregion
 
@@ -3941,7 +2340,7 @@ namespace TestMapEditor
 				// calculate the sub tile coord relative to this tile
 				Coord subCoord = { subcell.row % 3, subcell.col % 3 };
 
-				TileConstraint bit = SubCellToConstraint(subCoord.row, subCoord.col);
+				TileConstraint bit = engine::navigation::tile::SubCellToConstraint(subCoord.row, subCoord.col);
 
 				if (!constraintsPerCoord.Has(tileCoord))
 				{
@@ -4001,6 +2400,13 @@ namespace TestMapEditor
 					});
 			}
 
+			// get the cells in the map where the bounding box of this prop overlaps
+			RectF boundingBox = prop->GetScaledBoundingBoxWorld(worldPosition, true);
+			std::vector<Coord> boundingBoxTiles = QueryCoords(boundingBox, world.GetTransform().GetTileSize());
+
+			// then we set it as position of this prop
+			prop->position = world.GetTransform().WorldToTileSpace(worldPosition);
+
 			// --------------------------------------------------------------------------------
 			// REMOVE OVERLAPS (RULE)
 			// --------------------------------------------------------------------------------
@@ -4008,49 +2414,15 @@ namespace TestMapEditor
 			// remove props overlapped by new prop
 			for (Prop* prop : toEvict)
 			{
-				world.Remove(prop);
+				world.RemoveProp(prop);
 			}
 
 			// --------------------------------------------------------------------------------
 			// APPLY PLACEMENT
 			// --------------------------------------------------------------------------------
 
-			for (auto& constraintsPerCell : constraintsPerCoord)
-			{
-				// place the new prop into navigation grid
-				Coord coord = constraintsPerCell.first;
-				TileConstraint constraint = constraintsPerCell.second;
-
-				// place in footprint and update navigation grid with this constraint
-				world.AddFootprint(prop.get(), coord, constraint);
-			}
-
-			// bounding box
-			RectF boundingBox = prop->GetScaledBoundingBoxWorld(worldPosition, true);
-			std::vector<Coord> boundingBoxTiles = QueryCoords(boundingBox, world.GetTransform().GetTileSize());
-
-			// add the new object into bounding box occupancy grid
-			for (Coord coord : boundingBoxTiles)
-			{
-				// QueryCoords does not clamp collection of tile coords within grid size, so there might be coords that are invalid. skip it
-				if (!world.IsInBounds(coord)) continue;
-
-				world.AddBoundingBox(prop.get(), coord);
-			}
-
-			Coord coord = PositionToCoord(worldPosition, world.GetTransform().GetTileSize());
-
-			// get the world position of the tile where prop will be store. this will be tile's top-left position in world
-			PositionF coordTopLeftWorldPos = CoordToPosition(coord, world.GetTransform().GetTileSize());
-
-			// now we translate the world position into position relative to this tile coordinate
-			PositionF propPosInTile = worldPosition - coordTopLeftWorldPos;
-
-			// then we set it as position of this prop
-			prop->position = propPosInTile;
-
 			// add the actual object into our object layer
-			world.AddProp(coord, std::move(prop));
+			world.InsertProp(std::move(prop), world.GetTransform().WorldToTileCoord(worldPosition), boundingBoxTiles, constraintsPerCoord);
 
 			return true;
 		}
@@ -4058,57 +2430,10 @@ namespace TestMapEditor
 		static bool Remove(WorldMap& world, const PositionF& worldPosition)
 		{
 			// --------------------------------------------------------------------------------
-			// VALIDATION
+			// VALIDATION AND SELECTION
 			// --------------------------------------------------------------------------------
 			
-			// Bounds check (early)
-			if (!world.IsInBounds(worldPosition))
-			{
-				return false;
-			}
-
-			// --------------------------------------------------------------------------------
-			// COMPUTE DATA. GET TOP MOST PROP THE POSITION INTERSECT
-			// --------------------------------------------------------------------------------
-
-			// get the tile coord in map where world position intersect
-			Coord coord = world.GetTransform().WorldToTileCoord(worldPosition);
-
-			// if there are props, iterate through them and find the ones whose bounding box intersects with the cursor position (in world coordinate). return all intersecting objects. 
-			Prop* topMostProp = nullptr;
-			RectF topMostPropBoundingBox{};
-			world.ForEachPropInBoundingBox(coord, [&world, &topMostProp, &topMostPropBoundingBox, worldPosition](Prop* candidate)
-				{
-					Coord propCoordOwner;
-					if (!world.TryGetCoord(candidate, propCoordOwner))
-					{
-						// if this prop does not exist in the map, throw. this must be a bug. 
-						// how did we find pointer to this object in bounding box grid? where is the actual object stored?
-						throw std::out_of_range("PropSelectionSystem::SelectAtPoint() - prop does not exist in the map but we have pointer to it. where is it stored?!");
-					}
-
-					// get the object's position. the object's position is relative to the cell in the map it is stored. 
-					PositionF propPosInTileOwner = candidate->GetPosition(true);
-
-					// get the world position of this object by adding the object's position relative to tile with the top-left position of the tile in world coordinate
-					PositionF propPosInWorld = propPosInTileOwner + CoordToPosition(propCoordOwner, world.GetTransform().GetTileSize());
-
-					// get this bounding box of the object in world coordinates
-					RectF objectBoundingBox = candidate->GetScaledBoundingBoxWorld(propPosInWorld, true);
-
-					// broad phase collision check: check if the mouse cursor (in world coordinate) is intersecting with the bounding box already in world coordinate. 
-					if (!objectBoundingBox.Contains(worldPosition)) return;
-
-					// TODO:implement narrow phase collision check and execute here
-
-					// if so, compare its depth with current candidate for top most and replace candidate if this one is higher (lower on the screen)
-					if (topMostProp == nullptr || objectBoundingBox.bottom >= topMostPropBoundingBox.bottom)
-					{
-						topMostProp = candidate;
-						topMostPropBoundingBox = objectBoundingBox;
-					}
-				}
-			);
+			Prop* topMostProp = PropSelectionSystem::SelectTopMostAtPoint(world, worldPosition);
 
 			// it is possible that there is no candidate prop that actually was selected. note that candidates are only based on props that belongs to 
 			// the tiles. it does not mean that any of them will intersect with the position. that is why the candidates need to do a broad phase check 
@@ -4120,87 +2445,11 @@ namespace TestMapEditor
 			// --------------------------------------------------------------------------------
 
 			// Apply removal (delegate to PropMap / WorldState)
-			world.Remove(topMostProp);
+			world.RemoveProp(topMostProp);
 
 			return true;
 		}
-
-		void CalculateTileConstraint(const RectF& footprint, const RectF& tile)
-		{
-
-		}
-
-		static bool Place(PropMap& map, std::unique_ptr<Prop> prop, const PositionF& worldPosition)
-		{
-			// 1. build context
-			PropPlacementContext ctx;
-
-			ctx.worldPosition = worldPosition;
-
-			// footprint
-			RectF footprint = prop->GetScaledFootprintWorld(worldPosition);
-			ctx.footprintTiles = GridQuery::QueryCells(footprint, map.GetRefinedTileSize(), map.GetRefinedSize());
-
-			// bounding box
-			RectF boundingBox = prop->GetScaledBoundingBoxWorld(worldPosition, true);
-			ctx.boundingBoxTiles = GridQuery::QueryCells(boundingBox, map.GetTileSize(), map.GetSize());
-
-			// overlaps
-			std::vector<Prop*> overlappedProps = map.FootprintLayer.Get(ctx.footprintTiles); //map.QueryPropsOverlappingTiles(ctx.footprintTiles);
-
-			// get footprint
-			// get tile coords that intersects with footprint
-			// 
-			// for each tile coord...
-			// calculate corresponding tile constraint for each tile coord
-			// 
-			// 
-
-			// 2. validation before we make any changes to the world
-			if (!map.IsInBounds(worldPosition))
-			{
-				return false;
-			}
-
-			// 3. remove overlapped objects. this is a game rule. does this decision belong in this class? decide later
-			// TODO: turn this into a policy
-			for (Prop* p : overlappedProps)
-			{
-				map.Remove(p);
-			}
-
-			// IMPORTANT:
-			// after removal, context remains valid because it was precomputed
-			// (this is why ctx is immutable snapshot)
-
-			// 4. apply placement (delegate to PropMap)
-			map.Place(std::move(prop), ctx);
-
-			return true;
-		}
-
-		static bool Remove(PropMap& propmap, const PositionF& worldPosition)
-		{
-			// Bounds check (early)
-			if (!propmap.IsInBounds(worldPosition))
-			{
-				return false;
-			}
-
-			// query top most prop that intersects with this position. if there is none, bail out.
-			// TODO: this should be a policy. but for now we implement it here for simplicity. just find the top most prop and remove it.
-			Prop* topMostProp = PropSelectionSystem::SelectTopMostAtPoint(propmap, worldPosition);
-			if (!topMostProp)
-			{
-				return false;
-			}
-
-			// 4. Apply removal (delegate to PropMap / WorldState)
-			propmap.Remove(topMostProp);
-
-			return true;
-		}
-
+		
 	};
 #pragma endregion
 
@@ -4281,457 +2530,6 @@ namespace TestMapEditor
 	private:
 		StateMachine m_stateMachine;
 		AssetManager m_assets;
-
-		Floor m_floor;
-
-		TileLayer m_grassTileLayer;
-		TileLayer m_splashTileLayer;
-		TileLayer m_gridTileLayer;
-		TileLayer m_fineGridTileLayer;
-		WorldMap m_worldMap;
-		PropMap m_propMap;
-
-		PropBrushTool m_placementTool;
-		PropPlacementSystem m_propPlacer;
-
-		PositionF m_mousePos;
-
-		bool m_showDebug = true;
-
-
-		PropBrush LargePineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{1.5f, 1.5f}, ColorF{1,1,1,1}, RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-		PropBrush SmallPineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{0.5f, 0.5f}, ColorF{1,1,1,1}, RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-		PropBrush NormalPineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{1.0f, 1.0f}, ColorF{1,1,1,1},RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.2f, 0.2f, 0.8f, 0.92f} };
-		PropBrush LargeBirchTree{ "birchtree_anim_set",	"birch_tree_idle",	VecF{1.5f, 1.5f}, ColorF{1,1,1,1}, RectF{0.47f, 0.8f, 0.53f, 0.85f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-		PropBrush SmallBirchTree{ "birchtree_anim_set",	"birch_tree_idle",	VecF{0.5f, 0.5f}, ColorF{1,1,1,1}, RectF{0.47f, 0.8f, 0.53f, 0.85f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-		PropBrush NormalBirchTree{ "birchtree_anim_set",	"birch_tree_idle",	VecF{1.0f, 1.0f}, ColorF{1,1,1,1}, RectF{0.47f, 0.8f, 0.53f, 0.85f}, RectF{0.27f, 0.12f, 0.73f, 0.87f} };
-		PropBrush LargeWaterRocks{ "water_rocks_anim_set",	"water_rocks_idle",	VecF{2.0f, 2.0f}, ColorF{1,1,1,1}, RectF{0.1f,0.4f,0.9f,0.8f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-
-		PropBrush NormalCastle{ "castle_anim_set", "castle_idle",	VecF{1.0f, 1.0f}, ColorF{1,1,1,1}, RectF{0.05f, 0.6f, 0.95f, 0.90f}, RectF{0.05f, 0.2f, 0.95f, 0.9f} };
-		PropBrush LargeCastle { "castle_anim_set", "castle_idle",	VecF{1.5f, 1.5f}, ColorF{1,1,1,1}, RectF{0.05f, 0.6f, 0.95f, 0.90f}, RectF{0.05f, 0.2f, 0.95f, 0.9f} };
-
-	public:
-		void OnEnter() override
-		{
-			// initialize grass tile layer. fill it with invalid tiles for now so they have empty tiles
-			auto& grassTileset = m_assets.Get<Tileset<IRenderable>>("grass_tileset");
-			auto& mapSize = m_assets.Get<Size<size_t>>("map_size");
-			m_grassTileLayer.tileset = &grassTileset;
-			m_grassTileLayer.tilegrid.Initialize(mapSize, grassTileset.MakeInvalidTile());
-
-			// initialize water splash tile layer. also fill with invalid tiles for now
-			auto& splashTileset = m_assets.Get<Tileset<IRenderable>>("splash_tileset");
-			m_splashTileLayer.tileset = &splashTileset;
-			m_splashTileLayer.tilegrid.Initialize(mapSize, splashTileset.MakeInvalidTile());
-
-			// initialize grid tile layer. fill it with its only tile
-			m_gridTileLayer.tileset = &grassTileset;
-			m_gridTileLayer.tilegrid.Initialize(mapSize, grassTileset.MakeTile(13));
-
-			// initialize fine grid tile layer. fill it with its only tile
-			m_fineGridTileLayer.tileset = &grassTileset;
-			m_fineGridTileLayer.tilegrid.Initialize(mapSize, grassTileset.MakeTile(22));
-
-			// set placement tool default placement
-			m_placementTool.SetBrush(NormalPineTree, m_assets);
-
-			//m_worldMap.Initialize(m_assets.Get<PositionF>("map_position"), m_assets.Get<Size<size_t>>("map_size"), m_assets.Get<SizeF>("tile_size"));
-			m_propMap.Initialize(m_assets.Get<PositionF>("map_position"), m_assets.Get<Size<size_t>>("map_size"), m_assets.Get<SizeF>("tile_size"));
-
-		}
-
-		void OnUpdate(double dt) override
-		{
-			m_stateMachine.OnUpdate(dt);
-
-			// this is for debugging only. validate every frame to ensure our containers are in good state
-			m_worldMap.Validate();
-		}
-
-		void OnKeyDown(int key) override
-		{
-			m_stateMachine.OnKeyDown(key);
-
-			switch (key)
-			{
-			case 27: // ESC
-				break;
-			case 32: // SPACE
-				m_showDebug = !m_showDebug;
-				break;
-			case 49: // 1
-				m_placementTool.SetBrush(NormalPineTree, m_assets);
-				break;
-			case 50: // 2
-				m_placementTool.SetBrush(NormalBirchTree, m_assets);
-				break;
-			case 51: // 3 
-				m_placementTool.SetBrush(SmallPineTree, m_assets);
-				break;
-			case 52: // 4
-				m_placementTool.SetBrush(SmallBirchTree, m_assets);
-				break;
-			case 53: // 5
-				m_placementTool.SetBrush(LargePineTree, m_assets);
-				break;
-			case 54: // 6
-				m_placementTool.SetBrush(LargeBirchTree, m_assets);
-				break;
-			case 55: // 7
-			{
-				m_placementTool.SetBrush(NormalCastle, m_assets);
-				break;
-			}
-			case 56: // 8
-			{
-				m_placementTool.SetBrush(LargeCastle, m_assets);
-				break;
-			}
-			case 57: // 9
-			{
-				m_placementTool.SetBrush(LargeWaterRocks, m_assets);
-				break;
-			}
-
-			default:
-				break;
-			}
-		}
-
-		void OnMouseMove(int x, int y) override 
-		{
-			m_mousePos = PositionF((float)x, (float)y);
-
-			return;
-
-			// is mouse left button is held while moving...
-			if (Input::Instance().IsMouseHeld(1))
-			{
-				// calculate the coord in map the mouse cursor intersect with
-				auto& mapPos = m_assets.Get<PositionF>("map_position");
-				auto& tilesize = m_assets.Get<SizeF>("tile_size");
-				Coord coord = PositionToCoord(m_mousePos - mapPos, tilesize);
-
-				auto& config = m_assets.Get<AutoTileSystem::AutoTileConfig>("grass_tile_auto_config");
-				auto& splashAnimLookup = m_assets.Get<Dictionary<TileVariant, int>>("splash_anim_tile_lookup");
-
-				// place grass tile
-				TileLayerEditor tle;
-				tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
-				tle.Paint(m_grassTileLayer, config, coord);
-			}
-		}
-
-		void OnMouseUp(int btn, int x, int y) override 
-		{
-		}
-
-		void OnMouseDown(int btn, int x, int y) override
-		{
-			m_stateMachine.OnMouseDown(btn, x, y);
-
-			m_mousePos = PositionF((float)x, (float)y);
-
-			// calculate the coord in map the mouse cursor intersect with
-			auto& mapPos = m_assets.Get<PositionF>("map_position");
-			auto& tilesize = m_assets.Get<SizeF>("tile_size");
-
-			PositionF pos = m_mousePos;
-			Coord coord = PositionToCoord(pos - mapPos, tilesize);
-
-			auto& config = m_assets.Get<AutoTileSystem::AutoTileConfig>("grass_tile_auto_config");
-			auto& splashAnimLookup = m_assets.Get<Dictionary<TileVariant, int>>("splash_anim_tile_lookup");
-
-			// left click to place grass tile
-			if (btn == 1)
-			{
-				PositionF worldPos = ScreenToWorld(m_mousePos, m_worldMap.GetTransform().GetPosition());
-				Coord coord = ScreenToTileCoord(m_mousePos, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize());
-				PositionF tilePos = CoordToPosition(coord, m_worldMap.GetTransform().GetTileSize());
-
-				//PropPlacementSystem::Place(m_worldMap, m_placementTool.CreateAnimatedProp(tilePos, m_assets), worldPos);
-
-				PropPlacementSystem::Place(m_propMap, m_placementTool.CreateAnimatedProp(m_assets), m_propMap.ScreenToWorldPosition(m_mousePos));
-
-				return;
-
-				//// place grass tile
-				//TileLayerEditor tle;
-				//tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
-				//tle.Paint(m_grassTileLayer, config, coord);
-			}
-			// right click to remove tile
-			else if (btn == 2)
-			{
-				// immediate goal is to find the top-most object that intersects with the mouse cursor in this cell and remove it.
-				PropPlacementSystem::Remove(m_propMap, m_mousePos - mapPos);
-				//PropPlacementSystem::Remove(m_worldMap, m_mousePos - mapPos);
-
-				return;
-
-				//// remove grass tile
-				//TileLayerEditor tle;
-				//tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
-				//tle.Erase(m_grassTileLayer, config, coord);
-			}
-		}
-
-		void OnRender() override
-		{
-			m_stateMachine.OnRender();
-
-			// draw tiles in order of their depth (Y) so that tiles with higher Y (lower on the screen) are drawn after 
-			// tiles with lower Y (higher on the screen) to create proper overlapping. props will be drawn in between floor 
-			// and edge tiles based on their tile constraint, so we draw all floor and edge tiles first, then props, 
-			// then debug constraint indicators
-			auto& mapLayerRenderer = m_assets.Get<MapLayerRenderer>("renderer");
-
-			// draw water splash tile
-			mapLayerRenderer.Clear();
-			mapLayerRenderer.QueueAllTilesForDraw(m_splashTileLayer.tilegrid, m_splashTileLayer.tilegrid.GetSize(), 1, {3,3});
-			mapLayerRenderer.Sort();
-			mapLayerRenderer.Draw();
-
-			// draw grass tile
-			mapLayerRenderer.Clear();
-			mapLayerRenderer.QueueAllTilesForDraw(m_grassTileLayer.tilegrid, m_grassTileLayer.tilegrid.GetSize(), 1, {1,1});
-			mapLayerRenderer.Sort();
-			mapLayerRenderer.Draw();
-
-			DrawSortedSpritesCommand& drawCommand = m_assets.Get<DrawSortedSpritesCommand>("drawCommand");
-			drawCommand.Clear();
-			auto& tilesize = m_assets.Get<SizeF>("tile_size");
-			auto& mapPos = m_assets.Get<PositionF>("map_position");
-			//for (int row = 0; row < (int)m_worldMap.GetSize().height; row++)
-			//{
-			//	for (int col = 0; col < (int)m_worldMap.GetSize().width; col++)
-			//	{
-			//		Coord coord(row, col);
-			//		PositionF tileScreenPos = CoordToPosition(coord, tilesize) + mapPos;
-
-			//		m_worldMap.ForEachProp(row, col, [&drawCommand, &tileScreenPos](Prop* prop)
-			//			{
-			//				prop->QueueForDraw(drawCommand, tileScreenPos, 1);
-			//			});
-			//	}
-			//}
-
-			for (int row = 0; row < (int)m_propMap.m_objectLayer.GetHeight(); row++)
-			{
-				for (int col = 0; col < (int)m_propMap.m_objectLayer.GetWidth(); col++)
-				{
-					Coord coord(row, col);
-					PositionF tileScreenPos = CoordToPosition(coord, tilesize) + mapPos;
-
-					m_propMap.ForEachProp(row, col, [&drawCommand, &tileScreenPos](Prop* prop)
-						{
-							prop->QueueForDraw(drawCommand, tileScreenPos, 1);
-						});
-				}
-			}
-
-
-			m_placementTool.QueuePreviewForDraw(drawCommand, m_mousePos, 1);
-			drawCommand.Sort();
-			drawCommand.Execute();
-
-			if (m_showDebug)
-			{
-				RectF fp = m_placementTool.GetPreviewFootprintAt(m_mousePos);
-				IRenderer& renderer = m_assets.Get<IRenderer>("renderer");
-				DrawQuadCommand cmd(renderer, fp.GetTopLeft(), fp.GetSize(), { 1,1,1,0.5f }, 0.0f);
-				cmd.Execute();
-
-				RectF hb = m_placementTool.GetPreviewBoundingBoxAt(m_mousePos);
-				DrawQuadCommand cmdBoundingBox(renderer, hb.GetTopLeft(), hb.GetSize(), { 1,0,1,0.5f }, 0.0f);
-				cmdBoundingBox.Execute();
-
-				// draw grid tile
-				mapLayerRenderer.Clear();
-				ColorF color = mapLayerRenderer.GetColor();
-				mapLayerRenderer.SetColor({ 0,0,0,0.2f });
-				mapLayerRenderer.QueueAllTilesForDraw(m_gridTileLayer.tilegrid, m_gridTileLayer.tilegrid.GetSize(), 1, { 1,1 });
-				mapLayerRenderer.Sort();
-				mapLayerRenderer.Draw();
-				mapLayerRenderer.SetColor(color);
-
-				//// draw fine grid tile
-				//mapLayerRenderer.Clear();
-				//ColorF color = mapLayerRenderer.GetColor();
-				//mapLayerRenderer.SetColor({ 0,0,0,0.2f });
-				//mapLayerRenderer.QueueAllTilesForDraw(m_fineGridTileLayer.tilegrid, m_fineGridTileLayer.tilegrid.GetSize(), 1, { 1,1 });
-				//mapLayerRenderer.Sort();
-				//mapLayerRenderer.Draw();
-				//mapLayerRenderer.SetColor(color);
-
-				//DrawNavigationGridOverlay(renderer, m_worldMap);
-				DrawNavigationGridOverlay(renderer, m_propMap.m_navGrid, mapPos, m_propMap.GetTileSize());
-			}
-
-		}
-
-		void DrawNavigationGridOverlay(
-			IRenderer& renderer,
-			const WorldMap& map
-		)
-		{
-			struct SubCellOffset
-			{
-				int row;
-				int col;
-				TileConstraint bit;
-			};
-
-			static const SubCellOffset offsets[9] =
-			{
-				{ 0, 0, TileConstraint::NW },
-				{ 0, 1, TileConstraint::N  },
-				{ 0, 2, TileConstraint::NE },
-
-				{ 1, 0, TileConstraint::W  },
-				{ 1, 1, TileConstraint::CENTER },
-				{ 1, 2, TileConstraint::E  },
-
-				{ 2, 0, TileConstraint::SW },
-				{ 2, 1, TileConstraint::S  },
-				{ 2, 2, TileConstraint::SE }
-			};
-		
-			SizeF subTileSize(map.GetTransform().GetTileSize().width / 3.0f, map.GetTransform().GetTileSize().height / 3.0f);
-
-			// visual tweak (same as yours)
-			VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
-			SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
-
-			for (int row = 0; row < (int)map.GetTransform().GetSize().height; ++row)
-			{
-				for (int col = 0; col < (int)map.GetTransform().GetSize().width; ++col)
-				{
-					map.ForEachTileConstraint(row, col, [row, col, &map, subTileSize, shift, overlaySize, &renderer](TileConstraint constraint)
-						{ 
-							// skip empty tiles early (fast path)
-							if (constraint == TileConstraint::NONE) return;
-
-							// top-left of this tile in world space
-							PositionF tileWorldPos = CoordToPosition({ row, col }, map.GetTransform().GetTileSize()) + map.GetTransform().GetPosition();
-
-							// iterate 3x3 subcells
-							for (const auto& offset : offsets)
-							{
-								// for this subcell, check if its corresponding constraint bit is set. if not, skip						
-								if (!HasFlag(constraint, offset.bit))
-								{
-									continue;
-								}
-
-								// compute subcell position
-								PositionF subCellPos = tileWorldPos;
-								subCellPos.x += offset.col * subTileSize.width;
-								subCellPos.y += offset.row * subTileSize.height;
-
-								// apply shift. we're rendering a rectangle smaller than the actual size of the subcell so we shift it a bit to center it
-								subCellPos += shift;
-
-								// draw
-								renderer.Draw(
-									subCellPos,
-									overlaySize,
-									{ 0, 0, 0, 0.5f },
-									0.0f
-								);
-							}
-						}
-					);
-				}
-			}
-		}
-
-		void DrawNavigationGridOverlay(
-			IRenderer& renderer,
-			const NavigationGrid& navGrid,
-			const PositionF& mapPos,
-			const SizeF& tileSize)
-		{
-			struct SubCellOffset
-			{
-				int row;
-				int col;
-				TileConstraint bit;
-			};
-
-			static const SubCellOffset offsets[9] =
-			{
-				{ 0, 0, TileConstraint::NW },
-				{ 0, 1, TileConstraint::N  },
-				{ 0, 2, TileConstraint::NE },
-
-				{ 1, 0, TileConstraint::W  },
-				{ 1, 1, TileConstraint::CENTER },
-				{ 1, 2, TileConstraint::E  },
-
-				{ 2, 0, TileConstraint::SW },
-				{ 2, 1, TileConstraint::S  },
-				{ 2, 2, TileConstraint::SE }
-			};
-
-			SizeF subTileSize(tileSize.width / 3.0f, tileSize.height / 3.0f);
-
-			// visual tweak (same as yours)
-			VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
-			SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
-
-			for (int row = 0; row < (int)navGrid.GetHeight(); ++row)
-			{
-				for (int col = 0; col < (int)navGrid.GetWidth(); ++col)
-				{
-					TileConstraint constraint = navGrid.Get(row, col);
-
-					// skip empty tiles early (fast path)
-					if (constraint == TileConstraint::NONE)
-					{
-						continue;
-					}
-
-					// top-left of this tile in world space
-					PositionF tileWorldPos = CoordToPosition({ row, col }, tileSize) + mapPos;
-
-					// iterate 3x3 subcells
-					for (const auto& offset : offsets)
-					{
-						// for this subcell, check if its corresponding constraint bit is set. if not, skip						
-						if (!HasFlag(constraint, offset.bit))
-						{
-							continue;
-						}
-
-						// compute subcell position
-						PositionF subCellPos = tileWorldPos;
-						subCellPos.x += offset.col * subTileSize.width;
-						subCellPos.y += offset.row * subTileSize.height;
-
-						// apply shift. we're rendering a rectangle smaller than the actual size of the subcell so we shift it a bit to center it
-						subCellPos += shift;
-
-						// draw
-						renderer.Draw(
-							subCellPos,
-							overlaySize,
-							{ 0, 0, 0, 0.5f },
-							0.0f
-						);
-					}
-				}
-			}
-		}
-	};
-#pragma endregion
-	
-#pragma region // another editor scene
-	class AnotherEditorScene : public Scene
-	{
-	private:
-		StateMachine m_stateMachine;
-		AssetManager m_assets;
 		TileLayer m_gridTileLayer;
 		TileLayer m_fineGridTileLayer;
 		WorldMap m_worldMap;
@@ -4742,7 +2540,6 @@ namespace TestMapEditor
 		PositionF m_mousePos;
 
 		bool m_showDebug = true;
-
 
 		PropBrush LargePineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{1.5f, 1.5f}, ColorF{1,1,1,1}, RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
 		PropBrush SmallPineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{0.5f, 0.5f}, ColorF{1,1,1,1}, RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
@@ -4875,9 +2672,7 @@ namespace TestMapEditor
 			// left click to place grass tile
 			if (btn == 1)
 			{
-				PositionF worldPos = ScreenToWorld(m_mousePos, m_worldMap.GetTransform().GetPosition());
-				//m_worldMap.Place(m_placementTool.CreateAnimatedProp(m_assets), worldPos);
-				PropPlacementSystem::Place(m_worldMap, m_placementTool.CreateAnimatedProp(m_assets), worldPos);
+				PropPlacementSystem::Place(m_worldMap, m_placementTool.CreateAnimatedProp(m_assets), m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
 
 				return;
 			}
@@ -4885,9 +2680,7 @@ namespace TestMapEditor
 			else if (btn == 2)
 			{
 				// immediate goal is to find the top-most object that intersects with the mouse cursor in this cell and remove it.
-				PositionF worldPos = ScreenToWorld(m_mousePos, m_worldMap.GetTransform().GetPosition());
-				//m_worldMap.Remove(worldPos);
-				PropPlacementSystem::Remove(m_worldMap, worldPos);
+				PropPlacementSystem::Remove(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
 
 				return;
 			}
@@ -5123,6 +2916,42 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
+#pragma region // TerrainEditScene scene
+class TerrainEditScene : public Scene
+{
+	AssetManager m_assets;
+
+	PositionF m_mousePos;
+	WorldMap m_worldMap;
+
+public:
+	void OnEnter() override
+	{
+		AssetManager assets;
+
+		m_worldMap.Initialize(assets.Get<PositionF>("map_position"), assets.Get<Size<size_t>>("map_size"), assets.Get<SizeF>("tile_size"));
+
+	}
+
+	void OnMouseMove(int x, int y) override
+	{
+		m_mousePos = PositionF((float)x, (float)y);
+	}
+
+	void OnUpdate(double dt) override
+	{
+
+	}
+
+	void OnRender() override
+	{
+		AssetManager assets;
+		IRenderer& renderer = assets.Get<IRenderer>("renderer");	
+	}
+
+};
+#pragma endregion
+
 	class Test
 	{
 	private:
@@ -5311,9 +3140,9 @@ namespace TestMapEditor
 			// initialize scenes
 			{
 				m_sceneManager.CreateScene<EditorScene>("Edit");
-				m_sceneManager.CreateScene<AnotherEditorScene>("AnotherEdit");
 				m_sceneManager.CreateScene<DebugScene>("Debug");
-				m_sceneManager.SetActive("AnotherEdit");
+				m_sceneManager.CreateScene<TerrainEditScene>("Terrain");
+				m_sceneManager.SetActive("Edit");
 			}
 
 			// create draw command for drawing sorted sprites. we will use this for drawing the base layer tiles.

@@ -529,6 +529,22 @@ namespace engine::navigation
 			return smoothed;
 		}
 
+		inline static TileConstraint SubCellToConstraint(int r, int c)
+		{
+			static const TileConstraint table[9] =
+			{
+				TileConstraint::NW, TileConstraint::N,  TileConstraint::NE,
+				TileConstraint::W,  TileConstraint::CENTER, TileConstraint::E,
+				TileConstraint::SW, TileConstraint::S,  TileConstraint::SE
+			};
+
+			if (r < 0 || r >= 3 || c < 0 || c >= 3)
+			{
+				return TileConstraint::NONE;
+			}
+
+			return table[r * 3 + c];
+		}
 
 #pragma region // NavigationGrid - grid that stores constraint value of each cell. it also has pathfinding feature
 		class NavigationGrid
