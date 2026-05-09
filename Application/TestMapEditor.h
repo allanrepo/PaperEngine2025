@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <IO/CSVFileParser.h>
-#include <Containers/Bucket.h>
+#include <Containers/InstanceGrid.h>
 #include <Win32/Window.h>
 #include <Graphics/Core/ICanvas.h>
 #include <Graphics/Renderer/IRenderer.h>
@@ -102,11 +102,11 @@ namespace TestMapEditor
 	template<typename T>
 	using Grid = engine::container::Grid<T>;
 
-	template<typename T>
-	using Bucket = engine::container::Bucket<T>;
+	//template<typename T>
+	//using Bucket = engine::container::Bucket<T>;
 
 	template<typename T>
-	using BucketGrid = engine::container::BucketGrid<T>;
+	using InstanceGrid = engine::container::InstanceGrid<T>;
 
 	template<typename K, typename T>
 	using ObjectGrid = engine::spatial::ObjectGrid<K, T>;
@@ -637,7 +637,7 @@ namespace TestMapEditor
 	struct Floor
 	{
 		std::vector<TileLayer> tileLayers;
-		std::unique_ptr<BucketGrid<IRenderable>> objectLayer;
+		std::unique_ptr<InstanceGrid<IRenderable>> objectLayer;
 	};
 
 	class TileMap
@@ -1724,7 +1724,7 @@ namespace TestMapEditor
 		//
 		// CURRENT ASSUMPTIONS (must NOT be broken):
 		// - preview->position is meaningless and always treated as {0,0}
-		// - preview is NEVER inserted into BucketGrid
+		// - preview is NEVER inserted into InstanceGrid
 		// - preview rendering position is always provided externally (mouse position)
 		//
 		// FUTURE REFACTOR:
@@ -1838,7 +1838,7 @@ namespace TestMapEditor
 	private:
 		struct Dummy {};
 
-		BucketGrid<Prop> m_objectLayer;
+		InstanceGrid<Prop> m_objectLayer;
 		NavigationGrid m_navGrid;
 		SpatialOccupancyGrid<Prop, TileConstraint> m_FootPrintGrid;
 		SpatialOccupancyGrid<Prop, Dummy> m_BoundingBoxGrid;
@@ -1879,25 +1879,25 @@ namespace TestMapEditor
 
 			InitializeEvent(position, size, tilesize);
 
-			Grid<Prop*> grid;
-			grid.Initialize(2, 2, nullptr);
+			//Grid<Prop*> grid;
+			//grid.Initialize(2, 2, nullptr);
 
-			grid.ForEach([](size_t r, size_t c, Prop* prop) 
-				{
-					if (prop == nullptr)
-					{
-						std::cout << "isnullptr" << std::endl;
-					}
-				}
-			);
+			//grid.ForEach([](size_t r, size_t c, Prop* prop) 
+			//	{
+			//		if (prop == nullptr)
+			//		{
+			//			std::cout << "isnullptr" << std::endl;
+			//		}
+			//	}
+			//);
 
-			m_objectLayer.Add({ 1,1 }, std::make_unique<Prop>());
-			m_objectLayer.ForEach([](size_t row, size_t col, Prop* prop)
-				{
-					std::cout << "isnullptr" << std::endl;
+			//m_objectLayer.Add({ 1,1 }, std::make_unique<Prop>());
+			//m_objectLayer.ForEach([](size_t row, size_t col, Prop* prop)
+			//	{
+			//		std::cout << "isnullptr" << std::endl;
 
-				}
-			);
+			//	}
+			//);
 
 			return true;
 		}

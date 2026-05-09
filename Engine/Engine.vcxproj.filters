@@ -369,7 +369,7 @@
     <ClInclude Include="Include\Spatial\ObjectGrid.h">
       <Filter>Spatial</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Containers\Bucket.h">
+    <ClInclude Include="Include\Containers\InstanceGrid.h">
       <Filter>Containers</Filter>
     </ClInclude>
     <ClInclude Include="Include\IO\CSVFileParser.h">

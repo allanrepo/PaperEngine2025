@@ -32,7 +32,7 @@ WorldMap
 │
 └── PropMap
     │
-    ├── BucketGrid<Prop>
+    ├── InstanceGrid<Prop>
     │
     ├── NavigationGrid
     │
@@ -221,7 +221,7 @@ Architecture and Design Considerations
         - authoring
 
 2. Spatial Layering
-    - Different spatial systems for different purposes (SpatialOccupancyGrid, BucketGrid, Grid)
+    - Different spatial systems for different purposes (SpatialOccupancyGrid, InstanceGrid, Grid)
     - more boiler plate but better long term than cramming everything into one grid.
 
 3. Reusable Spatial Index

@@ -30,7 +30,7 @@
     <ClInclude Include="Include\Command\ICommand.h" />
     <ClInclude Include="Include\Components\Prop.h" />
     <ClInclude Include="Include\Components\Tile.h" />
-    <ClInclude Include="Include\Containers\Bucket.h" />
+    <ClInclude Include="Include\Containers\InstanceGrid.h" />
     <ClInclude Include="Include\Containers\Container.h" />
     <ClInclude Include="Include\Containers\Dictionary.h" />
     <ClInclude Include="Include\Containers\Grid.h" />
