@@ -1,0 +1,238 @@
+﻿-------------------------------------------------------------------------------
+High-Level Architecture
+-------------------------------------------------------------------------------
+The prop system is composed of 5 major layers:
+Layer							Responsibility
+WorldMap						Owns world state and coordinates systems
+PropMap							Owns all prop-related spatial data
+SpatialOccupancyGrid			Generic spatial indexing structure
+Systems (Placement, Selection)	Gameplay/editor behaviors
+Prop / PropBrush				Data objects
+
+-------------------------------------------------------------------------------
+Core Design Philosophy
+-------------------------------------------------------------------------------
+The architecture follows an important rule:
+Storage is separate from behavior.
+
+Meaning:
+PropMap stores data
+SpatialOccupancyGrid indexes data
+PropPlacementSystem decides placement rules
+PropSelectionSystem decides selection rules
+
+None of the storage classes know gameplay logic.
+
+-------------------------------------------------------------------------------
+Main Object Relationships
+-------------------------------------------------------------------------------
+WorldMap
+│
+├── WorldTransform
+│
+└── PropMap
+    │
+    ├── BucketGrid<Prop>
+    │
+    ├── NavigationGrid
+    │
+    ├── SpatialOccupancyGrid<Prop, TileConstraint>
+    │
+    └── SpatialOccupancyGrid<Prop, Dummy>
+
+-------------------------------------------------------------------------------
+WorldMap
+-------------------------------------------------------------------------------
+WorldMap is the top-level world container.
+
+It coordinates:
+spatial transform rules
+prop systems
+terrain systems (future)
+navigation systems
+
+It acts as the facade for the entire world.
+
+Responsibilities:
+1. Coordinate Space Conversion - through WorldTransform
+2. World Bounds - by providing bounds check within the map coordinate
+3. Delegation - delegates prop-specific logic to PropMap
+
+    
+-------------------------------------------------------------------------------
+PropMap
+-------------------------------------------------------------------------------
+PropMap is the central storage layer for props.
+
+Components:
+1. PropLayer
+    - authoritative owner of Prop
+    - Stores actual Prop ownership
+    - ensure's Prop object lifetime
+    - tile ownership
+    - iteration
+2. FootprintLayer
+    - Footprint Spatial Index
+    - tracks which prop's footprint occupy which tile in map and what constraint bits they apply
+    - Prop's footprint is the area the Prop will occupy in terrain. it affects the walkability of terrain
+    - used for placement overlap test with other props' footprint
+    - navigation update
+3. BoundingBoxLayer
+    - Bounding Box Spatial Index
+    - Tracks which prop's bounding box occupy which tile in map 
+    - Prop's bounding box is its broad phase collision boundary
+    - used for visibility, mouse selection, and broad-phase collision queries
+4. NavigationLayer
+    - stores merged navigation constraints of each tile in the map
+    - this needs to be pulled out of the PropMap and into WorldMap as separate component
+    - other WorldMap component like TerrainMap will also have navigation layer
+    - all the navigation layers must be merged (future)
+
+-------------------------------------------------------------------------------
+SpatialOccupancyGrid
+-------------------------------------------------------------------------------
+A bidirectional spatial index for objects occupying discrete grid cells.
+
+Core responsibilities:
+- Track which objects occupy which grid cells
+- Track which cells each object occupies
+- Provide fast lookup: cell → objects, object → cells
+- Store optional per-cell metadata (DATA)
+
+Design philosophy:
+- This is a *spatial association system*, not a gameplay system
+- It does NOT decide validity, overlap, or collision rules
+- It does NOT enforce game logic constraints
+- It only maintains consistent spatial mappings
+
+Typical use cases:
+- Tile footprint tracking
+- Selection systems (click picking)
+- Collision broad-phase indexing
+- Navigation constraint sources
+
+-------------------------------------------------------------------------------
+PropPlacementSystem
+-------------------------------------------------------------------------------
+gameplay/editor placement logic layer.
+
+VERY important distinction:
+PropMap stores.
+PropPlacementSystem decides rules.
+
+Placement Flow (remove overlapped existing props rule)
+1. validate
+2. build constraints
+    - converts footprint geometry into tile constraints
+    - each tile is interpreted as 3x3 subcells.
+    - subcells are mapped as tile constraint bits
+    - constraint bits are modeled below: 
+        TL T TR
+        L  C R
+        BL B BR
+    - center, corner, edges. total of 9 bits
+    - footprint is checked which subcells it overlaps with. 
+    - overlapped subcells are translated into constraint bits
+    - this provides a finer (partial) walkability state of tiles
+3. identify existing props where their footprint overlap new prop's footprint
+    - this is not  done via footprint geometry overlap test
+    - instead, it gathers all existing props on each tile the footprint overlap
+    - then then each existing prop's tile constraint is compared
+    - if it overlaps new prop's tile constraint in the tile, then it overlaps
+4. remove overlapped existing props
+5. place the new prop
+
+Placement Pipeline:
+    User Clicks
+        ↓
+    PropBrushTool creates Prop
+        ↓
+    PropPlacementSystem::Place()
+        ↓
+    BuildConstraints()
+        ↓
+    Query overlaps
+        ↓
+    Evict conflicts
+        ↓
+    Insert into PropMap
+        ↓
+    Update navigation
+        ↓
+    Update spatial indices
+
+-------------------------------------------------------------------------------
+PropSelectionSystem
+-------------------------------------------------------------------------------
+spatial query system.
+
+Selection flow (select top most prop)
+1. validation 
+2. identify existing props where their bounding box overlap given position in map (broad phase)
+3. check if prop's collision shape overlap given position in map (narrow phase, future)
+4. depth sorting 
+    - check which bounding box bottom position is lowest. 
+    - this is the "nearest" prop from the screen
+
+Selection Pipeline:
+    Mouse Position
+        ↓
+    World → Tile Coord
+        ↓
+    BoundingBoxGrid query
+        ↓
+    Broad phase AABB
+        ↓
+    (optional future narrow phase)
+        ↓
+    Select top-most prop
+
+-------------------------------------------------------------------------------
+Prop
+-------------------------------------------------------------------------------
+lightweight world entity
+
+Data	            Purpose
+renderable	        rendering
+position	        local position (relative to tile space that owns it)
+scale	            transform
+color	            tint
+footprint	        gameplay occupancy
+boundingBox	        broad phase selection
+collisionShape	    future narrow phase
+
+-------------------------------------------------------------------------------
+PropBrushTool
+-------------------------------------------------------------------------------
+Editor authoring tool.
+it does NOT know world state
+it does NOT place props
+it only creates props
+
+-------------------------------------------------------------------------------
+Architecture and Design Considerations
+-------------------------------------------------------------------------------
+1. Separation of Concerns
+    - Separated:
+        - storage
+        - rules
+        - queries
+        - rendering
+        - authoring
+
+2. Spatial Layering
+    - Different spatial systems for different purposes (SpatialOccupancyGrid, BucketGrid, Grid)
+    - more boiler plate but better long term than cramming everything into one grid.
+
+3. Reusable Spatial Index
+    - SpatialOccupancyGrid is reusable beyond props.
+    - Potential uses:
+        - units
+        - AI influence
+        - triggers
+        - fog of war
+        - resource nodes
+        - audio zones
+4. Data-Driven Placement
+    - The 3x3 footprint interpretation exists ONLY in placement logic.
+

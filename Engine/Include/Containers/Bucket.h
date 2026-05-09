@@ -41,33 +41,6 @@ namespace engine
 #pragma endregion
 
 #pragma region // accessors
-			//Objects* Get(const K& key)
-			//{
-			//	return m_objects.Has(key) ? &m_objects[key] : nullptr;
-			//}
-
-			//const Objects* Get(const K& key) const
-			//{
-			//	return m_objects.Has(key) ? &m_objects[key] : nullptr;
-			//}
-
-			//// Optional: direct safe access
-			//T* Get(const K& key, size_t index)
-			//{
-			//	if (!m_objects.Has(key)) return nullptr;
-
-			//	auto& vec = m_objects[key];
-			//	return index < vec.size() ? vec[index].get() : nullptr;
-			//}
-
-			//// Optional: direct safe access
-			//const T* Get(const K& key, size_t index) const
-			//{
-			//	if (!m_objects.Has(key)) return nullptr;
-
-			//	auto& vec = m_objects[key];
-			//	return index < vec.size() ? vec[index].get() : nullptr;
-			//}
 #pragma endregion
 
 #pragma region // iteration
@@ -85,7 +58,7 @@ namespace engine
 			template<typename Predicate>
 			void ForEach(Predicate func) const 
 			{
-				for (std::unique_ptr<T>& object : m_objects)
+				for (const std::unique_ptr<T>& object : m_objects)
 				{
 					func(object.get());
 				}
@@ -357,13 +330,26 @@ namespace engine
 				m_map.Get(row, col).ForEach(func);
 			}
 
+			template<typename Predicate>
+			void ForEach(Predicate func) 
+			{
+				m_map.ForEach([&](size_t row, size_t col, Bucket<T>& cell)
+					{
+						cell.ForEach([&func, row, col](T* object)
+							{
+								func(row, col, object);
+							}
+						);
+					}
+				);
+			}
 
 			template<typename Predicate>
 			void ForEach(Predicate func) const
 			{
-				m_map.ForEach([](size_t row, size_t col, Bucket<T>* cell)
+				m_map.ForEach([&](size_t row, size_t col, const Bucket<T>& cell)
 					{
-						cell->ForEach([&](T* object)
+						cell.ForEach([&func, row, col](const T* object)
 							{
 								func(row, col, object);
 							}

@@ -1531,6 +1531,12 @@ namespace TestMapEditor
 		RectF boundingBox;
 		CollisionShape collisionShape;
 
+		// TODO: for debug only quick instancing to test. remove this in production code
+		Prop()
+		{
+
+		}
+
 		Prop(std::unique_ptr<IRenderable> r, const ColorF& c, const VecF& s, const RectF& fp, const RectF& bb) :
 			renderable(std::move(r)),
 			position({}),
@@ -1873,6 +1879,26 @@ namespace TestMapEditor
 
 			InitializeEvent(position, size, tilesize);
 
+			Grid<Prop*> grid;
+			grid.Initialize(2, 2, nullptr);
+
+			grid.ForEach([](size_t r, size_t c, Prop* prop) 
+				{
+					if (prop == nullptr)
+					{
+						std::cout << "isnullptr" << std::endl;
+					}
+				}
+			);
+
+			m_objectLayer.Add({ 1,1 }, std::make_unique<Prop>());
+			m_objectLayer.ForEach([](size_t row, size_t col, Prop* prop)
+				{
+					std::cout << "isnullptr" << std::endl;
+
+				}
+			);
+
 			return true;
 		}
 
@@ -2074,7 +2100,7 @@ namespace TestMapEditor
 
 		WorldTransform m_worldTransform;		
 		PropMap m_propMap;
-		TerrainMap m_terrainMap;
+		//TerrainMap m_terrainMap;
 
 	public:
 		WorldMap()
@@ -2917,39 +2943,360 @@ namespace TestMapEditor
 #pragma endregion
 
 #pragma region // TerrainEditScene scene
-class TerrainEditScene : public Scene
-{
-	AssetManager m_assets;
-
-	PositionF m_mousePos;
-	WorldMap m_worldMap;
-
-public:
-	void OnEnter() override
+	class TerrainEditScene : public Scene
 	{
-		AssetManager assets;
+	private:
+		StateMachine m_stateMachine;
+		AssetManager m_assets;
+		TileLayer m_gridTileLayer;
+		TileLayer m_fineGridTileLayer;
+		WorldMap m_worldMap;
 
-		m_worldMap.Initialize(assets.Get<PositionF>("map_position"), assets.Get<Size<size_t>>("map_size"), assets.Get<SizeF>("tile_size"));
+		TileLayer m_grassTileLayer;
+		TileLayer m_splashTileLayer;
 
-	}
+		PositionF m_mousePos;
 
-	void OnMouseMove(int x, int y) override
-	{
-		m_mousePos = PositionF((float)x, (float)y);
-	}
+		bool m_showDebug = true;
 
-	void OnUpdate(double dt) override
-	{
+	public:
+		void OnEnter() override
+		{
+			m_worldMap.Initialize(m_assets.Get<PositionF>("map_position"), m_assets.Get<Size<size_t>>("map_size"), m_assets.Get<SizeF>("tile_size"));
 
-	}
+			// initialize grid tile layer. fill it with its only tile
+			auto& grassTileset = m_assets.Get<Tileset<IRenderable>>("grass_tileset");
+			auto& mapSize = m_assets.Get<Size<size_t>>("map_size");
+			m_gridTileLayer.tileset = &grassTileset;
+			m_gridTileLayer.tilegrid.Initialize(mapSize, grassTileset.MakeTile(13));
 
-	void OnRender() override
-	{
-		AssetManager assets;
-		IRenderer& renderer = assets.Get<IRenderer>("renderer");	
-	}
+			// initialize fine grid tile layer. fill it with its only tile
+			m_fineGridTileLayer.tileset = &grassTileset;
+			m_fineGridTileLayer.tilegrid.Initialize(mapSize, grassTileset.MakeTile(22));
 
-};
+			// initialize grass tile layer. fill it with invalid tiles for now so they have empty tiles
+			m_grassTileLayer.tileset = &grassTileset;
+			m_grassTileLayer.tilegrid.Initialize(mapSize, grassTileset.MakeInvalidTile());
+
+			// initialize water splash tile layer. also fill with invalid tiles for now
+			auto& splashTileset = m_assets.Get<Tileset<IRenderable>>("splash_tileset");
+			m_splashTileLayer.tileset = &splashTileset;
+			m_splashTileLayer.tilegrid.Initialize(mapSize, splashTileset.MakeInvalidTile());
+
+		}
+
+		void OnUpdate(double dt) override
+		{
+			m_stateMachine.OnUpdate(dt);
+
+			// this is for debugging only. validate every frame to ensure our containers are in good state
+			m_worldMap.Validate();
+		}
+
+		void OnKeyDown(int key) override
+		{
+			m_stateMachine.OnKeyDown(key);
+
+			switch (key)
+			{
+			case 27: // ESC
+				break;
+			case 32: // SPACE
+				m_showDebug = !m_showDebug;
+				break;
+			case 49: // 1
+				break;
+			case 50: // 2
+				break;
+			case 51: // 3 
+				break;
+
+
+			default:
+				break;
+			}
+		}
+
+		void OnMouseMove(int x, int y) override
+		{
+			m_mousePos = PositionF((float)x, (float)y);
+
+			// is mouse left button is held while moving...
+			if (Input::Instance().IsMouseHeld(1))
+			{
+				// calculate the coord in map the mouse cursor intersect with
+				auto& mapPos = m_assets.Get<PositionF>("map_position");
+				auto& tilesize = m_assets.Get<SizeF>("tile_size");
+				Coord coord = PositionToCoord(m_mousePos - mapPos, tilesize);
+
+				auto& config = m_assets.Get<AutoTileSystem::AutoTileConfig>("grass_tile_auto_config");
+				auto& splashAnimLookup = m_assets.Get<Dictionary<TileVariant, int>>("splash_anim_tile_lookup");
+
+				// place grass tile
+				TileLayerEditor tle;
+				tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
+				tle.Paint(m_grassTileLayer, config, coord);
+			}
+		}
+
+		void OnMouseUp(int btn, int x, int y) override
+		{
+		}
+
+		void OnMouseDown(int btn, int x, int y) override
+		{
+			m_stateMachine.OnMouseDown(btn, x, y);
+
+			m_mousePos = PositionF((float)x, (float)y);
+
+			// calculate the coord in map the mouse cursor intersect with
+			auto& mapPos = m_assets.Get<PositionF>("map_position");
+			auto& tilesize = m_assets.Get<SizeF>("tile_size");
+
+			PositionF pos = m_mousePos;
+			Coord coord = PositionToCoord(pos - mapPos, tilesize);
+
+			auto& config = m_assets.Get<AutoTileSystem::AutoTileConfig>("grass_tile_auto_config");
+			auto& splashAnimLookup = m_assets.Get<Dictionary<TileVariant, int>>("splash_anim_tile_lookup");
+
+			// left click to place grass tile
+			if (btn == 1)
+			{
+				// place grass tile
+				TileLayerEditor tle;
+				tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
+				tle.Paint(m_grassTileLayer, config, coord);
+			}
+			// right click to remove tile
+			else if (btn == 2)
+			{
+				// remove grass tile
+				TileLayerEditor tle;
+				tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
+				tle.Erase(m_grassTileLayer, config, coord);
+			}
+		}
+
+		void OnRender() override
+		{
+			m_stateMachine.OnRender();
+
+			// draw tiles in order of their depth (Y) so that tiles with higher Y (lower on the screen) are drawn after 
+			// tiles with lower Y (higher on the screen) to create proper overlapping. props will be drawn in between floor 
+			// and edge tiles based on their tile constraint, so we draw all floor and edge tiles first, then props, 
+			// then debug constraint indicators
+			auto& mapLayerRenderer = m_assets.Get<MapLayerRenderer>("renderer");
+
+			// draw water splash tile
+			mapLayerRenderer.Clear();
+			mapLayerRenderer.QueueAllTilesForDraw(m_splashTileLayer.tilegrid, m_splashTileLayer.tilegrid.GetSize(), 1, { 3,3 });
+			mapLayerRenderer.Sort();
+			mapLayerRenderer.Draw();
+
+			// draw grass tile
+			mapLayerRenderer.Clear();
+			mapLayerRenderer.QueueAllTilesForDraw(m_grassTileLayer.tilegrid, m_grassTileLayer.tilegrid.GetSize(), 1, { 1,1 });
+			mapLayerRenderer.Sort();
+			mapLayerRenderer.Draw();
+
+
+			DrawSortedSpritesCommand& drawCommand = m_assets.Get<DrawSortedSpritesCommand>("drawCommand");
+			drawCommand.Clear();
+			auto& tilesize = m_assets.Get<SizeF>("tile_size");
+			auto& mapPos = m_assets.Get<PositionF>("map_position");
+
+			Size<size_t> mapSize = m_worldMap.GetTransform().GetSize();
+			for (int row = 0; row < (int)mapSize.height; row++)
+			{
+				for (int col = 0; col < (int)mapSize.width; col++)
+				{
+					Coord coord(row, col);
+					PositionF tileScreenPos = CoordToPosition(coord, tilesize) + mapPos;
+
+					m_worldMap.ForEachProp(row, col, [&drawCommand, &tileScreenPos](Prop* prop)
+						{
+							prop->QueueForDraw(drawCommand, tileScreenPos, 1);
+						});
+				}
+			}
+
+			if (m_showDebug)
+			{
+				IRenderer& renderer = m_assets.Get<IRenderer>("renderer");
+
+				// draw grid tile
+				mapLayerRenderer.Clear();
+				ColorF color = mapLayerRenderer.GetColor();
+				mapLayerRenderer.SetColor({ 0,0,0,0.2f });
+				mapLayerRenderer.QueueAllTilesForDraw(m_gridTileLayer.tilegrid, m_gridTileLayer.tilegrid.GetSize(), 1, { 1,1 });
+				mapLayerRenderer.Sort();
+				mapLayerRenderer.Draw();
+				mapLayerRenderer.SetColor(color);
+
+				DrawNavigationGridOverlay(renderer, m_worldMap);
+
+				std::string msg = m_worldMap.GetDebugInfo();
+
+				renderer.Draw(m_assets.Get<IFontAtlas>("font"), msg, { 400, 5 }, { 1,1,1,1 });
+
+			}
+
+		}
+
+		void DrawNavigationGridOverlay(
+			IRenderer& renderer,
+			const WorldMap& map
+		)
+		{
+			struct SubCellOffset
+			{
+				int row;
+				int col;
+				TileConstraint bit;
+			};
+
+			static const SubCellOffset offsets[9] =
+			{
+				{ 0, 0, TileConstraint::NW },
+				{ 0, 1, TileConstraint::N  },
+				{ 0, 2, TileConstraint::NE },
+
+				{ 1, 0, TileConstraint::W  },
+				{ 1, 1, TileConstraint::CENTER },
+				{ 1, 2, TileConstraint::E  },
+
+				{ 2, 0, TileConstraint::SW },
+				{ 2, 1, TileConstraint::S  },
+				{ 2, 2, TileConstraint::SE }
+			};
+
+			SizeF subTileSize(map.GetTransform().GetTileSize().width / 3.0f, map.GetTransform().GetTileSize().height / 3.0f);
+
+			// visual tweak (same as yours)
+			VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
+			SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
+
+			for (int row = 0; row < (int)map.GetTransform().GetSize().height; ++row)
+			{
+				for (int col = 0; col < (int)map.GetTransform().GetSize().width; ++col)
+				{
+					map.ForEachTileConstraint(row, col, [row, col, &map, subTileSize, shift, overlaySize, &renderer](TileConstraint constraint)
+						{
+							// skip empty tiles early (fast path)
+							if (constraint == TileConstraint::NONE) return;
+
+							// top-left of this tile in world space
+							PositionF tileWorldPos = CoordToPosition({ row, col }, map.GetTransform().GetTileSize()) + map.GetTransform().GetPosition();
+
+							// iterate 3x3 subcells
+							for (const auto& offset : offsets)
+							{
+								// for this subcell, check if its corresponding constraint bit is set. if not, skip						
+								if (!HasFlag(constraint, offset.bit))
+								{
+									continue;
+								}
+
+								// compute subcell position
+								PositionF subCellPos = tileWorldPos;
+								subCellPos.x += offset.col * subTileSize.width;
+								subCellPos.y += offset.row * subTileSize.height;
+
+								// apply shift. we're rendering a rectangle smaller than the actual size of the subcell so we shift it a bit to center it
+								subCellPos += shift;
+
+								// draw
+								renderer.Draw(
+									subCellPos,
+									overlaySize,
+									{ 0, 0, 0, 0.5f },
+									0.0f
+								);
+							}
+						}
+					);
+				}
+			}
+		}
+
+		void DrawNavigationGridOverlay(
+			IRenderer& renderer,
+			const NavigationGrid& navGrid,
+			const PositionF& mapPos,
+			const SizeF& tileSize)
+		{
+			struct SubCellOffset
+			{
+				int row;
+				int col;
+				TileConstraint bit;
+			};
+
+			static const SubCellOffset offsets[9] =
+			{
+				{ 0, 0, TileConstraint::NW },
+				{ 0, 1, TileConstraint::N  },
+				{ 0, 2, TileConstraint::NE },
+
+				{ 1, 0, TileConstraint::W  },
+				{ 1, 1, TileConstraint::CENTER },
+				{ 1, 2, TileConstraint::E  },
+
+				{ 2, 0, TileConstraint::SW },
+				{ 2, 1, TileConstraint::S  },
+				{ 2, 2, TileConstraint::SE }
+			};
+
+			SizeF subTileSize(tileSize.width / 3.0f, tileSize.height / 3.0f);
+
+			// visual tweak (same as yours)
+			VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
+			SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
+
+			for (int row = 0; row < (int)navGrid.GetHeight(); ++row)
+			{
+				for (int col = 0; col < (int)navGrid.GetWidth(); ++col)
+				{
+					TileConstraint constraint = navGrid.Get(row, col);
+
+					// skip empty tiles early (fast path)
+					if (constraint == TileConstraint::NONE)
+					{
+						continue;
+					}
+
+					// top-left of this tile in world space
+					PositionF tileWorldPos = CoordToPosition({ row, col }, tileSize) + mapPos;
+
+					// iterate 3x3 subcells
+					for (const auto& offset : offsets)
+					{
+						// for this subcell, check if its corresponding constraint bit is set. if not, skip						
+						if (!HasFlag(constraint, offset.bit))
+						{
+							continue;
+						}
+
+						// compute subcell position
+						PositionF subCellPos = tileWorldPos;
+						subCellPos.x += offset.col * subTileSize.width;
+						subCellPos.y += offset.row * subTileSize.height;
+
+						// apply shift. we're rendering a rectangle smaller than the actual size of the subcell so we shift it a bit to center it
+						subCellPos += shift;
+
+						// draw
+						renderer.Draw(
+							subCellPos,
+							overlaySize,
+							{ 0, 0, 0, 0.5f },
+							0.0f
+						);
+					}
+				}
+			}
+		}
+	};
 #pragma endregion
 
 	class Test
@@ -3142,7 +3489,7 @@ public:
 				m_sceneManager.CreateScene<EditorScene>("Edit");
 				m_sceneManager.CreateScene<DebugScene>("Debug");
 				m_sceneManager.CreateScene<TerrainEditScene>("Terrain");
-				m_sceneManager.SetActive("Edit");
+				m_sceneManager.SetActive("Terrain");
 			}
 
 			// create draw command for drawing sorted sprites. we will use this for drawing the base layer tiles.

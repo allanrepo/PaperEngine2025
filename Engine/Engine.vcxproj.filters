@@ -506,5 +506,6 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="DependencySketch.txt" />
+    <Text Include="Notes\PropSystem.txt" />
   </ItemGroup>
 </Project>
