@@ -16,7 +16,7 @@ namespace engine
 			using Registry = engine::cache::Registry<Animation>;
 			using PositionF = engine::spatial::PositionF;
 
-			class AnimationFactory
+			class SpriteAnimationFactory
 			{
 			public:
 				// creates an animation object loading all the sprites of given atlas with a fixed duration across all frames

@@ -14,7 +14,7 @@ namespace engine
 
 			using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
 			using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite, IProp>;
-			using AnimationFactory = engine::graphics::factory::AnimationFactory;
+			using SpriteAnimationFactory = engine::graphics::factory::SpriteAnimationFactory;
 
 			// Prop is a visual object, therefore it is tightly coupled with a IRenderable - Sprite
 			// Prop being a visual object, can be animated. Update() and Play() methods provide support for animation 

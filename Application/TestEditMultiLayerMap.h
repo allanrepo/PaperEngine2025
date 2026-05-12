@@ -24,7 +24,7 @@
 #include <Engine/Loader/AsyncLoader.h>
 #include <Graphics/Core/Primitives.h>
 #include <Engine/Graphics/Draw.h>
-#include <Engine/Factory/AnimationFactory.h>
+#include <Engine/Factory/SpriteAnimationFactory.h>
 #include "Actor.h"
 
 namespace TestEditMultiLayerMap
@@ -329,8 +329,8 @@ namespace TestEditMultiLayerMap
 				engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("water_splash");
 
 				// create animation and load all of our sprite atlas' sprite into it and store in registry
-				//engine::graphics::factory::AnimationFactory::Create("water_splash", atlas, { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 }, 100.0f, true);
-				engine::graphics::factory::AnimationFactory::Create("water_splash", atlas, 100.0f, true);
+				//engine::graphics::factory::SpriteAnimationFactory::Create("water_splash", atlas, { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 }, 100.0f, true);
+				engine::graphics::factory::SpriteAnimationFactory::Create("water_splash", atlas, 100.0f, true);
 				engine::graphics::animation::Animation<engine::graphics::Sprite>& anim = Registry<engine::graphics::animation::Animation<engine::graphics::Sprite>>::Instance().Get("water_splash");
 
 				// create our tileset

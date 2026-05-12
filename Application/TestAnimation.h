@@ -28,7 +28,7 @@
 #include <Graphics/Animation/Animation.h>
 #include <Graphics/Resource/DX11TextureImpl.h>
 #include <Timer/StopWatch.h>
-#include <Engine/Factory/AnimationFactory.h>
+#include <Engine/Factory/SpriteAnimationFactory.h>
 #include <Core/View.h>
 #include <memory>
 #include <algorithm>	
@@ -42,7 +42,7 @@ namespace test
 	using SpriteAtlasFactory = engine::graphics::factory::SpriteAtlasFactory;
 	using ISpriteAtlas = engine::graphics::resource::ISpriteAtlas;
 	using SpriteAtlas = engine::graphics::resource::SpriteAtlas;
-	using AnimationFactory = engine::graphics::factory::AnimationFactory;
+	using SpriteAnimationFactory = engine::graphics::factory::SpriteAnimationFactory;
 	using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
 	using IFontAtlas = engine::graphics::resource::IFontAtlas;
 	using FontAtlas = engine::graphics::resource::FontAtlas;
@@ -123,7 +123,7 @@ namespace test
 			engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get(name);
 
 			// create animation using factory. it will be stored in cache as well. we set loop to true for this animation
-			engine::graphics::factory::AnimationFactory::Create(name, atlas, animationFrameIndice, duration, true);
+			engine::graphics::factory::SpriteAnimationFactory::Create(name, atlas, animationFrameIndice, duration, true);
 
 			// create animator and load the animation. it will also be stored in cache. we can have multiple animators using the same animation
 			engine::cache::Registry<engine::graphics::animation::Animator<engine::graphics::Sprite>>::Instance().Register(name, std::make_unique<engine::graphics::animation::Animator<engine::graphics::Sprite>>());
@@ -192,7 +192,7 @@ namespace test
 
 				engine::cache::Registry<AnimationSet>::Instance().Register("dust", std::make_unique<AnimationSet>());
 				AnimationSet& animset = engine::cache::Registry<AnimationSet>::Instance().Get("dust");
-				animset.Register("dust", AnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, 150.0f, true, PositionF{ 0.5f, 0.5f }));
+				animset.Register("dust", SpriteAnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, 150.0f, true, PositionF{ 0.5f, 0.5f }));
 
 				engine::cache::Registry<AnimationSystem>::Instance().Register("dust", std::make_unique<AnimationSystem>());
 				AnimationSystem& animSystem = engine::cache::Registry<AnimationSystem>::Instance().Get("dust");

@@ -32,7 +32,7 @@
 #include <Containers/Table.h>
 #include <Utilities/Utilities.h>
 #include <Graphics/Animation/Animation.h>
-#include <Engine/Factory/AnimationFactory.h>
+#include <Engine/Factory/SpriteAnimationFactory.h>
 #include <memory>
 #include <functional>
 #include <Spatial/ObjectGrid.h>
@@ -82,7 +82,7 @@ namespace TestMapEditor
 	using AsyncFileReader = engine::io::AsyncFileReader;
 	using CSVParser = engine::utilities::parser::CSVParser;
 	using OnOutOfScope = engine::utilities::OnOutOfScope;
-	using AnimationFactory = engine::graphics::factory::AnimationFactory;
+	using SpriteAnimationFactory = engine::graphics::factory::SpriteAnimationFactory;
 	using VecF = engine::math::VecF;
 	using InputEvent = engine::input::InputEvent;
 	using TileConstraint = engine::navigation::tile::TileConstraint;
@@ -101,9 +101,6 @@ namespace TestMapEditor
 
 	template<typename T>
 	using Grid = engine::container::Grid<T>;
-
-	//template<typename T>
-	//using Bucket = engine::container::Bucket<T>;
 
 	template<typename T>
 	using InstanceGrid = engine::container::InstanceGrid<T>;
@@ -149,7 +146,436 @@ namespace TestMapEditor
 
 #pragma endregion
 
- #pragma region // AutoTileSystem
+#pragma region // TileDefinition
+	struct TileDefinition
+	{
+		std::unique_ptr<IRenderable> renderable = nullptr;
+	};
+#pragma endregion
+
+#pragma region // Tile
+	class TileHandle
+	{
+	private:
+		TileDefinition* m_tileDefinition;
+		int m_index;
+
+	public:
+		TileHandle(int index, TileDefinition* td = nullptr) :
+			m_index(index),
+			m_tileDefinition(td)
+		{
+		}
+
+		Sprite GetSprite() const noexcept
+		{
+			return IsValid()? m_tileDefinition->renderable->GetSprite() : Sprite::MakeInvalidSprite();
+		}
+
+		bool IsValid() const noexcept
+		{
+			return m_tileDefinition != nullptr && m_tileDefinition->renderable != nullptr;
+		}
+
+
+		const int GetIndex() const
+		{
+			return m_index;
+		}
+	};
+#pragma endregion
+
+#pragma region // TerrainGrid
+	class TerrainGrid
+	{
+	private:
+#pragma region // parameters
+		engine::container::Grid<TileHandle> m_map;
+#pragma endregion
+
+	public:
+#pragma region // constructor/destructor
+		TerrainGrid() :
+			m_map(0)
+		{
+		}
+#pragma endregion
+
+#pragma region // non copyable, non movable
+		TerrainGrid(const TerrainGrid&) = delete;
+		TerrainGrid& operator=(const TerrainGrid&) = delete;
+		TerrainGrid(TerrainGrid&&) = delete;
+		TerrainGrid& operator=(TerrainGrid&&) = delete;
+#pragma endregion
+
+#pragma region // size query
+		// returns grid width
+		size_t GetWidth() const
+		{
+			return m_map.GetWidth();
+		}
+
+		// returns grid height. includes last row even if it is incomplete
+		size_t GetHeight() const
+		{
+			return m_map.GetHeight();
+		}
+
+		spatial::Size<size_t> GetSize() const
+		{
+			return m_map.GetSize();
+		}
+
+		size_t GetElementCount() const
+		{
+			return m_map.GetElementCount();
+		}
+
+		bool IsEmpty() const
+		{
+			return m_map.IsEmpty();
+		}
+#pragma endregion
+
+#pragma region // bound checks
+		bool IsInBounds(int row, int col) const
+		{
+			return m_map.IsInBounds(row, col);
+		}
+
+		// overload for Coord input
+		bool IsInBounds(const engine::spatial::Coord& Coord) const
+		{
+			return m_map.IsInBounds(Coord.row, Coord.col);
+		}
+#pragma endregion
+
+#pragma region // accessors. return by value to be consistent. tile is a lightweight view to an object, similar to Sprite where GetSprite() returns value
+		TileHandle Get(int row, int col)
+		{
+			return m_map.Get(row, col);
+		}
+
+		const TileHandle Get(int row, int col) const
+		{
+			return m_map.Get(row, col);
+		}
+
+		// retrieves the data at Coord
+		TileHandle Get(const engine::spatial::Coord& coord)
+		{
+			return m_map.Get(coord.row, coord.col);
+		}
+
+		// retrieves the data at Coord
+		const TileHandle Get(const engine::spatial::Coord& coord) const
+		{
+			return m_map.Get(coord.row, coord.col);
+		}
+#pragma endregion
+
+#pragma region // replace value
+		void Set(int row, int col, const TileHandle& data)
+		{
+			m_map.Set(row, col, data);
+		}
+
+		void Set(int row, int col, TileHandle&& data)
+		{
+			m_map.Set(row, col, std::move(data));
+		}
+
+		void Set(const engine::spatial::Coord& coord, const TileHandle& data)
+		{
+			m_map.Set(coord, data);
+		}
+
+		void Set(const engine::spatial::Coord& coord, TileHandle&& data)
+		{
+			m_map.Set(coord, std::move(data));
+		}
+#pragma endregion
+
+#pragma region // content management
+		void Reserve(const spatial::Size<size_t>& size)
+		{
+			m_map.Reserve(size);
+		}
+
+		void Clear()
+		{
+			m_map.Clear();
+		}
+
+		// copy only, no move option. expects T to be copyable or else
+		void Initialize(size_t width, size_t height, const TileHandle& data)
+		{
+			m_map.Clear();
+			m_map.SetWidth(width);
+			m_map.Reserve({ width, height });
+
+			for (size_t i = 0; i < width * height; ++i)
+			{
+				m_map.Add(data);
+			}
+		}
+
+		void Initialize(engine::spatial::Size<size_t> size, const TileHandle& data)
+		{
+			Initialize(size.width, size.height, data);
+		}
+#pragma endregion
+
+#pragma region // iteration
+		template<typename Func>
+		void ForEach(const Func& func)
+		{
+			for (int row = 0; row < (int)GetHeight(); ++row)
+			{
+				for (int col = 0; col < (int)GetWidth(); ++col)
+				{
+					func(row, col, Get(row, col));
+				}
+			}
+		}
+
+		template<typename Func>
+		void ForEach(const Func& func) const
+		{
+			for (int row = 0; row < (int)GetHeight(); ++row)
+			{
+				for (int col = 0; col < (int)GetWidth(); ++col)
+				{
+					func(row, col, Get(row, col));
+				}
+			}
+		}
+#pragma endregion
+
+	};
+#pragma endregion
+
+#pragma region // TerrainSet
+	class TerrainSet
+	{
+	protected:
+		container::Dictionary<int, std::unique_ptr<TileDefinition>> m_tiles;
+
+		int m_invalidTileIndex;
+
+		TileDefinition* GetInvalidTileDefinition() const
+		{
+			static TileDefinition s_invalidTileDefinition;
+			return &s_invalidTileDefinition;
+		}
+
+	public:
+		TerrainSet(int invalidTileIndex = -0xFFFF) :
+			m_invalidTileIndex(invalidTileIndex)
+		{
+		}
+
+		~TerrainSet() = default;
+
+		// non copyable, non movable
+		TerrainSet(const TerrainSet&) = delete;
+		TerrainSet& operator=(const TerrainSet&) = delete;
+		TerrainSet(TerrainSet&&) = delete;
+		TerrainSet& operator=(TerrainSet&&) = delete;
+
+		bool Register(int id, std::unique_ptr<TileDefinition> data)
+		{
+			return m_tiles.Register(id, std::move(data));
+		}
+
+		bool IsValid(int id) const noexcept
+		{
+			return m_tiles.Has(id);
+		}
+
+		// raw access
+		const TileDefinition* Get(int id) const
+		{
+			return m_tiles.Has(id) ? m_tiles.Get(id).get() : nullptr;
+		}
+
+		// creates a tile instance for the given id. returns invalid tile if id not found
+		TileHandle MakeTile(int id) const
+		{
+			return TileHandle(
+				m_tiles.Has(id)? id: m_invalidTileIndex,
+				m_tiles.Has(id)?
+				m_tiles.Get(id).get():		// if we have valid tile definition use it
+				GetInvalidTileDefinition()	// otherwise, use invalid one
+			);
+		}
+	};
+
+
+
+#pragma endregion
+
+#pragma region // TerrainAutoTileAdapter
+	struct TerrainAutoTileAdapter
+	{
+		TerrainGrid& grid;
+		TerrainSet& set;
+
+		bool IsInBounds(const Coord& c) const
+		{
+			return grid.IsInBounds(c);
+		}
+
+		int GetIndex(const Coord& c) const
+		{
+			return grid.Get(c).GetIndex();
+		}
+
+		void Set(const Coord& c, int index, TileVariant v)
+		{
+			grid.Set(c, set.MakeTile(index));
+		}
+
+		TerrainAutoTileAdapter(TerrainGrid& g, TerrainSet& s) : 
+			grid(g), 
+			set(s)
+		{
+		}
+	};
+
+	struct TileGridAutoTileAdapter
+	{
+		TileGrid<IRenderable>& grid;
+		Tileset<IRenderable>& set;
+
+		bool IsInBounds(const Coord& c) const
+		{
+			return grid.IsInBounds(c);
+		}
+
+		int GetIndex(const Coord& c) const
+		{
+			return grid.Get(c).GetIndex();
+		}
+
+		void Set(const Coord& c, int index, TileVariant v)
+		{
+			grid.Set(c, set.MakeTile(index));
+		}
+	};
+
+#pragma endregion
+
+#pragma region // TerrainLayer
+	class TerrainLayer
+	{
+	private:
+		TerrainGrid m_grid;
+		const TerrainSet* m_set;
+
+	public:
+		TerrainLayer() :
+			m_set(nullptr)
+		{
+		}
+
+		TileHandle Get(const Coord& coord) const
+		{
+			return m_grid.Get(coord);
+		}
+
+		TileHandle Get(int row, int col) const
+		{
+			return m_grid.Get(row, col);
+		}
+
+		Size<size_t> GetSize() const
+		{
+			return m_grid.GetSize();
+		}
+
+		void Initialize(size_t width, size_t height, const TerrainSet* set, int tileIndex)
+		{
+			Initialize({ width, height }, set, tileIndex);
+		}
+
+		void Initialize(const Size<size_t> size, const TerrainSet* set, int tileIndex)
+		{
+			m_set = set;
+			m_grid.Initialize(size, m_set->MakeTile(tileIndex));
+		}
+
+		void Set(const Coord& c, int index)
+		{
+			m_grid.Set(c, m_set->MakeTile(index));
+		}
+
+		bool IsInBounds(const Coord& c) const
+		{
+			return m_grid.IsInBounds(c);
+		}
+
+		int GetIndex(const Coord& c) const
+		{
+			return m_grid.Get(c).GetIndex();
+		}
+
+		template<typename Func>
+		void ForEach(const Func& func)
+		{
+			Size<size_t> size = GetSize();
+			m_grid.ForEach(func);
+		}
+
+		template<typename Func>
+		void ForEach(const Func& func) const
+		{
+			Size<size_t> size = GetSize();
+			m_grid.ForEach(func);
+		}
+	};
+#pragma endregion
+
+#pragma region // IAutoTileAdapter
+	class IAutoTileAdapter
+	{
+	public:
+		virtual bool IsInBounds(const Coord& c) const = 0;
+		virtual int GetIndex(const Coord& c) const = 0;
+		virtual void Set(const Coord& c, int index, TileVariant v) = 0;
+	};
+#pragma endregion
+
+#pragma region // TerrainLayerAutoTileAdapter
+	class TerrainLayerAutoTileAdapter//: public IAutoTileAdapter
+	{
+	private:
+		TerrainLayer& layer;
+
+	public:
+		TerrainLayerAutoTileAdapter(TerrainLayer& l) :
+			layer(l)
+		{
+		}
+
+		bool IsInBounds(const Coord& c) const //override
+		{
+			return layer.IsInBounds(c);
+		}
+
+		int GetIndex(const Coord& c) const// override
+		{
+			return layer.GetIndex(c);
+		}
+
+		void Set(const Coord& c, int index, TileVariant v)// override
+		{
+			layer.Set(c, index);
+		}
+	};
+#pragma endregion
+
+#pragma region // AutoTileSystem
 	// Design consideration
 	// - passing AutoTileContext AutoTileConfig makes the class as a versatile tool, not tied to any specific object. it can be easily reused
 	// - AutoTileContext contains only lambda to allow accessing the data (map) that needs to be resolved without directly knowing the types of the data
@@ -191,12 +617,33 @@ namespace TestMapEditor
 				return variantToIndex[variant];
 			}
 		};
-		
+
+		// design note:
+		// context ctx is not a reference or pointer. we expect T to be a stateless object
+		template<typename T>
 		struct AutoTileContext
 		{
-			std::function<bool(const Coord&)> isInBounds;
-			std::function<int(const Coord&)> getIndex;
-			std::function<void(const Coord&, int, TileVariant)> applyTile;
+			T context;
+
+			bool isInBounds(const Coord& c) const
+			{
+				return context.IsInBounds(c);
+			}
+
+			int getIndex(const Coord& c) const
+			{
+				return context.GetIndex(c);
+			}
+
+			void applyTile(const Coord& c, int index, TileVariant v)
+			{
+				context.Set(c, index, v);
+			}
+
+			AutoTileContext(T ctx) :
+				context(ctx)
+			{
+			}
 		};
 
 	private:
@@ -230,11 +677,12 @@ namespace TestMapEditor
 			}
 		}
 
+		template<typename T>
 		void UpdateMask(
-			AutoTileContext& ctx, 
-			const AutoTileConfig& autoTileConfig, 
-			const engine::spatial::Coord& coord, 
-			unsigned int& mask, 
+			AutoTileContext<T>& ctx,
+			const AutoTileConfig& autoTileConfig,
+			const engine::spatial::Coord& coord,
+			unsigned int& mask,
 			unsigned int bit
 		)
 		{
@@ -250,7 +698,8 @@ namespace TestMapEditor
 			}
 		}
 
-		unsigned int ComputeMask(AutoTileContext& ctx, const AutoTileConfig& autoTileConfig, const engine::spatial::Coord& coord)
+		template<typename T>
+		unsigned int ComputeMask(AutoTileContext<T>& ctx, const AutoTileConfig& autoTileConfig, const engine::spatial::Coord& coord)
 		{
 			unsigned int mask = 0;
 
@@ -262,13 +711,15 @@ namespace TestMapEditor
 			return mask;
 		}
 
-		void PlaceTile(AutoTileContext& ctx, const AutoTileConfig& autoTileConfig, const engine::spatial::Coord& coord, const TileVariant type)
+		template<typename T>
+		void PlaceTile(AutoTileContext<T>& ctx, const AutoTileConfig& autoTileConfig, const engine::spatial::Coord& coord, const TileVariant type)
 		{
 			// Set the selected tile
 			ctx.applyTile(coord, autoTileConfig.ToIndex(type), type);
 		}
 
-		void ResolveNeighbors(AutoTileContext& ctx, const AutoTileConfig& autoTileConfig, const engine::spatial::Coord& coord)
+		template<typename T>
+		void ResolveNeighbors(AutoTileContext<T>& ctx, const AutoTileConfig& autoTileConfig, const engine::spatial::Coord& coord)
 		{
 			// Update self + 4 neighbors (skip diagonals)
 			for (int dr = -1; dr <= 1; ++dr)
@@ -308,10 +759,7 @@ namespace TestMapEditor
 		}
 
 	public:
-		AutoTileSystem(
-		)
-		{
-		}
+		AutoTileSystem() = default;
 
 		AutoTileSystem(const AutoTileSystem&) = delete;
 		AutoTileSystem& operator=(const AutoTileSystem&) = delete;
@@ -322,7 +770,8 @@ namespace TestMapEditor
 		{
 		}
 
-		void Set(AutoTileContext& ctx, const AutoTileConfig& autoTileConfig, const engine::spatial::Coord& coord, bool force = false)
+		template<typename T>
+		void Set(AutoTileContext<T>& ctx, const AutoTileConfig& autoTileConfig, const engine::spatial::Coord& coord, bool force = false)
 		{
 			// quick check if coord is within bounds
 			if (!ctx.isInBounds(coord)) return;
@@ -358,7 +807,8 @@ namespace TestMapEditor
 			ResolveNeighbors(ctx, autoTileConfig, coord);
 		}
 
-		void Remove(AutoTileContext& ctx, const AutoTileConfig& autoTileConfig, const engine::spatial::Coord& coord, bool force = false)
+		template<typename T>
+		void Remove(AutoTileContext<T>& ctx, const AutoTileConfig& autoTileConfig, const engine::spatial::Coord& coord, bool force = false)
 		{
 			// quick check if coord is within bounds
 			if (!ctx.isInBounds(coord)) return;
@@ -389,7 +839,8 @@ namespace TestMapEditor
 			ResolveNeighbors(ctx, autoTileConfig, coord);
 		}
 
-		void Set(AutoTileContext& ctx, const AutoTileConfig& autoTileConfig, engine::spatial::Size<size_t> size)
+		template<typename T>
+		void Set(AutoTileContext<T>& ctx, const AutoTileConfig& autoTileConfig, engine::spatial::Size<size_t> size)
 		{
 			for (int row = 0; row < size.height; row++)
 			{
@@ -400,7 +851,8 @@ namespace TestMapEditor
 			}
 		}
 
-		void Remove(AutoTileContext& ctx, const AutoTileConfig& autoTileConfig, engine::spatial::Size<size_t> size)
+		template<typename T>
+		void Remove(AutoTileContext<T>& ctx, const AutoTileConfig& autoTileConfig, engine::spatial::Size<size_t> size)
 		{
 			for (int row = 0; row < size.height; row++)
 			{
@@ -409,6 +861,100 @@ namespace TestMapEditor
 					Remove(ctx, autoTileConfig, Coord(row, col));
 				}
 			}
+		}
+	};
+#pragma endregion
+
+#pragma region // TerrainBrush
+	struct TerrainBrush
+	{
+		std::string layer;
+		const AutoTileSystem::AutoTileConfig* config;
+	};
+#pragma endregion
+
+#pragma region // TerrainMap
+	class TerrainMap
+	{
+	private:
+		Dictionary<std::string, std::unique_ptr<TerrainLayer>> m_layers;
+
+	public:
+		TerrainMap() = default;
+
+		void Add(const std::string& key, size_t width, size_t height, const TerrainSet& set, int tileIndex)
+		{
+			Add(key, { width, height }, set, tileIndex);
+		}
+
+		void Add(const std::string& key, const Size<size_t> size, const TerrainSet& set, int tileIndex)
+		{
+			if (!Has(key))
+			{
+				if (!m_layers.Register(key, std::make_unique<TerrainLayer>()))
+				{
+					throw std::runtime_error("failed to create new terrain layer");
+				}
+			}
+
+			m_layers[key]->Initialize(size, &set, tileIndex);
+		}
+
+		bool Has(const std::string& key) const
+		{
+			return m_layers.Has(key);
+		}
+
+		TerrainLayerAutoTileAdapter GetAutoTileAdapter(const std::string& key) const
+		{
+			if (!Has(key))
+			{
+				throw std::runtime_error("no layer found");
+			}
+
+			return TerrainLayerAutoTileAdapter(*m_layers.Get(key));
+		}
+
+		TileHandle Get(const std::string& key, const Coord& coord) const
+		{
+			if (!Has(key))
+			{
+				throw std::runtime_error("no layer found");
+			}
+
+			return  m_layers[key]->Get(coord);
+		}
+
+		TileHandle Get(const std::string& key, int row, int col) const
+		{
+			if (!Has(key))
+			{
+				throw std::runtime_error("no layer found");
+			}
+
+			return  m_layers[key]->Get(row, col);
+		}
+
+		template<typename Func>
+		void ForEach(const std::string& key, const Func& func)
+		{
+			if (!Has(key))
+			{
+				throw std::runtime_error("no layer found");
+			}
+
+			m_layers[key]->ForEach(func);
+		}
+
+		template<typename Func>
+		void ForEach(const std::string& key, const Func& func) const
+		{
+			if (!Has(key))
+			{
+				throw std::runtime_error("no layer found");
+			}
+
+			m_layers[key]->ForEach(func);
 		}
 	};
 #pragma endregion
@@ -759,17 +1305,13 @@ namespace TestMapEditor
 
 		// design consideration:
 		// let editor create AutoTileContext. it knows TileLayer
-		AutoTileSystem::AutoTileContext GetAutoTileContext(TileLayer& layer)
+		AutoTileSystem::AutoTileContext<TileGridAutoTileAdapter> GetAutoTileContext(TileLayer& layer)
 		{
-			return AutoTileSystem::AutoTileContext
+			TileGridAutoTileAdapter tgata{ layer.tilegrid, *layer.tileset };
+
+			return AutoTileSystem::AutoTileContext<TileGridAutoTileAdapter>
 			{
-				[&layer](const Coord& coord) -> bool { return layer.tilegrid.IsInBounds(coord);  },
-				[&layer](const Coord& coord) -> int { return layer.tilegrid.Get(coord).GetIndex();  },
-				[&layer](const Coord& coord, int index, TileVariant variant)
-				{
-					layer.tilegrid.Set(coord, layer.tileset->MakeTile(index));
-					layer.TileVariantChangedEvent(coord, variant);
-				}
+				tgata
 			};
 		}
 
@@ -1315,7 +1857,46 @@ namespace TestMapEditor
 			return registry.Get(name);
 		}
 
+		static TerrainSet& LoadTerrainSet(
+			const std::string& name, // key for storing in cache
+			const std::string& atlasName // key of the sprite atlas to get sprites to
+		)
+		{
+			// if this tileset already exist, just return its reference
+			auto& registry = Registry<TerrainSet>::Instance();
+			if (registry.Has(name))
+			{
+				return registry.Get(name);
+			}
+			else
+			{
+				// create tileset object
+				std::unique_ptr<TerrainSet> tileset = std::make_unique<TerrainSet>();
 
+				// if we this atlas exist, get a reference
+				// TODO: a bit of a problem. if the sprite atlas does not exist, then we will have an empty tileset. this happens silently
+				if (Registry<ISpriteAtlas>::Instance().Has(atlasName))
+				{
+					ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get(atlasName);
+
+					// in this method, we are loading all the sprite atlas' sprites
+					for (int i = 0; i < atlas.GetUVRectCount(); i++)
+					{
+						std::unique_ptr<TileDefinition> tiledef = std::make_unique<TileDefinition>();
+
+						tiledef->renderable = std::make_unique<Renderable>(atlas.MakeSprite(i));
+
+						tileset->Register(i, std::move(tiledef));
+					}
+				}
+
+				// finally, register into the cache
+				registry.Register(name, std::move(tileset));
+			}
+
+			// return reference
+			return registry.Get(name);
+		}
 
 	};
 #pragma endregion
@@ -1670,161 +2251,6 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // PropBrush 
-
-	struct PropBrush
-	{
-		std::string animationSet;
-		std::string animation;
-		VecF scale;
-		ColorF color;
-		RectF footprint;
-		RectF boundingBox;
-	};
-#pragma endregion
-
-#pragma region // PropBrushTool
-	// PropBrushTool
-	//
-	// PURPOSE:
-	// A lightweight editor tool responsible for defining "what to place" and
-	// creating instances of objects based on the current placement definition.
-	//
-	// RESPONSIBILITIES:
-	// - Stores the currently selected PropBrush
-	// - Creates Prop instances (factory role)
-	// - Owns and maintains a preview instance for visualization
-	//
-	// NON-RESPONSIBILITIES (IMPORTANT):
-	// - Does NOT manage grid, tiles, or map logic
-	// - Does NOT decide where objects are placed (no coordinate logic)
-	// - Does NOT handle input (mouse/keyboard)
-	// - Does NOT perform rendering directly (only prepares data for rendering)
-	//
-	// DESIGN NOTES:
-	// - The preview object exists purely for visualization and does NOT belong to the world
-	// - Prop instances created by this tool are independent from the preview
-	// - This class should remain small; avoid turning it into a "god object"
-	//
-	// THINK OF IT AS:
-	// "A brush that knows what to paint, and can produce paint strokes (Props)"
-	class PropBrushTool
-	{
-	private:
-		PropBrush m_currPlacement;
-
-		// TODO (ARCHITECTURE):
-		// Currently using Prop as preview visualization.
-		// This is a temporary shortcut.
-		//
-		// PROBLEM:
-		// - Prop represents a world entity (tile-relative position, world semantics)
-		// - Preview is a screen-space visualization (mouse-driven, not part of world)
-		// - Reusing Prop here mixes two different concepts (world vs editor tool)
-		//
-		// CURRENT ASSUMPTIONS (must NOT be broken):
-		// - preview->position is meaningless and always treated as {0,0}
-		// - preview is NEVER inserted into InstanceGrid
-		// - preview rendering position is always provided externally (mouse position)
-		//
-		// FUTURE REFACTOR:
-		// - Introduce a dedicated Preview type:
-		//     struct Preview {
-		//         std::unique_ptr<IRenderable> renderable;
-		//         VecF scale;
-		//         ColorF color;
-		//         PositionF pivot;
-		//     };
-		// - Move pivot/offset alignment logic into Preview
-		// - Remove dependency on Prop::QueueForDraw for preview rendering
-		//
-		// NOTE:
-		// Do NOT extend Prop to support preview behavior.
-		// Keep Prop strictly as a world entity.
-		// 
-		// TODO:
-		// Support pivot-based placement.
-		// Current implementation assumes top-left alignment.
-		// Need to:
-		// - read pivot from sprite (or placement definition)
-		// - offset preview and placed object accordingly
-		std::unique_ptr<Prop> m_preview;
-
-	public:
-		PropBrushTool()
-		{
-		}
-
-		void SetBrush(const PropBrush& def, AssetManager& assets)
-		{
-			m_currPlacement = def;
-
-			m_preview = CreateAnimatedProp(assets);
-		}
-
-		std::unique_ptr<Prop> CreateAnimatedProp(AssetManager& assets)
-		{
-			auto& animSet = assets.Get<AnimationSet<Sprite>>(m_currPlacement.animationSet);
-
-			return std::make_unique<Prop>(
-				std::make_unique<Animated>(animSet, m_currPlacement.animation),
-				m_currPlacement.color,
-				m_currPlacement.scale,
-				m_currPlacement.footprint,
-				m_currPlacement.boundingBox
-			);
-		}
-
-		void QueuePreviewForDraw(DrawSortedSpritesCommand& drawCommand, const PositionF& pos, float depth) const
-		{
-			m_preview->QueueForDraw(drawCommand, pos, depth);
-		}
-
-		RectF GetPreviewFootprintAt(const PositionF& position)
-		{
-			// get the footprint of preview object, scaled, and translated into its pivot and position
-			RectF fp = m_preview->GetScaledFootprintWorld(position, true);
-
-			return fp;
-		}
-
-		RectF GetPreviewBoundingBoxAt(const PositionF& position)
-		{
-			// get the footprint of preview object, scaled, and translated into its pivot
-			RectF hb = m_preview->GetScaledBoundingBoxWorld(position, true);
-
-			return hb;
-		}
-	};
-
-#pragma endregion
-
-#pragma region // PropPlacementContext
-	// this is a data transfer object (DTO)
-	struct PropPlacementContext
-	{
-	private:
-		// only PropPlacementSystem can construct
-		friend class PropPlacementSystem;
-
-		PropPlacementContext() = default;
-
-	public:
-		PositionF worldPosition;
-		std::vector<Coord> footprintTiles;
-		std::vector<Coord> boundingBoxTiles;
-
-		// prevent accidental copying if you want immutability guarantees
-		PropPlacementContext(const PropPlacementContext&) = delete;
-		PropPlacementContext& operator=(const PropPlacementContext&) = delete;
-
-		// allow move if needed
-		PropPlacementContext(PropPlacementContext&&) = default;
-		PropPlacementContext& operator=(PropPlacementContext&&) = default;
-	};
-
-#pragma endregion
-
 #pragma region // NavigationSystem
 	class NavigationSystem
 	{
@@ -1878,26 +2304,6 @@ namespace TestMapEditor
 			m_BoundingBoxGrid.Initialize(size.width, size.height);
 
 			InitializeEvent(position, size, tilesize);
-
-			//Grid<Prop*> grid;
-			//grid.Initialize(2, 2, nullptr);
-
-			//grid.ForEach([](size_t r, size_t c, Prop* prop) 
-			//	{
-			//		if (prop == nullptr)
-			//		{
-			//			std::cout << "isnullptr" << std::endl;
-			//		}
-			//	}
-			//);
-
-			//m_objectLayer.Add({ 1,1 }, std::make_unique<Prop>());
-			//m_objectLayer.ForEach([](size_t row, size_t col, Prop* prop)
-			//	{
-			//		std::cout << "isnullptr" << std::endl;
-
-			//	}
-			//);
 
 			return true;
 		}
@@ -1986,19 +2392,6 @@ namespace TestMapEditor
 
 	};
 
-#pragma endregion
-
-#pragma region // TerrainMap
-	class TerrainMap
-	{
-	private:
-
-	public:
-		bool Initialize(const PositionF& position, const Size<size_t>& size, const SizeF& tilesize)
-		{
-			return true;
-		}
-	};
 #pragma endregion
 
 #pragma region // WorldTransform
@@ -2097,10 +2490,9 @@ namespace TestMapEditor
 	class WorldMap
 	{
 	private:
-
 		WorldTransform m_worldTransform;		
 		PropMap m_propMap;
-		//TerrainMap m_terrainMap;
+		TerrainMap m_terrainMap;
 
 	public:
 		WorldMap()
@@ -2239,6 +2631,67 @@ namespace TestMapEditor
 			return true;
 		}
 
+		void AddTerrain(const std::string& key, const TerrainSet& set, int tileIndex)
+		{
+			m_terrainMap.Add(key, GetTransform().GetSize(), set, tileIndex);
+		}
+
+		bool HasTerrain(const std::string& key) const
+		{
+			return m_terrainMap.Has(key);
+		}
+
+		TerrainLayerAutoTileAdapter GetAutoTileAdapter(const std::string& key) const
+		{
+			return m_terrainMap.GetAutoTileAdapter(key);
+		}
+
+		template<typename Func>
+		void ForEachTerrainTile(const std::string& key, const Func& func)
+		{
+			m_terrainMap.ForEach(key, func);
+		}
+
+		template<typename Func>
+		void ForEachTerrainTile(const std::string& key, const Func& func) const
+		{
+			m_terrainMap.ForEach(key, func);
+		}
+	};
+#pragma endregion
+
+#pragma region // PropBrush 
+	struct PropBrush
+	{
+		std::string animationSet;
+		std::string animation;
+		VecF scale;
+		ColorF color;
+		RectF footprint;
+		RectF boundingBox;
+	};
+#pragma endregion
+
+#pragma region // PropFactory
+	// design note: 
+	// a bit of an issue where brush already knows animation set key to look for in cache but we still 
+	// pass the actual animation set here, making the animation set key useless in brush. the caller 
+	// though used the brush's animation set key outside to determine the animation set. is this a smell?
+	// i don't think so. i think factory does not need to fully depend on brush information to build brush
+	// it can also take information somewhere else like we did here. 
+	class PropFactory
+	{
+	public:
+		static std::unique_ptr<Prop> Create(const PropBrush& brush, const AnimationSet<Sprite>& animationSet)
+		{
+			return std::make_unique<Prop>(
+				std::make_unique<Animated>(animationSet, brush.animation),
+				brush.color,
+				brush.scale,
+				brush.footprint,
+				brush.boundingBox
+			);
+		}
 	};
 #pragma endregion
 
@@ -2430,9 +2883,6 @@ namespace TestMapEditor
 			RectF boundingBox = prop->GetScaledBoundingBoxWorld(worldPosition, true);
 			std::vector<Coord> boundingBoxTiles = QueryCoords(boundingBox, world.GetTransform().GetTileSize());
 
-			// then we set it as position of this prop
-			prop->position = world.GetTransform().WorldToTileSpace(worldPosition);
-
 			// --------------------------------------------------------------------------------
 			// REMOVE OVERLAPS (RULE)
 			// --------------------------------------------------------------------------------
@@ -2446,6 +2896,9 @@ namespace TestMapEditor
 			// --------------------------------------------------------------------------------
 			// APPLY PLACEMENT
 			// --------------------------------------------------------------------------------
+
+			// we set it as position of this prop
+			prop->position = world.GetTransform().WorldToTileSpace(worldPosition);
 
 			// add the actual object into our object layer
 			world.InsertProp(std::move(prop), world.GetTransform().WorldToTileCoord(worldPosition), boundingBoxTiles, constraintsPerCoord);
@@ -2478,6 +2931,242 @@ namespace TestMapEditor
 		
 	};
 #pragma endregion
+
+#pragma region // PropBrushTool
+	class PropBrushTool
+	{
+	private:
+		// design note:
+		// by right this does not belong here. it is the brush library. 
+		// tool should only be responsible for deciding which brush to be active
+		// but we decided to place this here because it's a simple dictionary only.
+		// it kinda feels inconvenient defining a "BrushLibrary" just to separate this.
+		// however doing this breaks separation of responsibilities.
+		// this class now does 2 jobs - paint and store brushes. 
+		// is this wrong? maybe not now because this brush library is so simple
+		// maybe in future we will separate it.
+		Dictionary<std::string, PropBrush> m_brushes;
+		PropBrush m_currentBrush;
+
+	public:
+		PropBrushTool()
+		{
+		}
+
+		void Register(const std::string& key, const PropBrush& brush)
+		{
+			m_brushes.Register(key, brush);
+		}
+
+		void Set(const std::string& key)
+		{
+			m_currentBrush = m_brushes.Get(key);
+		}
+
+		// brush tool places the current active prop in the world at given position in the world.
+		bool Paint(WorldMap& world, const PositionF& worldPosition) const
+		{
+			// gets the animation set from asset based on the brush
+			// this is strict. if animation set does not exist in cache, this will throw
+			// design note: maybe it's a bit complicated to create fallback of animation set so we leave it like this 
+			AssetManager assets;
+			auto& animSet = assets.Get<AnimationSet<Sprite>>(m_currentBrush.animationSet);
+
+			// create the prop based on the brush
+			std::unique_ptr<Prop> prop = PropFactory::Create(m_currentBrush, animSet);
+
+			// delegate placement on placement system
+			return PropPlacementSystem::Place(world, std::move(prop), worldPosition);
+		}
+
+		// erase top-most prop from the world at given position in the world
+		bool Erase(WorldMap& world, const PositionF& worldPosition)
+		{
+			return PropPlacementSystem::Remove(world, worldPosition);
+		}
+	};
+
+#pragma endregion
+
+#pragma region // TerrainBrushTool
+	class TerrainBrushTool
+	{
+	private:
+		TerrainBrush m_currentBrush;
+
+	public:
+		void Set(const TerrainBrush& brush)
+		{
+			m_currentBrush = brush;
+		}
+
+		bool Paint(const WorldMap& world, const Coord& coord)
+		{
+			// if no valid terrain, bail out
+			if (!world.HasTerrain(m_currentBrush.layer))
+			{
+				// should we throw?
+				return false;
+			}
+			if (m_currentBrush.config != nullptr)
+			{
+				AutoTileSystem::AutoTileContext<TerrainLayerAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
+				AutoTileSystem ats;
+				ats.Set(context, *m_currentBrush.config, coord);
+			}
+			else
+			{
+				// what are we supposed to do if there is no config?? we don't know which index to set...
+				//m_currentBrush.layer->Set(coord, )
+				return false;
+			}
+
+			return true;
+		}
+		bool Paint(const WorldMap& world, const PositionF& worldPos)
+		{
+			Coord coord = world.GetTransform().WorldToTileCoord(worldPos);
+			return Paint(world, coord);
+		}
+
+		bool Erase(const WorldMap& world, const Coord& coord)
+		{
+			// if no valid terrain, bail out
+			if (!world.HasTerrain(m_currentBrush.layer))
+			{
+				// should we throw?
+				return false;
+			}
+
+			if (m_currentBrush.config != nullptr)
+			{
+				AutoTileSystem::AutoTileContext<TerrainLayerAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
+				AutoTileSystem ats;
+				ats.Remove(context, *m_currentBrush.config, coord);
+			}
+			else
+			{
+				// what are we supposed to do if there is no config?? we don't know which index to set...
+				//m_currentBrush.layer->Set(coord, )
+				return false;
+			}
+
+			return true;
+		}
+
+		bool Erase(const WorldMap& world, const PositionF& worldPos)
+		{
+			Coord coord = world.GetTransform().WorldToTileCoord(worldPos);
+			return Erase(world, coord);
+		}
+
+	};
+#pragma endregion
+
+#pragma region // TerrainBrushLink
+	struct TerrainBrushLink
+	{
+		// source brush
+		std::string source;
+
+		// target brush
+		std::string target;
+
+		// maps source tile index -> target tile index
+		Dictionary<int, int> indexMap;
+
+		bool Has(int sourceIndex) const
+		{
+			return indexMap.Has(sourceIndex);
+		}
+
+		int ToTarget(int sourceIndex) const
+		{
+			return indexMap[sourceIndex];
+		}
+	};
+#pragma endregion
+
+#pragma region // TerrinLinkSystem
+#pragma region // TerrainLinkSystem
+	class TerrainLinkSystem
+	{
+	public:
+		TerrainLinkSystem() = default;
+
+		void Propagate(
+			WorldMap& world,
+			const TerrainBrushLink& link,
+			const TerrainBrush& sourceBrush,
+			const TerrainBrush& targetBrush,
+			const Coord& coord)
+		{
+			// validate layers
+			if (!world.HasTerrain(sourceBrush.layer)) return;
+			if (!world.HasTerrain(targetBrush.layer)) return;
+
+			// validate configs
+			if (sourceBrush.config == nullptr) return;
+			if (targetBrush.config == nullptr) return;
+
+			// source adapter/context
+			auto sourceAdapter =
+				world.GetAutoTileAdapter(
+					sourceBrush.layer);
+
+			AutoTileSystem::AutoTileContext<
+				TerrainLayerAutoTileAdapter> sourceCtx
+			{
+				sourceAdapter
+			};
+
+			// target adapter/context
+			auto targetAdapter =
+				world.GetAutoTileAdapter(
+					targetBrush.layer);
+
+			AutoTileSystem::AutoTileContext<
+				TerrainLayerAutoTileAdapter> targetCtx
+			{
+				targetAdapter
+			};
+
+			// get source tile
+			int sourceIndex =
+				sourceCtx.getIndex(coord);
+
+			// mapping exists?
+			if (!link.Has(sourceIndex))
+			{
+				return;
+			}
+
+			// target tile
+			int targetIndex =
+				link.ToTarget(sourceIndex);
+
+			// apply target tile
+			targetCtx.applyTile(
+				coord,
+				targetIndex,
+				targetBrush.config->ToVariant(targetIndex));
+
+			// autotile target neighbors
+			AutoTileSystem ats;
+
+			ats.Set(
+				targetCtx,
+				*targetBrush.config,
+				coord,
+				true);
+		}
+	};
+#pragma endregion
+#pragma endregion
+
+#pragma region // TerrainEditor
+#pragma endregion
+
 
 #pragma region // debug scene
 	class DebugScene : public Scene
@@ -2560,29 +3249,39 @@ namespace TestMapEditor
 		TileLayer m_fineGridTileLayer;
 		WorldMap m_worldMap;
 
-		PropBrushTool m_placementTool;
+		PropBrushTool m_propBrushTool;
 		PropPlacementSystem m_propPlacer;
 
 		PositionF m_mousePos;
 
 		bool m_showDebug = true;
 
-		PropBrush LargePineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{1.5f, 1.5f}, ColorF{1,1,1,1}, RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-		PropBrush SmallPineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{0.5f, 0.5f}, ColorF{1,1,1,1}, RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-		PropBrush NormalPineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{1.0f, 1.0f}, ColorF{1,1,1,1},RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.2f, 0.2f, 0.8f, 0.92f} };
-		PropBrush LargeBirchTree{ "birchtree_anim_set",	"birch_tree_idle",	VecF{1.5f, 1.5f}, ColorF{1,1,1,1}, RectF{0.47f, 0.8f, 0.53f, 0.85f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-		PropBrush SmallBirchTree{ "birchtree_anim_set",	"birch_tree_idle",	VecF{0.5f, 0.5f}, ColorF{1,1,1,1}, RectF{0.47f, 0.8f, 0.53f, 0.85f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
 		PropBrush NormalBirchTree{ "birchtree_anim_set",	"birch_tree_idle",	VecF{1.0f, 1.0f}, ColorF{1,1,1,1}, RectF{0.47f, 0.8f, 0.53f, 0.85f}, RectF{0.27f, 0.12f, 0.73f, 0.87f} };
-		PropBrush LargeWaterRocks{ "water_rocks_anim_set",	"water_rocks_idle",	VecF{2.0f, 2.0f}, ColorF{1,1,1,1}, RectF{0.1f,0.4f,0.9f,0.8f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-
+		PropBrush NormalPineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{1.0f, 1.0f}, ColorF{1,1,1,1},RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.2f, 0.2f, 0.8f, 0.92f} };
 		PropBrush NormalCastle{ "castle_anim_set", "castle_idle",	VecF{1.0f, 1.0f}, ColorF{1,1,1,1}, RectF{0.05f, 0.6f, 0.95f, 0.90f}, RectF{0.05f, 0.2f, 0.95f, 0.9f} };
+		PropBrush LargePineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{1.5f, 1.5f}, ColorF{1,1,1,1}, RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
+		PropBrush LargeBirchTree{ "birchtree_anim_set",	"birch_tree_idle",	VecF{1.5f, 1.5f}, ColorF{1,1,1,1}, RectF{0.47f, 0.8f, 0.53f, 0.85f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
 		PropBrush LargeCastle{ "castle_anim_set", "castle_idle",	VecF{1.5f, 1.5f}, ColorF{1,1,1,1}, RectF{0.05f, 0.6f, 0.95f, 0.90f}, RectF{0.05f, 0.2f, 0.95f, 0.9f} };
+		PropBrush LargeWaterRocks{ "water_rocks_anim_set",	"water_rocks_idle",	VecF{2.0f, 2.0f}, ColorF{1,1,1,1}, RectF{0.1f,0.4f,0.9f,0.8f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
+		PropBrush SmallPineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{0.5f, 0.5f}, ColorF{1,1,1,1}, RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
+		PropBrush SmallBirchTree{ "birchtree_anim_set",	"birch_tree_idle",	VecF{0.5f, 0.5f}, ColorF{1,1,1,1}, RectF{0.47f, 0.8f, 0.53f, 0.85f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
 
 	public:
 		void OnEnter() override
 		{
+			// register our brushes
+			m_propBrushTool.Register("normal_pine_tree", NormalPineTree);
+			m_propBrushTool.Register("normal_birch_tree", NormalBirchTree);
+			m_propBrushTool.Register("normal_castle", NormalCastle);
+			m_propBrushTool.Register("large_pine_tree", LargePineTree);
+			m_propBrushTool.Register("large_birch_tree", LargeBirchTree);
+			m_propBrushTool.Register("large_castle", LargeCastle);
+			m_propBrushTool.Register("small_pine_tree", SmallPineTree);
+			m_propBrushTool.Register("small_birch_tree", SmallBirchTree);
+			m_propBrushTool.Register("large_water_rocks", LargeWaterRocks);
+
 			// set placement tool default placement
-			m_placementTool.SetBrush(NormalPineTree, m_assets);
+			m_propBrushTool.Set("normal_pine_tree");
 
 			m_worldMap.Initialize(m_assets.Get<PositionF>("map_position"), m_assets.Get<Size<size_t>>("map_size"), m_assets.Get<SizeF>("tile_size"));
 
@@ -2618,36 +3317,30 @@ namespace TestMapEditor
 				m_showDebug = !m_showDebug;
 				break;
 			case 49: // 1
-				m_placementTool.SetBrush(NormalPineTree, m_assets);
+				m_propBrushTool.Set("normal_pine_tree");
 				break;
 			case 50: // 2
-				m_placementTool.SetBrush(NormalBirchTree, m_assets);
+				m_propBrushTool.Set("normal_birch_tree");
 				break;
 			case 51: // 3 
-				m_placementTool.SetBrush(SmallPineTree, m_assets);
+				m_propBrushTool.Set("normal_castle");
 				break;
 			case 52: // 4
-				m_placementTool.SetBrush(SmallBirchTree, m_assets);
 				break;
 			case 53: // 5
-				m_placementTool.SetBrush(LargePineTree, m_assets);
 				break;
 			case 54: // 6
-				m_placementTool.SetBrush(LargeBirchTree, m_assets);
 				break;
 			case 55: // 7
 			{
-				m_placementTool.SetBrush(NormalCastle, m_assets);
 				break;
 			}
 			case 56: // 8
 			{
-				m_placementTool.SetBrush(LargeCastle, m_assets);
 				break;
 			}
 			case 57: // 9
 			{
-				m_placementTool.SetBrush(LargeWaterRocks, m_assets);
 				break;
 			}
 
@@ -2698,7 +3391,7 @@ namespace TestMapEditor
 			// left click to place grass tile
 			if (btn == 1)
 			{
-				PropPlacementSystem::Place(m_worldMap, m_placementTool.CreateAnimatedProp(m_assets), m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
+				m_propBrushTool.Paint(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
 
 				return;
 			}
@@ -2706,7 +3399,7 @@ namespace TestMapEditor
 			else if (btn == 2)
 			{
 				// immediate goal is to find the top-most object that intersects with the mouse cursor in this cell and remove it.
-				PropPlacementSystem::Remove(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
+				m_propBrushTool.Erase(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
 
 				return;
 			}
@@ -2741,22 +3434,22 @@ namespace TestMapEditor
 						});
 				}
 			}
-
-
-			m_placementTool.QueuePreviewForDraw(drawCommand, m_mousePos, 1);
+			//m_placementTool.QueuePreviewForDraw(drawCommand, m_mousePos, 1);
 			drawCommand.Sort();
 			drawCommand.Execute();
 
+
+
 			if (m_showDebug)
 			{
-				RectF fp = m_placementTool.GetPreviewFootprintAt(m_mousePos);
 				IRenderer& renderer = m_assets.Get<IRenderer>("renderer");
-				DrawQuadCommand cmd(renderer, fp.GetTopLeft(), fp.GetSize(), { 1,1,1,0.5f }, 0.0f);
-				cmd.Execute();
+				//RectF fp = m_placementTool.GetPreviewFootprintAt(m_mousePos);
+				//DrawQuadCommand cmd(renderer, fp.GetTopLeft(), fp.GetSize(), { 1,1,1,0.5f }, 0.0f);
+				//cmd.Execute();
 
-				RectF hb = m_placementTool.GetPreviewBoundingBoxAt(m_mousePos);
-				DrawQuadCommand cmdBoundingBox(renderer, hb.GetTopLeft(), hb.GetSize(), { 1,0,1,0.5f }, 0.0f);
-				cmdBoundingBox.Execute();
+				//RectF hb = m_placementTool.GetPreviewBoundingBoxAt(m_mousePos);
+				//DrawQuadCommand cmdBoundingBox(renderer, hb.GetTopLeft(), hb.GetSize(), { 1,0,1,0.5f }, 0.0f);
+				//cmdBoundingBox.Execute();
 
 				// draw grid tile
 				mapLayerRenderer.Clear();
@@ -2948,14 +3641,18 @@ namespace TestMapEditor
 	private:
 		StateMachine m_stateMachine;
 		AssetManager m_assets;
-		TileLayer m_gridTileLayer;
-		TileLayer m_fineGridTileLayer;
 		WorldMap m_worldMap;
 
 		TileLayer m_grassTileLayer;
 		TileLayer m_splashTileLayer;
 
 		PositionF m_mousePos;
+
+		TerrainGrid m_tilegrid;
+		TerrainGrid m_finegrid;
+
+		TerrainBrush m_grassTerrainBrush;
+		TerrainBrushTool m_terrainBrushTool;
 
 		bool m_showDebug = true;
 
@@ -2967,12 +3664,6 @@ namespace TestMapEditor
 			// initialize grid tile layer. fill it with its only tile
 			auto& grassTileset = m_assets.Get<Tileset<IRenderable>>("grass_tileset");
 			auto& mapSize = m_assets.Get<Size<size_t>>("map_size");
-			m_gridTileLayer.tileset = &grassTileset;
-			m_gridTileLayer.tilegrid.Initialize(mapSize, grassTileset.MakeTile(13));
-
-			// initialize fine grid tile layer. fill it with its only tile
-			m_fineGridTileLayer.tileset = &grassTileset;
-			m_fineGridTileLayer.tilegrid.Initialize(mapSize, grassTileset.MakeTile(22));
 
 			// initialize grass tile layer. fill it with invalid tiles for now so they have empty tiles
 			m_grassTileLayer.tileset = &grassTileset;
@@ -2983,6 +3674,21 @@ namespace TestMapEditor
 			m_splashTileLayer.tileset = &splashTileset;
 			m_splashTileLayer.tilegrid.Initialize(mapSize, splashTileset.MakeInvalidTile());
 
+
+			// initialize grids
+			auto& terrainSet = m_assets.Get<TerrainSet>("grass_tileset");
+			m_tilegrid.Initialize(m_worldMap.GetTransform().GetSize(), terrainSet.MakeTile(13));
+			m_finegrid.Initialize(m_worldMap.GetTransform().GetSize(), terrainSet.MakeTile(22));
+
+			// add layers to terrain map
+			m_worldMap.AddTerrain("grass", terrainSet, 4);
+
+			// initialize terrain brushes
+			m_grassTerrainBrush.layer = "grass";
+			m_grassTerrainBrush.config = &m_assets.Get<AutoTileSystem::AutoTileConfig>("grass_tile_auto_config");
+
+			// initialize terrain brush tool
+			m_terrainBrushTool.Set(m_grassTerrainBrush);
 		}
 
 		void OnUpdate(double dt) override
@@ -3032,10 +3738,13 @@ namespace TestMapEditor
 				auto& config = m_assets.Get<AutoTileSystem::AutoTileConfig>("grass_tile_auto_config");
 				auto& splashAnimLookup = m_assets.Get<Dictionary<TileVariant, int>>("splash_anim_tile_lookup");
 
+				m_terrainBrushTool.Paint(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
+
 				// place grass tile
-				TileLayerEditor tle;
-				tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
-				tle.Paint(m_grassTileLayer, config, coord);
+				//TileLayerEditor tle;
+				//tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
+				//tle.Paint(m_grassTileLayer, config, coord);
+				return;
 			}
 		}
 
@@ -3058,22 +3767,34 @@ namespace TestMapEditor
 
 			auto& config = m_assets.Get<AutoTileSystem::AutoTileConfig>("grass_tile_auto_config");
 			auto& splashAnimLookup = m_assets.Get<Dictionary<TileVariant, int>>("splash_anim_tile_lookup");
+			auto& grassTileset = m_assets.Get<TerrainSet>("grass_tileset");
 
 			// left click to place grass tile
 			if (btn == 1)
 			{
-				// place grass tile
-				TileLayerEditor tle;
-				tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
-				tle.Paint(m_grassTileLayer, config, coord);
+				//// place grass tile
+				//TileLayerEditor tle;
+				//tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
+				//tle.Paint(m_grassTileLayer, config, coord);
+				//return;
+
+				m_terrainBrushTool.Paint(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
+
+				//AutoTileSystem ats;
+				//TerrainAutoTileAdapter tata{ m_terrain, grassTileset };
+				//AutoTileSystem::AutoTileContext<TerrainAutoTileAdapter> ctx{tata};
+				//ats.Set(ctx, config, coord);
 			}
 			// right click to remove tile
 			else if (btn == 2)
 			{
-				// remove grass tile
-				TileLayerEditor tle;
-				tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
-				tle.Erase(m_grassTileLayer, config, coord);
+				//// remove grass tile
+				//TileLayerEditor tle;
+				//tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
+				//tle.Erase(m_grassTileLayer, config, coord);
+
+				m_terrainBrushTool.Erase(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
+
 			}
 		}
 
@@ -3081,63 +3802,34 @@ namespace TestMapEditor
 		{
 			m_stateMachine.OnRender();
 
-			// draw tiles in order of their depth (Y) so that tiles with higher Y (lower on the screen) are drawn after 
-			// tiles with lower Y (higher on the screen) to create proper overlapping. props will be drawn in between floor 
-			// and edge tiles based on their tile constraint, so we draw all floor and edge tiles first, then props, 
-			// then debug constraint indicators
-			auto& mapLayerRenderer = m_assets.Get<MapLayerRenderer>("renderer");
-
-			// draw water splash tile
-			mapLayerRenderer.Clear();
-			mapLayerRenderer.QueueAllTilesForDraw(m_splashTileLayer.tilegrid, m_splashTileLayer.tilegrid.GetSize(), 1, { 3,3 });
-			mapLayerRenderer.Sort();
-			mapLayerRenderer.Draw();
-
-			// draw grass tile
-			mapLayerRenderer.Clear();
-			mapLayerRenderer.QueueAllTilesForDraw(m_grassTileLayer.tilegrid, m_grassTileLayer.tilegrid.GetSize(), 1, { 1,1 });
-			mapLayerRenderer.Sort();
-			mapLayerRenderer.Draw();
-
-
+			// get resources
+			IRenderer& renderer = m_assets.Get<IRenderer>("renderer");
 			DrawSortedSpritesCommand& drawCommand = m_assets.Get<DrawSortedSpritesCommand>("drawCommand");
+
+			// draw the terrain
 			drawCommand.Clear();
-			auto& tilesize = m_assets.Get<SizeF>("tile_size");
-			auto& mapPos = m_assets.Get<PositionF>("map_position");
+			//DrawTerrainGrid(renderer, drawCommand, m_terrain, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), { 1,1,1,1 });
+			//DrawTerrainLayer(renderer, drawCommand, m_grassTerrainLayer, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), { 1,1,1,1 });
+			DrawTerrainLayer(renderer, drawCommand, m_worldMap, "grass", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), {1,1,1,1});
+			drawCommand.Sort();
+			drawCommand.Execute();
 
-			Size<size_t> mapSize = m_worldMap.GetTransform().GetSize();
-			for (int row = 0; row < (int)mapSize.height; row++)
+			if (m_showDebug)
 			{
-				for (int col = 0; col < (int)mapSize.width; col++)
-				{
-					Coord coord(row, col);
-					PositionF tileScreenPos = CoordToPosition(coord, tilesize) + mapPos;
-
-					m_worldMap.ForEachProp(row, col, [&drawCommand, &tileScreenPos](Prop* prop)
-						{
-							prop->QueueForDraw(drawCommand, tileScreenPos, 1);
-						});
-				}
+				// draw the tile grid
+				drawCommand.Clear();
+				DrawTerrainGrid(renderer, drawCommand, m_tilegrid, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), { 0,0,0,0.2f });
+				DrawTerrainGrid(renderer, drawCommand, m_finegrid, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), { 0,0,0,0.05f });
+				drawCommand.Sort();
+				drawCommand.Execute();
 			}
 
 			if (m_showDebug)
 			{
 				IRenderer& renderer = m_assets.Get<IRenderer>("renderer");
 
-				// draw grid tile
-				mapLayerRenderer.Clear();
-				ColorF color = mapLayerRenderer.GetColor();
-				mapLayerRenderer.SetColor({ 0,0,0,0.2f });
-				mapLayerRenderer.QueueAllTilesForDraw(m_gridTileLayer.tilegrid, m_gridTileLayer.tilegrid.GetSize(), 1, { 1,1 });
-				mapLayerRenderer.Sort();
-				mapLayerRenderer.Draw();
-				mapLayerRenderer.SetColor(color);
-
 				DrawNavigationGridOverlay(renderer, m_worldMap);
 
-				std::string msg = m_worldMap.GetDebugInfo();
-
-				renderer.Draw(m_assets.Get<IFontAtlas>("font"), msg, { 400, 5 }, { 1,1,1,1 });
 
 			}
 
@@ -3296,6 +3988,143 @@ namespace TestMapEditor
 				}
 			}
 		}
+
+		void DrawTerrainGrid(
+			IRenderer& renderer,
+			DrawSortedSpritesCommand& command,
+			const TerrainGrid& grid,
+			const PositionF& worldPos,
+			const SizeF& tileSize,
+			const ColorF& color,
+			VecF scale = { 1,1 }
+		)
+		{
+			for (int row = 0; row < (int)grid.GetHeight(); ++row)
+			{
+				for (int col = 0; col < (int)grid.GetWidth(); ++col)
+				{
+					// get the tile from main layer.
+					const TileHandle& tile = grid.Get(row, col);
+					
+					// if tile is valid, we can queue it for draw. otherwise, we skip it
+					if (tile.IsValid())
+					{
+						// find the top-left position of the tile in map space.
+						engine::spatial::PositionF tilePosFromMap =
+						{
+							col * tileSize.width,
+							row * tileSize.height
+						};
+
+						// apply scale to tile size in case we want to draw the tile at different size. 
+						// note that only size change. position is still based on original tile size 
+						engine::spatial::SizeF scaledtilesize
+						{
+							tileSize.width * scale.x,
+							tileSize.height * scale.y
+						};
+
+						command.Add({
+							tile.GetSprite(),					// sprite object to draw
+							worldPos + tilePosFromMap,		// shift tile position from map space to world space
+							scaledtilesize,						// size to draw the tile at
+							color,								// color
+							0.0f,								// no rotation for tile
+							1								// depth value for sorting
+							});
+					}
+				}
+			}
+		}
+
+
+		void DrawTerrainLayer(
+			IRenderer& renderer,
+			DrawSortedSpritesCommand& command,
+			const TerrainLayer& layer,
+			const PositionF& worldPos,
+			const SizeF& tileSize,
+			const ColorF& color,
+			VecF scale = { 1,1 }
+		)
+		{
+			for (int row = 0; row < (int)layer.GetSize().height; ++row)
+			{
+				for (int col = 0; col < (int)layer.GetSize().width; ++col)
+				{
+					// get the tile from main layer.
+					const TileHandle tile = layer.Get(row, col);
+
+					// if tile is valid, we can queue it for draw. otherwise, we skip it
+					if (tile.IsValid())
+					{
+						// find the top-left position of the tile in map space.
+						engine::spatial::PositionF tilePosFromMap =
+						{
+							col * tileSize.width,
+							row * tileSize.height
+						};
+
+						// apply scale to tile size in case we want to draw the tile at different size. 
+						// note that only size change. position is still based on original tile size 
+						engine::spatial::SizeF scaledtilesize
+						{
+							tileSize.width * scale.x,
+							tileSize.height * scale.y
+						};
+
+						command.Add({
+							tile.GetSprite(),					// sprite object to draw
+							worldPos + tilePosFromMap,		// shift tile position from map space to world space
+							scaledtilesize,						// size to draw the tile at
+							color,								// color
+							0.0f,								// no rotation for tile
+							1								// depth value for sorting
+							});
+					}
+				}
+			}
+		}
+
+		void DrawTerrainLayer(
+			IRenderer& renderer,
+			DrawSortedSpritesCommand& command,
+			const WorldMap& world,
+			const std::string& layer,
+			const PositionF& worldPos,
+			const SizeF& tileSize,
+			const ColorF& color,
+			VecF scale = { 1,1 }
+		)
+		{
+			world.ForEachTerrainTile(layer, [tileSize, scale, &command, worldPos, color](int row, int col, TileHandle tile)
+				{
+					// find the top-left position of the tile in map space.
+					engine::spatial::PositionF tilePosFromMap =
+					{
+						col * tileSize.width,
+						row * tileSize.height
+					};
+
+					// apply scale to tile size in case we want to draw the tile at different size. 
+					// note that only size change. position is still based on original tile size 
+					engine::spatial::SizeF scaledtilesize
+					{
+						tileSize.width * scale.x,
+						tileSize.height * scale.y
+					};
+
+					command.Add({
+						tile.GetSprite(),					// sprite object to draw
+						worldPos + tilePosFromMap,		// shift tile position from map space to world space
+						scaledtilesize,						// size to draw the tile at
+						color,								// color
+						0.0f,								// no rotation for tile
+						1								// depth value for sorting
+						});
+				});	
+		}
+
 	};
 #pragma endregion
 
@@ -3393,7 +4222,7 @@ namespace TestMapEditor
 				// create animation for splash and store in animation set
 				ISpriteAtlas& splashAnimSprites = assets.Get<ISpriteAtlas>("splash_anim_sprites");
 				AnimationSet<Sprite>& splashAnimSet = assets.Get<AnimationSet<Sprite>>("splash_anim_set");
-				splashAnimSet.Register("splash_anim", AnimationFactory::Create(splashAnimSprites, 100.0f, true, { .33f, .355f }));
+				splashAnimSet.Register("splash_anim", SpriteAnimationFactory::Create(splashAnimSprites, 100.0f, true, { .33f, .355f }));
 
 				// create tileset that stores water splash animation
 				Registry<Tileset<IRenderable>>::Instance().Register("splash_tileset", std::make_unique<Tileset<IRenderable>>());
@@ -3455,7 +4284,7 @@ namespace TestMapEditor
 
 				// create "idle" animation for birch tree and register in its animation set
 				auto& birchTreeAtlas = assets.Get<ISpriteAtlas>("birch_tree");
-				birchTreeAnimSet.Register("birch_tree_idle", AnimationFactory::Create(birchTreeAtlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 200.0f, true, PositionF{ 0.5f, 0.85f }));
+				birchTreeAnimSet.Register("birch_tree_idle", SpriteAnimationFactory::Create(birchTreeAtlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 200.0f, true, PositionF{ 0.5f, 0.85f }));
 
 				// create animation set for pine tree
 				Registry<AnimationSet<Sprite>>::Instance().Register("pinetree_anim_set", std::make_unique<AnimationSet<Sprite>>());
@@ -3463,7 +4292,7 @@ namespace TestMapEditor
 
 				// create "idle" animation for pine tree and register in its animation set
 				auto& pineTreeAtlas = assets.Get<ISpriteAtlas>("pine_tree");
-				pineTreeAnimSet.Register("pine_tree_idle", AnimationFactory::Create(pineTreeAtlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 200.0f, true, PositionF{ 0.5f, 0.91f }));
+				pineTreeAnimSet.Register("pine_tree_idle", SpriteAnimationFactory::Create(pineTreeAtlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 200.0f, true, PositionF{ 0.5f, 0.91f }));
 
 				SpriteAtlasFactory::Create("birch_tree", L"../Assets/tree_1x8_1536x192.png", 1, 8); // birch tree
 
@@ -3472,15 +4301,18 @@ namespace TestMapEditor
 				Registry<AnimationSet<Sprite>>::Instance().Register("castle_anim_set", std::make_unique<AnimationSet<Sprite>>());
 				auto& castleAnimSet = assets.Get<AnimationSet<Sprite>>("castle_anim_set");
 				auto& castleAtlas = assets.Get<ISpriteAtlas>("castle");
-				castleAnimSet.Register("castle_idle", AnimationFactory::Create(castleAtlas, std::vector<int>{ 0 }, 200.0f, true, PositionF{ 0.5f, 0.95f }));
+				castleAnimSet.Register("castle_idle", SpriteAnimationFactory::Create(castleAtlas, std::vector<int>{ 0 }, 200.0f, true, PositionF{ 0.5f, 0.95f }));
 
 				// setup water rocks
 				SpriteAtlasFactory::Create("water_rocks", L"../Assets/Water_Rocks.png", 1, 16); // castle
 				Registry<AnimationSet<Sprite>>::Instance().Register("water_rocks_anim_set", std::make_unique<AnimationSet<Sprite>>());
 				auto& waterRocksAnimSet = assets.Get<AnimationSet<Sprite>>("water_rocks_anim_set");
 				auto& waterRockAtlas = assets.Get<ISpriteAtlas>("water_rocks");
-				waterRocksAnimSet.Register("water_rocks_idle", AnimationFactory::Create(waterRockAtlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ,14 ,15 }, 100.0f, true, PositionF{ 0.5f, 0.8f }));
+				waterRocksAnimSet.Register("water_rocks_idle", SpriteAnimationFactory::Create(waterRockAtlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ,14 ,15 }, 100.0f, true, PositionF{ 0.5f, 0.8f }));
 
+
+				// create our tileset and load all sprites from sprite atlas
+				TilesetLoader::LoadTerrainSet("grass_tileset", "grass_tile_sprites");
 				
 			}
 
@@ -3489,7 +4321,7 @@ namespace TestMapEditor
 				m_sceneManager.CreateScene<EditorScene>("Edit");
 				m_sceneManager.CreateScene<DebugScene>("Debug");
 				m_sceneManager.CreateScene<TerrainEditScene>("Terrain");
-				m_sceneManager.SetActive("Terrain");
+				m_sceneManager.SetActive("Edit");
 			}
 
 			// create draw command for drawing sorted sprites. we will use this for drawing the base layer tiles.

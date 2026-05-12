@@ -57,7 +57,7 @@ namespace TestActor
 		//using SpriteAtlas = engine::graphics::resource::SpriteAtlas;
 		using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
 		using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite, Actor>;
-		using AnimationFactory = engine::graphics::factory::AnimationFactory;
+		using SpriteAnimationFactory = engine::graphics::factory::SpriteAnimationFactory;
 		//using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
 		//using AnimationSystem = engine::graphics::animation::AnimationSystem<engine::graphics::Sprite, Item>;
 		//using IFontAtlas = engine::graphics::resource::IFontAtlas;
@@ -135,10 +135,10 @@ namespace TestActor
 				AnimationSet& animset = Registry<AnimationSet>::Instance().Get("dust");
 
 				// create actor animations and store in animation set
-				animset.Register("idle right", AnimationFactory::Create(atlas, { 0, 1, 2, 3, 4, 5 }, 100, true, PositionF{0.5f, 0.65f}));
-				animset.Register("idle left", AnimationFactory::Create(atlas, { 6, 7, 8, 9, 10, 11 }, 100, true, PositionF{ 0.5f, 0.65f }));
-				animset.Register("walk right", AnimationFactory::Create(atlas, { 12, 13, 14, 15, 16, 17 }, 100, true, PositionF{ 0.5f, 0.65f }));
-				animset.Register("walk left", AnimationFactory::Create(atlas, { 18, 19, 20, 21, 22, 23, }, 100, true, PositionF{ 0.5f, 0.65f }));
+				animset.Register("idle right", SpriteAnimationFactory::Create(atlas, { 0, 1, 2, 3, 4, 5 }, 100, true, PositionF{0.5f, 0.65f}));
+				animset.Register("idle left", SpriteAnimationFactory::Create(atlas, { 6, 7, 8, 9, 10, 11 }, 100, true, PositionF{ 0.5f, 0.65f }));
+				animset.Register("walk right", SpriteAnimationFactory::Create(atlas, { 12, 13, 14, 15, 16, 17 }, 100, true, PositionF{ 0.5f, 0.65f }));
+				animset.Register("walk left", SpriteAnimationFactory::Create(atlas, { 18, 19, 20, 21, 22, 23, }, 100, true, PositionF{ 0.5f, 0.65f }));
 
 				// create actor 
 				m_actor = std::make_unique<Actor>(animset, "Actor");

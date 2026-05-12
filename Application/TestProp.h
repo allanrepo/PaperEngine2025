@@ -45,7 +45,7 @@ namespace TestProp
 	using ISpriteAtlas = engine::graphics::resource::ISpriteAtlas;
 	using Sprite = engine::graphics::Sprite;
 	using SpriteAtlasFactory = engine::graphics::factory::SpriteAtlasFactory;
-	using AnimationFactory = engine::graphics::factory::AnimationFactory;
+	using SpriteAnimationFactory = engine::graphics::factory::SpriteAnimationFactory;
 	using TileConstraint = engine::navigation::tile::TileConstraint;
 	using Animator = engine::graphics::animation::Animator<Sprite>;
 	using AnimationSet = engine::graphics::animation::AnimationSet<Sprite>;
@@ -231,9 +231,9 @@ namespace TestProp
 				ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("tree");
 
 				// create animation for trees and store in animation set
-				animset.Register("storm", AnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 25.0f, true, PositionF{ 0.5f, 0.85f }));
-				animset.Register("idle", AnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 200.0f, true, PositionF{ 0.5f, 0.85f }));
-				animset.Register("frozen", AnimationFactory::Create(atlas, std::vector<int>{ 0 }, 1000.0f, true, PositionF{ 0.5f, 0.85f }));
+				animset.Register("storm", SpriteAnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 25.0f, true, PositionF{ 0.5f, 0.85f }));
+				animset.Register("idle", SpriteAnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 200.0f, true, PositionF{ 0.5f, 0.85f }));
+				animset.Register("frozen", SpriteAnimationFactory::Create(atlas, std::vector<int>{ 0 }, 1000.0f, true, PositionF{ 0.5f, 0.85f }));
 			}
 
 			// set map parameters
@@ -306,7 +306,7 @@ namespace TestProp
 				AnimationSet& animset = Registry<AnimationSet>::Instance().Get("splash");
 
 				// create animation for splash and store in animation set
-				animset.Register("splash", AnimationFactory::Create(atlas, 100.0f, true, { .33f, .355f }));
+				animset.Register("splash", SpriteAnimationFactory::Create(atlas, 100.0f, true, { .33f, .355f }));
 
 				// create our tileset
 				Registry<Tileset<IRenderable>>::Instance().Register("splash", std::make_unique<Tileset<IRenderable>>());
@@ -367,9 +367,9 @@ namespace TestProp
 				ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get("tree");
 
 				// create animation for trees and store in animation set
-				animset.Register("storm", AnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 25.0f, true, PositionF{ 0.5f, 0.85f }));
-				animset.Register("idle", AnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 200.0f, true, PositionF{ 0.5f, 0.85f }));
-				animset.Register("frozen", AnimationFactory::Create(atlas, std::vector<int>{ 0 }, 1000.0f, true, PositionF{ 0.5f, 0.85f }));
+				animset.Register("storm", SpriteAnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 25.0f, true, PositionF{ 0.5f, 0.85f }));
+				animset.Register("idle", SpriteAnimationFactory::Create(atlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7 }, 200.0f, true, PositionF{ 0.5f, 0.85f }));
+				animset.Register("frozen", SpriteAnimationFactory::Create(atlas, std::vector<int>{ 0 }, 1000.0f, true, PositionF{ 0.5f, 0.85f }));
 
 				// create object grid named props
 				Registry<ObjectGrid<TileConstraint, IRenderable>>::Instance().Register("props", make_unique<ObjectGrid<TileConstraint, IRenderable>>());

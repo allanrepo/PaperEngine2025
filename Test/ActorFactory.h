@@ -38,7 +38,7 @@ namespace component::factory
 				std::string stateFile = csvFile.GetValue<std::string>(row, 1);
 
 				// create animation object with given key and add to actor object
-				std::unique_ptr<graphics::animation::Animation<graphics::resource::Sprite>> animation = graphics::factory::AnimationFactory<graphics::resource::Sprite>::Create(key, stateFile);
+				std::unique_ptr<graphics::animation::Animation<graphics::resource::Sprite>> animation = graphics::factory::SpriteAnimationFactory<graphics::resource::Sprite>::Create(key, stateFile);
 				if (!animation.get())
 				{
 					LOGERROR("failed to create animation: " << key);

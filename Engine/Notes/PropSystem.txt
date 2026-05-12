@@ -202,14 +202,6 @@ boundingBox	        broad phase selection
 collisionShape	    future narrow phase
 
 -------------------------------------------------------------------------------
-PropBrushTool
--------------------------------------------------------------------------------
-Editor authoring tool.
-it does NOT know world state
-it does NOT place props
-it only creates props
-
--------------------------------------------------------------------------------
 Architecture and Design Considerations
 -------------------------------------------------------------------------------
 1. Separation of Concerns
@@ -235,4 +227,9 @@ Architecture and Design Considerations
         - audio zones
 4. Data-Driven Placement
     - The 3x3 footprint interpretation exists ONLY in placement logic.
+
+
+
+
+
 

@@ -218,3 +218,70 @@ CONTAINER LAYER
 --------------------------------
 
 Store associations only.
+
+
+Brush
+- description of prop 
+
+Factory
+- receives brush + animation set
+- returns a prop
+
+Library
+- has collection of brushes
+- can register brush
+
+PlacementSystem
+- receives target world to place prop, position in world to place prop
+- use policies to decide how prop is placed e.g. remove overlapped existing props
+- these policies can be set or defined
+- it will build data needed to tell world how prop will be place e.g which cells will be occupied by the prop's bounding box and footprint
+- delegates to world in placing the prop by passing the build data and prop object
+
+BrushTool
+- has current brush
+- has library of brush component?
+- can set active/current brush by key and lookup in its library??
+- has PlacementSystem component?
+- has "Paint" which receives world and position in world to place prop??
+- in Paint, internally create prop via factory?
+- in Paint, delegates to PlacementSystem to place the created prop in world in specified position?
+
+
+
+when you paint a tile, the neighbor tiles must automatically updated too. 
+i think this is a rule/policy, just like painting props where we can have policy to remove overlapped existing props
+
+TerrainMap is like PropMap. It can have multiple layers of TerrainGrid.
+a layer of TerrainGrid can be linked into another layer.
+meaning, if a layer is painted, another layer linked to it may automatically be painted too based on a tile variant lookup
+
+TerrainMap has navigation system too. it uses the same NavigationGrid to determine walkability of tiles
+PropMap updates its NavigationGrid when a tile is placed. in TerrainMap, currently its a lot simpler. it's binary
+a tile is either walkable or an obstacle. but regardless, it follows the process of updating NavigationGrid as PropMap
+
+Later on, NavigationGrid of both PropMap and TerrainMap should be merged and result is the final navigation map
+this can be implemented later. for now, NavigationGrid can be automatically updated through linking to terrain grid.
+
+The process of erasing a tile is similar to paint, except its reversed.
+
+now how do we design a system given these description? what components do we need or we already have? 
+how do we put them together? how are the components gonna work together?
+
+when brushing a tile in terrain grid, the TerrainGrid can do that directly. it's Set() just sets the tile given the coord. that is it.
+however, we need to also update its neighboring tiles. but that's not TerrainGrid's job. that is a policy.
+AutoTileSystem actually does that. and PlacementSystem should be responsible for using AutoTileSystem because it decides what policy to use when painting
+and who calls the shots on PlacementSystem? brush tool?
+we do have PropBrushLibrary built inside PropBrushTool right? i am thinking in terrain, a TerrainGrid layer is a brush type.
+you can have multiple types of terrain - grass, road, dirt, etc... your TileBrushTool will have one active brush
+when TileBrushTool paints, it will brush the current type of terrain, meaning it will set tile on current TerrainGrid layer.
+now there is another layer that does not get painted on its own. imagine water splash on edges of grass tiles? they get painted when grass tiles that are edge or corners are painted.
+they are "linked."
+
+
+TerrainBrushTool::Set("grass")
+TerrainBrushTool::Paint(world, position)
+    GetCoord(position)
+
+    if(applyAutoTile) // policy
+        

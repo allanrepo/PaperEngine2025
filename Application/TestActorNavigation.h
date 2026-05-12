@@ -24,7 +24,7 @@
 #include <Engine/Loader/AsyncLoader.h>
 #include <Graphics/Core/Primitives.h>
 #include <Engine/Graphics/Draw.h>
-#include <Engine/Factory/AnimationFactory.h>
+#include <Engine/Factory/SpriteAnimationFactory.h>
 #include "Actor.h"
 
 namespace TestActorNavigation
@@ -88,7 +88,7 @@ namespace TestActorNavigation
 	{
 		using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
 		using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite, Actor>;
-		using AnimationFactory = engine::graphics::factory::AnimationFactory;
+		using SpriteAnimationFactory = engine::graphics::factory::SpriteAnimationFactory;
 
 	private:
 		std::unique_ptr<Window> m_window;
@@ -220,10 +220,10 @@ namespace TestActorNavigation
 				AnimationSet& animset = Registry<AnimationSet>::Instance().Get("dust");
 
 				// create actor animations and store in animation set
-				animset.Register("idle right", AnimationFactory::Create(atlas, { 0, 1, 2, 3, 4, 5 }, 100, true, PositionF{ 0.5f, 0.65f }));
-				animset.Register("idle left", AnimationFactory::Create(atlas, { 6, 7, 8, 9, 10, 11 }, 100, true, PositionF{ 0.5f, 0.65f }));
-				animset.Register("walk right", AnimationFactory::Create(atlas, { 12, 13, 14, 15, 16, 17 }, 100, true, PositionF{ 0.5f, 0.65f }));
-				animset.Register("walk left", AnimationFactory::Create(atlas, { 18, 19, 20, 21, 22, 23, }, 100, true, PositionF{ 0.5f, 0.65f }));
+				animset.Register("idle right", SpriteAnimationFactory::Create(atlas, { 0, 1, 2, 3, 4, 5 }, 100, true, PositionF{ 0.5f, 0.65f }));
+				animset.Register("idle left", SpriteAnimationFactory::Create(atlas, { 6, 7, 8, 9, 10, 11 }, 100, true, PositionF{ 0.5f, 0.65f }));
+				animset.Register("walk right", SpriteAnimationFactory::Create(atlas, { 12, 13, 14, 15, 16, 17 }, 100, true, PositionF{ 0.5f, 0.65f }));
+				animset.Register("walk left", SpriteAnimationFactory::Create(atlas, { 18, 19, 20, 21, 22, 23, }, 100, true, PositionF{ 0.5f, 0.65f }));
 
 				// create actor. pass our animation manager. it will make a copy of it internally but will reference to same set of animations from animManager object
 				Registry<Actor>::Instance().Register("actor", make_unique<Actor>(animset, "actor"));

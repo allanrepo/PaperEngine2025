@@ -123,12 +123,6 @@ namespace engine
 //		“Objects live in space, and space defines their grouping.”
 //
 
-
-
-
-
-
-
 #pragma endregion
 		template <typename T>
 		class InstanceGrid

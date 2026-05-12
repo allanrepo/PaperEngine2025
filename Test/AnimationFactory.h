@@ -7,7 +7,7 @@
 namespace graphics::factory
 {
 	template<typename T>
-	class AnimationFactory
+	class SpriteAnimationFactory
 	{
 		// helper function to load animation frames from CSV file
 		static bool LoadAnimationFromCSVFile(graphics::animation::Animation<T>* animation, const std::string& filename)

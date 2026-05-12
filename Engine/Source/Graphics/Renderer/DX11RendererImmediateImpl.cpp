@@ -361,6 +361,14 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
 	const float rotation
 )
 {
+#pragma region // sanity check. if this sprite is invalid. just draw a color filled rect based on parameters given
+	if (!sprite.IsValid())
+	{
+		Draw(pos, size, ColorF{ 1,0,1,0.25f }, rotation);
+		return;
+	}
+#pragma endregion
+
 #pragma region // binds the texture. this will only bind it if current texture is different from this texture.
 	sprite.Bind();
 #pragma endregion

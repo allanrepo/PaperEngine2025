@@ -23,7 +23,7 @@
 #include <Graphics/Animation/Animation.h>
 #include <Math/Vector.h>
 #include <Engine/Manager/AnimatedTileSetManager.h>
-#include <Engine/Factory/AnimationFactory.h>
+#include <Engine/Factory/SpriteAnimationFactory.h>
 #include <Spatial/Camera.h>
 #include "Actor.h"
 
@@ -554,7 +554,7 @@ namespace demo
 		using Sprite = engine::graphics::Sprite;
 		using Animator = engine::graphics::animation::Animator<Sprite>;
 		using Animation = engine::graphics::animation::Animation<Sprite>;
-		using AnimationFactory = engine::graphics::factory::AnimationFactory;
+		using SpriteAnimationFactory = engine::graphics::factory::SpriteAnimationFactory;
 
 		engine::performance::FrameRateMonitor m_frameRateMonitor;
 		bool m_isFinished;

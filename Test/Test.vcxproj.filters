@@ -355,7 +355,7 @@
     <ClInclude Include="Animation.h">
       <Filter>Graphics\Animation</Filter>
     </ClInclude>
-    <ClInclude Include="AnimationFactory.h">
+    <ClInclude Include="SpriteAnimationFactory.h">
       <Filter>Graphics\Factory</Filter>
     </ClInclude>
     <ClInclude Include="State.h">

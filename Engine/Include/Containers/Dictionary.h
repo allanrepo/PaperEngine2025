@@ -40,6 +40,11 @@ namespace engine::container
             return registry.emplace(key, std::move(value)).second;
         }
 
+        bool Register(const Key& key, const Value& value)
+        {
+            return registry.emplace(key, value).second;
+        }
+
         // forces value to be stored at given key, replacing any existing value if key already exists
         bool Set(const Key& key, const Value& value)
         {

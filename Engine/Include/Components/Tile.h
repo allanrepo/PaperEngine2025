@@ -796,6 +796,8 @@ namespace engine
 {
 	namespace tile
 	{
+#pragma region // Tile 
+
 		// Lightweight view that holds a pointer to tile data and an integer index. 
 		// Intended to be cheap to copy and to outlive callers only while the Tileset remains alive.
 		// Provides GetIndex() to retrieve the tileset key for the view.
@@ -825,13 +827,11 @@ namespace engine
 			{
 				return m_index;
 			}
-
-			int GetIndex()
-			{
-				return m_index;
-			}
 		};
-		
+#pragma endregion		
+
+#pragma region // Tileset
+
 		// Description:
 		// Owns tile data in a dictionary keyed by int. 
 		// Provides registration, lookup, iteration, and a factory MakeTile(int) that returns a Tile<T> view.
@@ -922,6 +922,7 @@ namespace engine
 			const_iterator cbegin() const { return m_registry.cbegin(); }
 			const_iterator cend() const { return m_registry.cend(); }
 		};
+#pragma endregion
 
 #pragma region // TileGrid - tile grid represents a 2d grid of tiles
 		template<typename T>

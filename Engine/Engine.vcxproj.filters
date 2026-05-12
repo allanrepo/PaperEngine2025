@@ -300,7 +300,7 @@
     <ClInclude Include="Include\Engine\Manager\AnimatedTileSetManager.h">
       <Filter>Engine\Manager</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Engine\Factory\AnimationFactory.h">
+    <ClInclude Include="Include\Engine\Factory\SpriteAnimationFactory.h">
       <Filter>Engine\Factory</Filter>
     </ClInclude>
     <ClInclude Include="Include\Core\Bindable.h">
@@ -507,5 +507,6 @@
   <ItemGroup>
     <Text Include="DependencySketch.txt" />
     <Text Include="Notes\PropSystem.txt" />
+    <Text Include="Notes\PropEditingSystem.txt" />
   </ItemGroup>
 </Project>

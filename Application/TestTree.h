@@ -24,7 +24,7 @@
 #include <Engine/Loader/AsyncLoader.h>
 #include <Graphics/Core/Primitives.h>
 #include <Engine/Graphics/Draw.h>
-#include <Engine/Factory/AnimationFactory.h>
+#include <Engine/Factory/SpriteAnimationFactory.h>
 #include "Actor.h"
 #include <Core/View.h>
 #include <Containers/Dictionary.h>

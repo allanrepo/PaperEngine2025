@@ -17,7 +17,7 @@ namespace engine
 			AnimationController m_animationController;
 
 		public:
-			Animated(AnimationSet& set, const std::string& name) :
+			Animated(const AnimationSet& set, const std::string& name) :
 				m_animationController(set, nullptr)
 			{
 				// safer to set owner here only so we know Animated is now fully constructed

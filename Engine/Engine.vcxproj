@@ -43,7 +43,7 @@
     <ClInclude Include="Include\Core\Singleton.h" />
     <ClInclude Include="Include\Core\View.h" />
     <ClInclude Include="Include\Engine\Engine.h" />
-    <ClInclude Include="Include\Engine\Factory\AnimationFactory.h" />
+    <ClInclude Include="Include\Engine\Factory\SpriteAnimationFactory.h" />
     <ClInclude Include="Include\Engine\Factory\CanvasFactory.h" />
     <ClInclude Include="Include\Engine\Factory\FontFactory.h" />
     <ClInclude Include="Include\Engine\Factory\RendererFactory.h" />
@@ -160,6 +160,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="DependencySketch.txt" />
+    <Text Include="Notes\PropEditingSystem.txt" />
     <Text Include="Notes\PropSystem.txt" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

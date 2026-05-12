@@ -1,0 +1,209 @@
+﻿-------------------------------------------------------------------------------
+Big Picture (How Prop Editing Works)
+-------------------------------------------------------------------------------
+Prop editing is an editor-driven pipeline that transforms user intent (“paint a tree here”) into a world mutation (Prop placed into WorldMap).
+
+Flow:
+User Input (click / erase / paint)
+        ↓
+PropBrushTool (selection + intent)
+        ↓
+PropFactory (build Prop instance)
+        ↓
+PropPlacementSystem (rules + collision + placement resolution)
+        ↓
+WorldMap (final state)
+
+Core Idea:
+The system separates what to place, how to build it, and where it can exist.
+This avoids mixing:
+	UI/editor state
+	object construction
+	world rules
+
+-------------------------------------------------------------------------------
+System Components
+-------------------------------------------------------------------------------
+
+1. PropBrushTool (Editor Controller)
+	Role:
+		“The painter’s hand — holds the active brush and performs paint/erase actions.”
+	Responsibilities
+		Stores available brushes (editor palette)
+		Stores currently active brush
+		Converts user intent into actions (Paint / Erase)
+		Calls factory + placement system
+	Knows about:
+		PropBrush definitions
+		AssetManager (indirectly via factory usage)
+		WorldMap (for execution)
+	Does NOT:
+		Decide placement rules
+		Store world data
+		Manage props lifecycle
+	Mental Model
+		“I choose a brush and paint with it.”
+
+2. PropBrush (Data Descriptor)
+	Role:
+		“Definition of what a prop is visually and structurally.”
+	Contains:
+		animationSet key
+		animation state
+		scale
+		color
+		footprint
+		bounding box
+	Does NOT:
+		Create objects
+		Know about world
+		Know about placement rules
+	Mental Model:
+		“Recipe for a prop.”
+
+3. PropFactory (Construction System)
+	Role:
+		“Builds a Prop instance from resolved brush data.”
+
+	Responsibilities:
+		Converts PropBrush + AnimationSet → Prop
+		No world knowledge
+		No selection logic
+		No registry ownership
+	Input:
+		PropBrush
+		AnimationSet (resolved externally)
+	Output:
+		std::unique_ptr<Prop>
+	Mental Model
+		“Assembler that builds props from specifications.”
+
+4. AssetManager (Resource Access Layer)
+	Role:
+		“Provides runtime access to cached assets.”
+	Responsibilities:
+		Retrieves AnimationSets by key
+		Acts as registry wrapper
+	Does NOT:
+		Interpret usage
+		Decide which asset is needed
+	Mental Model:
+		“Storage warehouse for assets.”
+
+5. PropPlacementSystem (World Rules Engine)
+	Role:
+		“Determines if and how a prop can exist in the world.”
+	Responsibilities
+		Collision / overlap resolution
+		Footprint + bounding box analysis
+		Eviction of conflicting props
+		Inserts final Prop into WorldMap
+	Input:
+		Prop
+		WorldPosition
+		WorldMap
+	Output:
+		final placement or rejection
+
+	Mental Model
+		“Enforces the physical laws of the world.”
+
+6. WorldMap (Simulation State)
+	Role:
+		“The canvas where props exist.”
+	Responsibilities:
+		Stores props
+		Tracks spatial relationships
+		Provides query APIs for placement system
+	Mental Model:
+		“The world itself.”
+
+-------------------------------------------------------------------------------
+Paint Pipeline
+-------------------------------------------------------------------------------
+Paint Action:
+	1. User clicks world
+			↓
+	2. PropBrushTool::Paint()
+			↓
+	3. Resolve active PropBrush
+			↓
+	4. AssetManager fetches AnimationSet
+			↓
+	5. PropFactory creates Prop
+			↓
+	6. PropPlacementSystem evaluates placement rules
+			↓
+	7. WorldMap inserts Prop (or rejects / evicts)
+
+Erase Action:
+	1. User clicks world
+			↓
+	2. PropBrushTool::Erase()
+			↓
+	3. PropSelectionSystem finds top-most Prop
+			↓
+	4. PropPlacementSystem removes Prop from WorldMap
+
+-------------------------------------------------------------------------------
+Design Philosophy
+-------------------------------------------------------------------------------
+
+| Concern       | System              |
+| ------------- | ------------------- |
+| What to place | PropBrush           |
+| How to build  | PropFactory         |
+| Where it goes | PropPlacementSystem |
+| What exists   | WorldMap            |
+| User intent   | PropBrushTool       |
+
+Core Rule:
+No system should know more than one layer of responsibility.
+
+Anti-patterns avoided:
+	Factory storing brush state ❌
+	Tool deciding collision rules ❌
+	World knowing how props are constructed ❌
+	Placement system creating props ❌
+
+-------------------------------------------------------------------------------
+Relationship Model
+-------------------------------------------------------------------------------
+           ┌──────────────┐
+           │ PropBrushTool│
+           └──────┬───────┘
+                  │
+        uses brush│
+                  ↓
+           ┌──────────────┐
+           │ PropBrush    │
+           └──────┬───────┘
+                  │
+     resolves asset│
+                  ↓
+           ┌──────────────┐
+           │ AssetManager │
+           └──────┬───────┘
+                  │
+          gives asset
+                  ↓
+           ┌──────────────┐
+           │ PropFactory  │
+           └──────┬───────┘
+                  │
+         creates Prop
+                  ↓
+           ┌──────────────┐
+           │ PropPlacement│
+           └──────┬───────┘
+                  │
+       mutates world state
+                  ↓
+           ┌──────────────┐
+           │ WorldMap     │
+           └──────────────┘
+
+-------------------------------------------------------------------------------
+Final Summary
+-------------------------------------------------------------------------------
+Prop editing is not a single system — it is a pipeline of intent → construction → validation → world mutation.
