@@ -7,9 +7,10 @@ engine::graphics::Sprite::Sprite(const engine::graphics::resource::ITexture* tex
 	m_rect(rect),
 	m_pivot(pivot)
 {
+	// if making invalid sprite, size will be 0,0
 	m_size = spatial::SizeF{
-	m_view->GetWidth() * (m_rect.right - m_rect.left),
-	m_view->GetHeight() * (m_rect.bottom - m_rect.top)
+	(texture != nullptr? m_view->GetWidth() : 0.0f) * (m_rect.right - m_rect.left),
+	(texture != nullptr ? m_view->GetHeight() : 0.0f) * (m_rect.bottom - m_rect.top)
 	};
 }
 

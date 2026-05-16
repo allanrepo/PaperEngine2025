@@ -160,6 +160,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="DependencySketch.txt" />
+    <Text Include="Notes\AutoTileSysem.txt" />
     <Text Include="Notes\PropEditingSystem.txt" />
     <Text Include="Notes\PropSystem.txt" />
   </ItemGroup>

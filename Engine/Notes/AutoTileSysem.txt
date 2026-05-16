@@ -1,0 +1,7 @@
+﻿Set()
+ ├── PlaceTile (emit event)
+ ├── ResolveNeighbors
+ │     ├── PlaceTile (emit event)
+ │     ├── PlaceTile (emit event)
+ │     └── ...
+
