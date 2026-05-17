@@ -52,7 +52,49 @@ namespace engine::spatial
 			height = h;
 		}
 
+		template<typename U>
+		Size<U> As() const
+		{
+			return {
+				static_cast<U>(width),
+				static_cast<U>(height)
+			};
+		}
+
+		Size<T>& operator += (const Size<T>& rhs)
+		{
+			width += rhs.width;
+			height += rhs.height;
+			return *this;
+		}
+
+		Size<T>& operator -= (const Size<T>& rhs)
+		{
+			width -= rhs.width;
+			height -= rhs.height;
+			return *this;
+		}
+
+		Size<T>& operator *= (T scalar)
+		{
+			width *= scalar;
+			height *= scalar;
+			return *this;
+		}
+
+		Size<T>& operator /= (T scalar)
+		{
+			width /= scalar;
+			height /= scalar;
+			return *this;
+		}
 	};
+
+	template<typename T>
+	Size<T> operator*(T scalar, const Size<T>& size)
+	{
+		return { size.width * scalar, size.height * scalar };
+	}
 
 	using SizeF = Size<float>;
 	using SizeI = Size<int>;

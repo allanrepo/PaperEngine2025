@@ -82,6 +82,15 @@ namespace engine
 					y * rhs.y
 				};
 			}
+
+			template<typename U>
+			Vector<U> As() const
+			{
+				return {
+					static_cast<U>(x),
+					static_cast<U>(y)
+				};
+			}
 		};
 
 

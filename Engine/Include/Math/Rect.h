@@ -115,6 +115,16 @@ namespace engine
 					return GetWidth() > 0 && GetHeight() > 0;
 				}
 
+				Rect<T> As() const
+				{
+					return {
+						static_cast<T>(left),
+						static_cast<T>(top),
+						static_cast<T>(right),
+						static_cast<T>(bottom),
+					};
+				}
+
 			};
 
 			using RectF = engine::math::geometry::Rect<float>;

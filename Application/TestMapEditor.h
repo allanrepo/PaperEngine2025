@@ -13,7 +13,6 @@
 #include <Core/Input.h>
 #include <Engine/Factory/FontFactory.h>
 #include <Graphics/Resource/IFontAtlas.h>
-#include <Components/Tile.h>
 #include <unordered_map>
 #include <Containers/Dictionary.h>
 #include <Algorithm/AutoTileResolver.h>
@@ -41,6 +40,7 @@
 #include <Engine/Loader/SpriteAtlasLoader.h>
 #include <Spatial/SpatialOccupancyGrid.h>
 #include <Scene/Scene.h>
+#include <Spatial/Camera.h>
 
 namespace TestMapEditor
 {
@@ -92,6 +92,7 @@ namespace TestMapEditor
 	using SpriteAtlasLoader = engine::graphics::loader::SpriteAtlasLoader;
 	using Scene = engine::scene::Scene;
 	using SceneManager = engine::scene::SceneManager;
+	using Camera = engine::spatial::CameraF;
 
 	template<typename T, typename U>
 	using SpatialOccupancyGrid = engine::spatial::SpatialOccupancyGrid<T, U>;
@@ -132,17 +133,12 @@ namespace TestMapEditor
 	template<typename T>
 	using Registry = engine::cache::Registry<T>;
 
-	template<typename T>
-	using TileGrid = engine::tile::TileGrid<T>;
-
-	template<typename T>
-	using Tileset = engine::tile::Tileset<T>;	
-
-	template<typename T>
-	using Tile = engine::tile::Tile<T>;	
-
 	template<typename K, typename T>
 	using Dictionary = engine::container::Dictionary<K, T>;
+
+	template<typename T>
+	using Rect = engine::math::geometry::Rect<T>;
+
 
 #pragma endregion
 
@@ -350,6 +346,44 @@ namespace TestMapEditor
 				}
 			}
 		}
+
+		template<typename Func>
+		void ForEach(const Coord& tl, const Coord& br, const Func& func)
+		{
+			// make sure to clamp to min/max actual value
+			int r0 = std::clamp<int>(tl.row, 0, (int)GetHeight());
+			int r1 = std::clamp<int>(br.row, 0, (int)GetHeight());
+			int c0 = std::clamp<int>(tl.col, 0, (int)GetWidth());
+			int c1 = std::clamp<int>(br.col, 0, (int)GetWidth());
+
+			for (int r = r0; r < r1; ++r)
+			{
+				for (int c = c0; c < c1; ++c)
+				{
+					func(r, c, Get(r, c));
+				}
+			}
+		}
+
+		template<typename Func>
+		void ForEach(const Coord& tl, const Coord& br, const Func& func) const
+		{
+			// make sure to clamp to min/max actual value
+			int r0 = std::clamp<int>(tl.row, 0, (int)GetHeight());
+			int r1 = std::clamp<int>(br.row, 0, (int)GetHeight());
+			int c0 = std::clamp<int>(tl.col, 0, (int)GetWidth());
+			int c1 = std::clamp<int>(br.col, 0, (int)GetWidth());
+
+			for (int r = r0; r < r1; ++r)
+			{
+				for (int c = c0; c < c1; ++c)
+				{
+					func(r, c, Get(r, c));
+				}
+			}
+		}
+
+
 #pragma endregion
 
 	};
@@ -413,67 +447,6 @@ namespace TestMapEditor
 
 
 
-#pragma endregion
-
-#pragma region // TerrainAutoTileAdapter
-	struct TerrainAutoTileAdapter
-	{
-		TerrainGrid& grid;
-		TerrainSet& set;
-
-		bool IsInBounds(const Coord& c) const
-		{
-			return grid.IsInBounds(c);
-		}
-
-		int GetIndex(const Coord& c) const
-		{
-			return grid.Get(c).GetIndex();
-		}
-
-		void Set(const Coord& c, int index)
-		{
-			grid.Set(c, set.MakeTile(index));
-		}
-
-		TerrainAutoTileAdapter(TerrainGrid& g, TerrainSet& s) : 
-			grid(g), 
-			set(s)
-		{
-		}
-	};
-
-	struct TileGridAutoTileAdapter
-	{
-		TileGrid<IRenderable>& grid;
-		Tileset<IRenderable>& set;
-
-		bool IsInBounds(const Coord& c) const
-		{
-			return grid.IsInBounds(c);
-		}
-
-		int GetIndex(const Coord& c) const
-		{
-			return grid.Get(c).GetIndex();
-		}
-
-		void Set(const Coord& c, int index)
-		{
-			grid.Set(c, set.MakeTile(index));
-		}
-	};
-
-#pragma endregion
-
-#pragma region // IAutoTileAdapter
-	class IAutoTileAdapter
-	{
-	public:
-		virtual bool IsInBounds(const Coord& c) const = 0;
-		virtual int GetIndex(const Coord& c) const = 0;
-		virtual void Set(const Coord& c, int index) = 0;
-	};
 #pragma endregion
 
 #pragma region // AutoTileSystem
@@ -838,15 +811,25 @@ namespace TestMapEditor
 		template<typename Func>
 		void ForEach(const Func& func)
 		{
-			Size<size_t> size = GetSize();
 			m_grid.ForEach(func);
 		}
 
 		template<typename Func>
 		void ForEach(const Func& func) const
 		{
-			Size<size_t> size = GetSize();
 			m_grid.ForEach(func);
+		}
+
+		template<typename Func>
+		void ForEach(const Coord& tl, const Coord& br, const Func& func)
+		{
+			m_grid.ForEach(tl, br, func);
+		}
+
+		template<typename Func>
+		void ForEach(const Coord& tl, const Coord& br, const Func& func) const
+		{
+			m_grid.ForEach(tl, br, func);
 		}
 	};
 #pragma endregion
@@ -980,6 +963,28 @@ namespace TestMapEditor
 			}
 
 			m_layers[key]->ForEach(func);
+		}
+
+		template<typename Func>
+		void ForEach(const std::string& key, const Coord& tl, const Coord& br, const Func& func)
+		{
+			if (!Has(key))
+			{
+				throw std::runtime_error("no layer found");
+			}
+
+			m_layers[key]->ForEach(tl, br, func);
+		}
+
+		template<typename Func>
+		void ForEach(const std::string& key, const Coord& tl, const Coord& br, const Func& func) const
+		{
+			if (!Has(key))
+			{
+				throw std::runtime_error("no layer found");
+			}
+
+			m_layers[key]->ForEach(tl, br, func);
 		}
 	};
 #pragma endregion
@@ -1290,592 +1295,6 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // TileLayer
-	struct TileLayer
-	{
-		TileGrid<IRenderable> tilegrid;
-		Tileset<IRenderable>* tileset;
-
-		event::Event<const Coord&, TileVariant> TileVariantChangedEvent;
-	};
-
-
-	struct Floor
-	{
-		std::vector<TileLayer> tileLayers;
-		std::unique_ptr<InstanceGrid<IRenderable>> objectLayer;
-	};
-
-	class TileMap
-	{
-	private:
-		std::vector<Floor> m_floors;
-
-	public:
-		void AddFloor()
-		{
-
-		}
-	};
-
-#pragma endregion
-
-#pragma region // TileLayer editor
-	// design consideration:
-	// links two layers - source and target
-	// source layer 
-	// source layer is the observable, while target layer is the observer
-	// when change happen to this layer, the target layer reacts
-	// when a tile is place or removed at given tile coord in source layer, a tile is also placed or removed at that given tile coord in target layer
-	// the type of tile placed or removed in target layer depends on the given lookup map
-	// the map is a dictionary of TileVariant (key) and index (values). index is the tile index of target layer's tileset
-	// RAII:
-	// when source and target layers are linked, target layer subscribes to source layer's TileVariantChangedEvent
-	// this is how target layer automatically responds when change happens on source layer
-	// when this object is destroyed, the target layer unsubscribes from source layer, ensuring no dangling subscriptions between layers
-	class TileLayerLink
-	{
-	private:
-		TileLayer* m_source;
-		TileLayer* m_target;
-		const Dictionary<TileVariant, int>* m_map;
-
-	public:
-		TileLayerLink(TileLayer& source, TileLayer& target, const Dictionary<TileVariant, int>& map) :
-			m_source(&source),
-			m_target(&target),
-			m_map(&map)
-		{
-			m_source->TileVariantChangedEvent += event::Handler(this, &TileLayerLink::OnTileChanged);
-		}
-
-		// ensures target layer is unsubscribed from source layer when link is destroyed
-		~TileLayerLink()
-		{
-			if (m_source)
-			{
-				m_source->TileVariantChangedEvent -= event::Handler(this, &TileLayerLink::OnTileChanged);
-			}
-		}
-
-		bool Involves(TileLayer* layer) const
-		{
-			return m_source == layer || m_target == layer;
-		}
-
-	private:
-		void OnTileChanged(const Coord& c, TileVariant variant)
-		{
-			int index;
-			if (m_map->TryGetValue(variant, index))
-			{
-				m_target->tilegrid.Set(c, m_target->tileset->MakeTile(index));
-			}
-		}
-	};
-
-	// design consideration:
-	// manages all links between layers
-	// RAII:
-	// when destroyed, all links are destroyed too
-	class TileLayerLinkSystem
-	{
-	private:
-		std::vector<std::unique_ptr<TileLayerLink>> m_links;
-
-	public:
-		// links two layers - source and target
-		// source layer - when a tile is placed/removed at given tile coord, it 
-		void Link(TileLayer& source, TileLayer& target, const Dictionary<TileVariant, int>& map)
-		{
-			m_links.push_back(std::make_unique<TileLayerLink>(source, target, map));
-		}
-
-		void RemoveLinksFor(TileLayer& layer)
-		{
-			m_links.erase(
-				std::remove_if(
-					m_links.begin(),
-					m_links.end(),
-					[&layer](const std::unique_ptr<TileLayerLink>& link)
-					{
-						return link->Involves(&layer);
-					}),
-				m_links.end()
-			);
-		}
-
-		void Clear()
-		{
-			m_links.clear();
-		}
-	};
-
-	// design consideration:
-	// this class is a system that allows a tilegrid to automatically performs the following:
-	// - given tile coord, paint or erase a tile 
-	// - update neighbor tiles of the given coord with appropriate tile values
-	// - if a source layer is "linked" into a target layer, the given tile coord of target layer changes when source layer's given tile coord changes
-	// - this behavior is managed by the given lookup map where it maps a TileVariant set on source layer to tileset index of target layer
-	class TileLayerEditor
-	{
-	private:
-		AutoTileSystem m_autoTile;
-		TileLayerLinkSystem m_linkSystem;
-
-		// design consideration:
-		// let editor create AutoTileContext. it knows TileLayer
-		AutoTileSystem::AutoTileContext<TileGridAutoTileAdapter> GetAutoTileContext(TileLayer& layer)
-		{
-			TileGridAutoTileAdapter tgata{ layer.tilegrid, *layer.tileset };
-
-			return AutoTileSystem::AutoTileContext<TileGridAutoTileAdapter>
-			{
-				tgata
-			};
-		}
-
-	public:
-		TileLayerEditor() = default;
-
-		// design consideration:
-		// TileLayerLinkSystem is persistent, as it stores a list of linked layers
-		// however, when TileLayerLinkSystem goes out of scope (destroyed), it also destroys all links
-		// when links are destroyed, event subscriptions of target layer with source layer (observable) are severed
-		~TileLayerEditor() = default;
-
-		void Paint(TileLayer& layer, const AutoTileSystem::AutoTileConfig& config, const Coord& c)
-		{
-			auto ctx = GetAutoTileContext(layer);
-			m_autoTile.Set(ctx, config, c);
-		}
-
-		void Erase(TileLayer& layer, const AutoTileSystem::AutoTileConfig& config, const Coord& c)
-		{
-			auto ctx = GetAutoTileContext(layer);
-			m_autoTile.Remove(ctx, config, c);
-		}
-
-		void Fill(TileLayer& layer, const AutoTileSystem::AutoTileConfig& config)
-		{
-			auto ctx = GetAutoTileContext(layer);
-			m_autoTile.Set(ctx, config, layer.tilegrid.GetSize());
-		}
-
-		void Clear(TileLayer& layer, const AutoTileSystem::AutoTileConfig& config)
-		{
-			auto ctx = GetAutoTileContext(layer);
-			m_autoTile.Remove(ctx, config, layer.tilegrid.GetSize());
-		}
-
-		// design consideration:
-		// this link layers together. source layer is the layer that when its tiles change, the target 
-		// layer also changes based on the lookup map
-		void LinkLayers(TileLayer& source, TileLayer& target, const Dictionary<TileVariant, int>& map)
-		{
-			m_linkSystem.Link(source, target, map);
-		}
-
-		// design consideration:
-		// explicitly unlink a layer. any links where this layer is involved will be removed from link system
-		void UnlinkLayer(TileLayer& layer)
-		{
-			m_linkSystem.RemoveLinksFor(layer);
-		}
-	};
-
-#pragma endregion
-
-#pragma region // base layer containg tile map + optional sub tile map and object grid
-	class BaseLayer
-	{
-		struct MainLayer
-		{
-			std::unique_ptr<TileGrid<IRenderable>> tileGrid;
-			std::unique_ptr<AutoTileResolver> autoTileResolver;
-			Tileset<IRenderable>* tileset = nullptr;
-			float depth;
-			SizeF scale;
-		};
-
-		struct SubLayer
-		{
-			std::unique_ptr<TileGrid<IRenderable>> tileGrid;
-			LookupResolver<const Coord&, TileVariant, int> lookupResolver;
-			Tileset<IRenderable>* tileset = nullptr;
-		};
-
-	private:
-		Dictionary<std::string,SubLayer> m_subLayers; 
-		MainLayer m_mainLayer;
-		Size<size_t> m_mapsize;	
-
-	public:
-		// in the constructor, we initialize the main layer with the given tileset and map size. we also set up its autotile resolver
-		BaseLayer(const std::string& tilesetKey, Size<size_t>& mapsize, AutoTileResolver::AutoTileConfig& config, int defaultTileIndex):
-			m_mapsize(mapsize)
-		{
-			// get tileset for main layer
-			Tileset<IRenderable>& tileset = Registry<Tileset<IRenderable>>::Instance().Get(tilesetKey);
-
-			m_mainLayer.tileGrid = std::make_unique<TileGrid<IRenderable>>();
-			m_mainLayer.tileset = &tileset;
-			m_mainLayer.autoTileResolver = std::make_unique<AutoTileResolver>(
-				[this](const Coord& coord) -> bool { return m_mainLayer.tileGrid->IsInBounds(coord);  },
-				[this](const Coord& coord) -> int { return m_mainLayer.tileGrid->Get(coord).GetIndex();  },
-				[this](const Coord& coord, int index) { m_mainLayer.tileGrid->Set(coord, m_mainLayer.tileset->MakeTile(index)); },
-				config
-			);
-
-			// now let's initialize the main layer. set its size with the given map size and fill with default tile
-			m_mainLayer.tileGrid->Initialize(m_mapsize, m_mainLayer.tileset->MakeTile(defaultTileIndex));
-
-		}
-
-		void AddSubLayer(const std::string& name, const std::string& tilesetKey, const char* csvLookup)
-		{
-			// get tileset for sub layer
-			Tileset<IRenderable>& tileset = Registry<Tileset<IRenderable>>::Instance().Get(tilesetKey);
-
-			m_subLayers.Register(name, SubLayer());
-
-			SubLayer& layer = m_subLayers[name];
-			layer.tileGrid = std::make_unique<TileGrid<IRenderable>>();
-			layer.tileset = &tileset;
-
-			layer.tileGrid->Initialize(m_mapsize, m_mainLayer.tileset->MakeTile(-1));
-
-			CSVFileParser parser;
-			Table<std::string> table;
-			parser.ReadImmediate(csvLookup, table);
-
-			constexpr TileVariant allTileVariants[] =
-			{
-				TileVariant::Empty,
-				TileVariant::Island,
-				TileVariant::Full,
-				TileVariant::NorthEdge,
-				TileVariant::SouthEdge,
-				TileVariant::EastEdge,
-				TileVariant::WestEdge,
-				TileVariant::NECorner,
-				TileVariant::NWCorner,
-				TileVariant::SECorner,
-				TileVariant::SWCorner,
-				TileVariant::Vertical,
-				TileVariant::Horizontal,
-				TileVariant::TNorth,
-				TileVariant::TSouth,
-				TileVariant::TEast,
-				TileVariant::TWest
-			};
-
-			for (TileVariant tv : allTileVariants)
-			{
-				for (int row = 0; row < table.GetHeight(); row++)
-				{
-					// get supposed variant
-					int variant = std::stoi(table.Get(row, 1));
-					
-					if (variant == (int)tv)
-					{
-						// get the tile index value
-						int value = std::stoi(table.Get(row, 0));
-
-						// register to resolver
-						layer.lookupResolver.Register(tv, value);
-					}
-				}
-			}
-
-			// setup event handler to handle tile update on splash map when tile map changes
-			layer.lookupResolver.LookupEvent += engine::event::Handler(std::function<void(const Coord&, int)>(
-				[&layer](const Coord& c, int i)
-				{
-					layer.tileGrid->Set(c, layer.tileset->MakeTile(i));
-				})
-			);
-
-			// let splash tile resolver subscribe to land auto-tile map so that it can update splash tile variants when land tiles change
-			m_mainLayer.autoTileResolver->TileVariantChangedEvent += engine::event::Handler(&layer.lookupResolver, &LookupResolver<const Coord&, TileVariant, int>::Resolve);
-
-			//m_subLayers.Register(name, std::move(layer));
-
-		}
-
-		Size<size_t> GetSize() const
-		{
-			return m_mapsize;
-		}
-
-		void FillMainLayer()
-		{
-			m_mainLayer.autoTileResolver->Set(m_mapsize);
-		}
-
-		void ClearMainLayer()
-		{
-			m_mainLayer.autoTileResolver->Remove(m_mapsize);
-		}
-
-		bool IsInBounds(int row, int col) const
-		{
-			return m_mainLayer.tileGrid->IsInBounds(row, col);
-		}
-
-		Tile<IRenderable>& GetMainLayerTile(int row, int col)
-		{
-			return m_mainLayer.tileGrid->Get(row, col);
-		}
-
-		void SetMainLayerTile(const Coord& coord)
-		{
-			m_mainLayer.autoTileResolver->Set(coord);
-		}
-
-		void RemoveMainLayerTile(const Coord& coord)
-		{
-			m_mainLayer.autoTileResolver->Remove(coord);
-		}
-
-		// method to execute a function on given tile in each sub layer 
-		template<typename Predicate>
-		void ForEachSubLayerTile(int row, int col, Predicate func)
-		{
-			for (auto& [key, subLayer] : m_subLayers)
-			{
-				func(key, subLayer.tileGrid->Get(row, col));
-			}
-		}
-
-		// method to execute a function on a given tile in a specified sub layer
-		template<typename Predicate>
-		void WithSubLayerTile(const std::string& key, int row, int col, Predicate func)
-		{
-			if (m_subLayers.Has(key))
-			{
-				func(m_subLayers[key].tileGrid->Get(row, col));
-			}
-		}
-	};
-#pragma endregion
-
-#pragma region // render support class for BaseLayer
-	class MapLayerRenderer
-	{
-	private:
-		SizeF m_tilesize;
-		PositionF m_mapWorldPos;
-		DrawSortedSpritesCommand& m_command;
-		ColorF m_tint;
-
-	public:
-		MapLayerRenderer(
-			SizeF tilesize, 
-			PositionF mapWorldPos, 
-			DrawSortedSpritesCommand& command,
-			ColorF tint
-		) :
-			m_tilesize(tilesize),
-			m_mapWorldPos(mapWorldPos),
-			m_command(command),
-			m_tint(tint)
-		{
-		}
-
-		void SetColor(const ColorF& tint)
-		{
-			m_tint = tint;
-		}
-
-		ColorF GetColor() const
-		{
-			return m_tint;
-		}
-
-		void Clear()
-		{
-			m_command.Clear();
-		}
-
-		void Sort()
-		{
-			m_command.Sort();
-		}
-
-		void Draw()
-		{
-			m_command.Execute();
-		}
-
-		void QueueAllSubLayerTilesForDraw(BaseLayer& baseLayer, const std::string& key, float depth, VecF scale)
-		{
-			Size<size_t> size = baseLayer.GetSize();
-
-			for (int row = 0; row < (int)size.height; row++)
-			{
-				for (int col = 0; col < (int)size.width; col++)
-				{
-					QueueSubLayerTileForDraw(baseLayer, key, row, col, depth, scale);
-				}
-			}
-		}
-
-		void QueueAllMainLayerTilesForDraw(BaseLayer& baseLayer, float depth, VecF scale)
-		{
-			Size<size_t> size = baseLayer.GetSize();
-
-			for (int row = 0; row < (int)size.height; row++)
-			{
-				for (int col = 0; col < (int)size.width; col++)
-				{
-					QueueMainLayerTileForDraw(baseLayer, row, col, depth, scale);
-				}
-			}
-		}
-
-		void QueueSubLayerTileForDraw(
-			BaseLayer& baseLayer,
-			const std::string& key,
-			int row, int col,
-			float depth,
-			engine::math::VecF scale = { 1,1 }
-		)
-		{
-			// bail if not in bounds
-			if (!baseLayer.IsInBounds(row, col))
-			{
-				return;
-			}
-
-			// get 
-			baseLayer.WithSubLayerTile(key, row, col, [this, row, col, depth, scale](const Tile<IRenderable>& tile)
-				{
-					AddTile(row, col, depth, scale, tile);
-				});
-
-		}
-
-		void QueueMainLayerTileForDraw(
-			BaseLayer& baseLayer,
-			int row, int col,
-			float depth,
-			engine::math::VecF scale = { 1,1 }
-		)
-		{
-			// bail if not in bounds
-			if (!baseLayer.IsInBounds(row, col))
-			{
-				return;
-			}
-
-			// get the tile from main layer.
-			const Tile<IRenderable>& tile = baseLayer.GetMainLayerTile(row, col);
-
-			AddTile(row, col, depth, scale, tile);
-		}
-		void QueueRenderableForDraw(
-			IRenderable& renderable,
-			const PositionF& pos,
-			const ColorF& tint,
-			float depth,
-			VecF scale = { 1,1 }
-		)
-		{
-			engine::spatial::SizeF size = renderable.GetSprite().GetSize();
-
-			size.width *= scale.x;
-			size.height *= scale.y;
-
-			m_command.Add({
-				renderable.GetSprite(),					// sprite object to draw
-				pos,		// shift tile position from map space to world space
-				size,						// size to draw the tile at
-				tint,								// color
-				0.0f,								// no rotation for tile
-				depth								// depth value for sorting
-				});
-		}
-
-		void QueueRenderableForDraw(
-			IRenderable& renderable,
-			const PositionF& pos,
-			float depth,
-			VecF scale = { 1,1 }
-		)
-		{
-			QueueRenderableForDraw(renderable, pos, m_tint, depth, scale);
-		}
-
-		void QueueTileForDraw(
-			TileGrid<IRenderable>& grid,
-			int row, int col,
-			float depth,
-			VecF scale = { 1,1 }
-		)
-		{
-			// bail if not in bounds
-			if (!grid.IsInBounds(row, col))
-			{
-				return;
-			}
-
-			// get the tile from main layer.
-			const Tile<IRenderable>& tile = grid.Get(row, col);
-
-			AddTile(row, col, depth, scale, tile);
-		}
-
-		void QueueAllTilesForDraw(
-			TileGrid<IRenderable>& grid,
-			Size<size_t> size,
-			float depth, 
-			VecF scale = { 1,1 }
-		)
-		{
-			for (int row = 0; row < (int)size.height; row++)
-			{
-				for (int col = 0; col < (int)size.width; col++)
-				{
-					QueueTileForDraw(grid, row, col, depth, scale);
-				}
-			}
-		}
-
-
-		void AddTile(int row, int col, float depth, const engine::math::VecF& scale, const Tile<IRenderable>& tile)
-		{
-			// if tile is valid, we can queue it for draw. otherwise, we skip it
-			if (tile.IsValid())
-			{
-				// find the top-left position of the tile in map space.
-				engine::spatial::PositionF tilePosFromMap =
-				{
-					col * m_tilesize.width,
-					row * m_tilesize.height
-				};
-
-				// apply scale to tile size in case we want to draw the tile at different size. 
-				// note that only size change. position is still based on original tile size 
-				engine::spatial::SizeF scaledtilesize
-				{
-					m_tilesize.width * scale.x,
-					m_tilesize.height * scale.y
-				};
-
-				m_command.Add({
-					tile->GetSprite(),					// sprite object to draw
-					m_mapWorldPos + tilePosFromMap,		// shift tile position from map space to world space
-					scaledtilesize,						// size to draw the tile at
-					m_tint,								// color
-					0.0f,								// no rotation for tile
-					depth								// depth value for sorting
-					});
-			}
-		}
-	};
-#pragma endregion
-
 #pragma region // AssetManager
 	class AssetManager
 	{
@@ -1898,85 +1317,6 @@ namespace TestMapEditor
 	class TilesetLoader
 	{
 	public:
-		static Tileset<IRenderable>& Load(
-			const std::string& name, // key for storing in cache
-			const std::string& atlasName // key of the sprite atlas to get sprites to
-			)
-		{
-			// if this tileset already exist, just return its reference
-			auto& registry = Registry<Tileset<IRenderable>>::Instance();
-			if (registry.Has(name))
-			{
-				return registry.Get(name);
-			}
-			else
-			{
-				// create tileset object
-				std::unique_ptr<Tileset<IRenderable>> tileset = std::make_unique<Tileset<IRenderable>>();
-
-				// if we this atlas exist, get a reference
-				// TODO: a bit of a problem. if the sprite atlas does not exist, then we will have an empty tileset. this happens silently
-				if (Registry<ISpriteAtlas>::Instance().Has(atlasName))
-				{
-					ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get(atlasName);
-
-					// in this method, we are loading all the sprite atlas' sprites
-					for (int i = 0; i < atlas.GetUVRectCount(); i++)
-					{
-						tileset->Register(i, std::make_unique<Renderable>(atlas.MakeSprite(i)));
-					}
-				}
-
-				// finally, register into the cache
-				registry.Register(name, std::move(tileset));
-			}
-
-			// return reference
-			return registry.Get(name);
-		}
-
-		static Tileset<IRenderable>& Load(
-			const std::string& name, // key for storing in cache
-			const std::string& atlasName, // key of the sprite atlas to get sprites to
-			const std::vector<int> uvrects // list of uvrects to load into tileset. 
-		)
-		{
-			// if this tileset already exist, just return its reference
-			auto& registry = Registry<Tileset<IRenderable>>::Instance();
-			if (registry.Has(name))
-			{
-				return registry.Get(name);
-			}
-			else
-			{
-				// create tileset object
-				std::unique_ptr<Tileset<IRenderable>> tileset = std::make_unique<Tileset<IRenderable>>();
-
-				// if we this atlas exist, get a reference
-				// TODO: a bit of a problem. if the sprite atlas does not exist, then we will have an empty tileset. this happens silently
-				if (Registry<ISpriteAtlas>::Instance().Has(atlasName))
-				{
-					ISpriteAtlas& atlas = Registry<ISpriteAtlas>::Instance().Get(atlasName);
-
-					// tileset indices will start from 0..N
-					// uvrect indices will be based on given array of indices
-					for (int i = 0; i < uvrects.size(); i++)
-					{
-						if (uvrects[i] < atlas.GetUVRectCount())
-						{
-							tileset->Register(i, std::make_unique<Renderable>(atlas.MakeSprite(uvrects[i])));
-						}
-					}
-				}
-
-				// finally, register into the cache
-				registry.Register(name, std::move(tileset));
-			}
-
-			// return reference
-			return registry.Get(name);
-		}
-
 		static TerrainSet& LoadTerrainSet(
 			const std::string& name, // key for storing in cache
 			const std::string& atlasName // key of the sprite atlas to get sprites to
@@ -2603,6 +1943,15 @@ namespace TestMapEditor
 			return screen - m_position;
 		}
 
+		SizeF GetWorldSize() const
+		{
+			return SizeF
+			{
+				m_size.As<float>().width * m_tilesize.As<float>().width,
+				m_size.As<float>().height * m_tilesize.As<float>().height,
+			};
+		}
+
 	};
 #pragma endregion
 
@@ -2631,6 +1980,7 @@ namespace TestMapEditor
 			m_worldTransform.SetTileSize(tilesize);
 
 			if (!m_propMap.Initialize(m_worldTransform.GetPosition(), m_worldTransform.GetSize(), m_worldTransform.GetTileSize())) return false;
+
 
 			return true;
 		}	
@@ -2777,6 +2127,19 @@ namespace TestMapEditor
 		{
 			m_terrainMap.ForEach(key, func);
 		}
+
+		template<typename Func>
+		void ForEachTerrainTile(const std::string& key, const Coord& tl, const Coord& br, const Func& func)
+		{
+			m_terrainMap.ForEach(key, tl, br, func);
+		}
+
+		template<typename Func>
+		void ForEachTerrainTile(const std::string& key, const Coord& tl, const Coord& br, const Func& func) const
+		{
+			m_terrainMap.ForEach(key, tl, br, func);
+		}
+
 	};
 #pragma endregion
 
@@ -3348,6 +2711,386 @@ namespace TestMapEditor
 
 #pragma endregion
 
+#pragma region // Draw function utilities
+	void DrawNavigationGridOverlay(
+		IRenderer& renderer,
+		const WorldMap& map
+	)
+	{
+		struct SubCellOffset
+		{
+			int row;
+			int col;
+			TileConstraint bit;
+		};
+
+		static const SubCellOffset offsets[9] =
+		{
+			{ 0, 0, TileConstraint::NW },
+			{ 0, 1, TileConstraint::N  },
+			{ 0, 2, TileConstraint::NE },
+
+			{ 1, 0, TileConstraint::W  },
+			{ 1, 1, TileConstraint::CENTER },
+			{ 1, 2, TileConstraint::E  },
+
+			{ 2, 0, TileConstraint::SW },
+			{ 2, 1, TileConstraint::S  },
+			{ 2, 2, TileConstraint::SE }
+		};
+
+		SizeF subTileSize(map.GetTransform().GetTileSize().width / 3.0f, map.GetTransform().GetTileSize().height / 3.0f);
+
+		// visual tweak (same as yours)
+		VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
+		SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
+
+		for (int row = 0; row < (int)map.GetTransform().GetSize().height; ++row)
+		{
+			for (int col = 0; col < (int)map.GetTransform().GetSize().width; ++col)
+			{
+				map.ForEachTileConstraint(row, col, [row, col, &map, subTileSize, shift, overlaySize, &renderer](TileConstraint constraint)
+					{
+						// skip empty tiles early (fast path)
+						if (constraint == TileConstraint::NONE) return;
+
+						// top-left of this tile in world space
+						PositionF tileWorldPos = CoordToPosition({ row, col }, map.GetTransform().GetTileSize()) + map.GetTransform().GetPosition();
+
+						// iterate 3x3 subcells
+						for (const auto& offset : offsets)
+						{
+							// for this subcell, check if its corresponding constraint bit is set. if not, skip						
+							if (!HasFlag(constraint, offset.bit))
+							{
+								continue;
+							}
+
+							// compute subcell position
+							PositionF subCellPos = tileWorldPos;
+							subCellPos.x += offset.col * subTileSize.width;
+							subCellPos.y += offset.row * subTileSize.height;
+
+							// apply shift. we're rendering a rectangle smaller than the actual size of the subcell so we shift it a bit to center it
+							subCellPos += shift;
+
+							// draw
+							renderer.Draw(
+								subCellPos,
+								overlaySize,
+								{ 0, 0, 0, 0.5f },
+								0.0f
+							);
+						}
+					}
+				);
+			}
+		}
+	}
+
+	void DrawNavigationGridOverlay(
+		IRenderer& renderer,
+		const NavigationGrid& navGrid,
+		const PositionF& mapPos,
+		const SizeF& tileSize)
+	{
+		struct SubCellOffset
+		{
+			int row;
+			int col;
+			TileConstraint bit;
+		};
+
+		static const SubCellOffset offsets[9] =
+		{
+			{ 0, 0, TileConstraint::NW },
+			{ 0, 1, TileConstraint::N  },
+			{ 0, 2, TileConstraint::NE },
+
+			{ 1, 0, TileConstraint::W  },
+			{ 1, 1, TileConstraint::CENTER },
+			{ 1, 2, TileConstraint::E  },
+
+			{ 2, 0, TileConstraint::SW },
+			{ 2, 1, TileConstraint::S  },
+			{ 2, 2, TileConstraint::SE }
+		};
+
+		SizeF subTileSize(tileSize.width / 3.0f, tileSize.height / 3.0f);
+
+		// visual tweak (same as yours)
+		VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
+		SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
+
+		for (int row = 0; row < (int)navGrid.GetHeight(); ++row)
+		{
+			for (int col = 0; col < (int)navGrid.GetWidth(); ++col)
+			{
+				TileConstraint constraint = navGrid.Get(row, col);
+
+				// skip empty tiles early (fast path)
+				if (constraint == TileConstraint::NONE)
+				{
+					continue;
+				}
+
+				// top-left of this tile in world space
+				PositionF tileWorldPos = CoordToPosition({ row, col }, tileSize) + mapPos;
+
+				// iterate 3x3 subcells
+				for (const auto& offset : offsets)
+				{
+					// for this subcell, check if its corresponding constraint bit is set. if not, skip						
+					if (!HasFlag(constraint, offset.bit))
+					{
+						continue;
+					}
+
+					// compute subcell position
+					PositionF subCellPos = tileWorldPos;
+					subCellPos.x += offset.col * subTileSize.width;
+					subCellPos.y += offset.row * subTileSize.height;
+
+					// apply shift. we're rendering a rectangle smaller than the actual size of the subcell so we shift it a bit to center it
+					subCellPos += shift;
+
+					// draw
+					renderer.Draw(
+						subCellPos,
+						overlaySize,
+						{ 0, 0, 0, 0.5f },
+						0.0f
+					);
+				}
+			}
+		}
+	}
+
+	void DrawTerrainGrid(
+		IRenderer& renderer,
+		DrawSortedSpritesCommand& command,
+		const TerrainGrid& grid,
+		const PositionF& worldPos,
+		const SizeF& tileSize,
+		const ColorF& color,
+		VecF scale = { 1,1 }
+	)
+	{
+		for (int row = 0; row < (int)grid.GetHeight(); ++row)
+		{
+			for (int col = 0; col < (int)grid.GetWidth(); ++col)
+			{
+				// get the tile from main layer.
+				const TileHandle& tile = grid.Get(row, col);
+
+				// if tile is valid, we can queue it for draw. otherwise, we skip it
+				if (tile.IsValid())
+				{
+					// find the top-left position of the tile in map space.
+					engine::spatial::PositionF tilePosFromMap =
+					{
+						col * tileSize.width,
+						row * tileSize.height
+					};
+
+					// apply scale to tile size in case we want to draw the tile at different size. 
+					// note that only size change. position is still based on original tile size 
+					engine::spatial::SizeF scaledtilesize
+					{
+						tileSize.width * scale.x,
+						tileSize.height * scale.y
+					};
+
+					command.Add({
+						tile.GetSprite(),					// sprite object to draw
+						worldPos + tilePosFromMap,		// shift tile position from map space to world space
+						scaledtilesize,						// size to draw the tile at
+						color,								// color
+						0.0f,								// no rotation for tile
+						1								// depth value for sorting
+						});
+				}
+			}
+		}
+	}
+
+
+	void DrawTerrainLayer(
+		IRenderer& renderer,
+		DrawSortedSpritesCommand& command,
+		const TerrainLayer& layer,
+		const PositionF& worldPos,
+		const SizeF& tileSize,
+		const ColorF& color,
+		VecF scale = { 1,1 }
+	)
+	{
+		for (int row = 0; row < (int)layer.GetSize().height; ++row)
+		{
+			for (int col = 0; col < (int)layer.GetSize().width; ++col)
+			{
+				// get the tile from main layer.
+				const TileHandle tile = layer.Get(row, col);
+
+				// if tile is valid, we can queue it for draw. otherwise, we skip it
+				if (tile.IsValid())
+				{
+					// find the top-left position of the tile in map space.
+					engine::spatial::PositionF tilePosFromMap =
+					{
+						col * tileSize.width,
+						row * tileSize.height
+					};
+
+					// apply scale to tile size in case we want to draw the tile at different size. 
+					// note that only size change. position is still based on original tile size 
+					engine::spatial::SizeF scaledtilesize
+					{
+						tileSize.width * scale.x,
+						tileSize.height * scale.y
+					};
+
+					command.Add({
+						tile.GetSprite(),					// sprite object to draw
+						worldPos + tilePosFromMap,		// shift tile position from map space to world space
+						scaledtilesize,						// size to draw the tile at
+						color,								// color
+						0.0f,								// no rotation for tile
+						1								// depth value for sorting
+						});
+				}
+			}
+		}
+	}
+
+	void DrawTerrainLayer(
+		IRenderer& renderer,
+		DrawSortedSpritesCommand& command,
+		const WorldMap& world,
+		const std::string& layer,
+		const PositionF& worldPos,
+		const SizeF& tileSize,
+		VecF scale = { 1,1 },
+		const PositionF& offset = { 0,0 },
+		const ColorF& color = { 1,1,1,1 }
+	)
+	{
+		world.ForEachTerrainTile(layer, [tileSize, scale, &command, worldPos, color, offset](int row, int col, TileHandle tile)
+			{
+				// skip invalid tiles.
+				if (!tile.GetSprite().IsValid()) return;
+
+				// find the top-left position of the tile in map space.
+				engine::spatial::PositionF tilePosFromMap =
+				{
+					col * tileSize.width,
+					row * tileSize.height
+				};
+
+				// apply scale to tile size in case we want to draw the tile at different size. 
+				// note that only size change. position is still based on original tile size 
+				engine::spatial::SizeF scaledtilesize
+				{
+					tileSize.width * scale.x,
+					tileSize.height * scale.y
+				};
+
+				tilePosFromMap += offset;
+
+				command.Add({
+					tile.GetSprite(),					// sprite object to draw
+					worldPos + tilePosFromMap,		// shift tile position from map space to world space
+					scaledtilesize,						// size to draw the tile at
+					color,								// color
+					0.0f,								// no rotation for tile
+					1								// depth value for sorting
+					});
+			});
+	}
+
+	void DrawTerrainLayer(
+		IRenderer& renderer,
+		DrawSortedSpritesCommand& command,
+		const Camera& camera,
+		const WorldMap& world,
+		const std::string& layer,
+		const PositionF& worldPos,
+		const SizeF& tileSize,
+		bool drawAllTiles = false,
+		VecF scale = { 1,1 },
+		const PositionF& offset = { 0,0 },
+		const ColorF& color = { 1,1,1,1 }
+	)
+	{
+		Coord topLeft;
+		Coord bottomRight;
+
+		if (!drawAllTiles)
+		{
+			RectF vp = camera.GetViewport();
+			PositionF pos = camera.GetPosition();
+			float zoom = camera.GetZoom();
+
+			topLeft =
+			{
+				(int)(pos.y / tileSize.height),
+				(int)(pos.x / tileSize.width),
+			};
+
+			bottomRight =
+			{
+				(int)((pos.y + vp.GetHeight() / zoom) / tileSize.height) + 1,
+				(int)((pos.x + vp.GetWidth() / zoom) / tileSize.width) + 1,
+			};
+		}
+		else
+		{
+			topLeft = { 0,0 };
+			bottomRight = { world.GetTransform().GetSize().As<int>().height, world.GetTransform().GetSize().As<int>().width };
+		}
+
+
+		world.ForEachTerrainTile(layer, topLeft, bottomRight, [tileSize, scale, &command, worldPos, color, offset, camera](int row, int col, TileHandle tile)
+			{
+				// skip invalid tiles.
+				if (!tile.GetSprite().IsValid()) return;
+
+				// find the top-left position of the tile in map space.
+				engine::spatial::PositionF tilePosFromWorld =
+				{
+					col * tileSize.width,
+					row * tileSize.height
+				};
+
+				// apply scale to tile size in case we want to draw the tile at different size. 
+				// note that only size change. position is still based on original tile size 
+				engine::spatial::SizeF scaledtilesize
+				{
+					tileSize.width * scale.x,
+					tileSize.height * scale.y
+				};
+
+				scaledtilesize *= camera.GetZoom();
+
+				tilePosFromWorld += offset;
+
+				tilePosFromWorld += worldPos;
+
+				PositionF tilePosInScreen = camera.WorldToScreen(tilePosFromWorld);
+
+				command.Add({
+					tile.GetSprite(),					// sprite object to draw
+					tilePosInScreen,		// shift tile position from map space to world space
+					scaledtilesize,						// size to draw the tile at
+					color,								// color
+					0.0f,								// no rotation for tile
+					1								// depth value for sorting
+					});
+			});
+	}
+
+#pragma endregion
+
 #pragma region // debug scene
 	class DebugScene : public Scene
 	{
@@ -3419,15 +3162,16 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // editor scene
-	class EditorScene : public Scene
+#pragma region // Prop editor scene
+	class PropEditorScene : public Scene
 	{
 	private:
 		StateMachine m_stateMachine;
 		AssetManager m_assets;
-		TileLayer m_gridTileLayer;
-		TileLayer m_fineGridTileLayer;
 		WorldMap m_worldMap;
+
+		TerrainGrid m_tilegrid;
+		TerrainGrid m_finegrid;
 
 		PropBrushTool m_propBrushTool;
 		PropPlacementSystem m_propPlacer;
@@ -3463,18 +3207,13 @@ namespace TestMapEditor
 			// set placement tool default placement
 			m_propBrushTool.Set("normal_pine_tree");
 
+			// initialize the world
 			m_worldMap.Initialize(m_assets.Get<PositionF>("map_position"), m_assets.Get<Size<size_t>>("map_size"), m_assets.Get<SizeF>("tile_size"));
 
-			// initialize grid tile layer. fill it with its only tile
-			auto& grassTileset = m_assets.Get<Tileset<IRenderable>>("grass_tileset");
-			auto& mapSize = m_assets.Get<Size<size_t>>("map_size");
-			m_gridTileLayer.tileset = &grassTileset;
-			m_gridTileLayer.tilegrid.Initialize(mapSize, grassTileset.MakeTile(13));
-
-			// initialize fine grid tile layer. fill it with its only tile
-			m_fineGridTileLayer.tileset = &grassTileset;
-			m_fineGridTileLayer.tilegrid.Initialize(mapSize, grassTileset.MakeTile(22));
-
+			// initialize grids
+			auto& terrainSet = m_assets.Get<TerrainSet>("grass_tileset");
+			m_tilegrid.Initialize(m_worldMap.GetTransform().GetSize(), terrainSet.MakeTile(13));
+			m_finegrid.Initialize(m_worldMap.GetTransform().GetSize(), terrainSet.MakeTile(22));
 		}
 
 		void OnUpdate(double dt) override
@@ -3593,7 +3332,6 @@ namespace TestMapEditor
 			// tiles with lower Y (higher on the screen) to create proper overlapping. props will be drawn in between floor 
 			// and edge tiles based on their tile constraint, so we draw all floor and edge tiles first, then props, 
 			// then debug constraint indicators
-			auto& mapLayerRenderer = m_assets.Get<MapLayerRenderer>("renderer");
 
 			DrawSortedSpritesCommand& drawCommand = m_assets.Get<DrawSortedSpritesCommand>("drawCommand");
 			drawCommand.Clear();
@@ -3618,36 +3356,16 @@ namespace TestMapEditor
 			drawCommand.Sort();
 			drawCommand.Execute();
 
-
-
 			if (m_showDebug)
 			{
 				IRenderer& renderer = m_assets.Get<IRenderer>("renderer");
-				//RectF fp = m_placementTool.GetPreviewFootprintAt(m_mousePos);
-				//DrawQuadCommand cmd(renderer, fp.GetTopLeft(), fp.GetSize(), { 1,1,1,0.5f }, 0.0f);
-				//cmd.Execute();
 
-				//RectF hb = m_placementTool.GetPreviewBoundingBoxAt(m_mousePos);
-				//DrawQuadCommand cmdBoundingBox(renderer, hb.GetTopLeft(), hb.GetSize(), { 1,0,1,0.5f }, 0.0f);
-				//cmdBoundingBox.Execute();
-
-				// draw grid tile
-				mapLayerRenderer.Clear();
-				ColorF color = mapLayerRenderer.GetColor();
-				mapLayerRenderer.SetColor({ 0,0,0,0.2f });
-				mapLayerRenderer.QueueAllTilesForDraw(m_gridTileLayer.tilegrid, m_gridTileLayer.tilegrid.GetSize(), 1, { 1,1 });
-				mapLayerRenderer.Sort();
-				mapLayerRenderer.Draw();
-				mapLayerRenderer.SetColor(color);
-
-				//// draw fine grid tile
-				//mapLayerRenderer.Clear();
-				//ColorF color = mapLayerRenderer.GetColor();
-				//mapLayerRenderer.SetColor({ 0,0,0,0.2f });
-				//mapLayerRenderer.QueueAllTilesForDraw(m_fineGridTileLayer.tilegrid, m_fineGridTileLayer.tilegrid.GetSize(), 1, { 1,1 });
-				//mapLayerRenderer.Sort();
-				//mapLayerRenderer.Draw();
-				//mapLayerRenderer.SetColor(color);
+				// draw the tile grid
+				drawCommand.Clear();
+				DrawTerrainGrid(renderer, drawCommand, m_tilegrid, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), { 0,0,0,0.2f });
+				DrawTerrainGrid(renderer, drawCommand, m_finegrid, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), { 0,0,0,0.05f });
+				drawCommand.Sort();
+				drawCommand.Execute();
 
 				DrawNavigationGridOverlay(renderer, m_worldMap);
 
@@ -3657,160 +3375,6 @@ namespace TestMapEditor
 
 			}
 
-		}
-
-		void DrawNavigationGridOverlay(
-			IRenderer& renderer,
-			const WorldMap& map
-		)
-		{
-			struct SubCellOffset
-			{
-				int row;
-				int col;
-				TileConstraint bit;
-			};
-
-			static const SubCellOffset offsets[9] =
-			{
-				{ 0, 0, TileConstraint::NW },
-				{ 0, 1, TileConstraint::N  },
-				{ 0, 2, TileConstraint::NE },
-
-				{ 1, 0, TileConstraint::W  },
-				{ 1, 1, TileConstraint::CENTER },
-				{ 1, 2, TileConstraint::E  },
-
-				{ 2, 0, TileConstraint::SW },
-				{ 2, 1, TileConstraint::S  },
-				{ 2, 2, TileConstraint::SE }
-			};
-
-			SizeF subTileSize(map.GetTransform().GetTileSize().width / 3.0f, map.GetTransform().GetTileSize().height / 3.0f);
-
-			// visual tweak (same as yours)
-			VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
-			SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
-
-			for (int row = 0; row < (int)map.GetTransform().GetSize().height; ++row)
-			{
-				for (int col = 0; col < (int)map.GetTransform().GetSize().width; ++col)
-				{
-					map.ForEachTileConstraint(row, col, [row, col, &map, subTileSize, shift, overlaySize, &renderer](TileConstraint constraint)
-						{
-							// skip empty tiles early (fast path)
-							if (constraint == TileConstraint::NONE) return;
-
-							// top-left of this tile in world space
-							PositionF tileWorldPos = CoordToPosition({ row, col }, map.GetTransform().GetTileSize()) + map.GetTransform().GetPosition();
-
-							// iterate 3x3 subcells
-							for (const auto& offset : offsets)
-							{
-								// for this subcell, check if its corresponding constraint bit is set. if not, skip						
-								if (!HasFlag(constraint, offset.bit))
-								{
-									continue;
-								}
-
-								// compute subcell position
-								PositionF subCellPos = tileWorldPos;
-								subCellPos.x += offset.col * subTileSize.width;
-								subCellPos.y += offset.row * subTileSize.height;
-
-								// apply shift. we're rendering a rectangle smaller than the actual size of the subcell so we shift it a bit to center it
-								subCellPos += shift;
-
-								// draw
-								renderer.Draw(
-									subCellPos,
-									overlaySize,
-									{ 0, 0, 0, 0.5f },
-									0.0f
-								);
-							}
-						}
-					);
-				}
-			}
-		}
-
-		void DrawNavigationGridOverlay(
-			IRenderer& renderer,
-			const NavigationGrid& navGrid,
-			const PositionF& mapPos,
-			const SizeF& tileSize)
-		{
-			struct SubCellOffset
-			{
-				int row;
-				int col;
-				TileConstraint bit;
-			};
-
-			static const SubCellOffset offsets[9] =
-			{
-				{ 0, 0, TileConstraint::NW },
-				{ 0, 1, TileConstraint::N  },
-				{ 0, 2, TileConstraint::NE },
-
-				{ 1, 0, TileConstraint::W  },
-				{ 1, 1, TileConstraint::CENTER },
-				{ 1, 2, TileConstraint::E  },
-
-				{ 2, 0, TileConstraint::SW },
-				{ 2, 1, TileConstraint::S  },
-				{ 2, 2, TileConstraint::SE }
-			};
-
-			SizeF subTileSize(tileSize.width / 3.0f, tileSize.height / 3.0f);
-
-			// visual tweak (same as yours)
-			VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
-			SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
-
-			for (int row = 0; row < (int)navGrid.GetHeight(); ++row)
-			{
-				for (int col = 0; col < (int)navGrid.GetWidth(); ++col)
-				{
-					TileConstraint constraint = navGrid.Get(row, col);
-
-					// skip empty tiles early (fast path)
-					if (constraint == TileConstraint::NONE)
-					{
-						continue;
-					}
-
-					// top-left of this tile in world space
-					PositionF tileWorldPos = CoordToPosition({ row, col }, tileSize) + mapPos;
-
-					// iterate 3x3 subcells
-					for (const auto& offset : offsets)
-					{
-						// for this subcell, check if its corresponding constraint bit is set. if not, skip						
-						if (!HasFlag(constraint, offset.bit))
-						{
-							continue;
-						}
-
-						// compute subcell position
-						PositionF subCellPos = tileWorldPos;
-						subCellPos.x += offset.col * subTileSize.width;
-						subCellPos.y += offset.row * subTileSize.height;
-
-						// apply shift. we're rendering a rectangle smaller than the actual size of the subcell so we shift it a bit to center it
-						subCellPos += shift;
-
-						// draw
-						renderer.Draw(
-							subCellPos,
-							overlaySize,
-							{ 0, 0, 0, 0.5f },
-							0.0f
-						);
-					}
-				}
-			}
 		}
 	};
 #pragma endregion
@@ -3822,9 +3386,6 @@ namespace TestMapEditor
 		StateMachine m_stateMachine;
 		AssetManager m_assets;
 		WorldMap m_worldMap;
-
-		TileLayer m_grassTileLayer;
-		TileLayer m_splashTileLayer;
 
 		PositionF m_mousePos;
 
@@ -3845,18 +3406,7 @@ namespace TestMapEditor
 			m_worldMap.Initialize(m_assets.Get<PositionF>("map_position"), m_assets.Get<Size<size_t>>("map_size"), m_assets.Get<SizeF>("tile_size"));
 
 			// initialize grid tile layer. fill it with its only tile
-			auto& grassTileset = m_assets.Get<Tileset<IRenderable>>("grass_tileset");
 			auto& mapSize = m_assets.Get<Size<size_t>>("map_size");
-
-			// initialize grass tile layer. fill it with invalid tiles for now so they have empty tiles
-			m_grassTileLayer.tileset = &grassTileset;
-			m_grassTileLayer.tilegrid.Initialize(mapSize, grassTileset.MakeInvalidTile());
-
-			// initialize water splash tile layer. also fill with invalid tiles for now
-			auto& splashTileset = m_assets.Get<Tileset<IRenderable>>("splash_tileset");
-			m_splashTileLayer.tileset = &splashTileset;
-			m_splashTileLayer.tilegrid.Initialize(mapSize, splashTileset.MakeInvalidTile());
-
 
 			// initialize grids
 			auto& terrainSet = m_assets.Get<TerrainSet>("grass_tileset");
@@ -3939,7 +3489,6 @@ namespace TestMapEditor
 			// is mouse left button is held while moving...
 			if (Input::Instance().IsMouseHeld(1))
 			{
-				//m_terrainBrushTool.Paint(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
 				m_terrainEditor.Paint(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
 
 			}
@@ -3974,33 +3523,12 @@ namespace TestMapEditor
 			// left click to place grass tile
 			if (btn == 1)
 			{
-				//// place grass tile
-				//TileLayerEditor tle;
-				//tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
-				//tle.Paint(m_grassTileLayer, config, coord);
-				//return;
-
-				//m_terrainBrushTool.Paint(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
-
 				m_terrainEditor.Paint(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
-
-
-				//AutoTileSystem ats;
-				//TerrainAutoTileAdapter tata{ m_terrain, grassTileset };
-				//AutoTileSystem::AutoTileContext<TerrainAutoTileAdapter> ctx{tata};
-				//ats.Set(ctx, config, coord);
 			}
 			// right click to remove tile
 			else if (btn == 2)
 			{
-				//// remove grass tile
-				//TileLayerEditor tle;
-				//tle.LinkLayers(m_grassTileLayer, m_splashTileLayer, splashAnimLookup);
-				//tle.Erase(m_grassTileLayer, config, coord);
-
-				//m_terrainBrushTool.Erase(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
 				m_terrainEditor.Erase(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
-
 
 			}
 		}
@@ -4013,7 +3541,7 @@ namespace TestMapEditor
 			IRenderer& renderer = m_assets.Get<IRenderer>("renderer");
 			DrawSortedSpritesCommand& drawCommand = m_assets.Get<DrawSortedSpritesCommand>("drawCommand");
 
-			// draw the terrain
+			// draw the terrain's background shoreline splash
 			drawCommand.Clear();
 			//DrawTerrainGrid(renderer, drawCommand, m_terrain, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), { 1,1,1,1 });
 			//DrawTerrainLayer(renderer, drawCommand, m_grassTerrainLayer, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), { 1,1,1,1 });
@@ -4021,6 +3549,7 @@ namespace TestMapEditor
 			drawCommand.Sort();
 			drawCommand.Execute();
 
+			// draw the grass terrain
 			drawCommand.Clear();
 			DrawTerrainLayer(renderer, drawCommand, m_worldMap, "grass", m_worldMap.GetTransform().GetPosition(),  m_worldMap.GetTransform().GetTileSize());
 			drawCommand.Sort();
@@ -4034,313 +3563,206 @@ namespace TestMapEditor
 				DrawTerrainGrid(renderer, drawCommand, m_finegrid, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), { 0,0,0,0.05f });
 				drawCommand.Sort();
 				drawCommand.Execute();
-			}
 
-			if (m_showDebug)
-			{
 				IRenderer& renderer = m_assets.Get<IRenderer>("renderer");
 
 				DrawNavigationGridOverlay(renderer, m_worldMap);
-
-
 			}
 
 		}
+	};
+#pragma endregion
 
-		void DrawNavigationGridOverlay(
-			IRenderer& renderer,
-			const WorldMap& map
-		)
+#pragma region // CameraScene scene
+	class CameraScene : public Scene
+	{
+	private:
+		WorldMap m_worldMap;
+		int m_debugState = 2;
+		Camera m_camera;
+		PositionF m_lastMousePos;
+		bool m_isPanning;
+
+		PositionF m_currMousePos;
+
+
+	public:
+		CameraScene() :
+			m_camera({ 400, 400, 600, 600 }),
+			m_lastMousePos(0,0),
+			m_isPanning(false)
 		{
-			struct SubCellOffset
-			{
-				int row;
-				int col;
-				TileConstraint bit;
-			};
 
-			static const SubCellOffset offsets[9] =
-			{
-				{ 0, 0, TileConstraint::NW },
-				{ 0, 1, TileConstraint::N  },
-				{ 0, 2, TileConstraint::NE },
-
-				{ 1, 0, TileConstraint::W  },
-				{ 1, 1, TileConstraint::CENTER },
-				{ 1, 2, TileConstraint::E  },
-
-				{ 2, 0, TileConstraint::SW },
-				{ 2, 1, TileConstraint::S  },
-				{ 2, 2, TileConstraint::SE }
-			};
-
-			SizeF subTileSize(map.GetTransform().GetTileSize().width / 3.0f, map.GetTransform().GetTileSize().height / 3.0f);
-
-			// visual tweak (same as yours)
-			VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
-			SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
-
-			for (int row = 0; row < (int)map.GetTransform().GetSize().height; ++row)
-			{
-				for (int col = 0; col < (int)map.GetTransform().GetSize().width; ++col)
-				{
-					map.ForEachTileConstraint(row, col, [row, col, &map, subTileSize, shift, overlaySize, &renderer](TileConstraint constraint)
-						{
-							// skip empty tiles early (fast path)
-							if (constraint == TileConstraint::NONE) return;
-
-							// top-left of this tile in world space
-							PositionF tileWorldPos = CoordToPosition({ row, col }, map.GetTransform().GetTileSize()) + map.GetTransform().GetPosition();
-
-							// iterate 3x3 subcells
-							for (const auto& offset : offsets)
-							{
-								// for this subcell, check if its corresponding constraint bit is set. if not, skip						
-								if (!HasFlag(constraint, offset.bit))
-								{
-									continue;
-								}
-
-								// compute subcell position
-								PositionF subCellPos = tileWorldPos;
-								subCellPos.x += offset.col * subTileSize.width;
-								subCellPos.y += offset.row * subTileSize.height;
-
-								// apply shift. we're rendering a rectangle smaller than the actual size of the subcell so we shift it a bit to center it
-								subCellPos += shift;
-
-								// draw
-								renderer.Draw(
-									subCellPos,
-									overlaySize,
-									{ 0, 0, 0, 0.5f },
-									0.0f
-								);
-							}
-						}
-					);
-				}
-			}
 		}
 
-		void DrawNavigationGridOverlay(
-			IRenderer& renderer,
-			const NavigationGrid& navGrid,
-			const PositionF& mapPos,
-			const SizeF& tileSize)
+		void OnEnter() override
 		{
-			struct SubCellOffset
-			{
-				int row;
-				int col;
-				TileConstraint bit;
-			};
+			auto& terrainSet = AssetManager().Get<TerrainSet>("grass_tileset");
 
-			static const SubCellOffset offsets[9] =
-			{
-				{ 0, 0, TileConstraint::NW },
-				{ 0, 1, TileConstraint::N  },
-				{ 0, 2, TileConstraint::NE },
+			m_worldMap.Initialize({ 0,0 }, { 1, 1 }, { 300, 300 });
 
-				{ 1, 0, TileConstraint::W  },
-				{ 1, 1, TileConstraint::CENTER },
-				{ 1, 2, TileConstraint::E  },
+			m_worldMap.AddTerrain("fine_grid", terrainSet, 22);
+			m_worldMap.AddTerrain("tile_grid", terrainSet, 13);
 
-				{ 2, 0, TileConstraint::SW },
-				{ 2, 1, TileConstraint::S  },
-				{ 2, 2, TileConstraint::SE }
-			};
+			m_camera.SetWorldSize(m_worldMap.GetTransform().GetWorldSize());
 
-			SizeF subTileSize(tileSize.width / 3.0f, tileSize.height / 3.0f);
-
-			// visual tweak (same as yours)
-			VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
-			SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
-
-			for (int row = 0; row < (int)navGrid.GetHeight(); ++row)
-			{
-				for (int col = 0; col < (int)navGrid.GetWidth(); ++col)
-				{
-					TileConstraint constraint = navGrid.Get(row, col);
-
-					// skip empty tiles early (fast path)
-					if (constraint == TileConstraint::NONE)
-					{
-						continue;
-					}
-
-					// top-left of this tile in world space
-					PositionF tileWorldPos = CoordToPosition({ row, col }, tileSize) + mapPos;
-
-					// iterate 3x3 subcells
-					for (const auto& offset : offsets)
-					{
-						// for this subcell, check if its corresponding constraint bit is set. if not, skip						
-						if (!HasFlag(constraint, offset.bit))
-						{
-							continue;
-						}
-
-						// compute subcell position
-						PositionF subCellPos = tileWorldPos;
-						subCellPos.x += offset.col * subTileSize.width;
-						subCellPos.y += offset.row * subTileSize.height;
-
-						// apply shift. we're rendering a rectangle smaller than the actual size of the subcell so we shift it a bit to center it
-						subCellPos += shift;
-
-						// draw
-						renderer.Draw(
-							subCellPos,
-							overlaySize,
-							{ 0, 0, 0, 0.5f },
-							0.0f
-						);
-					}
-				}
-			}
 		}
 
-		void DrawTerrainGrid(
-			IRenderer& renderer,
-			DrawSortedSpritesCommand& command,
-			const TerrainGrid& grid,
-			const PositionF& worldPos,
-			const SizeF& tileSize,
-			const ColorF& color,
-			VecF scale = { 1,1 }
-		)
+		void OnKeyDown(int key) override
 		{
-			for (int row = 0; row < (int)grid.GetHeight(); ++row)
+			switch (key)
 			{
-				for (int col = 0; col < (int)grid.GetWidth(); ++col)
+			case 27: // ESC
+				break;
+			case 32: // SPACE
+				m_debugState++;
+				if (m_debugState > 3) m_debugState = 0;
+				break;
+			case 49: // 1
+				m_camera.SetZoom(1.0f);
+				break;
+			case 50: // 2
+				m_camera.SetZoom(1.5f);
+				break;
+			case 51: // 3 
+				m_camera.SetZoom(0.5f);
+				break;
+			case 52: // 4
 				{
-					// get the tile from main layer.
-					const TileHandle& tile = grid.Get(row, col);
-					
-					// if tile is valid, we can queue it for draw. otherwise, we skip it
-					if (tile.IsValid())
+					m_worldMap.Initialize({ 0,0 }, { 12, 8 }, { 64, 64 });
+
+					auto& terrainSet = AssetManager().Get<TerrainSet>("grass_tileset");
+					m_worldMap.AddTerrain("fine_grid", terrainSet, 22);
+					m_worldMap.AddTerrain("tile_grid", terrainSet, 13);
+
+					SizeF worldSize
 					{
-						// find the top-left position of the tile in map space.
-						engine::spatial::PositionF tilePosFromMap =
-						{
-							col * tileSize.width,
-							row * tileSize.height
-						};
-
-						// apply scale to tile size in case we want to draw the tile at different size. 
-						// note that only size change. position is still based on original tile size 
-						engine::spatial::SizeF scaledtilesize
-						{
-							tileSize.width * scale.x,
-							tileSize.height * scale.y
-						};
-
-						command.Add({
-							tile.GetSprite(),					// sprite object to draw
-							worldPos + tilePosFromMap,		// shift tile position from map space to world space
-							scaledtilesize,						// size to draw the tile at
-							color,								// color
-							0.0f,								// no rotation for tile
-							1								// depth value for sorting
-							});
-					}
-				}
-			}
-		}
-
-
-		void DrawTerrainLayer(
-			IRenderer& renderer,
-			DrawSortedSpritesCommand& command,
-			const TerrainLayer& layer,
-			const PositionF& worldPos,
-			const SizeF& tileSize,
-			const ColorF& color,
-			VecF scale = { 1,1 }
-		)
-		{
-			for (int row = 0; row < (int)layer.GetSize().height; ++row)
-			{
-				for (int col = 0; col < (int)layer.GetSize().width; ++col)
-				{
-					// get the tile from main layer.
-					const TileHandle tile = layer.Get(row, col);
-
-					// if tile is valid, we can queue it for draw. otherwise, we skip it
-					if (tile.IsValid())
-					{
-						// find the top-left position of the tile in map space.
-						engine::spatial::PositionF tilePosFromMap =
-						{
-							col * tileSize.width,
-							row * tileSize.height
-						};
-
-						// apply scale to tile size in case we want to draw the tile at different size. 
-						// note that only size change. position is still based on original tile size 
-						engine::spatial::SizeF scaledtilesize
-						{
-							tileSize.width * scale.x,
-							tileSize.height * scale.y
-						};
-
-						command.Add({
-							tile.GetSprite(),					// sprite object to draw
-							worldPos + tilePosFromMap,		// shift tile position from map space to world space
-							scaledtilesize,						// size to draw the tile at
-							color,								// color
-							0.0f,								// no rotation for tile
-							1								// depth value for sorting
-							});
-					}
-				}
-			}
-		}
-
-		void DrawTerrainLayer(
-			IRenderer& renderer,
-			DrawSortedSpritesCommand& command,
-			const WorldMap& world,
-			const std::string& layer,
-			const PositionF& worldPos,
-			const SizeF& tileSize,
-			VecF scale = { 1,1 },
-			const PositionF& offset = {0,0},
-			const ColorF& color = {1,1,1,1}
-		)
-		{
-			world.ForEachTerrainTile(layer, [tileSize, scale, &command, worldPos, color, offset](int row, int col, TileHandle tile)
-				{
-					// skip invalid tiles.
-					if (!tile.GetSprite().IsValid()) return;
-
-					// find the top-left position of the tile in map space.
-					engine::spatial::PositionF tilePosFromMap =
-					{
-						col * tileSize.width,
-						row * tileSize.height
+						m_worldMap.GetTransform().GetSize().As<float>().width * m_worldMap.GetTransform().GetTileSize().As<float>().width,
+						m_worldMap.GetTransform().GetSize().As<float>().height * m_worldMap.GetTransform().GetTileSize().As<float>().height,
 					};
 
-					// apply scale to tile size in case we want to draw the tile at different size. 
-					// note that only size change. position is still based on original tile size 
-					engine::spatial::SizeF scaledtilesize
-					{
-						tileSize.width * scale.x,
-						tileSize.height * scale.y
-					};
+					m_camera.SetViewport({ 300, 300, 800, 600 });
+					m_camera.SetWorldSize(worldSize);
+					m_camera.SetPosition({ 0,0 });
+					m_camera.SetZoom(1.0f);
 
-					tilePosFromMap += offset;
+					break;
+				}
+			case 53: // 5 
+			{
+				m_worldMap.Initialize({ 0,0 }, { 1, 1 }, { 300, 300 });
 
-					command.Add({
-						tile.GetSprite(),					// sprite object to draw
-						worldPos + tilePosFromMap,		// shift tile position from map space to world space
-						scaledtilesize,						// size to draw the tile at
-						color,								// color
-						0.0f,								// no rotation for tile
-						1								// depth value for sorting
-						});
-				});	
+				auto& terrainSet = AssetManager().Get<TerrainSet>("grass_tileset");
+				m_worldMap.AddTerrain("fine_grid", terrainSet, 22);
+				m_worldMap.AddTerrain("tile_grid", terrainSet, 13);
+
+				m_camera.SetViewport({ 400, 400, 600, 600 });
+				m_camera.SetWorldSize(m_worldMap.GetTransform().GetWorldSize());
+				m_camera.SetPosition({ 0,0 });
+				m_camera.SetZoom(1.0f);
+
+				break;
+			}			
+			default:
+				break;
+			}
+		}
+
+		void OnMouseMove(int x, int y)
+		{
+			m_currMousePos = { (float)x, (float)y };
+
+			// is we're holding down left mouse button and dragging it, pan the map
+			if (m_isPanning)
+			{
+				// get the change in position and move camera position by that
+				engine::math::VecF delta = engine::math::VecF((float)x, (float)y) - m_lastMousePos;
+				m_camera.MoveBy(delta);
+
+				// remember the last mouse position
+				m_lastMousePos = { (float)x, (float)y };
+			}
+		}
+
+		void OnMouseDown(int btn, int x, int y)
+		{
+			m_lastMousePos = { (float)x, (float)y };
+
+			// this button is for panning the camera
+			if (btn == 1)
+			{
+				m_isPanning = true;
+			}
+			// if this button is clicked, move our focus in this position
+			if (btn == 2)
+			{
+				// this is screen position and convert it to world position
+				PositionF pos = m_camera.ScreenToWorld(m_lastMousePos);
+
+				// pan the camera such that the focus is at center of the viewport, if possible
+				m_camera.CenterOn(pos);
+			}
+		}
+
+		void OnMouseUp(int btn, int x, int y)
+		{
+			m_isPanning = false;
+		}
+
+
+		void OnUpdate(double dt) override
+		{
+
+		}
+
+		void OnRender() override
+		{
+			AssetManager assets;
+
+			// get resources
+			IRenderer& renderer = assets.Get<IRenderer>("renderer");
+			DrawSortedSpritesCommand& drawCommand = assets.Get<DrawSortedSpritesCommand>("drawCommand");
+
+
+			renderer.SetClipRegion(m_camera.GetViewport());
+			renderer.EnableClipping(m_debugState > 2);
+
+			if (m_debugState > 0)
+			{
+				// draw the tile grid
+				drawCommand.Clear();
+				DrawTerrainLayer(renderer, drawCommand, m_camera, m_worldMap, "tile_grid", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_debugState == 2, {1, 1}, { 0, 0 }, {0,0,0,0.2f});
+				DrawTerrainLayer(renderer, drawCommand, m_camera, m_worldMap, "fine_grid", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_debugState == 2, { 1, 1 }, { 0, 0 }, {0,0,0,0.05f});
+				drawCommand.Sort();
+				drawCommand.Execute();
+
+				RectF vp = m_camera.GetViewport();
+
+				renderer.Draw(vp.GetTopLeft(), vp.GetSize(), { 1,1,1,0.1f }, 0.0f);
+
+				std::string msg;
+				msg += std::to_string(m_camera.GetPosition().x) + ", " + std::to_string(m_camera.GetPosition().y);
+				renderer.Draw(assets.Get<IFontAtlas>("font"), msg, { 400, 5 }, { 1,1,1,1 });
+
+				SizeF worldSize
+				{
+					m_worldMap.GetTransform().GetSize().As<float>().width * m_worldMap.GetTransform().GetTileSize().As<float>().width,
+					m_worldMap.GetTransform().GetSize().As<float>().height * m_worldMap.GetTransform().GetTileSize().As<float>().height,
+				};
+
+				worldSize *= m_camera.GetZoom();
+
+				msg.clear();
+				msg += std::to_string(worldSize.width) + ", " + std::to_string(worldSize.height);
+				renderer.Draw(assets.Get<IFontAtlas>("font"), msg, { 400, 25 }, { 1,1,1,1 });
+
+				msg.clear();
+				msg += std::to_string(m_currMousePos.x) + ", " + std::to_string(m_currMousePos.y);
+				renderer.Draw(assets.Get<IFontAtlas>("font"), msg, { 400, 45 }, { 1,1,1,1 });
+
+				
+
+			}
 		}
 
 	};
@@ -4373,7 +3795,7 @@ namespace TestMapEditor
 			window.OnCreate += event::Handler(this, &Test::OnWindowCreate);
 			window.OnSize += event::Handler(this, &Test::OnWindowSize);
 			window.OnWindowMessage += event::Handler(&Input::Instance(), &Input::ProcessWin32Message);
-			window.Create(L"Test Map Editor", 1400, 900);
+			window.Create(L"Test Map Editor", 1400, 1080);
 
 			// subscribe to input events
 			Input::Instance().KeyDownEvent += event::Handler(this, &Test::OnKeyDown);
@@ -4428,9 +3850,6 @@ namespace TestMapEditor
 				// load sprite atlas for baselayer tiles
 				SpriteAtlasLoader::Load("grass_tile_sprites", L"../Assets/576x384px_6x9tile_TileMap.png", 6, 9);
 
-				// create our tileset and load all sprites from sprite atlas
-				TilesetLoader::Load("grass_tileset", "grass_tile_sprites");
-
 				// create sprite atlas for the water splash animation
 				SpriteAtlasFactory::Create("splash_anim_sprites", L"../Assets/3072x192px_1x17tile_waterfoam.png", 1, 16);
 
@@ -4441,11 +3860,6 @@ namespace TestMapEditor
 				ISpriteAtlas& splashAnimSprites = assets.Get<ISpriteAtlas>("splash_anim_sprites");
 				AnimationSet<Sprite>& splashAnimSet = assets.Get<AnimationSet<Sprite>>("splash_anim_set");
 				splashAnimSet.Register("splash_anim", SpriteAnimationFactory::Create(splashAnimSprites, 100.0f, true, { .33f, .355f }));
-
-				// create tileset that stores water splash animation
-				Registry<Tileset<IRenderable>>::Instance().Register("splash_tileset", std::make_unique<Tileset<IRenderable>>());
-				Tileset<IRenderable>& splashTileset = assets.Get<Tileset<IRenderable>>("splash_tileset");
-				splashTileset.Register(0, std::make_unique<Animated>(splashAnimSet, "splash_anim"));
 
 
 				{
@@ -4574,10 +3988,11 @@ namespace TestMapEditor
 
 			// initialize scenes
 			{
-				m_sceneManager.CreateScene<EditorScene>("Edit");
+				m_sceneManager.CreateScene<PropEditorScene>("Prop");
 				m_sceneManager.CreateScene<DebugScene>("Debug");
+				m_sceneManager.CreateScene<CameraScene>("Camera");
 				m_sceneManager.CreateScene<TerrainEditScene>("Terrain");
-				m_sceneManager.SetActive("Terrain");
+				m_sceneManager.SetActive("Camera");
 			}
 
 			// create draw command for drawing sorted sprites. we will use this for drawing the base layer tiles.
@@ -4592,102 +4007,17 @@ namespace TestMapEditor
 				SizeF tileSize = Registry<SizeF>::Instance().Get("tile_size");
 				Size<size_t> mapSize = Registry<Size<size_t>>::Instance().Get("map_size");
 				PositionF pos = Registry<PositionF>::Instance().Get("map_position");
-
-				Registry<MapLayerRenderer>::Instance().Register("renderer", std::make_unique<MapLayerRenderer>(tileSize, pos, drawCommand, ColorF{ 1,1,1,1 }));
 			}
 		}
 
 		void OnKeyDown(int key)
 		{ 
-		//	m_sceneManager.OnKeyDown(key);
 			return;
-
-			//BaseLayer& baseLayer = Registry<BaseLayer>::Instance().Get("baselayer");
-			TileLayer& layer = Registry<TileLayer>::Instance().Get("grass_layer");
-			Size<size_t> mapSize = Registry<Size<size_t>>::Instance().Get("map_size");
-			AutoTileSystem::AutoTileConfig config = Registry<AutoTileSystem::AutoTileConfig>::Instance().Get("grass_tile");
-
-			AssetManager assets;
-			auto& splashAnimLookup = assets.Get<Dictionary<TileVariant, int>>("splash");
-			auto& splashLayer = assets.Get<TileLayer>("splash_layer");
-			auto& grassLayer = assets.Get<TileLayer>("grass_layer");
-
-			switch (key)
-			{
-			case 27: // ESC
-				break;
-			case 32: // SPACE
-				break;
-			case 49: // 1
-				// modify map state 
-
-				break;
-			case 50: // 2
-				break;
-			case 51: // 3 
-				break;
-			case 52: // 4
-				break;
-			case 53: // 5
-				break;
-			case 54: // 6
-				break;
-			case 55: // 7
-			{
-				TileLayerEditor tle;
-				tle.LinkLayers(grassLayer, splashLayer, splashAnimLookup);
-				tle.Fill(grassLayer, config);
-				break;
-			}
-
-			case 56: // 8
-			{
-				TileLayerEditor tle;
-				tle.LinkLayers(grassLayer, splashLayer, splashAnimLookup);
-				tle.Clear(grassLayer, config);
-				break;
-			}
-
-			default:
-				break;
-			}
 		}
 
 		void OnMouseDown(int btn, int x, int y)
 		{
-		//	m_sceneManager.OnMouseDown(btn, x, y);
 			return;
-
-			// get coordinate of the tile we clicked on
-			PositionF mapPos = Registry<PositionF>::Instance().Get("map_position");
-			SizeF tilesize = Registry<SizeF>::Instance().Get("tile_size");
-			PositionF mousePos(static_cast<float>(x), static_cast<float>(y));
-			engine::spatial::Coord coord = engine::spatial::PositionToCoord(mousePos - mapPos, tilesize);
-
-			//BaseLayer& baseLayer = Registry<BaseLayer>::Instance().Get("baselayer");
-			TileLayer& grassLayer = Registry<TileLayer>::Instance().Get("grass_layer");
-			AutoTileSystem::AutoTileConfig config = Registry<AutoTileSystem::AutoTileConfig>::Instance().Get("grass_tile");
-			AssetManager assets;
-
-			Dictionary<TileVariant, int>& splashAnimLookup = assets.Get<Dictionary<TileVariant, int>>("splash");
-			TileLayer& splashLayer = assets.Get<TileLayer>("splash_layer");
-
-			// left click to place tile
-			if (btn == 1)
-			{
-				// place grass tile
-				TileLayerEditor tle;
-				tle.LinkLayers(grassLayer, splashLayer, splashAnimLookup);
-				tle.Paint(grassLayer, config, coord);
-			}
-			// right click to remove tile
-			else if (btn == 2)
-			{
-				// remove grass tile
-				TileLayerEditor tle;
-				tle.LinkLayers(grassLayer, splashLayer, splashAnimLookup);
-				tle.Erase(grassLayer, config, coord);
-			}
 		}
 
 
@@ -4768,11 +4098,10 @@ namespace TestMapEditor
 
 		void OnWindowSize(size_t nWidth, size_t nHeight)
 		{
-
+			ICanvas& canvas = AssetManager().Get<ICanvas>("canvas");
+			canvas.Resize({ static_cast<unsigned int>(nWidth), static_cast<unsigned int>(nHeight) });
+			canvas.SetViewPort();
 		}
-
-
-
 
 	};
 }

@@ -39,6 +39,8 @@ namespace engine::spatial
 		// the total size of the world/map
 		spatial::Size<T> m_worldSize;
 
+		T m_zoom;
+
 		// clamps camera position so that the viewport rectangle, pivoted at m_position 
 		// as its top-left position in world space, stays fully inside the world bounds.
 		// camera position is clamped between 0 and world.size - viewport.size
@@ -47,21 +49,31 @@ namespace engine::spatial
 			// camera position is in world space, so we need to clamp it to the map size minus the viewport size
 			// also make sure we don't clamp to negative values if the map is smaller than the viewport
 			// world space (0,0) is at top-left corner
-			m_position.x = std::clamp(m_position.x, 0.0f, std::max<float>(0.0f, m_worldSize.width - m_viewport.GetWidth()));
-			m_position.y = std::clamp(m_position.y, 0.0f, std::max<float>(0.0f, m_worldSize.height - m_viewport.GetHeight()));
+
+			// we factor zoom in viewport, not world size because when we zoom, worldsize does not change, 
+			// but camera got closer/farther from world, so what you see in viewport changes 
+			m_position.x = std::clamp(m_position.x, static_cast<T>(0), std::max<T>(static_cast<T>(0), m_worldSize.width  - m_viewport.GetWidth() / m_zoom));
+			m_position.y = std::clamp(m_position.y, static_cast<T>(0), std::max<T>(static_cast<T>(0), m_worldSize.height - m_viewport.GetHeight() / m_zoom));
 		}
 
 	public:
 		Camera(engine::math::geometry::RectF viewport) :
 			m_viewport(viewport),
-			m_position({ 0, 0 }),
-			m_worldSize({ 0, 0 })
+			m_position(Position<T>(0,0)),
+			m_worldSize(Size<T>(0,0)),
+			m_zoom(static_cast<T>(1))
 		{
 		}
 
-		void SetWorldSize(float width, float height)
+		void SetWorldSize(const T& width, const T& height)
 		{
 			m_worldSize = { width, height };
+			ClampToBounds();
+		}
+
+		void SetWorldSize(const engine::spatial::Size<T>& size)
+		{
+			m_worldSize = size;
 			ClampToBounds();
 		}
 
@@ -71,11 +83,17 @@ namespace engine::spatial
 			ClampToBounds();
 		}
 
+		void SetZoom(const T& zoom)
+		{
+			m_zoom = zoom;
+			ClampToBounds();
+		}
+
 		// move the camera in the world by given delta. this pans the world in the viewport
 		void MoveBy(engine::math::Vec<T> delta)
 		{
 			// why it's negative? because we are moving the camera (in world space), not the world
-			m_position -= delta;
+			m_position -= delta / m_zoom;
 			ClampToBounds();
 		}
 
@@ -89,7 +107,7 @@ namespace engine::spatial
 		// set camera position so that the specified world position is at the center of the viewport
 		void CenterOn(engine::spatial::Position<T> worldPos)
 		{
-			m_position = worldPos - math::Vec<T>(m_viewport.GetWidth() / 2, m_viewport.GetHeight() / 2);
+			m_position = worldPos - math::Vec<T>((m_viewport.GetWidth()/m_zoom) / static_cast<T>(2), (m_viewport.GetHeight()/m_zoom) / static_cast<T>(2));
 			ClampToBounds();
 		}
 
@@ -103,19 +121,31 @@ namespace engine::spatial
 			return m_viewport;
 		}
 
+		float GetZoom() const
+		{
+			return m_zoom;
+		}
+
 		// Converts a world position to screen-space
 		engine::spatial::Position<T> WorldToScreen(engine::spatial::Position<T> worldPos) const
 		{
 			// translate the world position by viewport's top left position so the world position is now in viewport space
 			// then offset it by camera's position to scroll the world to the correct position in the viewport
-			return worldPos + engine::spatial::Position<T>{ m_viewport.left, m_viewport.top } - m_position;
+
+			// screen = (world_pos - cam_pos) * zoom + vp
+			return (worldPos - m_position) * m_zoom + m_viewport.GetTopLeft();
 		}
 
 		engine::spatial::Position<T> ScreenToWorld(engine::spatial::Position<T> screenPos) const
 		{
 			// translate the screen position by viewport's top left position so the screen position is now in viewport space
 			// then offset it by camera's position to scroll the world to the correct position in the viewport
-			return screenPos - engine::spatial::Position<T>{ m_viewport.left, m_viewport.top } + m_position;
+
+			// reverse the equation of WorldToScreen
+			// screen = (world_pos - cam_pos) * zoom + vp
+			// world = (screen + cam_pos * zoom - vp ) / zoom
+			// world = (sreen - vp)/zoom + cam_pos
+			return ((screenPos - m_viewport.GetTopLeft()) / m_zoom) + m_position;
 		}
 	};
 

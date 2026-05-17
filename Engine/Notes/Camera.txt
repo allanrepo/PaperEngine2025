@@ -1,0 +1,209 @@
+﻿Camera System Design Document
+
+-------------------------------------------------------------------------------
+1. Overview
+-------------------------------------------------------------------------------
+The Camera system is responsible for controlling the visible portion of the world in a 2D rendering environment. 
+It defines how world-space coordinates are transformed into screen-space coordinates for rendering, input interaction, and editor tools.
+
+This system is designed for a tile-based world editor and supports:
+    World panning
+    Zooming
+    World-to-screen and screen-to-world transformations
+    Viewport clipping integration with rendering
+
+The current implementation is demo-ready and stable, intended to support the Map Editor prototype.
+
+-------------------------------------------------------------------------------
+2. Coordinate Space Model
+-------------------------------------------------------------------------------
+The engine operates using three coordinate spaces:
+
+2.1 World Space
+    Origin (0,0) is the top-left of the world map
+    Units are in world coordinates (typically tile-based pixels)
+    All game/editor logic operates in this space
+2.2 Screen Space
+    Origin (0,0) is the top-left of the render window or viewport
+    Used for rendering output and UI interaction
+2.3 View Transformation Space (Camera Space)
+    Intermediate space between world and screen
+    Represents the world as seen through the camera
+
+-------------------------------------------------------------------------------
+3. Camera Responsibilities
+-------------------------------------------------------------------------------
+The Camera is responsible for:
+    Maintaining a position in world space (top-left of view)
+    Maintaining zoom level
+    Transforming world coordinates into view-space
+    Transforming view-space back into world-space
+    Supporting camera movement (panning)
+    Supporting zoom-based scaling of view
+
+The camera does not own:
+    World size
+    Render target (viewport)
+    Rendering logic
+
+-------------------------------------------------------------------------------
+4. Current Camera Model
+-------------------------------------------------------------------------------
+4.1 Internal State
+    PositionF m_position;   // Top-left position in world space
+    float m_zoom;           // Zoom factor (default = 1.0)
+
+4.2 Transform Equations
+    World → Screen
+    screen = (worldPos - cameraPos) * zoom + viewportTopLeft
+    Screen → World
+    world = ((screen - viewportTopLeft) / zoom) + cameraPos
+
+-------------------------------------------------------------------------------
+5. Camera Operations
+-------------------------------------------------------------------------------
+5.1 Panning
+    Camera movement is applied in world space:
+
+    void MoveBy(VecF delta)
+    {
+        m_position -= delta / m_zoom;
+    }
+
+    Notes:
+        Mouse delta is in screen space
+        Division by zoom ensures consistent movement speed at all zoom levels
+
+5.2 Zooming
+
+    Zoom modifies the scale of world rendering:
+        void SetZoom(float zoom);
+        Behavior:
+        zoom > 1.0 → world appears larger (zoom in)
+        zoom < 1.0 → world appears smaller (zoom out)
+
+5.3 Centering
+    void CenterOn(PositionF worldPos)
+    {
+        m_position = worldPos - (viewportSize / (2 * zoom));
+    }
+    Purpose:
+        Aligns a world position to the center of the screen
+
+5.4 Clamping
+    Camera position is clamped to prevent viewing outside the world bounds:
+        0 <= cameraPos <= worldSize - (viewportSize / zoom)
+
+
+-------------------------------------------------------------------------------
+6. Viewport Integration (Current Design)
+-------------------------------------------------------------------------------
+6.1 Current State
+    The Camera currently stores a viewport:
+        RectF m_viewport;
+
+    This represents:
+        Screen-space render region
+        Used for clipping and rendering offset
+        Defines visible screen area
+
+6.2 Usage
+Viewport is used for:
+    Render clipping
+    Screen-space offset calculation
+    Mouse-to-world conversion
+
+-------------------------------------------------------------------------------
+7. Rendering Pipeline
+-------------------------------------------------------------------------------
+7.1 Tile Rendering Flow
+    Compute visible tile range using camera position + viewport size + zoom
+    Iterate only visible tiles
+    Convert tile world position → screen position
+    Submit draw command
+
+7.2 Optimization Strategy
+    Only visible tiles are processed:
+        topLeft = camera position → tile coord
+        bottomRight = (camera position + viewport size / zoom) → tile coord
+
+-------------------------------------------------------------------------------
+8. Input Handling
+-------------------------------------------------------------------------------
+8.1 Mouse Panning
+    Mouse drag delta is converted into camera movement
+    Movement is inversely affected by zoom
+
+8.2 Mouse Picking
+    worldPos = ScreenToWorld(mousePos);
+
+    Used for:
+        Tile selection
+        Prop placement
+        Editor interaction
+
+-------------------------------------------------------------------------------
+9. Known Limitations
+-------------------------------------------------------------------------------
+The current design has intentional tradeoffs:
+
+9.1 Viewport Coupling
+    Camera currently depends on viewport size
+    Reduces flexibility for multi-viewport systems
+
+9.2 Manual Transform Pipeline
+    Transform math is explicit (no matrix abstraction)
+    Can become error-prone as systems grow
+
+9.3 Clamp Dependency
+    Camera bounds depend on viewport + zoom
+    Tight coupling between rendering and camera logic
+
+-------------------------------------------------------------------------------
+10. Future Improvements (Planned Refactor)
+-------------------------------------------------------------------------------
+These are planned architectural improvements, not required for current functionality.
+
+10.1 Camera / Viewport Separation
+    Remove viewport from Camera
+    Introduce independent Viewport (render target region)
+
+10.2 Renderer-Owned Transform Pipeline
+    Centralize WorldToScreen in renderer
+    Camera becomes pure transform state
+
+10.3 Matrix-Based Camera System (Optional)
+    Replace manual math with transform matrix
+    Enable easier composition (UI layers, effects, etc.)
+
+10.4 Decoupled Clamping System
+    Move world boundary logic outside Camera
+    Allow multiple world types and editor modes
+
+10.5 Multi-Camera Support
+
+    Future extension for:
+        Editor camera
+        Gameplay camera
+        Debug camera
+        UI camera overlays
+
+-------------------------------------------------------------------------------
+11. Design Summary
+-------------------------------------------------------------------------------
+The current Camera system is designed for:
+    Stability over abstraction
+    Direct control over rendering behavior
+    Fast iteration for Map Editor development
+
+While not fully decoupled, it is:
+    mathematically correct
+    production-safe for a 2D editor prototype
+    extensible for future engine architecture improvements
+
+-------------------------------------------------------------------------------
+12. Closing Note
+-------------------------------------------------------------------------------
+
+This camera implementation is considered feature-complete for the Map Editor prototype phase. 
+Future refactors will focus on architectural separation rather than correctness fixes.
