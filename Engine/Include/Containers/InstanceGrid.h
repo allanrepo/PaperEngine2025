@@ -355,7 +355,7 @@ namespace engine
 			}
 
 			// clears all cells of their content. keeps cells in grid
-			void Clear()
+			void Reset()
 			{
 				engine::spatial::Size<size_t> size = GetSize();
 				for (size_t i = 0; i < size.width * size.height; ++i)
@@ -369,7 +369,7 @@ namespace engine
 			// design note: 
 			// we could have just get the bucket and clear it then clear the dictionary.
 			// but we want to call Remove() here enforce strictness
-			void Clear(int row, int col)
+			void Reset(int row, int col)
 			{
 				// defer removal for safety
 				std::vector<T*> toRemove;
@@ -387,9 +387,9 @@ namespace engine
 			}
 
 			// clear the whole cell of a given coordinate
-			void Clear(const engine::spatial::Coord& coord)
+			void Reset(const engine::spatial::Coord& coord)
 			{
-				Clear(coord.row, coord.col);
+				Reset(coord.row, coord.col);
 			}
 
 			// this is a strict method. it assumes the object to remove exists and throws an error if not. 
@@ -437,16 +437,30 @@ namespace engine
 			// execute a predicate for all the objects given cell coordinate regardless of their keys
 			// useful for iterating through all objects in a cell specified by row and col
 			// the predicate exposes reference to object and corresponding key
-			template<typename Predicate>
-			void ForEach(int row, int col, Predicate func)
+			template<typename Func>
+			void ForEach(int row, int col, const Func& func)
 			{
-				if (!IsInBounds(row, col)) return;
+				if (!IsInBounds(row, col))
+				{
+					throw std::runtime_error("out of bounds");
+				}
+
+				m_map.Get(row, col).ForEach(func);
+			}
+
+			template<typename Func>
+			void ForEach(int row, int col, const Func& func) const
+			{
+				if (!IsInBounds(row, col))
+				{
+					throw std::runtime_error("out of bounds");
+				}
 				m_map.Get(row, col).ForEach(func);
 			}
 
 			// execute a predicate for all objects on all cells
-			template<typename Predicate>
-			void ForEach(Predicate func) 
+			template<typename Func>
+			void ForEach(const Func& func)
 			{
 				m_map.ForEach([&](size_t row, size_t col, Bucket<T>& cell)
 					{
@@ -460,8 +474,8 @@ namespace engine
 			}
 
 			// execute a predicate for all objects on all cells
-			template<typename Predicate>
-			void ForEach(Predicate func) const
+			template<typename Func>
+			void ForEach(const Func& func) const
 			{
 				m_map.ForEach([&](size_t row, size_t col, const Bucket<T>& cell)
 					{

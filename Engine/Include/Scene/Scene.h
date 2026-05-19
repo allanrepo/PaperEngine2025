@@ -33,6 +33,7 @@ namespace engine
 			virtual void OnMouseMove(int x, int y) {}
 
 			virtual void OnInputEvent(const engine::input::InputEvent& inputEvent) {}
+			virtual void OnResize(size_t width, size_t height) {}
 		};
 #pragma endregion
 
@@ -145,6 +146,15 @@ namespace engine
 					m_activeScene->OnInputEvent(inputEvent);
 				}
 			}
+
+			void OnResize(size_t width, size_t height) 
+			{
+				if (m_activeScene)
+				{
+					m_activeScene->OnResize(width, height);
+				}
+			}
+
 		};
 #pragma endregion
 	}

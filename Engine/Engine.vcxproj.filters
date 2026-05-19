@@ -91,6 +91,15 @@
     <Filter Include="Scene">
       <UniqueIdentifier>{ae9e8a48-c532-46f0-a8f8-daa76113be72}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Notes">
+      <UniqueIdentifier>{2d1c0368-8a7c-43fb-8c6c-21459c41e8c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Components\Terrain">
+      <UniqueIdentifier>{5d6b07a4-f9a6-48f0-9d4d-b0a5b1b5fb84}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Components\Prop">
+      <UniqueIdentifier>{218b5fd3-174b-4f18-bd18-71f6f5fae93c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Core\Event.h">
@@ -505,9 +514,23 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="DependencySketch.txt" />
-    <Text Include="Notes\PropSystem.txt" />
-    <Text Include="Notes\PropEditingSystem.txt" />
-    <Text Include="Notes\AutoTileSysem.txt" />
+    <Text Include="Notes\AutoTileSysem.txt">
+      <Filter>Notes</Filter>
+    </Text>
+    <Text Include="DependencySketch.txt">
+      <Filter>Notes</Filter>
+    </Text>
+    <Text Include="Notes\PropEditingSystem.txt">
+      <Filter>Notes</Filter>
+    </Text>
+    <Text Include="Notes\PropSystem.txt">
+      <Filter>Notes</Filter>
+    </Text>
+    <Text Include="Notes\Camera.txt">
+      <Filter>Notes</Filter>
+    </Text>
+    <Text Include="Notes\TerrainSystem.txt">
+      <Filter>Notes</Filter>
+    </Text>
   </ItemGroup>
 </Project>

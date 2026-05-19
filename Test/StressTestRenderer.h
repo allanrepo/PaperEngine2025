@@ -147,7 +147,7 @@ public:
 		{
 			unsigned int row = 10;
 			unsigned int col = 10;
-			float max = 20000;
+			float max = 200000;
 
 			quads.clear();
 			float width = (float)size.width / col;

@@ -161,8 +161,10 @@
   <ItemGroup>
     <Text Include="DependencySketch.txt" />
     <Text Include="Notes\AutoTileSysem.txt" />
+    <Text Include="Notes\Camera.txt" />
     <Text Include="Notes\PropEditingSystem.txt" />
     <Text Include="Notes\PropSystem.txt" />
+    <Text Include="Notes\TerrainSystem.txt" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

@@ -392,10 +392,10 @@ namespace TestMapEditor
 #pragma region // TerrainSet
 	class TerrainSet
 	{
-	protected:
+	private:
 		container::Dictionary<int, std::unique_ptr<TileDefinition>> m_tiles;
-
 		int m_invalidTileIndex;
+		const std::string m_name;
 
 		TileDefinition* GetInvalidTileDefinition() const
 		{
@@ -404,8 +404,9 @@ namespace TestMapEditor
 		}
 
 	public:
-		TerrainSet(int invalidTileIndex = -0xFFFF) :
-			m_invalidTileIndex(invalidTileIndex)
+		TerrainSet(const std::string& name, int invalidTileIndex = -0xFFFF) :
+			m_invalidTileIndex(invalidTileIndex),
+			m_name(name)
 		{
 		}
 
@@ -416,6 +417,11 @@ namespace TestMapEditor
 		TerrainSet& operator=(const TerrainSet&) = delete;
 		TerrainSet(TerrainSet&&) = delete;
 		TerrainSet& operator=(TerrainSet&&) = delete;
+
+		const std::string& GetName() const
+		{
+			return m_name;
+		}
 
 		bool Register(int id, std::unique_ptr<TileDefinition> data)
 		{
@@ -767,6 +773,11 @@ namespace TestMapEditor
 		{
 		}
 
+		const std::string& GetSetName() const
+		{
+			return m_set->GetName();
+		}
+
 		TileHandle Get(const Coord& coord) const
 		{
 			return m_grid.Get(coord);
@@ -791,6 +802,12 @@ namespace TestMapEditor
 		{
 			m_set = set;
 			m_grid.Initialize(size, m_set->MakeTile(tileIndex));
+		}
+
+		void Clear()
+		{
+			m_grid.Clear();
+			m_set = nullptr;
 		}
 
 		void Set(const Coord& c, int index)
@@ -941,6 +958,29 @@ namespace TestMapEditor
 			}
 
 			return  m_layers[key]->Get(row, col);
+		}
+
+		void Clear()
+		{
+			m_layers.Clear();
+		}
+
+		template<typename Func>
+		void ForEach(const Func& func)
+		{
+			for (const auto& layer : m_layers)
+			{
+				func(layer.first, *layer.second.get());
+			}
+		}
+
+		template<typename Func>
+		void ForEach(const Func& func) const
+		{
+			for (const auto& layer : m_layers)
+			{
+				func(layer.first, *layer.second.get());
+			}
 		}
 
 		template<typename Func>
@@ -1331,7 +1371,7 @@ namespace TestMapEditor
 			else
 			{
 				// create tileset object
-				std::unique_ptr<TerrainSet> tileset = std::make_unique<TerrainSet>();
+				std::unique_ptr<TerrainSet> tileset = std::make_unique<TerrainSet>(name);
 
 				// if we this atlas exist, get a reference
 				// TODO: a bit of a problem. if the sprite atlas does not exist, then we will have an empty tileset. this happens silently
@@ -1528,27 +1568,6 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // helper methods
-
-	//// TODO: put on navigation namespace along with NavigationGrid and TileConstraint but as a static helper
-	//inline static TileConstraint SubCellToConstraint(int r, int c)
-	//{
-	//	static const TileConstraint table[9] =
-	//	{
-	//		TileConstraint::NW, TileConstraint::N,  TileConstraint::NE,
-	//		TileConstraint::W,  TileConstraint::CENTER, TileConstraint::E,
-	//		TileConstraint::SW, TileConstraint::S,  TileConstraint::SE
-	//	};
-
-	//	if (r < 0 || r >= 3 || c < 0 || c >= 3)
-	//	{
-	//		return TileConstraint::NONE;
-	//	}
-
-	//	return table[r * 3 + c];
-	//}
-#pragma endregion
-
 #pragma region // Prop
 	struct CollisionShape
 	{
@@ -1565,12 +1584,63 @@ namespace TestMapEditor
 	struct Prop
 	{
 		std::unique_ptr<IRenderable> renderable;
-		PositionF position; // position of this object relative to its owner
+		//PositionF position; // position of this object relative to its owner
+		PositionF worldPosition; // position of this object in the world
+		// TODO:
+		// we are now using worldPosition when locating Prop. before that, we use this, which is Prop's position in its owning tile's local space.
+		// with this information alone, there is an issue when rendering props while culling tiles not visible in camera viewport
+		// this prop's owning tile may not be visible in camera viewport but since this prop can be taller than the tile, it can still 
+		// occupy tiles above its owning tile, making this prop still visible in screen even when its owning tile is not.
+		// in bounding box map, this prop's reference is included in tiles still visible. but to render it, it needs the owning tile coordinate
+		// so it can calculate its world position. THAT IS A PROBLEM. so, from now on we are storing Prop's world position and use it for locating
+		// the prop. 
+		// right now this property is useless but we're keeping it for now. later will decide to remove or not
+		PositionF localPosition; // position of this object relative to its owning tile local space
 		VecF scale;
 		ColorF color;
 		RectF footprint;
 		RectF boundingBox;
 		CollisionShape collisionShape;
+
+		// this is not really used by Prop. this is only used when instancing the Prop to setup its renderable 
+		// we are including these here because they are needed when saving prop into PropData 
+		std::string animationSet;
+		std::string animation;
+
+		inline const std::string& GetAnimationSet() const
+		{
+			return animationSet;
+		}
+
+		inline const std::string& GetAnimation() const
+		{
+			return animation;
+		}
+
+		inline VecF GetScale() const
+		{
+			return scale;
+		}
+
+		inline RectF GetFootprint() const
+		{
+			return footprint;
+		}
+
+		inline RectF GetBoundingBox() const
+		{
+			return boundingBox;
+		}
+
+		inline Sprite GetSprite() const
+		{
+			return renderable->GetSprite();
+		}
+
+		inline ColorF GetColor() const
+		{
+			return color;
+		}
 
 		// TODO: for debug only quick instancing to test. remove this in production code
 		Prop()
@@ -1578,47 +1648,23 @@ namespace TestMapEditor
 
 		}
 
-		Prop(std::unique_ptr<IRenderable> r, const ColorF& c, const VecF& s, const RectF& fp, const RectF& bb) :
+		Prop(std::unique_ptr<IRenderable> r, const ColorF& c, const VecF& s, const RectF& fp, const RectF& bb, const std::string& animset, const std::string& anim) :
 			renderable(std::move(r)),
-			position({}),
+			localPosition({}),
+			worldPosition({}),
 			scale(s),
 			color(c),
 			footprint(fp),
 			boundingBox(bb),
-			collisionShape({})
+			collisionShape({}),
+			animationSet(animset),
+			animation(anim)
 		{
 		}
 
-		PositionF GetPosition(bool applyPivot) const
+		PositionF GetWorldPosition() const
 		{
-			PositionF pivot = renderable->GetSprite().GetPivot();
-
-			if (applyPivot)
-			{
-				return PositionF{ position.x - pivot.x, position.y - pivot.y };
-			}
-			else
-			{
-				return PositionF{ position.x, position.y };
-			}
-		}
-
-		// TODO: probably shouldn't do this. probably better to just expose information needed to feed DrawCommand
-		void QueueForDraw(DrawSortedSpritesCommand& drawCommand, const PositionF& worldPos, float depth) const
-		{
-			// scale the sprite
-			SizeF size = renderable->GetSprite().GetSize();
-			size.width *= scale.x;
-			size.height *= scale.y;
-
-			drawCommand.Add({
-				renderable->GetSprite(),		// sprite object to draw
-				position + worldPos,			// position
-				size,							// scaled size
-				color,							// color
-				0.0f,							// no rotation
-				depth							// depth value for sorting
-				});
+			return worldPosition;
 		}
 
 		RectF GetScaledFootprintLocal(bool applyPivot = true) const
@@ -1730,8 +1776,6 @@ namespace TestMapEditor
 		SpatialOccupancyGrid<Prop, Dummy> m_BoundingBoxGrid;
 
 	public:
-		engine::event::Event<const PositionF&, const Size<size_t>&, const SizeF&> InitializeEvent;
-
 		PropMap()
 		{
 		}
@@ -1748,7 +1792,6 @@ namespace TestMapEditor
 			return debugInfo;
 		}
 
-
 		bool Initialize(const PositionF& position, const Size<size_t>& size, const SizeF& tilesize)
 		{
 			// initialize bucket grid
@@ -1763,9 +1806,18 @@ namespace TestMapEditor
 			// initialize bounding box grid
 			m_BoundingBoxGrid.Initialize(size.width, size.height);
 
-			InitializeEvent(position, size, tilesize);
-
 			return true;
+		}
+
+		void Reset()
+		{
+			m_objectLayer.Reset();
+
+			m_navGrid.Fill(TileConstraint::NONE);
+
+			m_FootPrintGrid.Reset();
+
+			m_BoundingBoxGrid.Reset();
 		}
 
 		void Remove(Prop* prop)
@@ -1779,8 +1831,7 @@ namespace TestMapEditor
 
 					// remove that constraint for this coord in navigation grid
 					m_navGrid.RemoveFlag(coord, constraint);
-				}
-			);
+				});
 
 			// remove this object from spatial occupancy grid
 			m_FootPrintGrid.Remove(prop);
@@ -1810,26 +1861,50 @@ namespace TestMapEditor
 			m_BoundingBoxGrid.Validate();
 		}
 
-		template<typename Predicate>
-		void ForEachProp(int row, int col, Predicate func)
+		template<typename Func>
+		void ForEachProp(int row, int col, const Func& func)
 		{
 			m_objectLayer.ForEach(row, col, func);
 		}
 
-		template<typename Predicate>
-		void ForEachTileConstraint(int row, int col, Predicate func) const
+		template<typename Func>
+		void ForEachProp(int row, int col, const Func& func) const
+		{
+			m_objectLayer.ForEach(row, col, func);
+		}
+
+		template<typename Func>
+		void ForEachProp(const Func& func)
+		{
+			m_objectLayer.ForEach(func);
+		}
+
+		template<typename Func>
+		void ForEachProp(const Func& func) const
+		{
+			m_objectLayer.ForEach(func);
+		}
+
+		template<typename Func>
+		void ForEachTileConstraint(int row, int col, const Func& func) const
 		{
 			m_navGrid.ForEach(row, col, func);
 		}
 
 		template<typename Func>
-		void ForEachFootprint(const Coord& coord, Func func)
+		void ForEachFootprint(const Coord& coord, const Func& func)
 		{
 			m_FootPrintGrid.ForEach(coord, func);
 		}
 
 		template<typename Func>
-		void ForEachPropInBoundingBox(const Coord& coord, Func func)
+		void ForEachPropInBoundingBox(const Coord& coord, const Func& func)
+		{
+			m_BoundingBoxGrid.ForEachObject(coord, func);
+		}
+
+		template<typename Func>
+		void ForEachPropInBoundingBox(const Coord& coord, const Func& func) const
 		{
 			m_BoundingBoxGrid.ForEachObject(coord, func);
 		}
@@ -1981,9 +2056,15 @@ namespace TestMapEditor
 
 			if (!m_propMap.Initialize(m_worldTransform.GetPosition(), m_worldTransform.GetSize(), m_worldTransform.GetTileSize())) return false;
 
+			m_terrainMap.Clear();
 
 			return true;
 		}	
+
+		void RemoveAllProps()
+		{
+			m_propMap.Reset();
+		}
 
 		bool IsInBounds(int row, int col) const
 		{
@@ -2008,20 +2089,40 @@ namespace TestMapEditor
 			m_propMap.Validate();
 		}
 
-		template<typename Predicate>
-		void ForEachProp(int row, int col, Predicate func)
+		template<typename Func>
+		void ForEachProp(const Func& func)
+		{
+			m_propMap.ForEachProp(func);
+
+		}
+
+		template<typename Func>
+		void ForEachProp(const Func& func) const 
+		{
+			m_propMap.ForEachProp(func);
+
+		}
+
+		template<typename Func>
+		void ForEachProp(int row, int col, const Func& func)
 		{
 			m_propMap.ForEachProp(row, col, func);
 		}
 
-		template<typename Predicate>
-		void ForEachTileConstraint(int row, int col, Predicate func)
+		template<typename Func>
+		void ForEachProp(int row, int col, const Func& func) const
+		{
+			m_propMap.ForEachProp(row, col, func);
+		}
+
+		template<typename Func>
+		void ForEachTileConstraint(int row, int col, const Func& func)
 		{
 			m_propMap.ForEachTileConstraint(row, col, func);
 		}
 
-		template<typename Predicate>
-		void ForEachTileConstraint(int row, int col, Predicate func) const
+		template<typename Func>
+		void ForEachTileConstraint(int row, int col, const Func& func) const
 		{
 			m_propMap.ForEachTileConstraint(row, col, func);
 		}
@@ -2037,13 +2138,19 @@ namespace TestMapEditor
 		}
 
 		template<typename Func>
-		void ForEachFootprint(const Coord& coord, Func func)
+		void ForEachFootprint(const Coord& coord, const Func& func)
 		{
 			m_propMap.ForEachFootprint(coord, func);
 		}
 
 		template<typename Func>
-		void ForEachPropInBoundingBox(const Coord& coord, Func func)
+		void ForEachPropInBoundingBox(const Coord& coord, const Func& func)
+		{
+			m_propMap.ForEachPropInBoundingBox(coord, func);
+		}
+
+		template<typename Func>
+		void ForEachPropInBoundingBox(const Coord& coord, const Func& func) const
 		{
 			m_propMap.ForEachPropInBoundingBox(coord, func);
 		}
@@ -2097,7 +2204,7 @@ namespace TestMapEditor
 				return false;
 			}
 
-			position = m_worldTransform.TileToWorldPosition(coord, prop->GetPosition(true));
+			position = prop->GetWorldPosition();
 			return true;
 		}
 
@@ -2117,25 +2224,37 @@ namespace TestMapEditor
 		}
 
 		template<typename Func>
-		void ForEachTerrainTile(const std::string& key, const Func& func)
+		void ForEachTileInTerrain(const std::string& key, const Func& func)
 		{
 			m_terrainMap.ForEach(key, func);
 		}
 
 		template<typename Func>
-		void ForEachTerrainTile(const std::string& key, const Func& func) const
+		void ForEachTerrain(const Func& func)
+		{
+			m_terrainMap.ForEach(func);
+		}
+
+		template<typename Func>
+		void ForEachTerrain(const Func& func) const 
+		{
+			m_terrainMap.ForEach(func);
+		}
+
+		template<typename Func>
+		void ForEachTileInTerrain(const std::string& key, const Func& func) const
 		{
 			m_terrainMap.ForEach(key, func);
 		}
 
 		template<typename Func>
-		void ForEachTerrainTile(const std::string& key, const Coord& tl, const Coord& br, const Func& func)
+		void ForEachTileInTerrain(const std::string& key, const Coord& tl, const Coord& br, const Func& func)
 		{
 			m_terrainMap.ForEach(key, tl, br, func);
 		}
 
 		template<typename Func>
-		void ForEachTerrainTile(const std::string& key, const Coord& tl, const Coord& br, const Func& func) const
+		void ForEachTileInTerrain(const std::string& key, const Coord& tl, const Coord& br, const Func& func) const
 		{
 			m_terrainMap.ForEach(key, tl, br, func);
 		}
@@ -2380,6 +2499,66 @@ namespace TestMapEditor
 			Coord coord = world.GetTransform().WorldToTileCoord(worldPos);
 			return Erase(world, coord);
 		}
+
+		bool Fill(const WorldMap& world)
+		{
+			// if no valid terrain, bail out
+			if (!world.HasTerrain(m_currentBrush.layer))
+			{
+				// should we throw?
+				return false;
+			}
+
+			if (m_currentBrush.config == nullptr)
+			{
+				// no config, no way to know which tile to set
+				return false;
+			}
+
+			// set adapter for current layer
+			AutoTileSystem::AutoTileContext<TerrainLayerAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
+
+			// create autotilesystem
+			AutoTileSystem ats;
+
+			// create our link tool. this will subscribe to our auto tile system and will update all linked layers when our source layer change tiles
+			TerrainLinkTool tlt(world, ats, m_links, m_currentBrush);
+
+			// perform the paint and auto paint neighbors if needed
+			ats.Set(context, *m_currentBrush.config, world.GetTransform().GetSize());
+
+			return true;
+		}
+
+		bool Clear(const WorldMap& world)
+		{
+			// if no valid terrain, bail out
+			if (!world.HasTerrain(m_currentBrush.layer))
+			{
+				// should we throw?
+				return false;
+			}
+
+			if (m_currentBrush.config == nullptr)
+			{
+				// no config, no way to know which tile to set
+				return false;
+			}
+
+			// set adapter for current layer
+			AutoTileSystem::AutoTileContext<TerrainLayerAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
+
+			// create autotilesystem
+			AutoTileSystem ats;
+
+			// create our link tool. this will subscribe to our auto tile system and will update all linked layers when our source layer change tiles
+			TerrainLinkTool tlt(world, ats, m_links, m_currentBrush);
+
+			// perform the remove and auto remove neighbors if needed
+			ats.Remove(context, *m_currentBrush.config, world.GetTransform().GetSize());
+
+			return true;
+		}
 	};
 #pragma endregion
 
@@ -2412,7 +2591,9 @@ namespace TestMapEditor
 				brush.color,
 				brush.scale,
 				brush.footprint,
-				brush.boundingBox
+				brush.boundingBox,
+				brush.animationSet,
+				brush.animation
 			);
 		}
 	};
@@ -2471,6 +2652,7 @@ namespace TestMapEditor
 			{
 				return nullptr;
 			}
+
 			// if there are props, iterate through them and find the ones whose bounding box intersects with the cursor position (in world coordinate). return all intersecting objects. 
 			Prop* topMostProp = nullptr;
 			RectF topMostPropBoundingBox{};
@@ -2515,6 +2697,13 @@ namespace TestMapEditor
 	{
 	private:
 	public:
+		struct Result
+		{
+			bool success = false;
+			std::vector<Coord> occupiedTiles;
+			std::vector<Coord> boundingTiles;
+		};
+
 		PropPlacementSystem()
 		{
 		}
@@ -2553,8 +2742,10 @@ namespace TestMapEditor
 			return constraintsPerCoord;
 		}
 
-		static bool Place(WorldMap& world, std::unique_ptr<Prop> prop, const PositionF& worldPosition)
+		static Result Place(WorldMap& world, std::unique_ptr<Prop> prop, const PositionF& worldPosition)
 		{
+			Result result;
+
 			// --------------------------------------------------------------------------------
 			// VALIDATION
 			// --------------------------------------------------------------------------------
@@ -2562,7 +2753,8 @@ namespace TestMapEditor
 			// validate the position is within bounds of the world. if not, bail out
 			if (!world.IsInBounds(worldPosition))
 			{
-				return false;
+				result.success = false;
+				return result;
 			}
 
 			// sanity check. we already have this prop. why are we placing again. how is this even possible!
@@ -2587,6 +2779,9 @@ namespace TestMapEditor
 			{
 				Coord coord = constraintsPerCell.first;
 
+				// store in result
+				result.occupiedTiles.push_back(coord);
+
 				// what we're doing here is we are comparing each of the coord in map that the footprint intersected. 
 				// each coord is occupied by existing prop, and these props have their corresponding tile constraint in this coord
 				// we then compare the tile constraint of existing prop in this coord to the new tile constraint when footprint is applied
@@ -2606,6 +2801,9 @@ namespace TestMapEditor
 			RectF boundingBox = prop->GetScaledBoundingBoxWorld(worldPosition, true);
 			std::vector<Coord> boundingBoxTiles = QueryCoords(boundingBox, world.GetTransform().GetTileSize());
 
+			// store in result
+			result.boundingTiles = boundingBoxTiles;
+
 			// --------------------------------------------------------------------------------
 			// REMOVE OVERLAPS (RULE)
 			// --------------------------------------------------------------------------------
@@ -2620,13 +2818,18 @@ namespace TestMapEditor
 			// APPLY PLACEMENT
 			// --------------------------------------------------------------------------------
 
+			// TODO: we probably be removing this soon...
 			// we set it as position of this prop
-			prop->position = world.GetTransform().WorldToTileSpace(worldPosition);
+			prop->localPosition = world.GetTransform().WorldToTileSpace(worldPosition);
+
+			// remember its world position
+			prop->worldPosition = worldPosition;
 
 			// add the actual object into our object layer
 			world.InsertProp(std::move(prop), world.GetTransform().WorldToTileCoord(worldPosition), boundingBoxTiles, constraintsPerCoord);
 
-			return true;
+			result.success = true;
+			return result;
 		}
 
 		static bool Remove(WorldMap& world, const PositionF& worldPosition)
@@ -2687,7 +2890,7 @@ namespace TestMapEditor
 		}
 
 		// brush tool places the current active prop in the world at given position in the world.
-		bool Paint(WorldMap& world, const PositionF& worldPosition) const
+		PropPlacementSystem::Result Paint(WorldMap& world, const PositionF& worldPosition) const
 		{
 			// gets the animation set from asset based on the brush
 			// this is strict. if animation set does not exist in cache, this will throw
@@ -2975,7 +3178,7 @@ namespace TestMapEditor
 		const ColorF& color = { 1,1,1,1 }
 	)
 	{
-		world.ForEachTerrainTile(layer, [tileSize, scale, &command, worldPos, color, offset](int row, int col, TileHandle tile)
+		world.ForEachTileInTerrain(layer, [tileSize, scale, &command, worldPos, color, offset](int row, int col, TileHandle tile)
 			{
 				// skip invalid tiles.
 				if (!tile.GetSprite().IsValid()) return;
@@ -3022,6 +3225,11 @@ namespace TestMapEditor
 		const ColorF& color = { 1,1,1,1 }
 	)
 	{
+		if (!world.HasTerrain(layer))
+		{
+			return;
+		}
+
 		Coord topLeft;
 		Coord bottomRight;
 
@@ -3049,8 +3257,7 @@ namespace TestMapEditor
 			bottomRight = { world.GetTransform().GetSize().As<int>().height, world.GetTransform().GetSize().As<int>().width };
 		}
 
-
-		world.ForEachTerrainTile(layer, topLeft, bottomRight, [tileSize, scale, &command, worldPos, color, offset, camera](int row, int col, TileHandle tile)
+		world.ForEachTileInTerrain(layer, topLeft, bottomRight, [tileSize, scale, &command, worldPos, color, offset, camera, &renderer](int row, int col, TileHandle tile)
 			{
 				// skip invalid tiles.
 				if (!tile.GetSprite().IsValid()) return;
@@ -3078,6 +3285,8 @@ namespace TestMapEditor
 
 				PositionF tilePosInScreen = camera.WorldToScreen(tilePosFromWorld);
 
+				//renderer.Draw(tile.GetSprite(), tilePosInScreen, scaledtilesize, color, 0.0f);
+				//renderer.Draw(tilePosInScreen, scaledtilesize, color, 0.0f);
 				command.Add({
 					tile.GetSprite(),					// sprite object to draw
 					tilePosInScreen,		// shift tile position from map space to world space
@@ -3089,6 +3298,732 @@ namespace TestMapEditor
 			});
 	}
 
+	void DrawTerrainGrid(
+		IRenderer& renderer,
+		DrawSortedSpritesCommand& command,
+		const Camera& camera,
+		const TerrainGrid& grid,
+		const PositionF& worldPos,
+		const SizeF& tileSize,
+		bool drawAllTiles = false,
+		VecF scale = { 1,1 },
+		const PositionF& offset = { 0,0 },
+		const ColorF& color = { 1,1,1,1 }
+	)
+	{
+		Coord topLeft;
+		Coord bottomRight;
+
+		if (!drawAllTiles)
+		{
+			RectF vp = camera.GetViewport();
+			PositionF pos = camera.GetPosition();
+			float zoom = camera.GetZoom();
+
+			topLeft =
+			{
+				(int)(pos.y / tileSize.height),
+				(int)(pos.x / tileSize.width),
+			};
+
+			bottomRight =
+			{
+				(int)((pos.y + vp.GetHeight() / zoom) / tileSize.height) + 1,
+				(int)((pos.x + vp.GetWidth() / zoom) / tileSize.width) + 1,
+			};
+		}
+		else
+		{
+			topLeft = { 0,0 };
+			bottomRight = { grid.GetSize().As<int>().height, grid.GetSize().As<int>().width };
+		}		
+
+		grid.ForEach(topLeft, bottomRight, [tileSize, scale, &command, worldPos, color, offset, camera, &renderer](int row, int col, TileHandle tile)
+			{
+				// skip invalid tiles.
+				if (!tile.GetSprite().IsValid()) return;
+
+				// find the top-left position of the tile in map space.
+				engine::spatial::PositionF tilePosFromWorld =
+				{
+					col * tileSize.width,
+					row * tileSize.height
+				};
+
+				// apply scale to tile size in case we want to draw the tile at different size. 
+				// note that only size change. position is still based on original tile size 
+				engine::spatial::SizeF scaledtilesize
+				{
+					tileSize.width * scale.x,
+					tileSize.height * scale.y
+				};
+
+				scaledtilesize *= camera.GetZoom();
+
+				tilePosFromWorld += offset;
+
+				tilePosFromWorld += worldPos;
+
+				PositionF tilePosInScreen = camera.WorldToScreen(tilePosFromWorld);
+
+				//renderer.Draw(tile.GetSprite(), tilePosInScreen, scaledtilesize, color, 0.0f);
+				//renderer.Draw(tilePosInScreen, scaledtilesize, color, 0.0f);
+				command.Add({
+					tile.GetSprite(),					// sprite object to draw
+					tilePosInScreen,		// shift tile position from map space to world space
+					scaledtilesize,						// size to draw the tile at
+					color,								// color
+					0.0f,								// no rotation for tile
+					1								// depth value for sorting
+					});
+			});
+	}
+
+
+	void DrawProps(
+		IRenderer& renderer,
+		DrawSortedSpritesCommand& command,
+		const Camera& camera,
+		const WorldMap& world,
+		float depth,
+		bool drawAllTiles = false
+	)
+	{
+		Coord topLeft;
+		Coord bottomRight;
+		const SizeF& tilesize = world.GetTransform().GetTileSize();
+
+		if (!drawAllTiles)
+		{
+			RectF vp = camera.GetViewport();
+			PositionF pos = camera.GetPosition();
+			float zoom = camera.GetZoom();
+
+
+			topLeft =
+			{
+				(int)(pos.y / tilesize.height),
+				(int)(pos.x / tilesize.width),
+			};
+
+			bottomRight =
+			{
+				(int)((pos.y + vp.GetHeight() / zoom) / tilesize.height) + 1,
+				(int)((pos.x + vp.GetWidth() / zoom) / tilesize.width) + 1,
+			};
+
+
+			Size<size_t> worldSize = world.GetTransform().GetSize();
+
+			bottomRight.col = std::min<int>(bottomRight.col, static_cast<int>(worldSize.width));
+			bottomRight.row = std::min<int>(bottomRight.row, static_cast<int>(worldSize.height));
+
+			topLeft.col = std::max<int>(0, topLeft.col);
+			topLeft.row = std::max<int>(0, topLeft.row);
+		}
+		else
+		{
+			topLeft = { 0,0 };
+			bottomRight = { world.GetTransform().GetSize().As<int>().height, world.GetTransform().GetSize().As<int>().width };
+		}
+
+		std::unordered_set<Prop*> props;
+		for (int row = topLeft.row; row < bottomRight.row; row++)
+		{
+			for (int col = topLeft.col; col < bottomRight.col; col++)
+			{
+				// get tile position from world (top-left)
+				engine::spatial::PositionF tilePosFromWorld =
+				{
+					col * tilesize.width,
+					row * tilesize.height
+				};
+
+				Coord coord;
+				coord.col = col;
+				coord.row = row;
+
+				world.ForEachPropInBoundingBox(coord, [&props](Prop* prop) 
+					{
+						props.insert(prop);
+					});
+			}
+		}
+
+		for (Prop* prop : props)
+		{
+			// scale the sprite
+			SizeF size = prop->renderable->GetSprite().GetSize();
+			size.width *= prop->scale.x;
+			size.height *= prop->scale.y;
+
+			size *= camera.GetZoom();
+
+			PositionF propWorldPos = prop->GetWorldPosition();
+
+			PositionF propScreenPos = camera.WorldToScreen(propWorldPos);
+
+			command.Add({
+				prop->renderable->GetSprite(),		// sprite object to draw
+				propScreenPos,			// position
+				size,							// scaled size
+				prop->color,							// color
+				0.0f,							// no rotation
+				depth							// depth value for sorting
+				});
+		}
+	}
+
+	void DrawProps(
+		IRenderer& renderer,
+		DrawSortedSpritesCommand& command,
+		const WorldMap& world,
+		float depth,
+		bool drawAllTiles = false
+	)
+	{
+
+	}
+
+#pragma endregion
+
+#pragma region // PropData
+	struct PropData
+	{
+		// Identity / reconstruction
+		std::string animationSet;
+		std::string animation;
+
+		// Transform / placement
+		PositionF worldPosition;
+		VecF scale;
+		ColorF color;
+
+		// Spatial definition (important for rebuild consistency)
+		RectF footprint;
+		RectF boundingBox;
+	};
+#pragma endregion
+
+#pragma region // WorldMapFile
+	struct TerrainLayerData
+	{
+		std::string name;
+		std::string tileset;
+		std::vector<int32_t> tiles;
+	};
+
+	struct WorldMapData
+	{
+		PositionF position;
+		Size<size_t> size;
+		SizeF tilesize;
+		std::vector<TerrainLayerData> terrains;
+		std::vector<PropData> props;
+	};
+
+	class WorldMapFile
+	{
+	private:
+		// this method will parse the data from line. since we expect data from CSV file, we assume delimiter is a ','
+		// in this parser, we take whatever data between delimiter as the data and store it as std::string
+		static std::vector<std::string> ParseLine(const std::string& line, char delimiter)
+		{
+			std::vector<std::string> tokens;
+			std::string token;
+			std::istringstream ss(line);
+			// std::getline reads from the stream ss into token, stopping whenever it encounters the delimiter ','
+			// Each time it succeeds, the extracted substring is appended to the tokens vector
+			while (std::getline(ss, token, delimiter))
+			{
+				tokens.push_back(token);
+			}
+			return tokens;
+		}
+
+		static std::string Trim(const std::string& str)
+		{
+			size_t start = str.find_first_not_of(" \t\r\n");
+
+			if (start == std::string::npos)
+			{
+				return "";
+			}
+
+			size_t end = str.find_last_not_of(" \t\r\n");
+
+			return str.substr(start, end - start + 1);
+		}
+
+		static PropBrush ToPropBrush(const PropData& data)
+		{
+			PropBrush brush;
+			brush.animationSet = data.animationSet;
+			brush.animation = data.animation;
+			brush.scale = data.scale;
+			brush.color = data.color;
+			brush.footprint = data.footprint;
+			brush.boundingBox = data.boundingBox;
+			return brush;
+		}
+
+	public:
+		static void Save(
+			const std::string& path,
+			const WorldMap& world)
+		{
+			// ------------------------------------------------------------
+			// Build serializable data
+			// ------------------------------------------------------------
+			
+			// world data
+			WorldMapData data;
+			data.position = world.GetTransform().GetPosition();
+			data.size = world.GetTransform().GetSize();
+			data.tilesize = world.GetTransform().GetTileSize();
+
+			// terrain data 
+			world.ForEachTerrain(
+				[&data](
+					const std::string& key,
+					const TerrainLayer& layer)
+				{
+					TerrainLayerData terrain;
+
+					terrain.name = key;
+					terrain.tileset = layer.GetSetName();
+
+					layer.ForEach(
+						[&terrain](
+							int row,
+							int col,
+							const TileHandle& tile)
+						{
+							terrain.tiles.push_back(
+								tile.GetIndex());
+						});
+
+					data.terrains.push_back(
+						std::move(terrain));
+				});
+
+
+			// prop data
+			world.ForEachProp(
+				[&data](size_t row, size_t col, const Prop* prop)
+				{
+					PropData pd;
+
+					pd.animationSet = prop->GetAnimationSet();
+					pd.animation = prop->GetAnimation();
+					pd.worldPosition = prop->GetWorldPosition();
+					pd.scale = prop->GetScale();
+					pd.color = prop->GetColor();
+					pd.footprint = prop->GetFootprint();
+					pd.boundingBox = prop->GetBoundingBox();
+					data.props.push_back(std::move(pd));
+				});
+
+			// ------------------------------------------------------------
+			// Write file
+			// ------------------------------------------------------------
+			std::ofstream file(path);
+
+			if (!file.is_open())
+			{
+				throw std::runtime_error(
+					"WorldMapFile::Save() - failed to open file");
+			}
+
+			// World header
+			file << "worldmap, begin\n";
+
+			file << "position, "
+				<< data.position.x
+				<< ", "
+				<< data.position.y
+				<< "\n";
+
+			file << "size, "
+				<< data.size.width
+				<< ", "
+				<< data.size.height
+				<< "\n\n";
+
+			file << "tilesize, "
+				<< data.tilesize.width
+				<< ", "
+				<< data.tilesize.height
+				<< "\n\n";
+						
+			// Terrain layers
+			for (const auto& terrain : data.terrains)
+			{
+				file << "terrainlayer, begin\n";
+
+				file << "name, "
+					<< terrain.name
+					<< "\n";
+
+				file << "tileset, "
+					<< terrain.tileset
+					<< "\n";
+
+				file << "tiles, begin\n";
+
+				for (size_t row = 0;
+					row < data.size.height;
+					++row)
+				{
+					for (size_t col = 0;
+						col < data.size.width;
+						++col)
+					{
+						size_t index =
+							row * data.size.width + col;
+
+						file << terrain.tiles[index];
+
+						if (col + 1 < data.size.width)
+						{
+							file << ", ";
+						}
+					}
+
+					file << "\n";
+				}
+
+				file << "tiles, end\n";
+
+				file << "terrainlayer, end\n\n";
+			}
+
+			// Props
+			for (const PropData& prop : data.props)
+			{
+				file << "prop, begin\n";
+
+				file << "animationset, " << prop.animationSet << "\n";
+				file << "animation, " << prop.animation << "\n";
+
+				file << "worldposition, "
+					<< prop.worldPosition.x << ", "
+					<< prop.worldPosition.y << "\n";
+
+				file << "scale, "
+					<< prop.scale.x << ", "
+					<< prop.scale.y << "\n";
+
+				file << "color, "
+					<< prop.color.red << ", "
+					<< prop.color.green << ", "
+					<< prop.color.blue << ", "
+					<< prop.color.alpha << "\n";
+
+				file << "footprint, "
+					<< prop.footprint.left << ", "
+					<< prop.footprint.top << ", "
+					<< prop.footprint.right << ", "
+					<< prop.footprint.bottom << "\n";
+
+				file << "boundingbox, "
+					<< prop.boundingBox.left << ", "
+					<< prop.boundingBox.top << ", "
+					<< prop.boundingBox.right << ", "
+					<< prop.boundingBox.bottom << "\n";
+
+				file << "prop, end\n\n";
+			}
+
+			file << "worldmap, end\n";
+		}
+
+
+		static bool Load(
+			const std::string& path,
+			WorldMap& world,
+			AssetManager& assets)
+		{
+			// open file
+			std::ifstream file(path);
+			if (!file.is_open())
+			{
+				return false;
+			}
+
+			// data 
+			WorldMapData data;
+
+			// trackers
+			std::string line;
+			TerrainLayerData* currentTerrain = nullptr;
+			bool readingTiles = false;
+			PropData* currentProp = nullptr;
+
+			// ------------------------------------------------------------
+			// Parse file
+			// ------------------------------------------------------------
+			while (std::getline(file, line))
+			{
+				if (line.empty())
+				{
+					continue;
+				}
+
+				// parse line into tokens
+				std::vector<std::string> tokens = ParseLine(line, ',');
+
+				// trim whitespaces if any
+				for (std::string& token : tokens)
+				{
+					token = Trim(token);
+				}
+
+				// bail out if there are no tokens. how is this ever possible? no clue
+				if (tokens.empty())
+				{
+					continue;
+				}
+
+				// World begin/end
+				if (tokens[0] == "worldmap")
+				{
+					continue;
+				}
+
+				// World position
+				else if (tokens[0] == "position")
+				{
+					data.position.x = std::stof(tokens[1]);
+					data.position.y = std::stof(tokens[2]);
+				}
+
+				// World size
+				else if (tokens[0] == "size")
+				{
+					data.size.width = static_cast<size_t>(std::stoul(tokens[1]));
+					data.size.height = static_cast<size_t>(std::stoul(tokens[2]));
+				}
+
+				// tile size
+				else if (tokens[0] == "tilesize")
+				{
+					data.tilesize.width = std::stof(tokens[1]);
+					data.tilesize.height = std::stof(tokens[2]);
+				}
+
+				// Terrain layer begin/end
+				else if (tokens[0] == "terrainlayer")
+				{
+					if (tokens[1] == "begin")
+					{
+						data.terrains.emplace_back();
+
+						currentTerrain =
+							&data.terrains.back();
+
+						readingTiles = false;
+					}
+					else if (tokens[1] == "end")
+					{
+						currentTerrain = nullptr;
+						readingTiles = false;
+					}
+				}
+
+				// Terrain properties
+				else if (currentTerrain)
+				{
+					if (tokens[0] == "name")
+					{
+						currentTerrain->name = tokens[1];
+					}
+					else if (tokens[0] == "tileset")
+					{
+						currentTerrain->tileset = tokens[1];
+					}
+					else if (tokens[0] == "tiles")
+					{
+						if (tokens[1] == "begin")
+						{
+							readingTiles = true;
+						}
+						else if (tokens[1] == "end")
+						{
+							readingTiles = false;
+						}
+					}
+					else if (readingTiles)
+					{
+						for (const std::string& token : tokens)
+						{
+							if (!token.empty())
+							{
+								currentTerrain->tiles.push_back(std::stoi(token));
+							}
+						}
+					}
+				}
+
+				// Prop
+				else if (tokens[0] == "prop")
+				{
+					if (tokens[1] == "begin")
+					{
+						data.props.emplace_back();
+						currentProp = &data.props.back();
+					}
+					else if (tokens[1] == "end")
+					{
+						currentProp = nullptr;
+					}
+				}
+
+				// Prop properties
+				else if (currentProp)
+				{
+					if (tokens[0] == "animationset")
+					{
+						currentProp->animationSet = tokens[1];
+					}
+					else if (tokens[0] == "animation")
+					{
+						currentProp->animation = tokens[1];
+					}
+					else if (tokens[0] == "worldposition")
+					{
+						currentProp->worldPosition.x = std::stof(tokens[1]);
+						currentProp->worldPosition.y = std::stof(tokens[2]);
+					}
+					else if (tokens[0] == "scale")
+					{
+						currentProp->scale.x = std::stof(tokens[1]);
+						currentProp->scale.y = std::stof(tokens[2]);
+					}
+					else if (tokens[0] == "color")
+					{
+						currentProp->color.red = std::stof(tokens[1]);
+						currentProp->color.green = std::stof(tokens[2]);
+						currentProp->color.blue = std::stof(tokens[3]);
+						currentProp->color.alpha = std::stof(tokens[4]);
+					}
+					else if (tokens[0] == "footprint")
+					{
+						currentProp->footprint.left = std::stof(tokens[1]);
+						currentProp->footprint.top = std::stof(tokens[2]);
+						currentProp->footprint.right = std::stof(tokens[3]);
+						currentProp->footprint.bottom = std::stof(tokens[4]);
+					}
+					else if (tokens[0] == "boundingbox")
+					{
+						currentProp->boundingBox.left = std::stof(tokens[1]);
+						currentProp->boundingBox.top = std::stof(tokens[2]);
+						currentProp->boundingBox.right = std::stof(tokens[3]);
+						currentProp->boundingBox.bottom = std::stof(tokens[4]);
+					}
+				}
+			}
+
+			// ------------------------------------------------------------
+			// Rebuild world
+			// ------------------------------------------------------------
+
+			// NOTE:
+			// tile size must come from somewhere.
+			// For now we preserve existing world tile size.
+			SizeF tilesize = world.GetTransform().GetTileSize();
+
+			if (!world.Initialize(
+				data.position,
+				data.size,
+				tilesize))
+			{
+				return false;
+			}
+
+			// ------------------------------------------------------------
+			// Load terrain layers
+			// ------------------------------------------------------------
+			for (const TerrainLayerData& terrain : data.terrains)
+			{
+				if (!assets.Has<TerrainSet>(terrain.tileset))
+				{
+					continue;
+				}
+
+				// lookup terrain set
+				const TerrainSet& set = assets.Get<TerrainSet>(terrain.tileset);
+
+				// create terrain layer. note -0xFFFF is just place holder. we will fill the actual data from file next
+				world.AddTerrain(terrain.name, set, -0xFFFF);
+			}
+
+			for (const TerrainLayerData& terrain : data.terrains)
+			{
+				world.ForEachTerrain([&](const std::string& name, TerrainLayer& layer) 
+					{
+						if (name == terrain.name)
+						{
+							size_t index = 0;
+							for (int row = 0; row < data.size.height; row++)
+							{
+								for (int col = 0; col < data.size.width; col++)
+								{
+									if (index >= terrain.tiles.size())
+									{
+										throw std::runtime_error("WorldMapFile::Load() - tile count mismatch");
+									}
+
+									layer.Set({ row, col }, terrain.tiles[index]);
+
+									index++;
+								}
+							}
+
+						}
+					});
+			}
+
+			// ------------------------------------------------------------
+			// Load props
+			// ------------------------------------------------------------
+			//PropBrushTool propBrushTool;
+
+			//for (const PropData& p : data.props)
+			//{
+			//	// 1. build brush from data
+			//	PropBrush brush = ToPropBrush(p);
+			//	brush.animationSet = p.animationSet;
+			//	brush.animation = p.animation;
+			//	brush.scale = p.scale;
+			//	brush.color = p.color;
+			//	brush.footprint = p.footprint;
+			//	brush.boundingBox = p.boundingBox;
+
+			//	// 2. create brush tool and set active brush
+			//	PropBrushTool brushTool;
+			//	brushTool.Register("current", brush);
+			//	brushTool.Set("current");
+
+			//	// 3. get animation set from assets
+			//	if (!assets.Has<AnimationSet<Sprite>>(p.animationSet))
+			//	{
+			//		// let's be strict here. if animation set does not exist. throw
+			//		throw std::runtime_error("animation set not available");
+			//	}
+			//	const auto& animSet =  assets.Get<AnimationSet<Sprite>>(p.animationSet);
+
+			//	// 4. create prop using factory (single source of truth)
+			//	std::unique_ptr<Prop> prop = PropFactory::Create(brush, animSet);
+
+			//	// 5. place using EXISTING placement system. 
+			//	brushTool.Paint(world, std::move(prop), p.worldPosition);
+			//}
+
+			return true;
+		}
+
+	};
 #pragma endregion
 
 #pragma region // debug scene
@@ -3162,7 +4097,7 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // Prop editor scene
+#pragma region // PropEditorScene scene
 	class PropEditorScene : public Scene
 	{
 	private:
@@ -3230,6 +4165,8 @@ namespace TestMapEditor
 
 			switch (key)
 			{
+			case 9: // TAB
+				break;
 			case 27: // ESC
 				break;
 			case 32: // SPACE
@@ -3271,20 +4208,6 @@ namespace TestMapEditor
 		void OnMouseMove(int x, int y) override
 		{
 			m_mousePos = PositionF((float)x, (float)y);
-
-			return;
-
-			// is mouse left button is held while moving...
-			if (Input::Instance().IsMouseHeld(1))
-			{
-				// calculate the coord in map the mouse cursor intersect with
-				auto& mapPos = m_assets.Get<PositionF>("map_position");
-				auto& tilesize = m_assets.Get<SizeF>("tile_size");
-				Coord coord = PositionToCoord(m_mousePos - mapPos, tilesize);
-
-				auto& config = m_assets.Get<AutoTileSystem::AutoTileConfig>("grass_tile_auto_config");
-				auto& splashAnimLookup = m_assets.Get<Dictionary<TileVariant, int>>("splash_anim_tile_lookup");
-			}
 		}
 
 		void OnMouseUp(int btn, int x, int y) override
@@ -3346,9 +4269,23 @@ namespace TestMapEditor
 					Coord coord(row, col);
 					PositionF tileScreenPos = CoordToPosition(coord, tilesize) + mapPos;
 
-					m_worldMap.ForEachProp(row, col, [&drawCommand, &tileScreenPos](Prop* prop)
+					m_worldMap.ForEachProp(row, col, [&drawCommand, &mapPos](Prop* prop)
 						{
-							prop->QueueForDraw(drawCommand, tileScreenPos, 1);
+							// scale the sprite
+							SizeF size = prop->renderable->GetSprite().GetSize();
+							size.width *= prop->scale.x;
+							size.height *= prop->scale.y;
+
+							PositionF propWorldPos = prop->GetWorldPosition();
+
+							drawCommand.Add({
+								prop->renderable->GetSprite(),		// sprite object to draw
+								propWorldPos + mapPos,			// position
+								size,							// scaled size
+								prop->color,							// color
+								0.0f,							// no rotation
+								1							// depth value for sorting
+								});
 						});
 				}
 			}
@@ -3495,7 +4432,6 @@ namespace TestMapEditor
 			else if (Input::Instance().IsMouseHeld(2))
 			{
 				m_terrainEditor.Erase(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
-
 			}
 		}
 
@@ -3635,14 +4571,8 @@ namespace TestMapEditor
 					m_worldMap.AddTerrain("fine_grid", terrainSet, 22);
 					m_worldMap.AddTerrain("tile_grid", terrainSet, 13);
 
-					SizeF worldSize
-					{
-						m_worldMap.GetTransform().GetSize().As<float>().width * m_worldMap.GetTransform().GetTileSize().As<float>().width,
-						m_worldMap.GetTransform().GetSize().As<float>().height * m_worldMap.GetTransform().GetTileSize().As<float>().height,
-					};
-
 					m_camera.SetViewport({ 300, 300, 800, 600 });
-					m_camera.SetWorldSize(worldSize);
+					m_camera.SetWorldSize(m_worldMap.GetTransform().GetWorldSize());
 					m_camera.SetPosition({ 0,0 });
 					m_camera.SetZoom(1.0f);
 
@@ -3676,8 +4606,11 @@ namespace TestMapEditor
 			if (m_isPanning)
 			{
 				// get the change in position and move camera position by that
-				engine::math::VecF delta = engine::math::VecF((float)x, (float)y) - m_lastMousePos;
+				PositionF currMousePos = engine::math::VecF((float)x, (float)y);
+				engine::math::VecF delta = currMousePos - m_lastMousePos;
 				m_camera.MoveBy(delta);
+
+				LOG(std::to_string(delta.x) << ", " << std::to_string(currMousePos.x));
 
 				// remember the last mouse position
 				m_lastMousePos = { (float)x, (float)y };
@@ -3765,6 +4698,846 @@ namespace TestMapEditor
 			}
 		}
 
+	};
+#pragma endregion
+
+#pragma region // WorldCameraScene scene
+	class EditWorldCameraScene : public Scene
+	{
+	private:
+
+		enum class EditMode : unsigned int
+		{
+			Tile = 0,
+			PineTree = 1,
+			BirchTree = 2,
+			Castle = 3,
+			WaterRock = 4,
+			Size
+		};
+
+		int m_debugState = 2;
+		PositionF m_lastMousePos;
+		bool m_isPanning;
+		PositionF m_currMousePos;
+		bool m_simulation = false;
+		EditMode m_editMode = EditMode::Tile;
+		bool m_grid = true;
+		bool m_clipping = true;
+		bool m_alltiles = false;
+
+		// world data
+		WorldMap m_worldMap;
+
+		// map editing tools
+		TerrainEditor m_terrainEditor;
+		PropBrushTool m_propBrushTool;
+
+		// spatial control
+		Camera m_camera;
+
+
+	public:
+		EditWorldCameraScene() :
+			m_camera({ 100, 100, 900, 700 }),
+			m_lastMousePos(0, 0),
+			m_isPanning(false)
+		{
+		}
+
+		void OnEnter() override
+		{
+			IWindow& window = AssetManager().Get<IWindow>("window");
+			int width = 0, height = 0;
+			window.GetClientSize(width, height);
+			m_camera.SetViewport({0, 0, static_cast<float>(width), static_cast<float>(height) });
+
+			// initialize our world map
+			m_worldMap.Initialize({ 0,0 }, { 1024, 1024 }, { 64, 64 });
+
+			// add terrain grids
+			auto& terrainSet = AssetManager().Get<TerrainSet>("grass_tileset");
+			m_worldMap.AddTerrain("fine_grid", terrainSet, 22);
+			m_worldMap.AddTerrain("tile_grid", terrainSet, 13);
+
+			// add grass layer in terrain
+			m_worldMap.AddTerrain("grass", terrainSet, 4);
+
+			// add shoreline water splash layer in terrain. 
+			auto& splashSet = AssetManager().Get<TerrainSet>("splash_tileset");
+			m_worldMap.AddTerrain("splash", splashSet, -1);
+
+			// tell camera about world map size
+			m_camera.SetWorldSize(m_worldMap.GetTransform().GetWorldSize());
+
+			// create our grass terrain brush
+			TerrainBrush grassTerrainBrush;
+			grassTerrainBrush.layer = "grass";
+			grassTerrainBrush.config = &AssetManager().Get<AutoTileSystem::AutoTileConfig>("grass_tile_auto_config");
+
+			// create our shoreline splash terrain brush. this will be linked into grass terrain
+			// when grass terrain is brushed and the tile type is a shoreline, this will be brushed too
+			TerrainBrush splashTerrainBrush;
+			splashTerrainBrush.layer = "splash";
+			splashTerrainBrush.config = &AssetManager().Get<AutoTileSystem::AutoTileConfig>("splash_tile_auto_config");
+
+			// create brushlink between grass and splash brushes
+			TerrainBrushLink grassToSplashBrushLink;
+			grassToSplashBrushLink.sourceBrush = grassTerrainBrush;
+			grassToSplashBrushLink.targetBrush = splashTerrainBrush;
+
+			// map the tile indices between grass and splash terrain
+			grassToSplashBrushLink.sourceToTarget.Register(4, -1);
+			grassToSplashBrushLink.sourceToTarget.Register(30, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(10, -1);
+			grassToSplashBrushLink.sourceToTarget.Register(21, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(3, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(29, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(27, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(0, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(2, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(18, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(20, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(12, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(28, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(1, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(19, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(9, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(11, 0);
+
+			// set the grass brush as terrain editor's default brush
+			m_terrainEditor.Set(grassTerrainBrush);
+
+			// add the grass to splash brush link in terrain editor
+			m_terrainEditor.Add(grassToSplashBrushLink);
+
+			// create prop brushes		- animation set				- default animation - scale				- color				- footprint area (normal)			- bounding box area (normal)
+			PropBrush NormalBirchTree	{ "birchtree_anim_set",		"birch_tree_idle",	VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.47f, 0.8f, 0.53f, 0.85f},	RectF{0.27f, 0.12f, 0.73f, 0.87f} };
+			PropBrush NormalPineTree	{ "pinetree_anim_set",		"pine_tree_idle",	VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.38f, 0.8f, 0.62f, 0.92f},	RectF{0.2f, 0.2f, 0.8f, 0.92f} };
+			PropBrush NormalCastle		{ "castle_anim_set",		"castle_idle",		VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.05f, 0.6f, 0.95f, 0.90f},	RectF{0.05f, 0.2f, 0.95f, 0.9f} };
+			PropBrush NormalWaterRocks	{ "water_rocks_anim_set",	"water_rocks_idle",	VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.1f,0.4f,0.9f,0.8f},			RectF{0.1f, 0.1f, 0.9f, 0.9f} };
+
+			// register our brushes to our brush tool
+			m_propBrushTool.Register("normal_pine_tree", NormalPineTree);
+			m_propBrushTool.Register("normal_birch_tree", NormalBirchTree);
+			m_propBrushTool.Register("normal_castle", NormalCastle);
+			m_propBrushTool.Register("normal_water_rocks", NormalWaterRocks);
+
+			// set default prop on our prop brush tool
+			m_propBrushTool.Set("normal_pine_tree");
+
+
+		}
+
+		void OnKeyDown(int key) override
+		{
+			switch (key)
+			{
+			case 9: // TAB
+				m_editMode = (EditMode)(((int)m_editMode + 1) % (int)EditMode::Size);
+				break;
+			case 27: // ESC
+				break;
+			case 32: // SPACE
+				m_debugState++;
+				if (m_debugState > 3) m_debugState = 0;
+				break;
+			case 49: // 1
+				m_simulation = !m_simulation;
+				break;
+			case 50: // 2
+				m_camera.SetZoom(1.5f);
+				break;
+			case 51: // 3 
+				m_camera.SetZoom(1.0f);
+				break;
+			case 52: // 4
+				m_camera.SetZoom(0.4f);
+				break;
+			case 53: // 5 
+			{
+				break;
+			}
+			case 103: // g
+			case 71: // G
+			{
+				m_grid = !m_grid;
+				break;
+			}
+			case 67: // C
+			case 99: // c
+			{
+				m_clipping = !m_clipping;
+				break;
+			}
+			case 84: // T
+			case 116: // t
+			{
+				m_alltiles = !m_alltiles;
+				break;
+			}
+			default:
+				break;
+			}
+		}
+
+		void OnMouseMove(int x, int y)
+		{
+			m_currMousePos = { (float)x, (float)y };
+
+			if (m_simulation)
+			{
+				// is we're holding down left mouse button and dragging it, pan the map
+				if (m_isPanning)
+				{
+					// get the change in position and move camera position by that
+					engine::math::VecF delta = engine::math::VecF((float)x, (float)y) - m_lastMousePos;
+					m_camera.MoveBy(delta);
+
+					// remember the last mouse position
+					m_lastMousePos = { (float)x, (float)y };
+				}
+			}
+			else
+			{
+				switch (m_editMode)
+				{
+				case EditMode::Tile:
+				{
+					// is mouse left button is held while moving...
+					if (Input::Instance().IsMouseHeld(1))
+					{
+						PositionF worldPos = m_camera.ScreenToWorld(m_currMousePos);
+						Coord coord = m_worldMap.GetTransform().WorldToTileCoord(worldPos);
+						m_terrainEditor.Paint(m_worldMap, coord);
+
+					}
+					else if (Input::Instance().IsMouseHeld(2))
+					{
+						PositionF worldPos = m_camera.ScreenToWorld(m_currMousePos);
+						Coord coord = m_worldMap.GetTransform().WorldToTileCoord(worldPos);
+						m_terrainEditor.Erase(m_worldMap, coord);
+					}
+					break;
+				}
+				default:
+					break;
+				}
+			}
+		}
+
+		void OnMouseDown(int btn, int x, int y)
+		{
+			m_lastMousePos = { (float)x, (float)y };
+
+			// this button is for panning the camera
+			if (btn == 1)
+			{
+				if (m_simulation)
+				{
+					m_isPanning = true;
+				}
+				else
+				{
+					switch (m_editMode)
+					{
+					case EditMode::Tile:
+					{
+						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
+						Coord coord = m_worldMap.GetTransform().WorldToTileCoord(worldPos);
+						m_terrainEditor.Paint(m_worldMap, coord);
+						break;
+					}
+					case EditMode::PineTree:
+					{
+						m_propBrushTool.Set("normal_pine_tree");
+						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
+						PropPlacementSystem::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
+
+						// what tiles did this tree occupied? we should place grass tiles. 
+						// get the tiles this tree occupied
+						// place grass tiles on all the tiles it occupied
+						for (const Coord& coord : result.occupiedTiles)
+						{
+							m_terrainEditor.Paint(m_worldMap, coord);
+						}
+
+						break;
+					}
+					case EditMode::Castle:
+					{
+						m_propBrushTool.Set("normal_castle");
+						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
+						PropPlacementSystem::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
+
+						for (const Coord& coord : result.occupiedTiles)
+						{
+							m_terrainEditor.Paint(m_worldMap, coord);
+						}
+
+						break;
+					}
+					case EditMode::WaterRock:
+					{
+						m_propBrushTool.Set("normal_water_rocks");
+						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
+						PropPlacementSystem::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
+
+						for (const Coord& coord : result.occupiedTiles)
+						{
+							m_terrainEditor.Erase(m_worldMap, coord);
+						}
+
+						break;
+					}
+					default:
+						break;
+					}
+				}
+			}
+			// if this button is clicked, move our focus in this position
+			if (btn == 2)
+			{
+				if (m_simulation)
+				{
+					// this is screen position and convert it to world position
+					PositionF pos = m_camera.ScreenToWorld(m_lastMousePos);
+
+					// pan the camera such that the focus is at center of the viewport, if possible
+					m_camera.CenterOn(pos);
+				}
+				else
+				{
+					switch (m_editMode)
+					{
+					case EditMode::Tile:
+					{
+						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
+						Coord coord = m_worldMap.GetTransform().WorldToTileCoord(worldPos);
+						m_terrainEditor.Erase(m_worldMap, coord);
+						break;
+					}
+					case EditMode::PineTree:
+					case EditMode::Castle:
+					case EditMode::WaterRock:
+					{
+						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
+						m_propBrushTool.Erase(m_worldMap, worldPos);
+						break;
+					}
+					default:
+						break;
+					}
+
+				}
+			}
+		}
+
+		void OnMouseUp(int btn, int x, int y)
+		{
+			m_isPanning = false;
+		}
+
+
+		void OnUpdate(double dt) override
+		{
+			// this is for debugging only. validate every frame to ensure our containers are in good state
+			//m_worldMap.Validate();
+		}
+
+		void OnRender() override
+		{
+			AssetManager assets;
+
+			// get resources
+			IRenderer& renderer = assets.Get<IRenderer>("renderer");
+			DrawSortedSpritesCommand& drawCommand = assets.Get<DrawSortedSpritesCommand>("drawCommand");
+
+			renderer.SetClipRegion(m_camera.GetViewport());
+			renderer.EnableClipping(m_clipping);
+
+			// draw the terrain's background shoreline splash
+			{
+				drawCommand.Clear();
+				DrawTerrainLayer(renderer, drawCommand, m_camera, m_worldMap, "splash", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_alltiles, { 3,3 }, { 0, 0 }, { 1,1,1,0.5f });
+				drawCommand.Sort();
+				drawCommand.Execute();
+			}
+
+			// draw the grass terrain
+			{
+				drawCommand.Clear();
+				DrawTerrainLayer(renderer, drawCommand, m_camera, m_worldMap, "grass", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_alltiles);
+				drawCommand.Sort();
+				drawCommand.Execute();
+			}
+
+			// draw props
+			{
+				drawCommand.Clear();
+				DrawProps(renderer, drawCommand, m_camera, m_worldMap, 1, m_alltiles);
+				drawCommand.Sort();
+				drawCommand.Execute();
+			}
+
+			if (m_grid)
+			{
+				// draw the tile grid
+				drawCommand.Clear();
+				DrawTerrainLayer(renderer, drawCommand, m_camera, m_worldMap, "tile_grid", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_alltiles, { 1, 1 }, { 0, 0 }, { 0,0,0,0.2f });
+				DrawTerrainLayer(renderer, drawCommand, m_camera, m_worldMap, "fine_grid", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_alltiles, { 1, 1 }, { 0, 0 }, { 0,0,0,0.05f });
+				drawCommand.Sort();
+				drawCommand.Execute();
+
+				RectF vp = m_camera.GetViewport();
+
+				renderer.Draw(vp.GetTopLeft(), vp.GetSize(), { 1,1,1,0.1f }, 0.0f);
+			}
+
+			//if (!m_simulation)
+			{
+				std::string msg;
+				switch (m_editMode)
+				{
+				case EditMode::Tile: msg += "Place Tile|"; break;
+				case EditMode::BirchTree: msg += "Place Birch Tree|"; break;
+				case EditMode::PineTree: msg += "Place Pine Tree|"; break;
+				case EditMode::Castle: msg += "Place Castle|"; break;
+				case EditMode::WaterRock: msg += "Place Water Rock|"; break;
+				default: break;
+				}
+				msg += " ";
+				msg += m_simulation ? "simulation|" : "edit|";
+				msg += m_grid? "grid enabled|" : "grid disabled|";
+				msg += m_clipping ? "clipping enabled|" : "clipping disabled|";
+				msg += m_alltiles ? "all tiles|" : "visible tiles|";
+				renderer.Draw(assets.Get<IFontAtlas>("font"), msg, { 600, 5 }, { 1,1,1,1 });
+			}
+		}
+
+		void OnResize(size_t width, size_t height) override
+		{
+			m_camera.SetViewport({0,0, static_cast<float>(width), static_cast<float>(height) });
+		}
+	};
+#pragma endregion
+
+#pragma region // LoadSaveWorldScene
+	class LoadSaveWorldScene : public Scene
+	{
+	private:
+		enum class EditMode : unsigned int
+		{
+			Tile = 0,
+			PineTree = 1,
+			BirchTree = 2,
+			Castle = 3,
+			WaterRock = 4,
+			Size
+		};
+
+		PositionF m_lastMousePos;
+		bool m_isPanning;
+		PositionF m_currMousePos;
+		bool m_simulation = false;
+		EditMode m_editMode = EditMode::Tile;
+		bool m_grid = true;
+		bool m_clipping = true;
+		bool m_alltiles = false;
+
+		// world data
+		WorldMap m_worldMap;
+
+		// grids
+		TerrainGrid m_tilegrid;
+		TerrainGrid m_finegrid;
+
+		// map editing tools
+		TerrainEditor m_terrainEditor;
+		PropBrushTool m_propBrushTool;
+
+		// spatial control
+		Camera m_camera;
+
+
+	public:
+		LoadSaveWorldScene() :
+			m_camera({ 100, 100, 900, 700 }),
+			m_lastMousePos(0, 0),
+			m_isPanning(false)
+		{
+		}
+
+		void OnEnter() override
+		{
+			// initialize our world map
+			m_worldMap.Initialize({ 0,0 }, { 20, 12 }, { 64, 64 });
+
+			// add terrain grids
+			auto& terrainSet = AssetManager().Get<TerrainSet>("grass_tileset");			
+			m_tilegrid.Initialize(m_worldMap.GetTransform().GetSize(), terrainSet.MakeTile(13));
+			m_finegrid.Initialize(m_worldMap.GetTransform().GetSize(), terrainSet.MakeTile(22));
+
+			// add grass layer in terrain
+			m_worldMap.AddTerrain("grass", terrainSet, 4);
+
+			// add shoreline water splash layer in terrain. 
+			auto& splashSet = AssetManager().Get<TerrainSet>("splash_tileset");
+			m_worldMap.AddTerrain("splash", splashSet, -1);
+
+			// tell camera about world map size
+			m_camera.SetWorldSize(m_worldMap.GetTransform().GetWorldSize());
+
+			// create our grass terrain brush
+			TerrainBrush grassTerrainBrush;
+			grassTerrainBrush.layer = "grass";
+			grassTerrainBrush.config = &AssetManager().Get<AutoTileSystem::AutoTileConfig>("grass_tile_auto_config");
+
+			// create our shoreline splash terrain brush. this will be linked into grass terrain
+			// when grass terrain is brushed and the tile type is a shoreline, this will be brushed too
+			TerrainBrush splashTerrainBrush;
+			splashTerrainBrush.layer = "splash";
+			splashTerrainBrush.config = &AssetManager().Get<AutoTileSystem::AutoTileConfig>("splash_tile_auto_config");
+
+			// create brushlink between grass and splash brushes
+			TerrainBrushLink grassToSplashBrushLink;
+			grassToSplashBrushLink.sourceBrush = grassTerrainBrush;
+			grassToSplashBrushLink.targetBrush = splashTerrainBrush;
+
+			// map the tile indices between grass and splash terrain
+			grassToSplashBrushLink.sourceToTarget.Register(4, -1);
+			grassToSplashBrushLink.sourceToTarget.Register(30, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(10, -1);
+			grassToSplashBrushLink.sourceToTarget.Register(21, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(3, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(29, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(27, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(0, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(2, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(18, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(20, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(12, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(28, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(1, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(19, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(9, 0);
+			grassToSplashBrushLink.sourceToTarget.Register(11, 0);
+
+			// set the grass brush as terrain editor's default brush
+			m_terrainEditor.Set(grassTerrainBrush);
+
+			// add the grass to splash brush link in terrain editor
+			m_terrainEditor.Add(grassToSplashBrushLink);
+
+			// create prop brushes		- animation set				- default animation - scale				- color				- footprint area (normal)			- bounding box area (normal)
+			PropBrush NormalBirchTree{ "birchtree_anim_set",		"birch_tree_idle",	VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.47f, 0.8f, 0.53f, 0.85f},	RectF{0.27f, 0.12f, 0.73f, 0.87f} };
+			PropBrush NormalPineTree{ "pinetree_anim_set",		"pine_tree_idle",	VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.38f, 0.8f, 0.62f, 0.92f},	RectF{0.2f, 0.2f, 0.8f, 0.92f} };
+			PropBrush NormalCastle{ "castle_anim_set",		"castle_idle",		VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.05f, 0.6f, 0.95f, 0.90f},	RectF{0.05f, 0.2f, 0.95f, 0.9f} };
+			PropBrush NormalWaterRocks{ "water_rocks_anim_set",	"water_rocks_idle",	VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.1f,0.4f,0.9f,0.8f},			RectF{0.1f, 0.1f, 0.9f, 0.9f} };
+
+			// register our brushes to our brush tool
+			m_propBrushTool.Register("normal_pine_tree", NormalPineTree);
+			m_propBrushTool.Register("normal_birch_tree", NormalBirchTree);
+			m_propBrushTool.Register("normal_castle", NormalCastle);
+			m_propBrushTool.Register("normal_water_rocks", NormalWaterRocks);
+
+			// set default prop on our prop brush tool
+			m_propBrushTool.Set("normal_pine_tree");
+
+		}
+
+		void OnKeyDown(int key) override
+		{
+			switch (key)
+			{
+			case 9: // TAB
+				m_editMode = (EditMode)(((int)m_editMode + 1) % (int)EditMode::Size);
+				break;
+			case 27: // ESC
+				m_terrainEditor.Clear(m_worldMap);
+				m_worldMap.RemoveAllProps();
+				break;
+			case 32: // SPACE
+				break;
+			case 49: // 1
+				m_simulation = !m_simulation;
+				break;
+			case 50: // 2
+				WorldMapFile::Save("..\\Assets\\worldmap.csv", m_worldMap);
+				break;
+			case 51: // 3 
+				AssetManager assets;
+				WorldMapFile::Load("..\\Assets\\worldmap.csv", m_worldMap, assets);
+				break;
+			case 52: // 4
+				m_camera.SetZoom(1.5f);
+				break;
+			case 53: // 5 
+			{
+				break;
+			}
+			case 103: // g
+			case 71: // G
+			{
+				m_grid = !m_grid;
+				break;
+			}
+			case 67: // C
+			case 99: // c
+			{
+				m_clipping = !m_clipping;
+				break;
+			}
+			case 84: // T
+			case 116: // t
+			{
+				m_alltiles = !m_alltiles;
+				break;
+			}
+			default:
+				break;
+			}
+		}
+
+		void OnMouseMove(int x, int y)
+		{
+			m_currMousePos = { (float)x, (float)y };
+
+			if (m_simulation)
+			{
+				// is we're holding down left mouse button and dragging it, pan the map
+				if (m_isPanning)
+				{
+					// get the change in position and move camera position by that
+					engine::math::VecF delta = engine::math::VecF((float)x, (float)y) - m_lastMousePos;
+					m_camera.MoveBy(delta);
+
+					// remember the last mouse position
+					m_lastMousePos = { (float)x, (float)y };
+				}
+			}
+			else
+			{
+				switch (m_editMode)
+				{
+				case EditMode::Tile:
+				{
+					// is mouse left button is held while moving...
+					if (Input::Instance().IsMouseHeld(1))
+					{
+						PositionF worldPos = m_camera.ScreenToWorld(m_currMousePos);
+						Coord coord = m_worldMap.GetTransform().WorldToTileCoord(worldPos);
+						m_terrainEditor.Paint(m_worldMap, coord);
+
+					}
+					else if (Input::Instance().IsMouseHeld(2))
+					{
+						PositionF worldPos = m_camera.ScreenToWorld(m_currMousePos);
+						Coord coord = m_worldMap.GetTransform().WorldToTileCoord(worldPos);
+						m_terrainEditor.Erase(m_worldMap, coord);
+					}
+					break;
+				}
+				default:
+					break;
+				}
+			}
+		}
+
+		void OnMouseDown(int btn, int x, int y)
+		{
+			m_lastMousePos = { (float)x, (float)y };
+
+			// this button is for panning the camera
+			if (btn == 1)
+			{
+				if (m_simulation)
+				{
+					m_isPanning = true;
+				}
+				else
+				{
+					switch (m_editMode)
+					{
+					case EditMode::Tile:
+					{
+						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
+						Coord coord = m_worldMap.GetTransform().WorldToTileCoord(worldPos);
+						m_terrainEditor.Paint(m_worldMap, worldPos);
+						break;
+					}
+					case EditMode::PineTree:
+					{
+						m_propBrushTool.Set("normal_pine_tree");
+						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
+						PropPlacementSystem::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
+
+						// what tiles did this tree occupied? we should place grass tiles. 
+						// get the tiles this tree occupied
+						// place grass tiles on all the tiles it occupied
+						for (const Coord& coord : result.occupiedTiles)
+						{
+							m_terrainEditor.Paint(m_worldMap, coord);
+						}
+
+						break;
+					}
+					case EditMode::Castle:
+					{
+						m_propBrushTool.Set("normal_castle");
+						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
+						PropPlacementSystem::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
+
+						for (const Coord& coord : result.occupiedTiles)
+						{
+							m_terrainEditor.Paint(m_worldMap, coord);
+						}
+
+						break;
+					}
+					case EditMode::WaterRock:
+					{
+						m_propBrushTool.Set("normal_water_rocks");
+						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
+						PropPlacementSystem::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
+
+						for (const Coord& coord : result.occupiedTiles)
+						{
+							m_terrainEditor.Erase(m_worldMap, coord);
+						}
+
+						break;
+					}
+					default:
+						break;
+					}
+				}
+			}
+			// if this button is clicked, move our focus in this position
+			if (btn == 2)
+			{
+				if (m_simulation)
+				{
+					// this is screen position and convert it to world position
+					PositionF pos = m_camera.ScreenToWorld(m_lastMousePos);
+
+					// pan the camera such that the focus is at center of the viewport, if possible
+					m_camera.CenterOn(pos);
+				}
+				else
+				{
+					switch (m_editMode)
+					{
+					case EditMode::Tile:
+					{
+						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
+						Coord coord = m_worldMap.GetTransform().WorldToTileCoord(worldPos);
+						m_terrainEditor.Erase(m_worldMap, coord);
+						break;
+					}
+					case EditMode::PineTree:
+					case EditMode::Castle:
+					case EditMode::WaterRock:
+					{
+						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
+						m_propBrushTool.Erase(m_worldMap, worldPos);
+						break;
+					}
+					default:
+						break;
+					}
+
+				}
+			}
+		}
+
+		void OnMouseUp(int btn, int x, int y)
+		{
+			m_isPanning = false;
+		}
+
+
+		void OnUpdate(double dt) override
+		{
+			// this is for debugging only. validate every frame to ensure our containers are in good state
+			//m_worldMap.Validate();
+		}
+
+		void OnRender() override
+		{
+			AssetManager assets;
+
+			// get resources
+			IRenderer& renderer = assets.Get<IRenderer>("renderer");
+			DrawSortedSpritesCommand& drawCommand = assets.Get<DrawSortedSpritesCommand>("drawCommand");
+
+			renderer.SetClipRegion(m_camera.GetViewport());
+			renderer.EnableClipping(m_clipping);
+
+			// draw the terrain's background shoreline splash
+			{
+				drawCommand.Clear();
+				DrawTerrainLayer(renderer, drawCommand, m_camera, m_worldMap, "splash", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_alltiles, { 3,3 }, { 0, 0 }, { 1,1,1,0.5f });
+				drawCommand.Sort();
+				drawCommand.Execute();
+			}
+
+			// draw the grass terrain
+			{
+				drawCommand.Clear();
+				DrawTerrainLayer(renderer, drawCommand, m_camera, m_worldMap, "grass", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_alltiles);
+				drawCommand.Sort();
+				drawCommand.Execute();
+			}
+
+			// draw props
+			{
+				drawCommand.Clear();
+				DrawProps(renderer, drawCommand, m_camera, m_worldMap, 1, m_alltiles);
+				drawCommand.Sort();
+				drawCommand.Execute();
+			}
+
+			if (m_grid)
+			{
+				// draw the tile grid
+				drawCommand.Clear();
+				DrawTerrainGrid(renderer, drawCommand, m_camera, m_tilegrid, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_alltiles, { 1, 1 }, { 0, 0 }, { 0,0,0,0.2f });
+				DrawTerrainGrid(renderer, drawCommand, m_camera, m_tilegrid, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_alltiles, { 1, 1 }, { 0, 0 }, { 0,0,0,0.05f });
+				drawCommand.Sort();
+				drawCommand.Execute();
+
+				RectF vp = m_camera.GetViewport();
+
+				renderer.Draw(vp.GetTopLeft(), vp.GetSize(), { 1,1,1,0.1f }, 0.0f);
+			}
+
+			//if (!m_simulation)
+			{
+				renderer.EnableClipping(false);
+
+				std::string msg;
+				switch (m_editMode)
+				{
+				case EditMode::Tile: msg += "Place Tile|"; break;
+				case EditMode::BirchTree: msg += "Place Birch Tree|"; break;
+				case EditMode::PineTree: msg += "Place Pine Tree|"; break;
+				case EditMode::Castle: msg += "Place Castle|"; break;
+				case EditMode::WaterRock: msg += "Place Water Rock|"; break;
+				default: break;
+				}
+				msg += " ";
+				msg += m_simulation ? "simulation|" : "edit|";
+				msg += m_grid ? "grid enabled|" : "grid disabled|";
+				msg += m_clipping ? "clipping enabled|" : "clipping disabled|";
+				msg += m_alltiles ? "all tiles|" : "visible tiles|";
+				renderer.Draw(assets.Get<IFontAtlas>("font"), msg, { 400, 5 }, { 1,1,1,1 });
+			}
+		}
+
+		void OnResize(size_t width, size_t height) override
+		{
+		}
 	};
 #pragma endregion
 
@@ -3978,7 +5751,7 @@ namespace TestMapEditor
 				{
 					TilesetLoader::LoadTerrainSet("grass_tileset", "grass_tile_sprites");
 
-					Registry<TerrainSet>::Instance().Register("splash_tileset", std::make_unique<TerrainSet>());
+					Registry<TerrainSet>::Instance().Register("splash_tileset", std::make_unique<TerrainSet>("splash_tileset"));
 					TerrainSet& splashTileset = assets.Get<TerrainSet>("splash_tileset");
 					std::unique_ptr<TileDefinition> tiledef = std::make_unique<TileDefinition>();
 					tiledef->renderable = std::make_unique<Animated>(splashAnimSet, "splash_anim");
@@ -3992,7 +5765,9 @@ namespace TestMapEditor
 				m_sceneManager.CreateScene<DebugScene>("Debug");
 				m_sceneManager.CreateScene<CameraScene>("Camera");
 				m_sceneManager.CreateScene<TerrainEditScene>("Terrain");
-				m_sceneManager.SetActive("Camera");
+				m_sceneManager.CreateScene<EditWorldCameraScene>("Edit");
+				m_sceneManager.CreateScene<LoadSaveWorldScene>("Save");
+				m_sceneManager.SetActive("Save");
 			}
 
 			// create draw command for drawing sorted sprites. we will use this for drawing the base layer tiles.
@@ -4101,6 +5876,8 @@ namespace TestMapEditor
 			ICanvas& canvas = AssetManager().Get<ICanvas>("canvas");
 			canvas.Resize({ static_cast<unsigned int>(nWidth), static_cast<unsigned int>(nHeight) });
 			canvas.SetViewPort();
+
+			m_sceneManager.OnResize(nWidth, nHeight);
 		}
 
 	};

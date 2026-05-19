@@ -31,7 +31,8 @@ namespace engine::win32
 		virtual void Quit() override final;
 		virtual void Close() override final;
 
-		virtual void SetClientSize(int width, int height) final;
+		virtual void SetClientSize(int width, int height) override final;
+		virtual void GetClientSize(int& width, int& height) const override final;
 
 		void ShowCursor(bool show) override final;
 	};

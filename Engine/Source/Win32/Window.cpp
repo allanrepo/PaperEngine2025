@@ -1,4 +1,5 @@
 #include <Win32/Window.h>
+#include <windowsx.h>
 
 std::unordered_map<std::wstring, int> engine::win32::Window::WindowClassManager::s_mapRefCount;
 
@@ -100,7 +101,7 @@ LRESULT engine::win32::Window::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 	}
 	case WM_MOUSEMOVE:
 	{
-		OnMouseMove(LOWORD(lParam), HIWORD(lParam)); // x, y
+		OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // x, y
 		break;
 	}
 	case WM_XBUTTONDOWN:
@@ -111,26 +112,26 @@ LRESULT engine::win32::Window::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 	case WM_RBUTTONDOWN:
 	{
 		OnRightClick();
-		OnRightMouseDown(LOWORD(lParam), HIWORD(lParam)); // x, y
+		OnRightMouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // x, y
 		break;
 	}
 	case WM_LBUTTONDOWN:
 	{
 		SetCapture(hWnd);
 		OnLeftClick();
-		OnLeftMouseDown(LOWORD(lParam), HIWORD(lParam)); // x, y
+		OnLeftMouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // x, y
 		break;
 	}
 	case WM_XBUTTONUP:
 	case WM_MBUTTONUP:
 	case WM_RBUTTONUP:
 	{
-		OnRightMouseUp(LOWORD(lParam), HIWORD(lParam)); // x, y
+		OnRightMouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // x, y
 		break;
 	}
 	case WM_LBUTTONUP:
 	{
-		OnLeftMouseUp(LOWORD(lParam), HIWORD(lParam)); // x, y
+		OnLeftMouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // x, y
 		ReleaseCapture();
 		break;
 	}

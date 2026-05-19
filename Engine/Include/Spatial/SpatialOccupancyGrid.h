@@ -375,6 +375,22 @@ namespace engine
 				}
 			}
 
+			// -------------------------------------------------------------------------
+			// remove all occupants
+			// -------------------------------------------------------------------------
+			void Reset()
+			{
+				// 1. Clear all cell occupancy
+				m_grid.ForEach([](size_t row, size_t col,
+						std::vector<Occupant<T, DATA>>& bucket)
+					{
+						bucket.clear();
+					});
+
+				// 2. Clear reverse lookup map
+				m_objects.Clear();
+			}
+
 			// ------------------------------------------------------------------------
 			// Validation
 			// ------------------------------------------------------------------------

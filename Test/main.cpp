@@ -18,7 +18,7 @@
 int main()
 {
 	//TestTile testTile;
-
+	StressTestRenderer str;
 	//graphics::animation::Test::Test();
 	//TestTimer testTimer;
 	//TestInput testInput;
@@ -29,7 +29,7 @@ int main()
 	//test::TestPinchBlock testPinchBlock;
 	//test::TestGridScaling testGridScaling;
 	//TestSprite testSprite;
-	TestRendererVisualComparison test;
+	//TestRendererVisualComparison test;
 	//StressTestRenderer str;
 	//StressTestRendererWithEngine strwe;
 }

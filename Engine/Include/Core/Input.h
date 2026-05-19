@@ -4,6 +4,7 @@
 #include <cassert>
 #include "Event.h"
 #include <Windows.h>
+#include <windowsx.h>
 #include "Singleton.h"
 
 namespace engine::input
@@ -90,25 +91,25 @@ namespace engine::input
 				HandleKeyState(static_cast<int>(wParam), false);
 				break;
 			case WM_MOUSEMOVE:
-				HandleMouseMove(LOWORD(lParam), HIWORD(lParam));// x, y
+				HandleMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));// x, y
 				break;
 			case WM_LBUTTONDOWN:
-				HandleMouseClick(1, true, LOWORD(lParam), HIWORD(lParam));
+				HandleMouseClick(1, true, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 				break;
 			case WM_RBUTTONDOWN:
-				HandleMouseClick(2, true, LOWORD(lParam), HIWORD(lParam));
+				HandleMouseClick(2, true, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 				break;
 			case WM_MBUTTONDOWN:
-				HandleMouseClick(3, true, LOWORD(lParam), HIWORD(lParam));
+				HandleMouseClick(3, true, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 				break;
 			case WM_LBUTTONUP:
-				HandleMouseClick(1, false, LOWORD(lParam), HIWORD(lParam));
+				HandleMouseClick(1, false, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 				break;
 			case WM_RBUTTONUP:
-				HandleMouseClick(2, false, LOWORD(lParam), HIWORD(lParam));
+				HandleMouseClick(2, false, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 				break;
 			case WM_MBUTTONUP:
-				HandleMouseClick(3, false, LOWORD(lParam), HIWORD(lParam));
+				HandleMouseClick(3, false, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 				break;
 			default:
 				break;

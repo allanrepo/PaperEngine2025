@@ -127,6 +127,21 @@ void engine::win32::WindowBase::SetClientSize(int width, int height)
 	SetWindowPos(m_hWnd, HWND_NOTOPMOST, rc.left, rc.top, width, height, SWP_SHOWWINDOW);
 }
 
+void engine::win32::WindowBase::GetClientSize(int& width, int& height) const
+{
+	RECT rc;
+	if (GetClientRect(m_hWnd, &rc))
+	{
+		width = rc.right - rc.left;
+		height = rc.bottom - rc.top;
+	}
+	else
+	{
+		width = height = 0; // fallback if window handle is invalid
+	}
+}
+
+
 LRESULT CALLBACK engine::win32::WindowBase::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
