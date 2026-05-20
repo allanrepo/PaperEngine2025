@@ -8,18 +8,18 @@ terrainlayer, begin
 name, grass
 tileset, grass_tileset
 tiles, begin
-4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
-4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
-4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
-4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
-4, 4, 4, 4, 0, 1, 28, 29, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
-4, 4, 4, 4, 9, 20, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
-4, 4, 4, 4, 12, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
-4, 4, 4, 4, 21, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
-4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
-4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
-4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
-4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
+4, 4, 0, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
+0, 1, 19, 20, 4, 4, 0, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
+18, 11, 4, 4, 4, 4, 9, 10, 1, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
+4, 9, 1, 1, 1, 1, 10, 10, 10, 10, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4
+4, 9, 19, 10, 10, 10, 10, 10, 10, 10, 10, 1, 2, 4, 4, 4, 4, 4, 4, 4
+27, 11, 4, 18, 19, 10, 10, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 2, 4, 4
+4, 18, 29, 4, 4, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 11, 4, 4
+4, 4, 4, 4, 4, 18, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 11, 4, 4
+4, 4, 4, 4, 4, 4, 18, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 4, 4
+4, 4, 4, 4, 4, 4, 4, 18, 19, 10, 10, 10, 10, 10, 10, 19, 11, 4, 4, 4
+4, 4, 4, 4, 4, 4, 4, 4, 4, 18, 19, 10, 10, 10, 11, 4, 9, 2, 4, 4
+4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 18, 19, 19, 19, 28, 19, 20, 4, 4
 tiles, end
 terrainlayer, end
 
@@ -27,19 +27,319 @@ terrainlayer, begin
 name, splash
 tileset, splash_tileset
 tiles, begin
--65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
--65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
--65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
--65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
--65535, -65535, -65535, -65535, 0, 0, 0, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
--65535, -65535, -65535, -65535, 0, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
--65535, -65535, -65535, -65535, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
--65535, -65535, -65535, -65535, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
--65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
--65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
--65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
--65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
+-65535, -65535, 0, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
+0, 0, 0, 0, -65535, -65535, 0, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
+0, 0, -65535, -65535, -65535, -65535, 0, -65535, 0, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
+-65535, 0, 0, 0, 0, 0, -65535, -65535, -65535, -65535, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535
+-65535, 0, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, 0, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535
+0, 0, -65535, 0, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, 0, 0, 0, 0, 0, -65535, -65535
+-65535, 0, 0, -65535, -65535, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, 0, -65535, -65535
+-65535, -65535, -65535, -65535, -65535, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, 0, -65535, -65535
+-65535, -65535, -65535, -65535, -65535, -65535, 0, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, 0, -65535, -65535
+-65535, -65535, -65535, -65535, -65535, -65535, -65535, 0, 0, -65535, -65535, -65535, -65535, -65535, -65535, 0, 0, -65535, -65535, -65535
+-65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, 0, 0, -65535, -65535, -65535, 0, -65535, 0, 0, -65535, -65535
+-65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, -65535, 0, 0, 0, 0, 0, 0, 0, -65535, -65535
 tiles, end
 terrainlayer, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 205, 85
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 46, 129
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 432, 154
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, water_rocks_anim_set
+animation, water_rocks_idle
+worldposition, 731, 173
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.1, 0.4, 0.9, 0.8
+boundingbox, 0.1, 0.1, 0.9, 0.9
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 573, 215
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, water_rocks_anim_set
+animation, water_rocks_idle
+worldposition, 1004, 222
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.1, 0.4, 0.9, 0.8
+boundingbox, 0.1, 0.1, 0.9, 0.9
+prop, end
+
+prop, begin
+animationset, castle_anim_set
+animation, castle_idle
+worldposition, 227, 284
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.05, 0.6, 0.95, 0.9
+boundingbox, 0.05, 0.2, 0.95, 0.9
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 44, 357
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 495, 334
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 624, 363
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 1103, 356
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 150, 425
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 674, 421
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, castle_anim_set
+animation, castle_idle
+worldposition, 909, 441
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.05, 0.6, 0.95, 0.9
+boundingbox, 0.05, 0.2, 0.95, 0.9
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 1115, 419
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 450, 477
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 552, 486
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, water_rocks_anim_set
+animation, water_rocks_idle
+worldposition, 70, 545
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.1, 0.4, 0.9, 0.8
+boundingbox, 0.1, 0.1, 0.9, 0.9
+prop, end
+
+prop, begin
+animationset, water_rocks_anim_set
+animation, water_rocks_idle
+worldposition, 174, 566
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.1, 0.4, 0.9, 0.8
+boundingbox, 0.1, 0.1, 0.9, 0.9
+prop, end
+
+prop, begin
+animationset, water_rocks_anim_set
+animation, water_rocks_idle
+worldposition, 135, 519
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.1, 0.4, 0.9, 0.8
+boundingbox, 0.1, 0.1, 0.9, 0.9
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 658, 519
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 735, 541
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 953, 557
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, water_rocks_anim_set
+animation, water_rocks_idle
+worldposition, 395, 664
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.1, 0.4, 0.9, 0.8
+boundingbox, 0.1, 0.1, 0.9, 0.9
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 1113, 687
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, water_rocks_anim_set
+animation, water_rocks_idle
+worldposition, 439, 712
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.1, 0.4, 0.9, 0.8
+boundingbox, 0.1, 0.1, 0.9, 0.9
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 767, 737
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 884, 718
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 964, 760
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
+
+prop, begin
+animationset, pinetree_anim_set
+animation, pine_tree_idle
+worldposition, 1030, 744
+scale, 1, 1
+color, 1, 1, 1, 1
+footprint, 0.38, 0.8, 0.62, 0.92
+boundingbox, 0.2, 0.2, 0.8, 0.92
+prop, end
 
 worldmap, end

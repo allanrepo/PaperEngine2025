@@ -47,7 +47,7 @@ namespace TestMapEditor
 #pragma region // forward declaration
 	class Test;
 	struct PropPlacementContext;
-	class PropPlacementSystem;
+	class PropPlacementTool;
 	class PropMap;
 	class WorldMap;
 #pragma endregion
@@ -146,6 +146,7 @@ namespace TestMapEditor
 	struct TileDefinition
 	{
 		std::unique_ptr<IRenderable> renderable = nullptr;
+		TileConstraint constraint;
 	};
 #pragma endregion
 
@@ -178,6 +179,12 @@ namespace TestMapEditor
 		{
 			return m_index;
 		}
+
+		const TileConstraint GetConstraint() const
+		{
+			return IsValid() ? m_tileDefinition->constraint : TileConstraint::NONE;
+		}
+
 	};
 #pragma endregion
 
@@ -298,6 +305,7 @@ namespace TestMapEditor
 			m_map.Reserve(size);
 		}
 
+		// remove all tiles, reducing the grid's size (width and height) to 0,0
 		void Clear()
 		{
 			m_map.Clear();
@@ -812,7 +820,8 @@ namespace TestMapEditor
 
 		void Set(const Coord& c, int index)
 		{
-			m_grid.Set(c, m_set->MakeTile(index));
+			TileHandle tile = m_set->MakeTile(index);
+			m_grid.Set(c, tile);
 		}
 
 		bool IsInBounds(const Coord& c) const
@@ -2692,8 +2701,8 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // PropPlacementSystem
-	class PropPlacementSystem
+#pragma region // PropPlacementTool
+	class PropPlacementTool
 	{
 	private:
 	public:
@@ -2704,7 +2713,7 @@ namespace TestMapEditor
 			std::vector<Coord> boundingTiles;
 		};
 
-		PropPlacementSystem()
+		PropPlacementTool()
 		{
 		}
 
@@ -2771,13 +2780,13 @@ namespace TestMapEditor
 			RectF footprint = prop->GetScaledFootprintWorld(worldPosition);
 
 			// given the footprint, extract all the coords that intersects with footprint and their corresponding tile constraint value after footprint is placed
-			Dictionary<Coord, TileConstraint> constraintsPerCoord = BuildConstraints(world, footprint);
+			Dictionary<Coord, TileConstraint> footprintTiles = BuildConstraints(world, footprint);
 
 			// iterate through each cells the prop overlapped. we will check if the props in these cells are overlapped by the new prop
 			std::unordered_set<Prop*> toEvict;
-			for (auto& constraintsPerCell : constraintsPerCoord)
+			for (auto& tileToConstraint : footprintTiles)
 			{
-				Coord coord = constraintsPerCell.first;
+				Coord coord = tileToConstraint.first;
 
 				// store in result
 				result.occupiedTiles.push_back(coord);
@@ -2786,10 +2795,10 @@ namespace TestMapEditor
 				// each coord is occupied by existing prop, and these props have their corresponding tile constraint in this coord
 				// we then compare the tile constraint of existing prop in this coord to the new tile constraint when footprint is applied
 				// if these tile constraints overlaps (any constraint bits are both high), the prop
-				world.ForEachFootprint(coord, [constraintsPerCell, &toEvict](Prop* prop, TileConstraint constraint)
+				world.ForEachFootprint(coord, [tileToConstraint, &toEvict](Prop* prop, TileConstraint constraint)
 					{
 						// if they overlap, we will remove this prop
-						TileConstraint tc = constraintsPerCell.second & constraint;
+						TileConstraint tc = tileToConstraint.second & constraint;
 						if (tc != TileConstraint::NONE)
 						{
 							toEvict.insert(prop);
@@ -2826,7 +2835,7 @@ namespace TestMapEditor
 			prop->worldPosition = worldPosition;
 
 			// add the actual object into our object layer
-			world.InsertProp(std::move(prop), world.GetTransform().WorldToTileCoord(worldPosition), boundingBoxTiles, constraintsPerCoord);
+			world.InsertProp(std::move(prop), world.GetTransform().WorldToTileCoord(worldPosition), boundingBoxTiles, footprintTiles);
 
 			result.success = true;
 			return result;
@@ -2890,7 +2899,7 @@ namespace TestMapEditor
 		}
 
 		// brush tool places the current active prop in the world at given position in the world.
-		PropPlacementSystem::Result Paint(WorldMap& world, const PositionF& worldPosition) const
+		PropPlacementTool::Result Paint(WorldMap& world, const PositionF& worldPosition) const
 		{
 			// gets the animation set from asset based on the brush
 			// this is strict. if animation set does not exist in cache, this will throw
@@ -2902,13 +2911,13 @@ namespace TestMapEditor
 			std::unique_ptr<Prop> prop = PropFactory::Create(m_currentBrush, animSet);
 
 			// delegate placement on placement system
-			return PropPlacementSystem::Place(world, std::move(prop), worldPosition);
+			return PropPlacementTool::Place(world, std::move(prop), worldPosition);
 		}
 
 		// erase top-most prop from the world at given position in the world
 		bool Erase(WorldMap& world, const PositionF& worldPosition)
 		{
-			return PropPlacementSystem::Remove(world, worldPosition);
+			return PropPlacementTool::Remove(world, worldPosition);
 		}
 	};
 
@@ -3487,44 +3496,49 @@ namespace TestMapEditor
 
 #pragma endregion
 
-#pragma region // PropData
-	struct PropData
-	{
-		// Identity / reconstruction
-		std::string animationSet;
-		std::string animation;
-
-		// Transform / placement
-		PositionF worldPosition;
-		VecF scale;
-		ColorF color;
-
-		// Spatial definition (important for rebuild consistency)
-		RectF footprint;
-		RectF boundingBox;
-	};
-#pragma endregion
-
 #pragma region // WorldMapFile
-	struct TerrainLayerData
-	{
-		std::string name;
-		std::string tileset;
-		std::vector<int32_t> tiles;
-	};
-
-	struct WorldMapData
-	{
-		PositionF position;
-		Size<size_t> size;
-		SizeF tilesize;
-		std::vector<TerrainLayerData> terrains;
-		std::vector<PropData> props;
-	};
-
+	// TODO:
+	// BIG ONE. this works. but its a big pile of soup. needs refactoring. but will do it later.
+	// this is a self contained system that does one thing (or 2) so i can leave it alone for now.
+	// what i can do now is observe for unexpected behaviors and errors
 	class WorldMapFile
 	{
 	private:
+		// prop data structure for serializing
+		struct PropData
+		{
+			// Identity / reconstruction
+			std::string animationSet;
+			std::string animation;
+
+			// Transform / placement
+			PositionF worldPosition;
+			VecF scale;
+			ColorF color;
+
+			// Spatial definition (important for rebuild consistency)
+			RectF footprint;
+			RectF boundingBox;
+		};
+
+		// terrain layer data structure for serializing
+		struct TerrainLayerData
+		{
+			std::string name;
+			std::string tileset;
+			std::vector<int32_t> tiles;
+		};
+
+		// worldmap structure for serializing
+		struct WorldMapData
+		{
+			PositionF position;
+			Size<size_t> size;
+			SizeF tilesize;
+			std::vector<TerrainLayerData> terrains;
+			std::vector<PropData> props;
+		};
+
 		// this method will parse the data from line. since we expect data from CSV file, we assume delimiter is a ','
 		// in this parser, we take whatever data between delimiter as the data and store it as std::string
 		static std::vector<std::string> ParseLine(const std::string& line, char delimiter)
@@ -3987,38 +4001,26 @@ namespace TestMapEditor
 			// ------------------------------------------------------------
 			// Load props
 			// ------------------------------------------------------------
-			//PropBrushTool propBrushTool;
 
-			//for (const PropData& p : data.props)
-			//{
-			//	// 1. build brush from data
-			//	PropBrush brush = ToPropBrush(p);
-			//	brush.animationSet = p.animationSet;
-			//	brush.animation = p.animation;
-			//	brush.scale = p.scale;
-			//	brush.color = p.color;
-			//	brush.footprint = p.footprint;
-			//	brush.boundingBox = p.boundingBox;
+			for (const PropData& p : data.props)
+			{
+				// 1. build brush from data
+				PropBrush brush = ToPropBrush(p);
 
-			//	// 2. create brush tool and set active brush
-			//	PropBrushTool brushTool;
-			//	brushTool.Register("current", brush);
-			//	brushTool.Set("current");
+				// 2. get animation set from assets
+				if (!assets.Has<AnimationSet<Sprite>>(p.animationSet))
+				{
+					// let's be strict here. if animation set does not exist. throw
+					throw std::runtime_error("animation set not available");
+				}
+				const auto& animSet =  assets.Get<AnimationSet<Sprite>>(p.animationSet);
 
-			//	// 3. get animation set from assets
-			//	if (!assets.Has<AnimationSet<Sprite>>(p.animationSet))
-			//	{
-			//		// let's be strict here. if animation set does not exist. throw
-			//		throw std::runtime_error("animation set not available");
-			//	}
-			//	const auto& animSet =  assets.Get<AnimationSet<Sprite>>(p.animationSet);
+				// 3. create prop using factory (single source of truth)
+				std::unique_ptr<Prop> prop = PropFactory::Create(brush, animSet);
 
-			//	// 4. create prop using factory (single source of truth)
-			//	std::unique_ptr<Prop> prop = PropFactory::Create(brush, animSet);
-
-			//	// 5. place using EXISTING placement system. 
-			//	brushTool.Paint(world, std::move(prop), p.worldPosition);
-			//}
+				// 4. place using EXISTING placement system. 
+				PropPlacementTool::Place(world, std::move(prop), p.worldPosition);
+			}
 
 			return true;
 		}
@@ -4109,7 +4111,7 @@ namespace TestMapEditor
 		TerrainGrid m_finegrid;
 
 		PropBrushTool m_propBrushTool;
-		PropPlacementSystem m_propPlacer;
+		PropPlacementTool m_propPlacer;
 
 		PositionF m_mousePos;
 
@@ -4952,7 +4954,7 @@ namespace TestMapEditor
 					{
 						m_propBrushTool.Set("normal_pine_tree");
 						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
-						PropPlacementSystem::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
+						PropPlacementTool::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
 
 						// what tiles did this tree occupied? we should place grass tiles. 
 						// get the tiles this tree occupied
@@ -4968,7 +4970,7 @@ namespace TestMapEditor
 					{
 						m_propBrushTool.Set("normal_castle");
 						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
-						PropPlacementSystem::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
+						PropPlacementTool::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
 
 						for (const Coord& coord : result.occupiedTiles)
 						{
@@ -4981,7 +4983,7 @@ namespace TestMapEditor
 					{
 						m_propBrushTool.Set("normal_water_rocks");
 						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
-						PropPlacementSystem::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
+						PropPlacementTool::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
 
 						for (const Coord& coord : result.occupiedTiles)
 						{
@@ -5370,7 +5372,7 @@ namespace TestMapEditor
 					{
 						m_propBrushTool.Set("normal_pine_tree");
 						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
-						PropPlacementSystem::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
+						PropPlacementTool::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
 
 						// what tiles did this tree occupied? we should place grass tiles. 
 						// get the tiles this tree occupied
@@ -5386,7 +5388,7 @@ namespace TestMapEditor
 					{
 						m_propBrushTool.Set("normal_castle");
 						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
-						PropPlacementSystem::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
+						PropPlacementTool::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
 
 						for (const Coord& coord : result.occupiedTiles)
 						{
@@ -5399,7 +5401,7 @@ namespace TestMapEditor
 					{
 						m_propBrushTool.Set("normal_water_rocks");
 						PositionF worldPos = m_camera.ScreenToWorld(m_lastMousePos);
-						PropPlacementSystem::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
+						PropPlacementTool::Result result = m_propBrushTool.Paint(m_worldMap, worldPos);
 
 						for (const Coord& coord : result.occupiedTiles)
 						{
