@@ -184,7 +184,6 @@ namespace TestMapEditor
 		{
 			return IsValid() ? m_tileDefinition->constraint : TileConstraint::NONE;
 		}
-
 	};
 #pragma endregion
 
@@ -259,7 +258,7 @@ namespace TestMapEditor
 			return m_map.Get(row, col);
 		}
 
-		const Tile Get(int row, int col) const
+		Tile Get(int row, int col) const
 		{
 			return m_map.Get(row, col);
 		}
@@ -271,7 +270,7 @@ namespace TestMapEditor
 		}
 
 		// retrieves the data at Coord
-		const Tile Get(const engine::spatial::Coord& coord) const
+		Tile Get(const engine::spatial::Coord& coord) const
 		{
 			return m_map.Get(coord.row, coord.col);
 		}
@@ -390,8 +389,6 @@ namespace TestMapEditor
 				}
 			}
 		}
-
-
 #pragma endregion
 
 	};
@@ -463,9 +460,6 @@ namespace TestMapEditor
 			);
 		}
 	};
-
-
-
 #pragma endregion
 
 #pragma region // AutoTileSystem
@@ -886,14 +880,14 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // TerrainLayerAutoTileAdapter
-	class TerrainLayerAutoTileAdapter//: public IAutoTileAdapter
+#pragma region // TerrainAutoTileAdapter
+	class TerrainAutoTileAdapter//: public IAutoTileAdapter
 	{
 	private:
 		TerrainLayer& layer;
 
 	public:
-		TerrainLayerAutoTileAdapter(TerrainLayer& l) :
+		TerrainAutoTileAdapter(TerrainLayer& l) :
 			layer(l)
 		{
 		}
@@ -995,14 +989,14 @@ namespace TestMapEditor
 			return m_layers.Has(key);
 		}
 
-		TerrainLayerAutoTileAdapter GetAutoTileAdapter(const std::string& key) const
+		TerrainAutoTileAdapter GetAutoTileAdapter(const std::string& key) const
 		{
 			if (!Has(key))
 			{
 				throw std::runtime_error("no layer found");
 			}
 
-			return TerrainLayerAutoTileAdapter(*m_layers.Get(key));
+			return TerrainAutoTileAdapter(*m_layers.Get(key));
 		}
 
 		Tile Get(const std::string& key, const Coord& coord) const
@@ -2016,11 +2010,11 @@ namespace TestMapEditor
 			m_BoundingBoxGrid.ForEachObject(coord, func);
 		}
 
-		//template<typename Func>
-		//void ForEachFootprintTile(const Prop* prop, const Func& func) const
-		//{
-		//	m_FootPrintGrid.ForEachCell(prop, func);
-		//}
+		template<typename Func>
+		void ForEachFootprintTile(const Prop* prop, const Func& func) const
+		{
+			m_FootPrintGrid.ForEachCell(prop, func);
+		}
 
 		std::vector<Coord> GetOccupiedFootprintTiles(const Prop* prop) const
 		{
@@ -2140,10 +2134,14 @@ namespace TestMapEditor
 	class WorldMap
 	{
 	private:
+#pragma region // parameters
 		WorldTransform m_worldTransform;		
 		PropMap m_propMap;
 		TerrainMap m_terrainMap;
 		NavigationGrid m_navigationGrid;
+#pragma endregion
+
+#pragma region // event handlers for updating navigation grid
 
 		// this method will resolve the cumulative tile constraint of given coord
 		// it will combine the tile constraints of all active terrain layer and props in the coord 
@@ -2193,19 +2191,36 @@ namespace TestMapEditor
 				}
 			}
 		}
+#pragma endregion
 
 	public:
+
+#pragma region // constructors
 		WorldMap()
 		{
 			m_terrainMap.TileChangeEvent += event::Handler(this, &WorldMap::OnTerrainTileChange);
 			m_terrainMap.InitializeEvent += event::Handler(this, &WorldMap::OnTerrainInitialize);
 		}
+#pragma endregion
 
+#pragma region // accessors and queries
 		const WorldTransform& GetTransform() const
 		{
 			return m_worldTransform;
 		}
 
+		bool Has(Prop* prop) const
+		{
+			return m_propMap.Has(prop);
+		}
+
+		std::string GetDebugInfo() const
+		{
+			return m_propMap.GetDebugInfo();
+		}
+#pragma endregion
+
+#pragma region // initialize
 		// clears all the components of world map. all resources are removed - terrains, props, and internal systems like footprint grid
 		// all grids are cleared, meaning their grid sizes are reset to 0,0 and recreated with new size
 		// does not bother to refresh navigation grid because it removes all terrains and props. so it assumes there is no constraints
@@ -2230,6 +2245,42 @@ namespace TestMapEditor
 			
 			return true;
 		}	
+#pragma endregion
+
+#pragma region // mutations
+		void InsertProp(
+			std::unique_ptr<Prop> prop,
+			const Coord& coord,
+			const std::vector<Coord>& boundingBoxCells,
+			const Dictionary<Coord, TileConstraint>& coordToConstraints
+		)
+		{
+			// let's add the prop into prop map
+			m_propMap.Add(std::move(prop), coord, boundingBoxCells, coordToConstraints);
+
+			// now that the new prop is added, let's refresh the navigation grid's coords this prop's footprint occupied
+			// these coords should have new constraints now that the new prop is placed
+			for (auto& kvp : coordToConstraints)
+			{
+				RefreshNavigationGrid(kvp.first);
+			}
+		}
+
+		void RemoveProp(Prop* prop)
+		{
+			// find cells in footprint grid this prop occupies
+			std::vector<Coord> coords = m_propMap.GetOccupiedFootprintTiles(prop);
+
+			// remove the prop
+			m_propMap.Remove(prop);
+
+			// now the prop is gone from the map, but we know which cells in footprint grid it occupied before...
+			// so we refresh them
+			for (const Coord& coord : coords)
+			{
+				RefreshNavigationGrid(coord);
+			}
+		}
 
 		// WARNING: this is an expensive method. 
 		// removes all the props in the map. it will also refresh the navigation grid 
@@ -2248,6 +2299,8 @@ namespace TestMapEditor
 				RefreshNavigationGrid(coord);
 			}
 		}
+#pragma endregion
+
 #pragma region // bounds check
 		bool IsInBounds(int row, int col) const
 		{
@@ -2315,34 +2368,21 @@ namespace TestMapEditor
 		}
 #pragma endregion
 
-		template<typename Func>
-		void ForEachTileConstraint(int row, int col, const Func& func)
-		{
-			m_propMap.ForEachTileConstraint(row, col, func);
-		}
-
-		template<typename Func>
-		void ForEachTileConstraint(int row, int col, const Func& func) const
-		{
-			m_propMap.ForEachTileConstraint(row, col, func);
-		}
-
-		std::string GetDebugInfo() const
-		{
-			return m_propMap.GetDebugInfo();
-		}
-		
-		bool Has(Prop* prop) const
-		{
-			return m_propMap.Has(prop);
-		}
-
+#pragma region // iteration with footprint grid
+		// access props occupying a given coord in footprint grid. 
+		// used in placement tool where it finds props occupying a given coord to check if 
+		// a new prop to place overlaps existing props
 		template<typename Func>
 		void ForEachPropInFootPrint(const Coord& coord, const Func& func)
 		{
 			m_propMap.ForEachPropInFootPrint(coord, func);
 		}
+#pragma endregion
 
+#pragma region // iteration with bounding box grid
+		// access props occupying a given coord in bounding box grid. 
+		// used in selection tool where it finds props occupying a given coord to check 
+		// props for selection or top selection
 		template<typename Func>
 		void ForEachPropInBoundingBox(const Coord& coord, const Func& func)
 		{
@@ -2354,41 +2394,9 @@ namespace TestMapEditor
 		{
 			m_propMap.ForEachPropInBoundingBox(coord, func);
 		}
+#pragma endregion
 
-		void InsertProp(
-			std::unique_ptr<Prop> prop, 
-			const Coord& coord, 
-			const std::vector<Coord>& boundingBoxCells,
-			const Dictionary<Coord, TileConstraint>& coordToConstraints
-		)
-		{
-			// let's add the prop into prop map
-			m_propMap.Add(std::move(prop), coord, boundingBoxCells, coordToConstraints);
-
-			// now that the new prop is added, let's refresh the navigation grid's coords this prop's footprint occupied
-			// these coords should have new constraints now that the new prop is placed
-			for (auto& kvp : coordToConstraints)
-			{
-				RefreshNavigationGrid(kvp.first);
-			}
-		}
-
-		void RemoveProp(Prop* prop)
-		{
-			// find cells in footprint grid this prop occupies
-			std::vector<Coord> coords = m_propMap.GetOccupiedFootprintTiles(prop);
-
-			// remove the prop
-			m_propMap.Remove(prop);
-
-			// now the prop is gone from the map, but we know which cells in footprint grid it occupied before...
-			// so we refresh them
-			for (const Coord& coord : coords)
-			{
-				RefreshNavigationGrid(coord);
-			}
-		}
-
+#pragma region // safe query of position of a prop in the world, if this prop exists
 		// try to get tile coordinate of a given prop. if prop is invalid, return false
 		bool TryGetCoord(Prop* prop, spatial::Coord& coord) const
 		{
@@ -2406,57 +2414,76 @@ namespace TestMapEditor
 			position = prop->GetWorldPosition();
 			return true;
 		}
+#pragma endregion
 
+#pragma region // terrain
+		// mutate terrain map 
 		void AddTerrain(const std::string& key, const TerrainSet& set, int tileIndex)
 		{
 			m_terrainMap.Add(key, GetTransform().GetSize(), set, tileIndex);
 		}
 
+		// check if this terrain exists
 		bool HasTerrain(const std::string& key) const
 		{
 			return m_terrainMap.Has(key);
 		}
 
-		TerrainLayerAutoTileAdapter GetAutoTileAdapter(const std::string& key) const
+		// create adapter for autotiling. this is simply a getter for terrain layer reference
+		TerrainAutoTileAdapter GetAutoTileAdapter(const std::string& key) const
 		{
 			return m_terrainMap.GetAutoTileAdapter(key);
 		}
 
-		template<typename Func>
-		void ForEachTileInTerrain(const std::string& key, const Func& func)
-		{
-			m_terrainMap.ForEach(key, func);
-		}
-
+		// iterates through each terrain layer in terrain map
+		// function signature -> (const std::string& key, const TerrainLayer& layer)
 		template<typename Func>
 		void ForEachTerrain(const Func& func)
 		{
 			m_terrainMap.ForEach(func);
 		}
 
+		// iterates through each terrain layer in terrain map
+		// function signature -> (const std::string& key, const TerrainLayer& layer)
 		template<typename Func>
 		void ForEachTerrain(const Func& func) const 
 		{
 			m_terrainMap.ForEach(func);
 		}
 
+		// queries tile on all coords of a terrain layer specified with key
+		// function signature -> (int row, int col, Tile tile)
 		template<typename Func>
 		void ForEachTileInTerrain(const std::string& key, const Func& func) const
 		{
 			m_terrainMap.ForEach(key, func);
 		}
 
+		// queries tile on all coords of a terrain layer specified with key
+		// function signature -> (int row, int col, Tile tile)
+		template<typename Func>
+		void ForEachTileInTerrain(const std::string& key, const Func& func)
+		{
+			m_terrainMap.ForEach(key, func);
+		}
+
+		// queries tile for each coord given range of coord tl (top-left) and br (bottom-right)
+		// function signature -> (int row, int col, Tile tile)
 		template<typename Func>
 		void ForEachTileInTerrain(const std::string& key, const Coord& tl, const Coord& br, const Func& func)
 		{
 			m_terrainMap.ForEach(key, tl, br, func);
 		}
 
+		// queries tile for each coord given range of coord tl (top-left) and br (bottom-right)
+		// function signature -> (int row, int col, Tile tile)
 		template<typename Func>
 		void ForEachTileInTerrain(const std::string& key, const Coord& tl, const Coord& br, const Func& func) const
 		{
 			m_terrainMap.ForEach(key, tl, br, func);
 		}
+
+#pragma endregion
 
 	};
 #pragma endregion
@@ -2489,7 +2516,7 @@ namespace TestMapEditor
 			}
 			if (m_currentBrush.config != nullptr)
 			{
-				AutoTileSystem::AutoTileContext<TerrainLayerAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
+				AutoTileSystem::AutoTileContext<TerrainAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
 				AutoTileSystem ats;
 				ats.Set(context, *m_currentBrush.config, coord);
 			}
@@ -2519,7 +2546,7 @@ namespace TestMapEditor
 
 			if (m_currentBrush.config != nullptr)
 			{
-				AutoTileSystem::AutoTileContext<TerrainLayerAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
+				AutoTileSystem::AutoTileContext<TerrainAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
 				AutoTileSystem ats;
 				ats.Remove(context, *m_currentBrush.config, coord);
 			}
@@ -2584,8 +2611,8 @@ namespace TestMapEditor
 
 					int targetIndex = link.ToTarget(e.index);
 
-					TerrainLayerAutoTileAdapter adapter = m_world.GetAutoTileAdapter(link.targetBrush.layer);
-					AutoTileSystem::AutoTileContext<TerrainLayerAutoTileAdapter> context{ adapter };
+					TerrainAutoTileAdapter adapter = m_world.GetAutoTileAdapter(link.targetBrush.layer);
+					AutoTileSystem::AutoTileContext<TerrainAutoTileAdapter> context{ adapter };
 					context.applyTile(e.coord, targetIndex);
 				});
 		}
@@ -2644,7 +2671,7 @@ namespace TestMapEditor
 			}
 
 			// set adapter for current layer
-			AutoTileSystem::AutoTileContext<TerrainLayerAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
+			AutoTileSystem::AutoTileContext<TerrainAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
 
 			// create autotilesystem
 			AutoTileSystem ats;
@@ -2679,7 +2706,7 @@ namespace TestMapEditor
 			}
 
 			// set adapter for current layer
-			AutoTileSystem::AutoTileContext<TerrainLayerAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
+			AutoTileSystem::AutoTileContext<TerrainAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
 
 			// create autotilesystem
 			AutoTileSystem ats;
@@ -2715,7 +2742,7 @@ namespace TestMapEditor
 			}
 
 			// set adapter for current layer
-			AutoTileSystem::AutoTileContext<TerrainLayerAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
+			AutoTileSystem::AutoTileContext<TerrainAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
 
 			// create autotilesystem
 			AutoTileSystem ats;
@@ -2745,7 +2772,7 @@ namespace TestMapEditor
 			}
 
 			// set adapter for current layer
-			AutoTileSystem::AutoTileContext<TerrainLayerAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
+			AutoTileSystem::AutoTileContext<TerrainAutoTileAdapter> context{ world.GetAutoTileAdapter(m_currentBrush.layer) };
 
 			// create autotilesystem
 			AutoTileSystem ats;
@@ -2941,7 +2968,7 @@ namespace TestMapEditor
 			return constraintsPerCoord;
 		}
 
-		static Result Place(WorldMap& world, std::unique_ptr<Prop> prop, const PositionF& worldPosition)
+		static Result Place(WorldMap& world, std::unique_ptr<Prop> prop, const PositionF& worldPosition, bool evictOverlaps = true)
 		{
 			Result result;
 
@@ -2972,30 +2999,6 @@ namespace TestMapEditor
 			// given the footprint, extract all the coords that intersects with footprint and their corresponding tile constraint value after footprint is placed
 			Dictionary<Coord, TileConstraint> footprintTiles = BuildConstraints(world, footprint);
 
-			// iterate through each cells the prop overlapped. we will check if the props in these cells are overlapped by the new prop
-			std::unordered_set<Prop*> toEvict;
-			for (auto& tileToConstraint : footprintTiles)
-			{
-				Coord coord = tileToConstraint.first;
-
-				// store in result
-				result.occupiedTiles.push_back(coord);
-
-				// what we're doing here is we are comparing each of the coord in map that the footprint intersected. 
-				// each coord is occupied by existing prop, and these props have their corresponding tile constraint in this coord
-				// we then compare the tile constraint of existing prop in this coord to the new tile constraint when footprint is applied
-				// if these tile constraints overlaps (any constraint bits are both high), the prop
-				world.ForEachPropInFootPrint(coord, [tileToConstraint, &toEvict](Prop* prop, TileConstraint constraint)
-					{
-						// if they overlap, we will remove this prop
-						TileConstraint tc = tileToConstraint.second & constraint;
-						if (tc != TileConstraint::NONE)
-						{
-							toEvict.insert(prop);
-						}
-					});
-			}
-
 			// get the cells in the map where the bounding box of this prop overlaps
 			RectF boundingBox = prop->GetScaledBoundingBoxWorld(worldPosition, true);
 			std::vector<Coord> boundingBoxTiles = QueryCoords(boundingBox, world.GetTransform().GetTileSize());
@@ -3006,11 +3009,38 @@ namespace TestMapEditor
 			// --------------------------------------------------------------------------------
 			// REMOVE OVERLAPS (RULE)
 			// --------------------------------------------------------------------------------
-
-			// remove props overlapped by new prop
-			for (Prop* prop : toEvict)
+			if (evictOverlaps)
 			{
-				world.RemoveProp(prop);
+
+				// iterate through each cells the prop overlapped. we will check if the props in these cells are overlapped by the new prop
+				std::unordered_set<Prop*> toEvict;
+				for (auto& tileToConstraint : footprintTiles)
+				{
+					Coord coord = tileToConstraint.first;
+
+					// store in result
+					result.occupiedTiles.push_back(coord);
+
+					// what we're doing here is we are comparing each of the coord in map that the footprint intersected. 
+					// each coord is occupied by existing prop, and these props have their corresponding tile constraint in this coord
+					// we then compare the tile constraint of existing prop in this coord to the new tile constraint when footprint is applied
+					// if these tile constraints overlaps (any constraint bits are both high), the prop
+					world.ForEachPropInFootPrint(coord, [tileToConstraint, &toEvict](Prop* prop, TileConstraint constraint)
+						{
+							// if they overlap, we will remove this prop
+							TileConstraint tc = tileToConstraint.second & constraint;
+							if (tc != TileConstraint::NONE)
+							{
+								toEvict.insert(prop);
+							}
+						});
+				}
+
+				// remove props overlapped by new prop
+				for (Prop* prop : toEvict)
+				{
+					world.RemoveProp(prop);
+				}
 			}
 
 			// --------------------------------------------------------------------------------
@@ -3114,82 +3144,6 @@ namespace TestMapEditor
 #pragma endregion
 
 #pragma region // Draw function utilities
-	void DrawNavigationGridOverlay(
-		IRenderer& renderer,
-		const WorldMap& map
-	)
-	{
-		struct SubCellOffset
-		{
-			int row;
-			int col;
-			TileConstraint bit;
-		};
-
-		static const SubCellOffset offsets[9] =
-		{
-			{ 0, 0, TileConstraint::NW },
-			{ 0, 1, TileConstraint::N  },
-			{ 0, 2, TileConstraint::NE },
-
-			{ 1, 0, TileConstraint::W  },
-			{ 1, 1, TileConstraint::CENTER },
-			{ 1, 2, TileConstraint::E  },
-
-			{ 2, 0, TileConstraint::SW },
-			{ 2, 1, TileConstraint::S  },
-			{ 2, 2, TileConstraint::SE }
-		};
-
-		SizeF subTileSize(map.GetTransform().GetTileSize().width / 3.0f, map.GetTransform().GetTileSize().height / 3.0f);
-
-		// visual tweak (same as yours)
-		VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
-		SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
-
-		for (int row = 0; row < (int)map.GetTransform().GetSize().height; ++row)
-		{
-			for (int col = 0; col < (int)map.GetTransform().GetSize().width; ++col)
-			{
-				map.ForEachTileConstraint(row, col, [row, col, &map, subTileSize, shift, overlaySize, &renderer](TileConstraint constraint)
-					{
-						// skip empty tiles early (fast path)
-						if (constraint == TileConstraint::NONE) return;
-
-						// top-left of this tile in world space
-						PositionF tileWorldPos = CoordToPosition({ row, col }, map.GetTransform().GetTileSize()) + map.GetTransform().GetPosition();
-
-						// iterate 3x3 subcells
-						for (const auto& offset : offsets)
-						{
-							// for this subcell, check if its corresponding constraint bit is set. if not, skip						
-							if (!HasFlag(constraint, offset.bit))
-							{
-								continue;
-							}
-
-							// compute subcell position
-							PositionF subCellPos = tileWorldPos;
-							subCellPos.x += offset.col * subTileSize.width;
-							subCellPos.y += offset.row * subTileSize.height;
-
-							// apply shift. we're rendering a rectangle smaller than the actual size of the subcell so we shift it a bit to center it
-							subCellPos += shift;
-
-							// draw
-							renderer.Draw(
-								subCellPos,
-								overlaySize,
-								{ 0, 0, 0, 0.5f },
-								0.0f
-							);
-						}
-					}
-				);
-			}
-		}
-	}
-
 	void DrawNavigationGridOverlay(
 		IRenderer& renderer,
 		const NavigationGrid& navGrid,
@@ -4330,8 +4284,8 @@ namespace TestMapEditor
 				// 3. create prop using factory (single source of truth)
 				std::unique_ptr<Prop> prop = PropFactory::Create(brush, animSet);
 
-				// 4. place using EXISTING placement system. 
-				PropPlacementTool::Place(world, std::move(prop), p.worldPosition);
+				// 4. place using EXISTING placement system. do not remove overlap as floating point inaccuracy can cause props to overlap
+				PropPlacementTool::Place(world, std::move(prop), p.worldPosition, false);
 			}
 
 			return true;
@@ -4408,225 +4362,6 @@ namespace TestMapEditor
 			}
 		}
 
-	};
-#pragma endregion
-
-#pragma region // PropEditorScene scene
-	class PropEditorScene : public Scene
-	{
-	private:
-		StateMachine m_stateMachine;
-		AssetManager m_assets;
-		WorldMap m_worldMap;
-
-		TerrainGrid m_tilegrid;
-		TerrainGrid m_finegrid;
-
-		PropBrushTool m_propBrushTool;
-		PropPlacementTool m_propPlacer;
-
-		PositionF m_mousePos;
-
-		bool m_showDebug = true;
-
-		PropBrush NormalBirchTree{ "birchtree_anim_set",	"birch_tree_idle",	VecF{1.0f, 1.0f}, ColorF{1,1,1,1}, RectF{0.47f, 0.8f, 0.53f, 0.85f}, RectF{0.27f, 0.12f, 0.73f, 0.87f} };
-		PropBrush NormalPineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{1.0f, 1.0f}, ColorF{1,1,1,1},RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.2f, 0.2f, 0.8f, 0.92f} };
-		PropBrush NormalCastle{ "castle_anim_set", "castle_idle",	VecF{1.0f, 1.0f}, ColorF{1,1,1,1}, RectF{0.05f, 0.6f, 0.95f, 0.90f}, RectF{0.05f, 0.2f, 0.95f, 0.9f} };
-		PropBrush LargePineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{1.5f, 1.5f}, ColorF{1,1,1,1}, RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-		PropBrush LargeBirchTree{ "birchtree_anim_set",	"birch_tree_idle",	VecF{1.5f, 1.5f}, ColorF{1,1,1,1}, RectF{0.47f, 0.8f, 0.53f, 0.85f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-		PropBrush LargeCastle{ "castle_anim_set", "castle_idle",	VecF{1.5f, 1.5f}, ColorF{1,1,1,1}, RectF{0.05f, 0.6f, 0.95f, 0.90f}, RectF{0.05f, 0.2f, 0.95f, 0.9f} };
-		PropBrush LargeWaterRocks{ "water_rocks_anim_set",	"water_rocks_idle",	VecF{2.0f, 2.0f}, ColorF{1,1,1,1}, RectF{0.1f,0.4f,0.9f,0.8f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-		PropBrush SmallPineTree{ "pinetree_anim_set",	"pine_tree_idle",	VecF{0.5f, 0.5f}, ColorF{1,1,1,1}, RectF{0.38f, 0.8f, 0.62f, 0.92f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-		PropBrush SmallBirchTree{ "birchtree_anim_set",	"birch_tree_idle",	VecF{0.5f, 0.5f}, ColorF{1,1,1,1}, RectF{0.47f, 0.8f, 0.53f, 0.85f}, RectF{0.1f, 0.1f, 0.9f, 0.9f} };
-
-	public:
-		void OnEnter() override
-		{
-			// register our brushes
-			m_propBrushTool.Register("normal_pine_tree", NormalPineTree);
-			m_propBrushTool.Register("normal_birch_tree", NormalBirchTree);
-			m_propBrushTool.Register("normal_castle", NormalCastle);
-			m_propBrushTool.Register("large_pine_tree", LargePineTree);
-			m_propBrushTool.Register("large_birch_tree", LargeBirchTree);
-			m_propBrushTool.Register("large_castle", LargeCastle);
-			m_propBrushTool.Register("small_pine_tree", SmallPineTree);
-			m_propBrushTool.Register("small_birch_tree", SmallBirchTree);
-			m_propBrushTool.Register("large_water_rocks", LargeWaterRocks);
-
-			// set placement tool default placement
-			m_propBrushTool.Set("normal_pine_tree");
-
-			// initialize the world
-			m_worldMap.Initialize(m_assets.Get<PositionF>("map_position"), m_assets.Get<Size<size_t>>("map_size"), m_assets.Get<SizeF>("tile_size"));
-
-			// initialize grids
-			auto& terrainSet = m_assets.Get<TerrainSet>("grass_tileset");
-			m_tilegrid.Initialize(m_worldMap.GetTransform().GetSize(), terrainSet.MakeTile(13));
-			m_finegrid.Initialize(m_worldMap.GetTransform().GetSize(), terrainSet.MakeTile(22));
-		}
-
-		void OnUpdate(double dt) override
-		{
-			m_stateMachine.OnUpdate(dt);
-
-			// this is for debugging only. validate every frame to ensure our containers are in good state
-			m_worldMap.Validate();
-		}
-
-		void OnKeyDown(int key) override
-		{
-			m_stateMachine.OnKeyDown(key);
-
-			switch (key)
-			{
-			case 9: // TAB
-				break;
-			case 27: // ESC
-				break;
-			case 32: // SPACE
-				m_showDebug = !m_showDebug;
-				break;
-			case 49: // 1
-				m_propBrushTool.Set("normal_pine_tree");
-				break;
-			case 50: // 2
-				m_propBrushTool.Set("normal_birch_tree");
-				break;
-			case 51: // 3 
-				m_propBrushTool.Set("normal_castle");
-				break;
-			case 52: // 4
-				break;
-			case 53: // 5
-				break;
-			case 54: // 6
-				break;
-			case 55: // 7
-			{
-				break;
-			}
-			case 56: // 8
-			{
-				break;
-			}
-			case 57: // 9
-			{
-				break;
-			}
-
-			default:
-				break;
-			}
-		}
-
-		void OnMouseMove(int x, int y) override
-		{
-			m_mousePos = PositionF((float)x, (float)y);
-		}
-
-		void OnMouseUp(int btn, int x, int y) override
-		{
-		}
-
-		void OnMouseDown(int btn, int x, int y) override
-		{
-			m_stateMachine.OnMouseDown(btn, x, y);
-
-			m_mousePos = PositionF((float)x, (float)y);
-
-			// calculate the coord in map the mouse cursor intersect with
-			auto& mapPos = m_assets.Get<PositionF>("map_position");
-			auto& tilesize = m_assets.Get<SizeF>("tile_size");
-
-			PositionF pos = m_mousePos;
-			Coord coord = PositionToCoord(pos - mapPos, tilesize);
-
-			auto& config = m_assets.Get<AutoTileSystem::AutoTileConfig>("grass_tile_auto_config");
-			auto& splashAnimLookup = m_assets.Get<Dictionary<TileVariant, int>>("splash_anim_tile_lookup");
-
-			// left click to place grass tile
-			if (btn == 1)
-			{
-				m_propBrushTool.Paint(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
-
-				return;
-			}
-			// right click to remove tile
-			else if (btn == 2)
-			{
-				// immediate goal is to find the top-most object that intersects with the mouse cursor in this cell and remove it.
-				m_propBrushTool.Erase(m_worldMap, m_worldMap.GetTransform().ScreenToWorld(m_mousePos));
-
-				return;
-			}
-		}
-
-		void OnRender() override
-		{
-			m_stateMachine.OnRender();
-
-			// draw tiles in order of their depth (Y) so that tiles with higher Y (lower on the screen) are drawn after 
-			// tiles with lower Y (higher on the screen) to create proper overlapping. props will be drawn in between floor 
-			// and edge tiles based on their tile constraint, so we draw all floor and edge tiles first, then props, 
-			// then debug constraint indicators
-
-			DrawSortedSpritesCommand& drawCommand = m_assets.Get<DrawSortedSpritesCommand>("drawCommand");
-			drawCommand.Clear();
-			auto& tilesize = m_assets.Get<SizeF>("tile_size");
-			auto& mapPos = m_assets.Get<PositionF>("map_position");
-
-			Size<size_t> mapSize = m_worldMap.GetTransform().GetSize();
-			for (int row = 0; row < (int)mapSize.height; row++)
-			{
-				for (int col = 0; col < (int)mapSize.width; col++)
-				{
-					Coord coord(row, col);
-					PositionF tileScreenPos = CoordToPosition(coord, tilesize) + mapPos;
-
-					m_worldMap.ForEachProp(row, col, [&drawCommand, &mapPos](Prop* prop)
-						{
-							// scale the sprite
-							SizeF size = prop->renderable->GetSprite().GetSize();
-							size.width *= prop->scale.x;
-							size.height *= prop->scale.y;
-
-							PositionF propWorldPos = prop->GetWorldPosition();
-
-							drawCommand.Add({
-								prop->renderable->GetSprite(),		// sprite object to draw
-								propWorldPos + mapPos,			// position
-								size,							// scaled size
-								prop->color,							// color
-								0.0f,							// no rotation
-								1							// depth value for sorting
-								});
-						});
-				}
-			}
-			//m_placementTool.QueuePreviewForDraw(drawCommand, m_mousePos, 1);
-			drawCommand.Sort();
-			drawCommand.Execute();
-
-			if (m_showDebug)
-			{
-				IRenderer& renderer = m_assets.Get<IRenderer>("renderer");
-
-				// draw the tile grid
-				drawCommand.Clear();
-				DrawTerrainGrid(renderer, drawCommand, m_tilegrid, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), { 0,0,0,0.2f });
-				DrawTerrainGrid(renderer, drawCommand, m_finegrid, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), { 0,0,0,0.05f });
-				drawCommand.Sort();
-				drawCommand.Execute();
-
-				DrawNavigationGridOverlay(renderer, m_worldMap);
-
-				std::string msg = m_worldMap.GetDebugInfo();
-
-				renderer.Draw(m_assets.Get<IFontAtlas>("font"), msg, { 400, 5 }, { 1,1,1,1 });
-
-			}
-
-		}
 	};
 #pragma endregion
 
@@ -4813,10 +4548,6 @@ namespace TestMapEditor
 				DrawTerrainGrid(renderer, drawCommand, m_finegrid, m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), { 0,0,0,0.05f });
 				drawCommand.Sort();
 				drawCommand.Execute();
-
-				IRenderer& renderer = m_assets.Get<IRenderer>("renderer");
-
-				DrawNavigationGridOverlay(renderer, m_worldMap);
 			}
 
 		}
@@ -5458,6 +5189,7 @@ namespace TestMapEditor
 		bool m_grid = true;
 		bool m_clipping = true;
 		bool m_alltiles = false;
+		bool m_navigation = true;
 
 		// world data
 		WorldMap m_worldMap;
@@ -5476,7 +5208,7 @@ namespace TestMapEditor
 
 	public:
 		LoadSaveWorldScene() :
-			m_camera({ 100, 100, 900, 700 }),
+			m_camera({ 100, 100, 1000, 800 }),
 			m_lastMousePos(0, 0),
 			m_isPanning(false)
 		{
@@ -5607,6 +5339,12 @@ namespace TestMapEditor
 			case 116: // t
 			{
 				m_alltiles = !m_alltiles;
+				break;
+			}
+			case 78: // N
+			case 110: // n
+			{
+				m_navigation = !m_navigation;
 				break;
 			}
 			default:
@@ -5827,6 +5565,7 @@ namespace TestMapEditor
 			}
 
 			// render navigation overlay
+			if(m_navigation)
 			{
 				DrawNavigationOverlay(renderer, drawCommand, m_camera, m_worldMap, m_alltiles);
 			}
@@ -5850,13 +5589,43 @@ namespace TestMapEditor
 				msg += m_grid ? "grid enabled|" : "grid disabled|";
 				msg += m_clipping ? "clipping enabled|" : "clipping disabled|";
 				msg += m_alltiles ? "all tiles|" : "visible tiles|";
-				renderer.Draw(assets.Get<IFontAtlas>("font"), msg, { 400, 5 }, { 1,1,1,1 });
+				msg += m_navigation ? "navigation enabled|" : "navigation disabled|";
+				renderer.Draw(assets.Get<IFontAtlas>("font"), msg, { 300, 5 }, { 1,1,1,1 });
 			}
 		}
 
 		void OnResize(size_t width, size_t height) override
 		{
 		}
+	};
+#pragma endregion
+
+#pragma region // gui scene
+	class GuiScene : public Scene
+	{
+		PositionF m_mousePos;
+
+	public:
+		void OnEnter() override
+		{
+		}
+
+		void OnMouseMove(int x, int y) override
+		{
+			m_mousePos = PositionF((float)x, (float)y);
+		}
+
+		void OnUpdate(double dt) override
+		{
+
+		}
+
+		void OnRender() override
+		{
+			AssetManager assets;
+			IRenderer& renderer = assets.Get<IRenderer>("renderer");
+		}
+
 	};
 #pragma endregion
 
@@ -6115,13 +5884,13 @@ namespace TestMapEditor
 
 			// initialize scenes
 			{
-				m_sceneManager.CreateScene<PropEditorScene>("Prop");
 				m_sceneManager.CreateScene<DebugScene>("Debug");
 				m_sceneManager.CreateScene<CameraScene>("Camera");
 				m_sceneManager.CreateScene<TerrainEditScene>("Terrain");
 				m_sceneManager.CreateScene<EditWorldCameraScene>("Edit");
 				m_sceneManager.CreateScene<LoadSaveWorldScene>("Save");
-				m_sceneManager.SetActive("Save");
+				m_sceneManager.CreateScene<GuiScene>("ux");
+				m_sceneManager.SetActive("ux");
 			}
 
 			// create draw command for drawing sorted sprites. we will use this for drawing the base layer tiles.
