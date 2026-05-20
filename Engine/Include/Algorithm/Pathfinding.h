@@ -742,18 +742,54 @@ namespace engine::navigation
 #pragma endregion
 
 #pragma region // iteration
-			template<typename Predicate>
-			void ForEach(int row, int col, Predicate func)
+			template<typename Func>
+			void ForEach(int row, int col, const Func& func)
 			{
-				if (!IsInBounds(row, col)) return;
+				// TODO: 
+				// let's be strict for now to catch bugs. but i think this should just filter out invalid coords and skip it.
+				if (!IsInBounds(row, col))
+				{
+					throw std::runtime_error("invalid coord in NavigationGrid::ForEach");
+				}
 				func(m_map.Get(row, col));
 			}
 
-			template<typename Predicate>
-			void ForEach(int row, int col, Predicate func) const
+			template<typename Func>
+			void ForEach(int row, int col, const Func& func) const
 			{
-				if (!IsInBounds(row, col)) return;
+				// TODO: 
+				// let's be strict for now to catch bugs. but i think this should just filter out invalid coords and skip it.
+				if (!IsInBounds(row, col))
+				{
+					throw std::runtime_error("invalid coord in NavigationGrid::ForEach");
+				}
 				func(m_map.Get(row, col));
+			}
+
+			template<typename Func>
+			void ForEach(const Func& func)
+			{
+				engine::spatial::Size<size_t> size = GetSize();
+				for (int row = 0; row < size.height; row++)
+				{
+					for (int col = 0; col < size.width; col++)
+					{
+						ForEach(func);
+					}
+				}
+			}
+
+			template<typename Func>
+			void ForEach(const Func& func) const
+			{
+				engine::spatial::Size<size_t> size = GetSize();
+				for (int row = 0; row < size.height; row++)
+				{
+					for (int col = 0; col < size.width; col++)
+					{
+						ForEach(func);
+					}
+				}
 			}
 #pragma endregion
 

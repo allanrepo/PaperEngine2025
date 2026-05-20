@@ -57,7 +57,7 @@ namespace engine
 			// Used for fast removal and reverse lookup:
 			// "Where is this object located in the grid?"
 			// -------------------------------------------------------------------------
-			engine::container::Dictionary<T*, std::vector<engine::spatial::Coord>> m_objects;
+			engine::container::Dictionary<const T*, std::vector<engine::spatial::Coord>> m_objects;
 
 			// -------------------------------------------------------------------------
 			// Cell → Occupants mapping
@@ -92,7 +92,20 @@ namespace engine
 			}
 
 			// -------------------------------------------------------------------------
-			// size query
+			// bounds check
+			// -------------------------------------------------------------------------
+			bool IsInBounds(const Coord& coord) const
+			{
+				return m_grid.IsInBounds(coord);
+			}
+
+			bool IsInBounds(int row, int col) const
+			{
+				return m_grid.IsInBounds(row, col);
+			}
+
+			// -------------------------------------------------------------------------
+			// query
 			// -------------------------------------------------------------------------
 			Size<size_t> GetSize() const
 			{
@@ -102,6 +115,11 @@ namespace engine
 			size_t GetObjectCount() const
 			{
 				return m_objects.Size();
+			}
+
+			bool Has(T* object) const
+			{
+				return m_objects.Has(object);
 			}
 
 			// -------------------------------------------------------------------------
@@ -275,11 +293,6 @@ namespace engine
 				}
 			}
 
-			bool Has(T* object) const
-			{
-				return m_objects.Has(object);
-			}
-
 			// ------------------------------------------------------------------------
 			// Get data of a given object in a given cell
 			// ------------------------------------------------------------------------
@@ -300,14 +313,15 @@ namespace engine
 						return occupant.data;
 					}
 				}
-				// we're not sure if this method requires specified cell guarantees object exist. but for now, let's be strict and make it so to avoid silent failures
+				// we're not sure if this method requires specified cell guarantees object exist. 
+				// but for now, let's be strict and make it so to avoid silent failures
 				throw std::runtime_error("the specified object does not exist in the given coord");
 			}
 
 			// ------------------------------------------------------------------------
 			// Get occupied cells of object
 			// ------------------------------------------------------------------------
-			std::vector<Coord> GetOccupiedCells(T* object) const
+			std::vector<Coord> GetOccupiedCells(const T* object) const
 			{
 				if (!m_objects.Has(object))
 				{
@@ -317,11 +331,23 @@ namespace engine
 				return m_objects.Get(object);
 			}
 
+			std::vector<Coord> GetOccupiedCells() const
+			{
+				std::vector<Coord> coords;
+				for (const auto& object : m_objects)
+				{
+					coords.insert(coords.end(), object.second.begin(), object.second.end());
+				}
+
+				return coords;
+			}
+
+
 			// -------------------------------------------------------------------------
 			// Iterate cells a given object occupies
 			// -------------------------------------------------------------------------
 			template<typename Func>
-			void ForEachCell(T* object, Func func) const
+			void ForEachCell(const T* object, const Func& func) const
 			{
 				if (!m_objects.Has(object))
 				{

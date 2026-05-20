@@ -146,19 +146,19 @@ namespace TestMapEditor
 	struct TileDefinition
 	{
 		std::unique_ptr<IRenderable> renderable = nullptr;
-		TileConstraint constraint;
+		TileConstraint constraint = TileConstraint::NONE;
 	};
 #pragma endregion
 
 #pragma region // Tile
-	class TileHandle
+	class Tile
 	{
 	private:
 		TileDefinition* m_tileDefinition;
 		int m_index;
 
 	public:
-		TileHandle(int index, TileDefinition* td = nullptr) :
+		Tile(int index, TileDefinition* td = nullptr) :
 			m_index(index),
 			m_tileDefinition(td)
 		{
@@ -193,7 +193,7 @@ namespace TestMapEditor
 	{
 	private:
 #pragma region // parameters
-		engine::container::Grid<TileHandle> m_map;
+		engine::container::Grid<Tile> m_map;
 #pragma endregion
 
 	public:
@@ -254,46 +254,46 @@ namespace TestMapEditor
 #pragma endregion
 
 #pragma region // accessors. return by value to be consistent. tile is a lightweight view to an object, similar to Sprite where GetSprite() returns value
-		TileHandle Get(int row, int col)
+		Tile Get(int row, int col)
 		{
 			return m_map.Get(row, col);
 		}
 
-		const TileHandle Get(int row, int col) const
+		const Tile Get(int row, int col) const
 		{
 			return m_map.Get(row, col);
 		}
 
 		// retrieves the data at Coord
-		TileHandle Get(const engine::spatial::Coord& coord)
+		Tile Get(const engine::spatial::Coord& coord)
 		{
 			return m_map.Get(coord.row, coord.col);
 		}
 
 		// retrieves the data at Coord
-		const TileHandle Get(const engine::spatial::Coord& coord) const
+		const Tile Get(const engine::spatial::Coord& coord) const
 		{
 			return m_map.Get(coord.row, coord.col);
 		}
 #pragma endregion
 
 #pragma region // replace value
-		void Set(int row, int col, const TileHandle& data)
+		void Set(int row, int col, const Tile& data)
 		{
 			m_map.Set(row, col, data);
 		}
 
-		void Set(int row, int col, TileHandle&& data)
+		void Set(int row, int col, Tile&& data)
 		{
 			m_map.Set(row, col, std::move(data));
 		}
 
-		void Set(const engine::spatial::Coord& coord, const TileHandle& data)
+		void Set(const engine::spatial::Coord& coord, const Tile& data)
 		{
 			m_map.Set(coord, data);
 		}
 
-		void Set(const engine::spatial::Coord& coord, TileHandle&& data)
+		void Set(const engine::spatial::Coord& coord, Tile&& data)
 		{
 			m_map.Set(coord, std::move(data));
 		}
@@ -312,7 +312,7 @@ namespace TestMapEditor
 		}
 
 		// copy only, no move option. expects T to be copyable or else
-		void Initialize(size_t width, size_t height, const TileHandle& data)
+		void Initialize(size_t width, size_t height, const Tile& data)
 		{
 			m_map.Clear();
 			m_map.SetWidth(width);
@@ -324,7 +324,7 @@ namespace TestMapEditor
 			}
 		}
 
-		void Initialize(engine::spatial::Size<size_t> size, const TileHandle& data)
+		void Initialize(engine::spatial::Size<size_t> size, const Tile& data)
 		{
 			Initialize(size.width, size.height, data);
 		}
@@ -431,6 +431,11 @@ namespace TestMapEditor
 			return m_name;
 		}
 
+		const size_t Size() const
+		{
+			return m_tiles.Size();
+		}
+
 		bool Register(int id, std::unique_ptr<TileDefinition> data)
 		{
 			return m_tiles.Register(id, std::move(data));
@@ -448,9 +453,9 @@ namespace TestMapEditor
 		}
 
 		// creates a tile instance for the given id. returns invalid tile if id not found
-		TileHandle MakeTile(int id) const
+		Tile MakeTile(int id) const
 		{
-			return TileHandle(
+			return Tile(
 				m_tiles.Has(id)? id: m_invalidTileIndex,
 				m_tiles.Has(id)?
 				m_tiles.Get(id).get():		// if we have valid tile definition use it
@@ -772,26 +777,41 @@ namespace TestMapEditor
 	class TerrainLayer
 	{
 	private:
+		std::string m_name;
 		TerrainGrid m_grid;
 		const TerrainSet* m_set;
 
 	public:
-		TerrainLayer() :
+		TerrainLayer(const std::string& name) :
+			m_name(name),
 			m_set(nullptr)
 		{
 		}
+
+		// TODO:
+		// parameters are pass by value because they are lightweight. but better to test if this is true
+		event::Event<const TerrainLayer&, Coord, Tile> TileChangeEvent;
+		event::Event<const TerrainLayer&, Size<size_t>, Tile> InitializeEvent;
 
 		const std::string& GetSetName() const
 		{
 			return m_set->GetName();
 		}
 
-		TileHandle Get(const Coord& coord) const
+		// TODO: 
+		// justify in documentation why identities can be std::string and not faster ones like uint ID's. 
+		// we're going to pass reference so it should be just as fast
+		const std::string& GetName() const
+		{
+			return m_name;
+		}
+
+		Tile Get(const Coord& coord) const
 		{
 			return m_grid.Get(coord);
 		}
 
-		TileHandle Get(int row, int col) const
+		Tile Get(int row, int col) const
 		{
 			return m_grid.Get(row, col);
 		}
@@ -801,15 +821,19 @@ namespace TestMapEditor
 			return m_grid.GetSize();
 		}
 
-		void Initialize(size_t width, size_t height, const TerrainSet* set, int tileIndex)
+		void Initialize(size_t width, size_t height, const TerrainSet* set, int index)
 		{
-			Initialize({ width, height }, set, tileIndex);
+			Initialize({ width, height }, set, index);
 		}
 
-		void Initialize(const Size<size_t> size, const TerrainSet* set, int tileIndex)
+		void Initialize(const Size<size_t> size, const TerrainSet* set, int index)
 		{
 			m_set = set;
-			m_grid.Initialize(size, m_set->MakeTile(tileIndex));
+			Tile tile = m_set->MakeTile(index);
+
+			m_grid.Initialize(size, tile);
+
+			InitializeEvent(*this, size, tile);
 		}
 
 		void Clear()
@@ -820,8 +844,10 @@ namespace TestMapEditor
 
 		void Set(const Coord& c, int index)
 		{
-			TileHandle tile = m_set->MakeTile(index);
+			Tile tile = m_set->MakeTile(index);
 			m_grid.Set(c, tile);
+
+			TileChangeEvent(*this, c, tile);
 		}
 
 		bool IsInBounds(const Coord& c) const
@@ -913,8 +939,21 @@ namespace TestMapEditor
 	private:
 		Dictionary<std::string, std::unique_ptr<TerrainLayer>> m_layers;
 
+		void OnTileChange(const TerrainLayer& layer, Coord coord, Tile tile)
+		{
+			TileChangeEvent(layer.GetName(), coord, tile);
+		}
+
+		void OnInitialize(const TerrainLayer& layer, Size<size_t> size, Tile tile)
+		{
+			InitializeEvent(layer.GetName(), size, tile);
+		}
+
 	public:
 		TerrainMap() = default;
+
+		event::Event<const std::string&, Coord, Tile> TileChangeEvent;
+		event::Event<const std::string&, Size<size_t>, Tile> InitializeEvent;
 
 		void Add(const std::string& key, size_t width, size_t height, const TerrainSet& set, int tileIndex)
 		{
@@ -925,13 +964,30 @@ namespace TestMapEditor
 		{
 			if (!Has(key))
 			{
-				if (!m_layers.Register(key, std::make_unique<TerrainLayer>()))
+				if (!m_layers.Register(key, std::make_unique<TerrainLayer>(key)))
 				{
 					throw std::runtime_error("failed to create new terrain layer");
 				}
+
+				m_layers[key]->TileChangeEvent += event::Handler(this, &TerrainMap::OnTileChange);
+				m_layers[key]->InitializeEvent += event::Handler(this, &TerrainMap::OnInitialize);
 			}
 
 			m_layers[key]->Initialize(size, &set, tileIndex);
+		}
+
+		// TODO: test this
+		void Remove(const std::string& key)
+		{
+			if (!Has(key))
+			{
+				return;
+			}
+
+			m_layers[key]->TileChangeEvent -= event::Handler(this, &TerrainMap::OnTileChange);
+			m_layers[key]->InitializeEvent -= event::Handler(this, &TerrainMap::OnInitialize);
+
+			m_layers.Unregister("key");
 		}
 
 		bool Has(const std::string& key) const
@@ -949,7 +1005,7 @@ namespace TestMapEditor
 			return TerrainLayerAutoTileAdapter(*m_layers.Get(key));
 		}
 
-		TileHandle Get(const std::string& key, const Coord& coord) const
+		Tile Get(const std::string& key, const Coord& coord) const
 		{
 			if (!Has(key))
 			{
@@ -959,7 +1015,7 @@ namespace TestMapEditor
 			return  m_layers[key]->Get(coord);
 		}
 
-		TileHandle Get(const std::string& key, int row, int col) const
+		Tile Get(const std::string& key, int row, int col) const
 		{
 			if (!Has(key))
 			{
@@ -1368,7 +1424,9 @@ namespace TestMapEditor
 	public:
 		static TerrainSet& LoadTerrainSet(
 			const std::string& name, // key for storing in cache
-			const std::string& atlasName // key of the sprite atlas to get sprites to
+			const std::string& atlasName, // key of the sprite atlas to get sprites to
+			const Dictionary<int, TileConstraint>& indexToConstraintMap,
+			const TileConstraint defaultConstraint
 		)
 		{
 			// if this tileset already exist, just return its reference
@@ -1394,6 +1452,8 @@ namespace TestMapEditor
 						std::unique_ptr<TileDefinition> tiledef = std::make_unique<TileDefinition>();
 
 						tiledef->renderable = std::make_unique<Renderable>(atlas.MakeSprite(i));
+
+						tiledef->constraint = indexToConstraintMap.Has(i) ? indexToConstraintMap.Get(i) : defaultConstraint;
 
 						tileset->Register(i, std::move(tiledef));
 					}
@@ -1818,6 +1878,7 @@ namespace TestMapEditor
 			return true;
 		}
 
+		// difference with Initialize() is that this retains world transform of the map
 		void Reset()
 		{
 			m_objectLayer.Reset();
@@ -1850,6 +1911,43 @@ namespace TestMapEditor
 
 			// remove this object from object layer
 			m_objectLayer.Remove(prop);
+		}
+
+		void Add(
+			std::unique_ptr<Prop> prop,
+			const Coord& coord,
+			const std::vector<Coord>& boundingBoxCells,
+			const Dictionary<Coord, TileConstraint>& coordToConstraints
+		)
+		{
+			// this prop to occupy respective coord in footprint layer in propmap
+			for (auto& constraintsPerCell : coordToConstraints)
+			{
+				// place the new prop into navigation grid
+				Coord coord = constraintsPerCell.first;
+				TileConstraint constraint = constraintsPerCell.second;
+
+				// it's possible for footprint to be out of bounds. 
+				// a prop can be placed at the edge of a corner or side of the map so itfootprint can spill out of the map. 
+				// that is ok so we just skip it
+				if (!m_FootPrintGrid.IsInBounds(coord)) continue;
+
+				m_FootPrintGrid.Add(prop.get(), coord, constraint);
+				m_navGrid.AddFlag(coord, constraint);
+			}
+
+			// this prop to occupy respective coord in bounding box layer in propmap
+			for (Coord coord : boundingBoxCells)
+			{
+				// it's possible for bounding box to be out of bounds. 
+				// a prop can be placed at the edge of a corner or side of the map so its bounding box can spill out of the map. 
+				// that is ok so we just skip it
+				if (!m_BoundingBoxGrid.IsInBounds(coord)) continue;
+				m_BoundingBoxGrid.Add(prop.get(), coord, {});
+			}
+
+			// add the actual prop object into prop map
+			m_objectLayer.Add(coord, std::move(prop));
 		}
 
 		// try to get tile coordinate of a given prop. if prop is invalid, return false
@@ -1901,7 +1999,7 @@ namespace TestMapEditor
 		}
 
 		template<typename Func>
-		void ForEachFootprint(const Coord& coord, const Func& func)
+		void ForEachPropInFootPrint(const Coord& coord, const Func& func)
 		{
 			m_FootPrintGrid.ForEach(coord, func);
 		}
@@ -1918,22 +2016,21 @@ namespace TestMapEditor
 			m_BoundingBoxGrid.ForEachObject(coord, func);
 		}
 
-		void AddProp(const Coord& coord, std::unique_ptr<Prop> prop)
+		//template<typename Func>
+		//void ForEachFootprintTile(const Prop* prop, const Func& func) const
+		//{
+		//	m_FootPrintGrid.ForEachCell(prop, func);
+		//}
+
+		std::vector<Coord> GetOccupiedFootprintTiles(const Prop* prop) const
 		{
-			m_objectLayer.Add(coord, std::move(prop));
+			return m_FootPrintGrid.GetOccupiedCells(prop);
 		}
 
-		void AddFootprint(Prop* prop, const Coord& coord, TileConstraint constraint)
+		std::vector<Coord> GetOccupiedFootprintTiles() const
 		{
-			m_FootPrintGrid.Add(prop, coord, constraint);
-			m_navGrid.AddFlag(coord, constraint);
+			return m_FootPrintGrid.GetOccupiedCells();
 		}
-
-		void AddBoundingBox(Prop* prop, const Coord& coord)
-		{
-			m_BoundingBoxGrid.Add(prop, coord, {});
-		}
-
 	};
 
 #pragma endregion
@@ -2046,10 +2143,62 @@ namespace TestMapEditor
 		WorldTransform m_worldTransform;		
 		PropMap m_propMap;
 		TerrainMap m_terrainMap;
+		NavigationGrid m_navigationGrid;
+
+		// this method will resolve the cumulative tile constraint of given coord
+		// it will combine the tile constraints of all active terrain layer and props in the coord 
+		void RefreshNavigationGrid(Coord coord)
+		{
+			// sanity check
+			if (!m_navigationGrid.IsInBounds(coord))
+			{
+				throw std::runtime_error("out of bounds navigation grid");
+			}
+
+			// reset the navgrid's coord first. 
+			// we will fill it with all constraints that exists in this coord from terrain and props that occupies it
+			m_navigationGrid.Set(coord, TileConstraint::NONE);
+
+			// iterate through each layer in terrain map
+			m_terrainMap.ForEach([&](const std::string& key, const TerrainLayer& layer)
+				{
+					// OR constraint of each layer's coord to our navigation grid coord
+					m_navigationGrid.AddFlag(coord, layer.Get(coord).GetConstraint());
+				});
+
+			// get all props occupying the footprint grid's coord. get their corresponding tile constraint. OR them all together into navgrid's coord
+			m_propMap.ForEachPropInFootPrint(coord, [&](const Prop* prop, TileConstraint c)
+				{
+					m_navigationGrid.AddFlag(coord, c);
+				});
+		}
+
+		// this is the event handler for event when a terrain layer changes a tile in a given coord
+		void OnTerrainTileChange(const std::string& layer, Coord coord, Tile tile)
+		{
+			RefreshNavigationGrid(coord);
+		}
+
+		// this is the event handler for event when terrain layer is initialized. 
+		// it will iterate through each tile and refresh the navigation grid's tile constraint
+		void OnTerrainInitialize(const std::string& layer, Size<size_t> size, Tile tile)
+		{
+			// iterate through each tile coord in world map
+			for (int row = 0; row < GetTransform().GetSize().height; row++)
+			{
+				for (int col = 0; col < GetTransform().GetSize().width; col++)
+				{
+					// given this coord, refresh its constraint value on navigation grid
+					RefreshNavigationGrid({row, col});
+				}
+			}
+		}
 
 	public:
 		WorldMap()
 		{
+			m_terrainMap.TileChangeEvent += event::Handler(this, &WorldMap::OnTerrainTileChange);
+			m_terrainMap.InitializeEvent += event::Handler(this, &WorldMap::OnTerrainInitialize);
 		}
 
 		const WorldTransform& GetTransform() const
@@ -2057,24 +2206,49 @@ namespace TestMapEditor
 			return m_worldTransform;
 		}
 
+		// clears all the components of world map. all resources are removed - terrains, props, and internal systems like footprint grid
+		// all grids are cleared, meaning their grid sizes are reset to 0,0 and recreated with new size
+		// does not bother to refresh navigation grid because it removes all terrains and props. so it assumes there is no constraints
+		// therefore resetting all to TileConstraint::NONE
 		bool Initialize(const PositionF& position, const Size<size_t>& size, const SizeF& tilesize)
 		{
+			// set world transform
 			m_worldTransform.SetPosition(position);
 			m_worldTransform.SetSize(size);
 			m_worldTransform.SetTileSize(tilesize);
 
+			// initialized prop map. if world map already exists, this will totally wipe the prop map, removing all props, as well as all its cells.
+			// the containers of prop map (footprint grid, boundingbox grid, etc...) will be cleared and grid size be 0,0 then initialized to new
+			// grid size
 			if (!m_propMap.Initialize(m_worldTransform.GetPosition(), m_worldTransform.GetSize(), m_worldTransform.GetTileSize())) return false;
 
+			// remove all existing terrain layers
 			m_terrainMap.Clear();
 
+			// initialize our navigation grid. since there are currently no terrains or props, fill it with all walkable as default
+			m_navigationGrid.Initialize(m_worldTransform.GetSize(), TileConstraint::NONE);
+			
 			return true;
 		}	
 
+		// WARNING: this is an expensive method. 
+		// removes all the props in the map. it will also refresh the navigation grid 
 		void RemoveAllProps()
 		{
-			m_propMap.Reset();
-		}
+			// find cells in footprint grid of prop map where all props occupies
+			std::vector<Coord> coords = m_propMap.GetOccupiedFootprintTiles();
 
+			// reset prop map. this will remove all the props
+			m_propMap.Reset();
+
+			// now that all the props are gone from the map, we need to refresh the navigation grid so that tiles that does not have props
+			// anymore will be updated with new constraints. we collected occupied tiles by props before so we refresh those tiles
+			for (const Coord& coord : coords)
+			{
+				RefreshNavigationGrid(coord);
+			}
+		}
+#pragma region // bounds check
 		bool IsInBounds(int row, int col) const
 		{
 			return
@@ -2092,24 +2266,26 @@ namespace TestMapEditor
 		{
 			return IsInBounds(m_worldTransform.WorldToTileCoord(worldPosition));
 		}
+#pragma endregion
 
+#pragma region // validate
 		void Validate() const
 		{
 			m_propMap.Validate();
 		}
+#pragma endregion
 
+#pragma region // iteration with props
 		template<typename Func>
 		void ForEachProp(const Func& func)
 		{
 			m_propMap.ForEachProp(func);
-
 		}
 
 		template<typename Func>
 		void ForEachProp(const Func& func) const 
 		{
 			m_propMap.ForEachProp(func);
-
 		}
 
 		template<typename Func>
@@ -2123,6 +2299,21 @@ namespace TestMapEditor
 		{
 			m_propMap.ForEachProp(row, col, func);
 		}
+#pragma endregion
+
+#pragma region // iteration with navigation grid
+		template<typename Func>
+		void ForEachNavigationTile(int row, int col, const Func& func)
+		{
+			m_navigationGrid.ForEach(row, col, func);
+		}
+
+		template<typename Func>
+		void ForEachNavigationTile(int row, int col, const Func& func) const
+		{
+			m_navigationGrid.ForEach(row, col, func);
+		}
+#pragma endregion
 
 		template<typename Func>
 		void ForEachTileConstraint(int row, int col, const Func& func)
@@ -2147,9 +2338,9 @@ namespace TestMapEditor
 		}
 
 		template<typename Func>
-		void ForEachFootprint(const Coord& coord, const Func& func)
+		void ForEachPropInFootPrint(const Coord& coord, const Func& func)
 		{
-			m_propMap.ForEachFootprint(coord, func);
+			m_propMap.ForEachPropInFootPrint(coord, func);
 		}
 
 		template<typename Func>
@@ -2171,32 +2362,31 @@ namespace TestMapEditor
 			const Dictionary<Coord, TileConstraint>& coordToConstraints
 		)
 		{
-			// this prop to occupy respective coord in footprint layer in propmap
-			for (auto& constraintsPerCell : coordToConstraints)
+			// let's add the prop into prop map
+			m_propMap.Add(std::move(prop), coord, boundingBoxCells, coordToConstraints);
+
+			// now that the new prop is added, let's refresh the navigation grid's coords this prop's footprint occupied
+			// these coords should have new constraints now that the new prop is placed
+			for (auto& kvp : coordToConstraints)
 			{
-				// place the new prop into navigation grid
-				Coord coord = constraintsPerCell.first;
-				TileConstraint constraint = constraintsPerCell.second;
-
-				// place in footprint and update navigation grid with this constraint
-				m_propMap.AddFootprint(prop.get(), coord, constraint);
+				RefreshNavigationGrid(kvp.first);
 			}
-
-			// this prop to occupy respective coord in bounding box layer in propmap
-			for (Coord coord : boundingBoxCells)
-			{
-				if (!IsInBounds(coord)) continue;
-
-				m_propMap.AddBoundingBox(prop.get(), coord);
-			}
-
-			// add the actual prop object into prop map
-			m_propMap.AddProp(coord, std::move(prop));
 		}
 
 		void RemoveProp(Prop* prop)
 		{
+			// find cells in footprint grid this prop occupies
+			std::vector<Coord> coords = m_propMap.GetOccupiedFootprintTiles(prop);
+
+			// remove the prop
 			m_propMap.Remove(prop);
+
+			// now the prop is gone from the map, but we know which cells in footprint grid it occupied before...
+			// so we refresh them
+			for (const Coord& coord : coords)
+			{
+				RefreshNavigationGrid(coord);
+			}
 		}
 
 		// try to get tile coordinate of a given prop. if prop is invalid, return false
@@ -2795,7 +2985,7 @@ namespace TestMapEditor
 				// each coord is occupied by existing prop, and these props have their corresponding tile constraint in this coord
 				// we then compare the tile constraint of existing prop in this coord to the new tile constraint when footprint is applied
 				// if these tile constraints overlaps (any constraint bits are both high), the prop
-				world.ForEachFootprint(coord, [tileToConstraint, &toEvict](Prop* prop, TileConstraint constraint)
+				world.ForEachPropInFootPrint(coord, [tileToConstraint, &toEvict](Prop* prop, TileConstraint constraint)
 					{
 						// if they overlap, we will remove this prop
 						TileConstraint tc = tileToConstraint.second & constraint;
@@ -3093,7 +3283,7 @@ namespace TestMapEditor
 			for (int col = 0; col < (int)grid.GetWidth(); ++col)
 			{
 				// get the tile from main layer.
-				const TileHandle& tile = grid.Get(row, col);
+				const Tile& tile = grid.Get(row, col);
 
 				// if tile is valid, we can queue it for draw. otherwise, we skip it
 				if (tile.IsValid())
@@ -3142,7 +3332,7 @@ namespace TestMapEditor
 			for (int col = 0; col < (int)layer.GetSize().width; ++col)
 			{
 				// get the tile from main layer.
-				const TileHandle tile = layer.Get(row, col);
+				const Tile tile = layer.Get(row, col);
 
 				// if tile is valid, we can queue it for draw. otherwise, we skip it
 				if (tile.IsValid())
@@ -3187,7 +3377,7 @@ namespace TestMapEditor
 		const ColorF& color = { 1,1,1,1 }
 	)
 	{
-		world.ForEachTileInTerrain(layer, [tileSize, scale, &command, worldPos, color, offset](int row, int col, TileHandle tile)
+		world.ForEachTileInTerrain(layer, [tileSize, scale, &command, worldPos, color, offset](int row, int col, Tile tile)
 			{
 				// skip invalid tiles.
 				if (!tile.GetSprite().IsValid()) return;
@@ -3266,7 +3456,7 @@ namespace TestMapEditor
 			bottomRight = { world.GetTransform().GetSize().As<int>().height, world.GetTransform().GetSize().As<int>().width };
 		}
 
-		world.ForEachTileInTerrain(layer, topLeft, bottomRight, [tileSize, scale, &command, worldPos, color, offset, camera, &renderer](int row, int col, TileHandle tile)
+		world.ForEachTileInTerrain(layer, topLeft, bottomRight, [tileSize, scale, &command, worldPos, color, offset, camera, &renderer](int row, int col, Tile tile)
 			{
 				// skip invalid tiles.
 				if (!tile.GetSprite().IsValid()) return;
@@ -3347,7 +3537,7 @@ namespace TestMapEditor
 			bottomRight = { grid.GetSize().As<int>().height, grid.GetSize().As<int>().width };
 		}		
 
-		grid.ForEach(topLeft, bottomRight, [tileSize, scale, &command, worldPos, color, offset, camera, &renderer](int row, int col, TileHandle tile)
+		grid.ForEach(topLeft, bottomRight, [tileSize, scale, &command, worldPos, color, offset, camera, &renderer](int row, int col, Tile tile)
 			{
 				// skip invalid tiles.
 				if (!tile.GetSprite().IsValid()) return;
@@ -3483,15 +3673,137 @@ namespace TestMapEditor
 		}
 	}
 
-	void DrawProps(
+	void DrawNavigationOverlay(
 		IRenderer& renderer,
 		DrawSortedSpritesCommand& command,
+		const Camera& camera,
 		const WorldMap& world,
-		float depth,
 		bool drawAllTiles = false
 	)
 	{
+		struct SubCellOffset
+		{
+			int row;
+			int col;
+			TileConstraint bit;
+		};
 
+		static const SubCellOffset offsets[9] =
+		{
+			{ 0, 0, TileConstraint::NW },
+			{ 0, 1, TileConstraint::N  },
+			{ 0, 2, TileConstraint::NE },
+
+			{ 1, 0, TileConstraint::W  },
+			{ 1, 1, TileConstraint::CENTER },
+			{ 1, 2, TileConstraint::E  },
+
+			{ 2, 0, TileConstraint::SW },
+			{ 2, 1, TileConstraint::S  },
+			{ 2, 2, TileConstraint::SE }
+		};
+
+		// get sub tile size. 
+		SizeF subTileSize(world.GetTransform().GetTileSize().width / 3.0f, world.GetTransform().GetTileSize().height / 3.0f);
+
+		// information used to define the size of the rect to render per sub tile
+		VecF shift(subTileSize.width * 0.25f, subTileSize.height * 0.25f);
+		SizeF overlaySize(subTileSize.width / 2.0f, subTileSize.height / 2.0f);
+
+		// calculate visible coord in viewport
+		Coord topLeft;
+		Coord bottomRight;
+		const SizeF& tilesize = world.GetTransform().GetTileSize();
+		if (!drawAllTiles)
+		{
+			RectF vp = camera.GetViewport();
+			PositionF pos = camera.GetPosition();
+			float zoom = camera.GetZoom();
+
+
+			topLeft =
+			{
+				(int)(pos.y / tilesize.height),
+				(int)(pos.x / tilesize.width),
+			};
+
+			bottomRight =
+			{
+				(int)((pos.y + vp.GetHeight() / zoom) / tilesize.height) + 1,
+				(int)((pos.x + vp.GetWidth() / zoom) / tilesize.width) + 1,
+			};
+
+
+			Size<size_t> worldSize = world.GetTransform().GetSize();
+
+			bottomRight.col = std::min<int>(bottomRight.col, static_cast<int>(worldSize.width));
+			bottomRight.row = std::min<int>(bottomRight.row, static_cast<int>(worldSize.height));
+
+			topLeft.col = std::max<int>(0, topLeft.col);
+			topLeft.row = std::max<int>(0, topLeft.row);
+		}
+		else
+		{
+			topLeft = { 0,0 };
+			bottomRight = { world.GetTransform().GetSize().As<int>().height, world.GetTransform().GetSize().As<int>().width };
+		}
+
+		// iterate through each row and col coord in navigation grid
+		for (int row = topLeft.row; row < bottomRight.row; row++)
+		{
+			for (int col = topLeft.col; col < bottomRight.col; col++)
+			{
+				// access tile constraint value of each tile in grid
+				world.ForEachNavigationTile(row, col, [row, col, &subTileSize, &shift, &overlaySize, &renderer, &camera , &world](TileConstraint constraint)
+					{
+						// skip empty tiles early (fast path)
+						if (constraint == TileConstraint::NONE) return;
+
+						// find the top-left position of the tile in world space.
+						engine::spatial::PositionF tilePosFromWorld =
+						{
+							col * world.GetTransform().GetTileSize().width,
+							row * world.GetTransform().GetTileSize().height
+						};
+
+						// apply zoom from camera
+						tilePosFromWorld *= camera.GetZoom();
+
+						// translate to tile position to worldmap position in world. it's possible worldmap's top-left position in world is not 0,0
+						tilePosFromWorld += world.GetTransform().GetPosition();
+
+						// finally translate it to screen position
+						PositionF tilePosInScreen = camera.WorldToScreen(tilePosFromWorld);
+
+						// iterate 3x3 subcells
+						for (const auto& offset : offsets)
+						{
+							// for this subcell, check if its corresponding constraint bit is set. if not, skip						
+							if (!HasFlag(constraint, offset.bit))
+							{
+								continue;
+							}
+
+							// compute subcell position
+							PositionF subCellPos = tilePosInScreen;
+							subCellPos.x += offset.col * subTileSize.width;
+							subCellPos.y += offset.row * subTileSize.height;
+
+							// apply shift. we're rendering a rectangle smaller than the actual size of the subcell so we shift it a bit to center it
+							subCellPos += shift;
+
+							// draw
+							renderer.Draw(
+								subCellPos,
+								overlaySize,
+								{ 0, 0, 0, 0.5f },
+								0.0f
+							);
+						}
+
+					});
+			}
+		}
 	}
 
 #pragma endregion
@@ -3611,7 +3923,7 @@ namespace TestMapEditor
 						[&terrain](
 							int row,
 							int col,
-							const TileHandle& tile)
+							const Tile& tile)
 						{
 							terrain.tiles.push_back(
 								tile.GetIndex());
@@ -5276,6 +5588,7 @@ namespace TestMapEditor
 				break;
 			case 53: // 5 
 			{
+				m_worldMap.RemoveAllProps();
 				break;
 			}
 			case 103: // g
@@ -5458,7 +5771,6 @@ namespace TestMapEditor
 			m_isPanning = false;
 		}
 
-
 		void OnUpdate(double dt) override
 		{
 			// this is for debugging only. validate every frame to ensure our containers are in good state
@@ -5512,6 +5824,11 @@ namespace TestMapEditor
 				RectF vp = m_camera.GetViewport();
 
 				renderer.Draw(vp.GetTopLeft(), vp.GetSize(), { 1,1,1,0.1f }, 0.0f);
+			}
+
+			// render navigation overlay
+			{
+				DrawNavigationOverlay(renderer, drawCommand, m_camera, m_worldMap, m_alltiles);
 			}
 
 			//if (!m_simulation)
@@ -5751,12 +6068,47 @@ namespace TestMapEditor
 
 				// create our tileset and load all sprites from sprite atlas
 				{
-					TilesetLoader::LoadTerrainSet("grass_tileset", "grass_tile_sprites");
+					Dictionary<int, TileConstraint> grassTilesConstraint;
+					grassTilesConstraint.Register(0, TileConstraint::NONE);
+					grassTilesConstraint.Register(1, TileConstraint::NONE);
+					grassTilesConstraint.Register(2, TileConstraint::NONE);
+					grassTilesConstraint.Register(3, TileConstraint::NONE);
+					grassTilesConstraint.Register(5, TileConstraint::NONE);
+					grassTilesConstraint.Register(6, TileConstraint::NONE);
+					grassTilesConstraint.Register(7, TileConstraint::NONE);
+					grassTilesConstraint.Register(8, TileConstraint::NONE);
+					grassTilesConstraint.Register(9, TileConstraint::NONE);
+					grassTilesConstraint.Register(10, TileConstraint::NONE);
+					grassTilesConstraint.Register(11, TileConstraint::NONE);
+					grassTilesConstraint.Register(12, TileConstraint::NONE);
+					grassTilesConstraint.Register(14, TileConstraint::NONE);
+					grassTilesConstraint.Register(15, TileConstraint::NONE);
+					grassTilesConstraint.Register(16, TileConstraint::NONE);
+					grassTilesConstraint.Register(17, TileConstraint::NONE);
+					grassTilesConstraint.Register(18, TileConstraint::NONE);
+					grassTilesConstraint.Register(19, TileConstraint::NONE);
+					grassTilesConstraint.Register(20, TileConstraint::NONE);
+					grassTilesConstraint.Register(21, TileConstraint::NONE);
+					grassTilesConstraint.Register(23, TileConstraint::NONE);
+					grassTilesConstraint.Register(24, TileConstraint::NONE);
+					grassTilesConstraint.Register(25, TileConstraint::NONE);
+					grassTilesConstraint.Register(26, TileConstraint::NONE);
+					grassTilesConstraint.Register(27, TileConstraint::NONE);
+					grassTilesConstraint.Register(28, TileConstraint::NONE);
+					grassTilesConstraint.Register(29, TileConstraint::NONE);
+					grassTilesConstraint.Register(30, TileConstraint::NONE);
+					grassTilesConstraint.Register(32, TileConstraint::NONE);
+					grassTilesConstraint.Register(33, TileConstraint::NONE);
+					grassTilesConstraint.Register(34, TileConstraint::NONE);
+					grassTilesConstraint.Register(35, TileConstraint::NONE);
+
+					TilesetLoader::LoadTerrainSet("grass_tileset", "grass_tile_sprites", grassTilesConstraint, TileConstraint::BLOCKED);
 
 					Registry<TerrainSet>::Instance().Register("splash_tileset", std::make_unique<TerrainSet>("splash_tileset"));
 					TerrainSet& splashTileset = assets.Get<TerrainSet>("splash_tileset");
 					std::unique_ptr<TileDefinition> tiledef = std::make_unique<TileDefinition>();
 					tiledef->renderable = std::make_unique<Animated>(splashAnimSet, "splash_anim");
+					tiledef->constraint = TileConstraint::NONE;
 					splashTileset.Register(0, std::move(tiledef));
 				}
 			}
