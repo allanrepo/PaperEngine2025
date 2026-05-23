@@ -2,6 +2,7 @@
 
 namespace engine::spatial
 {
+	// TODO: move to engine::math namespace. size is geometric shape, not related to space
 	template<typename T>
 	struct Size
 	{

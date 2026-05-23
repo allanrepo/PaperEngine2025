@@ -126,6 +126,7 @@ namespace engine::graphics::dx11::renderer
 		// clipping region for rendering
 		virtual void SetClipRegion(const engine::math::geometry::RectF& region) override final;
 		virtual void EnableClipping(const bool enable) override final;
+		virtual engine::math::geometry::RectF GetClipRegion() const override final;
 
 		// Draws a colored quad at the specified position, size, and rotation
 		virtual void Draw(

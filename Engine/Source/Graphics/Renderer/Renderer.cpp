@@ -44,6 +44,11 @@ void engine::graphics::renderer::Renderer::EnableClipping(const bool enable)
 	impl->EnableClipping(enable);
 }
 
+engine::math::geometry::RectF engine::graphics::renderer::Renderer::GetClipRegion() const
+{
+    return impl->GetClipRegion();
+}
+
 // Draws a colored quad at the specified position, size, and rotation
 void engine::graphics::renderer::Renderer::Draw(
     const engine::spatial::PositionF& pos,

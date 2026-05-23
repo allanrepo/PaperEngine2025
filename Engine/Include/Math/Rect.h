@@ -1,11 +1,13 @@
 #pragma once
 #include <Spatial/Size.h>
 #include <Spatial/Position.h>
+#include <Math/Vector.h>
 
 namespace engine
 {
 	namespace math
 	{
+		// TODO: drop geometry namespace. Rect already implies geometry. 
 		namespace geometry
 		{
 			template<typename T>
@@ -57,29 +59,29 @@ namespace engine
 					return spatial::Size<T>{ GetWidth(), GetHeight() };
 				}
 
-				const engine::spatial::Position<T> GetCenter() const
+				const engine::math::Vector<T> GetCenter() const
 				{
-					return engine::spatial::Position<T>{ (left + right) / 2, (top + bottom) / 2 };
+					return engine::math::Vector<T>{ (left + right) / 2, (top + bottom) / 2 };
 				}
 
-				const engine::spatial::Position<T> GetTopLeft() const
+				const engine::math::Vector<T> GetTopLeft() const
 				{
-					return engine::spatial::Position<T>{ left, top };
+					return engine::math::Vector<T>{ left, top };
 				}
 
-				const engine::spatial::Position<T> GetBottomRight() const
+				const engine::math::Vector<T> GetBottomRight() const
 				{
-					return engine::spatial::Position<T>{ right, bottom };
+					return engine::math::Vector<T>{ right, bottom };
 				}
 
-				const engine::spatial::Position<T> GetTopRight() const
+				const engine::math::Vector<T> GetTopRight() const
 				{
-					return engine::spatial::Position<T>{ right, top };
+					return engine::math::Vector<T>{ right, top };
 				}
 
-				const engine::spatial::Position<T> GetBottomLeft() const
+				const engine::math::Vector<T> GetBottomLeft() const
 				{
-					return engine::spatial::Position<T>{ left, bottom };
+					return engine::math::Vector<T>{ left, bottom };
 				}
 
 				void Inflate(const T dx, const T dy)
@@ -98,7 +100,7 @@ namespace engine
 						top >= other.bottom);
 				}
 
-				Rect<T> GetOverlap(const Rect<T>& other) const
+				Rect<T> Intersect(const Rect<T>& other) const
 				{
 					Rect<T> r{};
 
@@ -106,6 +108,9 @@ namespace engine
 					r.top = std::max<T>(top, other.top);
 					r.right = std::min<T>(right, other.right);
 					r.bottom = std::min<T>(bottom, other.bottom);
+
+					if (r.left >= r.right || r.top >= r.bottom)
+						return {}; // empty
 
 					return r;
 				}

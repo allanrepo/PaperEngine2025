@@ -33,6 +33,7 @@ namespace engine::graphics::renderer
 		// clipping region for rendering
 		virtual void SetClipRegion(const engine::math::geometry::RectF& region) = 0;
 		virtual void EnableClipping(const bool enable) = 0;
+        virtual engine::math::geometry::RectF GetClipRegion() const = 0;
 
         // Draws a colored quad at the specified position, size, and rotation
         virtual void Draw(

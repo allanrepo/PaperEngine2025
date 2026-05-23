@@ -397,6 +397,11 @@ void engine::graphics::dx11::renderer::DX11RendererBatchImpl::EnableClipping(con
 	m_clippingEnabled = enable;
 }
 
+engine::math::geometry::RectF engine::graphics::dx11::renderer::DX11RendererBatchImpl::GetClipRegion() const
+{
+	return m_clipRegion;
+}
+
 void engine::graphics::dx11::renderer::DX11RendererBatchImpl::Draw(
 	const engine::spatial::PositionF& pos,
 	const spatial::SizeF& size,

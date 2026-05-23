@@ -166,7 +166,7 @@ namespace TestMapEditor
 
 		Sprite GetSprite() const noexcept
 		{
-			return IsValid()? m_tileDefinition->renderable->GetSprite() : Sprite::MakeInvalidSprite();
+			return IsValid() ? m_tileDefinition->renderable->GetSprite() : Sprite::MakeInvalidSprite();
 		}
 
 		bool IsValid() const noexcept
@@ -453,9 +453,9 @@ namespace TestMapEditor
 		Tile MakeTile(int id) const
 		{
 			return Tile(
-				m_tiles.Has(id)? id: m_invalidTileIndex,
-				m_tiles.Has(id)?
-				m_tiles.Get(id).get():		// if we have valid tile definition use it
+				m_tiles.Has(id) ? id : m_invalidTileIndex,
+				m_tiles.Has(id) ?
+				m_tiles.Get(id).get() :		// if we have valid tile definition use it
 				GetInvalidTileDefinition()	// otherwise, use invalid one
 			);
 		}
@@ -1265,7 +1265,7 @@ namespace TestMapEditor
 
 			// if at least one cell is occupied, we consider this object as occupying the grid and we store it in m_objects. 
 			// otherwise, this object is not really occupying any cell in the grid, so we won't store it in m_objects to avoid confusion.
-			if(!cellsToOccupy.empty())
+			if (!cellsToOccupy.empty())
 			{
 				m_objects.Set(object, cellsToOccupy);
 			}
@@ -1490,8 +1490,8 @@ namespace TestMapEditor
 #pragma endregion
 
 #pragma region // StateMachine
-//#include <memory>
-//#include <functional>
+	//#include <memory>
+	//#include <functional>
 	class StateMachine
 	{
 	private:
@@ -1618,9 +1618,9 @@ namespace TestMapEditor
 		}
 
 		// --- Helpers ---
-		State* GetCurrent() const 
-		{ 
-			return m_current.get(); 
+		State* GetCurrent() const
+		{
+			return m_current.get();
 		}
 
 		template<typename T>
@@ -1637,7 +1637,7 @@ namespace TestMapEditor
 		// can change this later for polygon class implementation for more accurate shape
 		RectF shape;
 
-		bool Intersects(const PositionF& position) const
+		bool Contains(const PositionF& position) const
 		{
 			return false; // TODO: for now we are not using this yet...
 			return shape.Contains(position);
@@ -1843,7 +1843,7 @@ namespace TestMapEditor
 		{
 		}
 
-		std::string GetDebugInfo() const 
+		std::string GetDebugInfo() const
 		{
 			std::string debugInfo;
 			debugInfo += "fp: ";
@@ -1887,7 +1887,7 @@ namespace TestMapEditor
 		void Remove(Prop* prop)
 		{
 			// iterate through tiles occupied by prop
-			m_FootPrintGrid.ForEachCell(prop, [this, &prop](Coord coord) 
+			m_FootPrintGrid.ForEachCell(prop, [this, &prop](Coord coord)
 				{
 					// get the constraint of the prop in the given coord.
 					// this is a strict method. it's gonna throw error if there is no prop in this coord
@@ -2043,7 +2043,7 @@ namespace TestMapEditor
 		SizeF m_tilesize;
 
 	public:
-		WorldTransform():
+		WorldTransform() :
 			m_position(0, 0),
 			m_size(0, 0),
 			m_tilesize(0, 0)
@@ -2135,7 +2135,7 @@ namespace TestMapEditor
 	{
 	private:
 #pragma region // parameters
-		WorldTransform m_worldTransform;		
+		WorldTransform m_worldTransform;
 		PropMap m_propMap;
 		TerrainMap m_terrainMap;
 		NavigationGrid m_navigationGrid;
@@ -2187,7 +2187,7 @@ namespace TestMapEditor
 				for (int col = 0; col < GetTransform().GetSize().width; col++)
 				{
 					// given this coord, refresh its constraint value on navigation grid
-					RefreshNavigationGrid({row, col});
+					RefreshNavigationGrid({ row, col });
 				}
 			}
 		}
@@ -2242,9 +2242,9 @@ namespace TestMapEditor
 
 			// initialize our navigation grid. since there are currently no terrains or props, fill it with all walkable as default
 			m_navigationGrid.Initialize(m_worldTransform.GetSize(), TileConstraint::NONE);
-			
+
 			return true;
-		}	
+		}
 #pragma endregion
 
 #pragma region // mutations
@@ -2336,7 +2336,7 @@ namespace TestMapEditor
 		}
 
 		template<typename Func>
-		void ForEachProp(const Func& func) const 
+		void ForEachProp(const Func& func) const
 		{
 			m_propMap.ForEachProp(func);
 		}
@@ -2446,7 +2446,7 @@ namespace TestMapEditor
 		// iterates through each terrain layer in terrain map
 		// function signature -> (const std::string& key, const TerrainLayer& layer)
 		template<typename Func>
-		void ForEachTerrain(const Func& func) const 
+		void ForEachTerrain(const Func& func) const
 		{
 			m_terrainMap.ForEach(func);
 		}
@@ -2845,13 +2845,13 @@ namespace TestMapEditor
 			world.ForEachPropInBoundingBox(coord, [&world, &selected, worldPosition](Prop* candidate)
 				{
 					// get the world position of this prop
-					PositionF propPosInWorld; 
-					if(!world.TryGetWorldPosition(candidate, propPosInWorld))
-					{ 
+					PositionF propPosInWorld;
+					if (!world.TryGetWorldPosition(candidate, propPosInWorld))
+					{
 						// if this prop does not exist in the map, throw. this must be a bug. 
 						// how did we find pointer to this object in bounding box grid? where is the actual object stored?
 						throw std::out_of_range("PropSelectionSystem::SelectAtPoint() - prop does not exist in the map but we have pointer to it. where is it stored?!");
-					}						
+					}
 
 					// get this bounding box of this prop in world coordinates
 					RectF objectBoundingBox = candidate->GetScaledBoundingBoxWorld(propPosInWorld, true);
@@ -3066,7 +3066,7 @@ namespace TestMapEditor
 			// --------------------------------------------------------------------------------
 			// VALIDATION AND SELECTION
 			// --------------------------------------------------------------------------------
-			
+
 			Prop* topMostProp = PropSelectionSystem::SelectTopMostAtPoint(world, worldPosition);
 
 			// it is possible that there is no candidate prop that actually was selected. note that candidates are only based on props that belongs to 
@@ -3083,7 +3083,7 @@ namespace TestMapEditor
 
 			return true;
 		}
-		
+
 	};
 #pragma endregion
 
@@ -3489,7 +3489,7 @@ namespace TestMapEditor
 		{
 			topLeft = { 0,0 };
 			bottomRight = { grid.GetSize().As<int>().height, grid.GetSize().As<int>().width };
-		}		
+		}
 
 		grid.ForEach(topLeft, bottomRight, [tileSize, scale, &command, worldPos, color, offset, camera, &renderer](int row, int col, Tile tile)
 			{
@@ -3596,7 +3596,7 @@ namespace TestMapEditor
 				coord.col = col;
 				coord.row = row;
 
-				world.ForEachPropInBoundingBox(coord, [&props](Prop* prop) 
+				world.ForEachPropInBoundingBox(coord, [&props](Prop* prop)
 					{
 						props.insert(prop);
 					});
@@ -3708,7 +3708,7 @@ namespace TestMapEditor
 			for (int col = topLeft.col; col < bottomRight.col; col++)
 			{
 				// access tile constraint value of each tile in grid
-				world.ForEachNavigationTile(row, col, [row, col, &subTileSize, &shift, &overlaySize, &renderer, &camera , &world](TileConstraint constraint)
+				world.ForEachNavigationTile(row, col, [row, col, &subTileSize, &shift, &overlaySize, &renderer, &camera, &world](TileConstraint constraint)
 					{
 						// skip empty tiles early (fast path)
 						if (constraint == TileConstraint::NONE) return;
@@ -3855,7 +3855,7 @@ namespace TestMapEditor
 			// ------------------------------------------------------------
 			// Build serializable data
 			// ------------------------------------------------------------
-			
+
 			// world data
 			WorldMapData data;
 			data.position = world.GetTransform().GetPosition();
@@ -3935,7 +3935,7 @@ namespace TestMapEditor
 				<< ", "
 				<< data.tilesize.height
 				<< "\n\n";
-						
+
 			// Terrain layers
 			for (const auto& terrain : data.terrains)
 			{
@@ -4240,7 +4240,7 @@ namespace TestMapEditor
 
 			for (const TerrainLayerData& terrain : data.terrains)
 			{
-				world.ForEachTerrain([&](const std::string& name, TerrainLayer& layer) 
+				world.ForEachTerrain([&](const std::string& name, TerrainLayer& layer)
 					{
 						if (name == terrain.name)
 						{
@@ -4279,7 +4279,7 @@ namespace TestMapEditor
 					// let's be strict here. if animation set does not exist. throw
 					throw std::runtime_error("animation set not available");
 				}
-				const auto& animSet =  assets.Get<AnimationSet<Sprite>>(p.animationSet);
+				const auto& animSet = assets.Get<AnimationSet<Sprite>>(p.animationSet);
 
 				// 3. create prop using factory (single source of truth)
 				std::unique_ptr<Prop> prop = PropFactory::Create(brush, animSet);
@@ -4416,11 +4416,11 @@ namespace TestMapEditor
 			m_grassToSplashBrushLink.targetBrush = m_splashTerrainBrush;
 			m_grassToSplashBrushLink.sourceToTarget.Register(4, -1);
 			m_grassToSplashBrushLink.sourceToTarget.Register(30, 0);
-			m_grassToSplashBrushLink.sourceToTarget.Register(10,-1);
+			m_grassToSplashBrushLink.sourceToTarget.Register(10, -1);
 			m_grassToSplashBrushLink.sourceToTarget.Register(21, 0);
 			m_grassToSplashBrushLink.sourceToTarget.Register(3, 0);
 			m_grassToSplashBrushLink.sourceToTarget.Register(29, 0);
-			m_grassToSplashBrushLink.sourceToTarget.Register(27,0);
+			m_grassToSplashBrushLink.sourceToTarget.Register(27, 0);
 			m_grassToSplashBrushLink.sourceToTarget.Register(0, 0);
 			m_grassToSplashBrushLink.sourceToTarget.Register(2, 0);
 			m_grassToSplashBrushLink.sourceToTarget.Register(18, 0);
@@ -4536,10 +4536,10 @@ namespace TestMapEditor
 
 			// draw the grass terrain
 			drawCommand.Clear();
-			DrawTerrainLayer(renderer, drawCommand, m_worldMap, "grass", m_worldMap.GetTransform().GetPosition(),  m_worldMap.GetTransform().GetTileSize());
+			DrawTerrainLayer(renderer, drawCommand, m_worldMap, "grass", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize());
 			drawCommand.Sort();
 			drawCommand.Execute();
-			
+
 			if (m_showDebug)
 			{
 				// draw the tile grid
@@ -4570,7 +4570,7 @@ namespace TestMapEditor
 	public:
 		CameraScene() :
 			m_camera({ 400, 400, 600, 600 }),
-			m_lastMousePos(0,0),
+			m_lastMousePos(0, 0),
 			m_isPanning(false)
 		{
 
@@ -4609,20 +4609,20 @@ namespace TestMapEditor
 				m_camera.SetZoom(0.5f);
 				break;
 			case 52: // 4
-				{
-					m_worldMap.Initialize({ 0,0 }, { 12, 8 }, { 64, 64 });
+			{
+				m_worldMap.Initialize({ 0,0 }, { 12, 8 }, { 64, 64 });
 
-					auto& terrainSet = AssetManager().Get<TerrainSet>("grass_tileset");
-					m_worldMap.AddTerrain("fine_grid", terrainSet, 22);
-					m_worldMap.AddTerrain("tile_grid", terrainSet, 13);
+				auto& terrainSet = AssetManager().Get<TerrainSet>("grass_tileset");
+				m_worldMap.AddTerrain("fine_grid", terrainSet, 22);
+				m_worldMap.AddTerrain("tile_grid", terrainSet, 13);
 
-					m_camera.SetViewport({ 300, 300, 800, 600 });
-					m_camera.SetWorldSize(m_worldMap.GetTransform().GetWorldSize());
-					m_camera.SetPosition({ 0,0 });
-					m_camera.SetZoom(1.0f);
+				m_camera.SetViewport({ 300, 300, 800, 600 });
+				m_camera.SetWorldSize(m_worldMap.GetTransform().GetWorldSize());
+				m_camera.SetPosition({ 0,0 });
+				m_camera.SetZoom(1.0f);
 
-					break;
-				}
+				break;
+			}
 			case 53: // 5 
 			{
 				m_worldMap.Initialize({ 0,0 }, { 1, 1 }, { 300, 300 });
@@ -4637,7 +4637,7 @@ namespace TestMapEditor
 				m_camera.SetZoom(1.0f);
 
 				break;
-			}			
+			}
 			default:
 				break;
 			}
@@ -4709,8 +4709,8 @@ namespace TestMapEditor
 			{
 				// draw the tile grid
 				drawCommand.Clear();
-				DrawTerrainLayer(renderer, drawCommand, m_camera, m_worldMap, "tile_grid", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_debugState == 2, {1, 1}, { 0, 0 }, {0,0,0,0.2f});
-				DrawTerrainLayer(renderer, drawCommand, m_camera, m_worldMap, "fine_grid", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_debugState == 2, { 1, 1 }, { 0, 0 }, {0,0,0,0.05f});
+				DrawTerrainLayer(renderer, drawCommand, m_camera, m_worldMap, "tile_grid", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_debugState == 2, { 1, 1 }, { 0, 0 }, { 0,0,0,0.2f });
+				DrawTerrainLayer(renderer, drawCommand, m_camera, m_worldMap, "fine_grid", m_worldMap.GetTransform().GetPosition(), m_worldMap.GetTransform().GetTileSize(), m_debugState == 2, { 1, 1 }, { 0, 0 }, { 0,0,0,0.05f });
 				drawCommand.Sort();
 				drawCommand.Execute();
 
@@ -4738,7 +4738,7 @@ namespace TestMapEditor
 				msg += std::to_string(m_currMousePos.x) + ", " + std::to_string(m_currMousePos.y);
 				renderer.Draw(assets.Get<IFontAtlas>("font"), msg, { 400, 45 }, { 1,1,1,1 });
 
-				
+
 
 			}
 		}
@@ -4795,7 +4795,7 @@ namespace TestMapEditor
 			IWindow& window = AssetManager().Get<IWindow>("window");
 			int width = 0, height = 0;
 			window.GetClientSize(width, height);
-			m_camera.SetViewport({0, 0, static_cast<float>(width), static_cast<float>(height) });
+			m_camera.SetViewport({ 0, 0, static_cast<float>(width), static_cast<float>(height) });
 
 			// initialize our world map
 			m_worldMap.Initialize({ 0,0 }, { 1024, 1024 }, { 64, 64 });
@@ -4857,10 +4857,10 @@ namespace TestMapEditor
 			m_terrainEditor.Add(grassToSplashBrushLink);
 
 			// create prop brushes		- animation set				- default animation - scale				- color				- footprint area (normal)			- bounding box area (normal)
-			PropBrush NormalBirchTree	{ "birchtree_anim_set",		"birch_tree_idle",	VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.47f, 0.8f, 0.53f, 0.85f},	RectF{0.27f, 0.12f, 0.73f, 0.87f} };
-			PropBrush NormalPineTree	{ "pinetree_anim_set",		"pine_tree_idle",	VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.38f, 0.8f, 0.62f, 0.92f},	RectF{0.2f, 0.2f, 0.8f, 0.92f} };
-			PropBrush NormalCastle		{ "castle_anim_set",		"castle_idle",		VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.05f, 0.6f, 0.95f, 0.90f},	RectF{0.05f, 0.2f, 0.95f, 0.9f} };
-			PropBrush NormalWaterRocks	{ "water_rocks_anim_set",	"water_rocks_idle",	VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.1f,0.4f,0.9f,0.8f},			RectF{0.1f, 0.1f, 0.9f, 0.9f} };
+			PropBrush NormalBirchTree{ "birchtree_anim_set",		"birch_tree_idle",	VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.47f, 0.8f, 0.53f, 0.85f},	RectF{0.27f, 0.12f, 0.73f, 0.87f} };
+			PropBrush NormalPineTree{ "pinetree_anim_set",		"pine_tree_idle",	VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.38f, 0.8f, 0.62f, 0.92f},	RectF{0.2f, 0.2f, 0.8f, 0.92f} };
+			PropBrush NormalCastle{ "castle_anim_set",		"castle_idle",		VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.05f, 0.6f, 0.95f, 0.90f},	RectF{0.05f, 0.2f, 0.95f, 0.9f} };
+			PropBrush NormalWaterRocks{ "water_rocks_anim_set",	"water_rocks_idle",	VecF{1.0f, 1.0f},	ColorF{1,1,1,1},	RectF{0.1f,0.4f,0.9f,0.8f},			RectF{0.1f, 0.1f, 0.9f, 0.9f} };
 
 			// register our brushes to our brush tool
 			m_propBrushTool.Register("normal_pine_tree", NormalPineTree);
@@ -5153,7 +5153,7 @@ namespace TestMapEditor
 				}
 				msg += " ";
 				msg += m_simulation ? "simulation|" : "edit|";
-				msg += m_grid? "grid enabled|" : "grid disabled|";
+				msg += m_grid ? "grid enabled|" : "grid disabled|";
 				msg += m_clipping ? "clipping enabled|" : "clipping disabled|";
 				msg += m_alltiles ? "all tiles|" : "visible tiles|";
 				renderer.Draw(assets.Get<IFontAtlas>("font"), msg, { 600, 5 }, { 1,1,1,1 });
@@ -5162,7 +5162,7 @@ namespace TestMapEditor
 
 		void OnResize(size_t width, size_t height) override
 		{
-			m_camera.SetViewport({0,0, static_cast<float>(width), static_cast<float>(height) });
+			m_camera.SetViewport({ 0,0, static_cast<float>(width), static_cast<float>(height) });
 		}
 	};
 #pragma endregion
@@ -5220,7 +5220,7 @@ namespace TestMapEditor
 			m_worldMap.Initialize({ 0,0 }, { 20, 12 }, { 64, 64 });
 
 			// add terrain grids
-			auto& terrainSet = AssetManager().Get<TerrainSet>("grass_tileset");			
+			auto& terrainSet = AssetManager().Get<TerrainSet>("grass_tileset");
 			m_tilegrid.Initialize(m_worldMap.GetTransform().GetSize(), terrainSet.MakeTile(13));
 			m_finegrid.Initialize(m_worldMap.GetTransform().GetSize(), terrainSet.MakeTile(22));
 
@@ -5565,7 +5565,7 @@ namespace TestMapEditor
 			}
 
 			// render navigation overlay
-			if(m_navigation)
+			if (m_navigation)
 			{
 				DrawNavigationOverlay(renderer, drawCommand, m_camera, m_worldMap, m_alltiles);
 			}
@@ -5600,20 +5600,673 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
+#pragma region // gui
+	// features
+	//	- widget tree system
+	//  - z order management
+	//	- mouse routing
+	//	- get top child
+	//	- bring child to front
+	//  - absolute position
+	//	- intersect check
+	//	- child iteration
+	// 
+	// states
+	//	- visibility
+	//	- movability
+	// 
+	// behavior
+	//	- focusable
+	//	- movable
+	//	- mouse capturable
+	// 
+	//
+
+	class Widget
+	{
+	protected:
+		enum MoveBehavior
+		{
+			None = 0,
+			Horizontal = 1 << 0,
+			Vertical = 1 << 1,
+			Free = Horizontal | Vertical,
+		};
+
+	private:
+		// tree
+		Widget* m_parent = nullptr;
+		std::vector<std::unique_ptr<Widget>> m_children;
+
+		// transform
+		PositionF m_position;
+		SizeF m_size;
+
+		// states
+		bool m_visible = true;
+		bool m_enabled = true;
+		bool m_isMoving = false;
+
+		// behavior
+		bool m_focusable = true;
+		MoveBehavior m_moveBehavior = MoveBehavior::Free;
+
+		PositionF m_beginMousePosition;
+		PositionF m_beginMovePosition;
+
+	public:
+		virtual ~Widget() = default;
+
+		// --------------------------------------------------------------------------------
+		// HIERARCHY
+		// --------------------------------------------------------------------------------
+		void AddChild(std::unique_ptr<Widget> child)
+		{
+			child->m_parent = this;
+
+			m_children.push_back(std::move(child));
+		}
+
+		void RemoveChild(Widget* widget)
+		{
+			auto it = std::find_if(
+				m_children.begin(),
+				m_children.end(),
+				[&](const auto& ptr)
+				{
+					return ptr.get() == widget;
+				});
+
+			if (it != m_children.end())
+			{
+				m_children.erase(it);
+			}
+		}
+
+		Widget* GetParent() const
+		{
+			return m_parent;
+		}
+
+		const std::vector<std::unique_ptr<Widget>>& GetChildren() const
+		{
+			return m_children;
+		}
+
+		template<typename Func>
+		void ForEachChild(const Func& func)
+		{
+			for (const std::unique_ptr<Widget>& child : m_children)
+			{
+				func(child.get());
+			}
+		}
+
+		// --------------------------------------------------------------------------------
+		// Z ORDER
+		// --------------------------------------------------------------------------------
+
+		void BringChildToFront(Widget* child)
+		{
+			// use find_if better than for loop because you iterator on erase()
+			auto it = std::find_if(
+				m_children.begin(),
+				m_children.end(),
+				[&](const auto& ptr)
+				{
+					return ptr.get() == child;
+				});
+
+			// no child? bail out
+			if (it == m_children.end())
+				return;
+
+			// move this widget out of the children's list
+			std::unique_ptr<Widget> node = std::move(*it);
+			m_children.erase(it);
+
+			// put it back at the end of the children's list so it will be at the front
+			m_children.push_back(std::move(node));
+		}
+
+		void BringToFront()
+		{
+			// if this has no parent, then it has no siblings. then it does not have z order
+			if (!m_parent) return;
+
+
+		}
+
+		// --------------------------------------------------------------------------------
+		// STATE
+		// --------------------------------------------------------------------------------
+		void Show()
+		{
+			m_visible = true;
+		}
+
+		void Hide()
+		{
+			m_visible = false;
+		}
+
+		bool IsVisible() const
+		{
+			return m_visible;
+		}
+
+		void Enable()
+		{
+			m_enabled = true;
+		}
+
+		void Disable()
+		{
+			m_enabled = false;
+		}
+
+		bool IsEnabled() const
+		{
+			// if this widget is disabled, can return now
+			if (!m_enabled) return false;
+
+			// widgets has dependency on their parents/ascendants when it comes to enable state
+			// if parent is disabled, then this must be disabled too.
+			if (m_parent) return m_parent->IsEnabled();
+
+			// if this is enabled as well as its ascendants, then this is enabled
+			return true;
+		}
+
+		// --------------------------------------------------------------------------------
+		// BEHAVIOR
+		// --------------------------------------------------------------------------------
+		bool IsFocusable() const
+		{
+			return m_focusable;
+		}
+
+		// --------------------------------------------------------------------------------
+		// TRANSFORM
+		// --------------------------------------------------------------------------------
+
+		float GetWidth() const
+		{
+			return m_size.width;
+		}
+
+		float GetHeight() const
+		{
+			return m_size.height;
+		}
+
+		SizeF GetSize() const
+		{
+			return m_size;
+		}
+
+		void SetSize(const SizeF& size)
+		{
+			m_size = size;
+		}
+
+		PositionF GetAbsolutePosition() const
+		{
+			PositionF position = m_position;
+			if (m_parent)
+			{
+				position += m_parent->GetAbsolutePosition();
+			}
+			return position;
+		}
+
+		void SetPosition(const PositionF& pos)
+		{
+			m_position = pos;
+		}
+
+		// --------------------------------------------------------------------------------
+		// HIT TEST
+		// --------------------------------------------------------------------------------
+
+		virtual bool Contains(const PositionF& position) const
+		{
+			// translate the point (assume to be absolute position) into this widget's local space
+			PositionF local = position - GetAbsolutePosition();
+
+			// convert our size into rect. 
+			RectF rect{ 0, 0, m_size.width, m_size.height };
+
+			// since point is now in widget's local space, we can check if its inside it
+			return rect.Contains(local);
+		}
+
+		// --------------------------------------------------------------------------------
+		// INPUT
+		// --------------------------------------------------------------------------------
+
+		virtual void OnMouseDown(const PositionF& position)
+		{
+			// if not movable, bail out
+			if (m_moveBehavior == MoveBehavior::None) return;
+
+			// remember this mouse position. this will be the pivot position as this widget gets dragged around by mouse
+			m_beginMousePosition = position;
+
+			// remember the widget's position now. this will be the reference position as it gets dragged around by mouse
+			m_beginMovePosition = m_position;
+
+			// this widget is now moving
+			m_isMoving = true;
+		}
+
+		virtual void OnMouseUp(const PositionF& position)
+		{
+			// if not movable, bail out
+			if (m_moveBehavior == MoveBehavior::None) return;
+
+			m_isMoving = false;
+		}
+
+		virtual void OnMouseMove(const PositionF& position)
+		{
+			if (m_isMoving)
+			{
+				// if not movable, bail out
+				if (m_moveBehavior == MoveBehavior::None) return;
+
+				// calculate the mouse movement delta between its position at start of mouse drag and its position now
+				// factor in the move state - free? horizontal? vertical?
+				VecF delta =
+				{ 
+					// if we can move horizontally, use the mouse position. otherwise, use begin position
+					(m_moveBehavior & MoveBehavior::Horizontal) ? position.x - m_beginMousePosition.x : 0.0f,
+
+					// if we can move vertically, use the mouse position. otherwise, use begin position
+					(m_moveBehavior & MoveBehavior::Vertical) ? position.y - m_beginMousePosition.y : 0.0f
+				};
+
+				// transpate widget's position based on mouse movement delta
+				SetPosition(m_beginMovePosition + delta);
+			}
+		}
+
+		virtual void OnMouseEnter()
+		{
+		}
+
+		virtual void OnMouseLeave()
+		{
+		}
+
+		// --------------------------------------------------------------------------------
+		// FOCUS
+		// --------------------------------------------------------------------------------
+		virtual void OnGotFocus() 
+		{
+		}
+
+		virtual void OnLostFocus() 
+		{
+		}
+
+		virtual void OnKeyDown(int key) 
+		{
+		}
+
+		virtual void OnKeyUp(int key) 
+		{
+		}
+
+		// --------------------------------------------------------------------------------
+		// TREE TRAVERSAL
+		// --------------------------------------------------------------------------------
+
+		// traverse through the tree and find the top-most widget that intersects with point
+		Widget* FindTopWidgetAt(const PositionF& position)
+		{
+			// if widget is hidden, bail out
+			if (!m_visible)
+			{
+				return nullptr;
+			}
+
+			// do self test first. if this widget did not intersect with point, none of the children can. bail out
+			if (!Contains(position))
+			{
+				return nullptr;
+			}
+
+			for (std::vector<std::unique_ptr<Widget>>::reverse_iterator it = m_children.rbegin(); it != m_children.rend(); it++)
+			{
+				// find the top widget at this child. this call will also check this child for intersect
+				Widget* hit = it->get()->FindTopWidgetAt(position);
+				if (hit) return hit;
+			}
+
+			// if none of this widget's children intersect with point, then this widget does
+			return this;
+		}
+
+		// find the top child that is visible, enabled, and intersects with given point
+		Widget* FindTopChildAt(const PositionF& position)
+		{
+			for (std::vector<std::unique_ptr<Widget>>::reverse_iterator it = m_children.rbegin(); it != m_children.rend(); it++)
+			{
+				// if widget is hidden, skip
+				if (!(*it)->IsVisible())
+				{
+					continue;
+				}
+
+				// if widget is disable, skip
+				if (!(*it)->IsEnabled())
+				{
+					continue;
+				}
+
+				// if this widget intersects with point..
+				if ((*it)->Contains(position))
+				{
+					// note we're returning this child, not this child's possible descendants that might have intersected with the point 
+					return it->get();
+				}
+			}
+
+			// returns nullptr if none of this widget's children intersects with point
+			return nullptr;
+		}
+
+
+		// --------------------------------------------------------------------------------
+		// DRAW TRAVERSAL
+		// --------------------------------------------------------------------------------
+	};
+
+	class UISystem
+	{
+	private:
+		Widget m_root;
+		Widget* m_mouseCapture = nullptr;
+		Widget* m_mouseOver = nullptr;
+		Widget* m_focus = nullptr;
+
+		void SetFocus(Widget* widget)
+		{
+			if (m_focus == widget) return;
+
+			// if this widget is not focusable, bail out
+			if (!widget->IsFocusable()) return;
+
+			if (m_focus)
+			{
+				m_focus->OnLostFocus();
+			}
+
+			m_focus = widget;
+
+			if (m_focus)
+			{
+				m_focus->OnGotFocus();
+			}
+		}
+
+	public:
+
+		// TODO: don't do this. we only have this for debugging
+		Widget& GetRoot()
+		{
+			return m_root;
+		}
+
+		void Draw(IRenderer& renderer, Widget* widget)
+		{
+			if (!widget->IsVisible()) return;
+
+			PositionF pos = widget->GetAbsolutePosition();
+
+			ColorF color = { 0.5f, 0.5f, 1, 1 };
+			if (widget == m_mouseOver) color = { 0, 0, 1, 1 };
+			if (widget == m_focus) color = { 1, 0, 1, 1 };
+			if (widget == m_mouseCapture) color = { 1, 0, 0, 1 };
+			if(!widget->IsEnabled()) color = { 0.5f, 0.5f, 0.5f, 1 };
+
+			renderer.Draw(pos, widget->GetSize(), { 0,0,0,1 }, 0);
+			renderer.Draw(pos + PositionF{ 3,3 }, widget->GetSize() - SizeF{ 6,6 }, color, 0);
+
+			// set clip region
+			Size size = widget->GetSize();
+			RectF clip{};
+			clip.left = pos.x;
+			clip.top = pos.y;
+			clip.right = clip.left + size.width;
+			clip.bottom = clip.top + size.height;
+			RectF prev = renderer.GetClipRegion();
+
+			RectF effective = prev.Intersect(clip);
+			renderer.SetClipRegion(effective);
+
+			widget->ForEachChild([&](Widget* widget)
+				{
+					Draw(renderer, widget);
+				});
+
+			// restore clip region
+			renderer.SetClipRegion(prev);
+		}
+
+		void Draw(IRenderer& renderer)
+		{
+			Draw(renderer, &m_root);
+		}
+
+		void MouseDown(const PositionF& p)
+		{
+			// ---------------- routing begins here ----------------
+
+			// if root is not visible, bail out.
+			if (!m_root.IsVisible())
+			{
+				m_mouseCapture = nullptr;
+				return;
+			}
+
+			// if root is disabled, bail out.
+			if (!m_root.IsEnabled())
+			{
+				m_mouseCapture = nullptr;
+				return;
+			}
+
+			// check first if point is inside the root. bail out if not.
+			if (!m_root.Contains(p))
+			{
+				m_mouseCapture = nullptr;
+				return;
+			}
+
+			// route to widget that is clicked
+			Widget* widget = &m_root;
+
+			while (true)
+			{
+				// returns nullptr if none of the widget's child intersects with p
+				Widget* child = widget->FindTopChildAt(p);
+
+				// bring the child to front is not really part of routing. this is z order handling
+				// but its convenient here. the right way architecturally is to collect route path 
+				// then process the route path outside of routing. however, that may introduce unnecessary
+				// performance impact so doing z order handling here is the best.				
+				if (child)
+				{
+					widget->BringChildToFront(child);
+				}
+				else
+				{
+					break;
+				}
+
+				widget = child;
+			}
+			// ---------------- routing ends here ------------------
+
+			// guaranteed child exists because worst case -> child = root
+			m_mouseCapture = widget;
+
+			// ------------- propagation begins here ---------------
+			widget->OnMouseDown(p);
+
+			SetFocus(widget);
+
+			// ------------- propagation ends here -----------------
+		}
+
+		void MouseUp(const PositionF& p)
+		{
+			if (!m_mouseCapture)
+				return;
+
+			m_mouseCapture->OnMouseUp(p);
+
+			m_mouseCapture = nullptr;
+		}
+
+		void MouseMove(const PositionF& p)
+		{
+			if (m_mouseCapture)
+			{
+				m_mouseCapture->OnMouseMove(p);
+				return;
+			}
+
+			Widget* hover = m_root.FindTopWidgetAt(p);
+
+			if (hover != m_mouseOver)
+			{
+				// invoke mouse leave on current mouse hover widget
+				if (m_mouseOver)
+				{
+					m_mouseOver->OnMouseLeave();
+				}
+
+				// just in case we hover outside of root, assuming root is not desktop, hover will be nullptr
+				m_mouseOver = hover;
+				if (m_mouseOver)
+				{
+					m_mouseOver->OnMouseEnter();
+				}
+			}
+
+			if (m_mouseOver)
+			{
+				m_mouseOver->OnMouseMove(p);
+			}
+		}
+
+		void KeyDown(int key)
+		{
+			if (m_focus)
+			{
+				m_focus->OnKeyDown(key);
+			}
+		}
+
+		void KeyUp(int key)
+		{
+			if (m_focus)
+			{
+				m_focus->OnKeyUp(key);
+			}
+		}
+	};
+#pragma endregion
+
 #pragma region // gui scene
 	class GuiScene : public Scene
 	{
 		PositionF m_mousePos;
 
+		UISystem m_ux;
+
+		std::unique_ptr<Widget> CreateWidget(const PositionF& pos, const SizeF& size)
+		{
+			std::unique_ptr<Widget> widget = std::make_unique<Widget>();
+			widget->SetPosition(pos);
+			widget->SetSize(size);
+			return widget;
+		}
+
 	public:
 		void OnEnter() override
 		{
+			m_ux.GetRoot().SetPosition({ 0,0 });
+			m_ux.GetRoot().SetSize({ 0,0 });
+			m_ux.GetRoot().Show();
+
+			{
+				std::unique_ptr<Widget> dialog = CreateWidget({ 100, 100 }, { 480, 320 });
+				dialog->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
+				dialog->AddChild(std::move(CreateWidget({ 50, 50 }, { 100, 40 })));
+
+				std::unique_ptr<Widget> child = CreateWidget({ 200, 10 }, { 200, 200 });
+				child->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
+				dialog->AddChild(std::move(child));
+
+				m_ux.GetRoot().AddChild(std::move(dialog));
+			}
+
+			{
+				std::unique_ptr<Widget> dialog = CreateWidget({ 200, 200 }, { 480, 320 });
+				dialog->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
+				dialog->AddChild(std::move(CreateWidget({ 100, 50 }, { 150, 100 })));
+
+				std::unique_ptr<Widget> child = CreateWidget({ 200, 10 }, { 200, 200 });
+				child->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
+				child->Disable();
+				dialog->AddChild(std::move(child));
+
+				m_ux.GetRoot().AddChild(std::move(dialog));
+
+			}
+
+
 		}
 
 		void OnMouseMove(int x, int y) override
 		{
 			m_mousePos = PositionF((float)x, (float)y);
+
+
+			m_ux.MouseMove(m_mousePos);
 		}
+
+		void OnMouseDown(int btn, int x, int y)
+		{
+			m_mousePos = PositionF((float)x, (float)y);
+
+			// this button is for panning the camera
+			if (btn == 1)
+			{
+				m_ux.MouseDown(m_mousePos);
+			}
+			// if this button is clicked, move our focus in this position
+			if (btn == 2)
+			{
+			}
+		}
+
+		void OnMouseUp(int btn, int x, int y)
+		{
+			m_mousePos = PositionF((float)x, (float)y);
+
+			m_ux.MouseUp(m_mousePos);
+		}
+
+		void OnKeyDown(int key) override
+		{
+			m_ux.KeyDown(key);
+		}
+
 
 		void OnUpdate(double dt) override
 		{
@@ -5623,8 +6276,18 @@ namespace TestMapEditor
 		void OnRender() override
 		{
 			AssetManager assets;
+			ICanvas& canvas = assets.Get<ICanvas>("canvas");
 			IRenderer& renderer = assets.Get<IRenderer>("renderer");
+			renderer.EnableClipping(true);
+			renderer.SetClipRegion(canvas.GetViewPort());
+			m_ux.Draw(renderer);
 		}
+
+		void OnResize(size_t width, size_t height) override
+		{
+			m_ux.GetRoot().SetSize({ static_cast<float>(width), static_cast<float>(height) });
+		}
+
 
 	};
 #pragma endregion
@@ -5830,7 +6493,7 @@ namespace TestMapEditor
 				Registry<AnimationSet<Sprite>>::Instance().Register("water_rocks_anim_set", std::make_unique<AnimationSet<Sprite>>());
 				auto& waterRocksAnimSet = assets.Get<AnimationSet<Sprite>>("water_rocks_anim_set");
 				auto& waterRockAtlas = assets.Get<ISpriteAtlas>("water_rocks");
-				waterRocksAnimSet.Register("water_rocks_idle", SpriteAnimationFactory::Create(waterRockAtlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ,14 ,15 }, 100.0f, true, PositionF{ 0.5f, 0.8f }));
+				waterRocksAnimSet.Register("water_rocks_idle", SpriteAnimationFactory::Create(waterRockAtlas, std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, 100.0f, true, PositionF{ 0.5f, 0.8f }));
 
 
 
@@ -5900,7 +6563,7 @@ namespace TestMapEditor
 				Registry<DrawSortedSpritesCommand>::Instance().Register("drawCommand", std::make_unique<DrawSortedSpritesCommand>(renderer, 256));
 				DrawSortedSpritesCommand& drawCommand = Registry<DrawSortedSpritesCommand>::Instance().Get("drawCommand");
 
-				
+
 				// get map parameters
 				SizeF tileSize = Registry<SizeF>::Instance().Get("tile_size");
 				Size<size_t> mapSize = Registry<Size<size_t>>::Instance().Get("map_size");
@@ -5909,7 +6572,7 @@ namespace TestMapEditor
 		}
 
 		void OnKeyDown(int key)
-		{ 
+		{
 			return;
 		}
 
@@ -5921,7 +6584,7 @@ namespace TestMapEditor
 
 		void OnMouseMove(int x, int y)
 		{
-		//	m_sceneManager.OnMouseMove(x, y);
+			//	m_sceneManager.OnMouseMove(x, y);
 		}
 
 		// this method is fired up whenever the OnLap event is triggered from stopwatch
@@ -5982,7 +6645,7 @@ namespace TestMapEditor
 				}
 				renderer.End();
 			}
-			canvas.End();	
+			canvas.End();
 		}
 
 		void OnExit()
