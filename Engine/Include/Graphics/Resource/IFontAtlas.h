@@ -1,6 +1,6 @@
 #pragma once
 #include <Graphics/Core/Sprite.h>
-#include <Spatial/Size.h>
+#include <Math/Size.h>
 #include <Spatial/ISizeable.h>
 #include <string>
 
@@ -37,7 +37,7 @@ namespace engine
 				// ISizeable methods
 				virtual float GetWidth() const = 0;
 				virtual float GetHeight() const = 0;
-				virtual SizeF GetSize() const = 0;
+				virtual engine::math::SizeF GetSize() const = 0;
 			};
 		}
 	}

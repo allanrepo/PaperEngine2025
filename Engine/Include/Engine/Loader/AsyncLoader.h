@@ -613,13 +613,13 @@ namespace engine
 				std::function<engine::component::tile1::Tile<T>(const U&)> m_tileLoader;
 				engine::component::tile1::TileLayer<T>* m_layer;
 				bool m_isDone;
-				spatial::Size<size_t> m_regionSize;
-				spatial::Size<size_t> m_layerSize;
+				math::Size<size_t> m_regionSize;
+				math::Size<size_t> m_layerSize;
 				engine::spatial::Coord m_currRegion;
 				engine::spatial::Coord m_currTile;
 				size_t m_loadedTiles;
 				size_t m_totalTiles;
-				spatial::Size<size_t> m_currRegionSize;
+				math::Size<size_t> m_currRegionSize;
 				std::string m_label;
 
 				// helper method to create and add new region
@@ -658,7 +658,7 @@ namespace engine
 					const std::string& label,
 					engine::component::tile1::TileLayer<T>& layer,
 					const engine::container::Table<std::string>& table,
-					const spatial::Size<size_t>& regionSize,
+					const math::Size<size_t>& regionSize,
 					std::function<engine::component::tile1::Tile<T>(const U&)> tileLoader
 				)
 				{
@@ -795,7 +795,7 @@ namespace engine
 				component::tile1::TileLayer<T>& SyncLoadAll(
 					component::tile1::TileLayer<T>& layer,
 					const engine::container::Table<std::string>& table,
-					const spatial::Size<size_t>& regionSize,
+					const math::Size<size_t>& regionSize,
 					std::function<component::tile1::Tile<T>(const U&)> tileLoader,
 					double maxTimePerUpdateMS = 1.0
 				)
@@ -898,7 +898,7 @@ namespace engine
 
 				// references
 				std::function<component::tile1::Tile<T>(const U&)> m_tileLoader;
-				spatial::Size<size_t> m_regionSize;
+				math::Size<size_t> m_regionSize;
 
 				// target layer
 				component::tile1::TileLayer<T>* m_layer;
@@ -934,7 +934,7 @@ namespace engine
 
 				bool Open(
 					const std::string& filename,
-					const spatial::Size<size_t>& regionSize,
+					const math::Size<size_t>& regionSize,
 					std::function<component::tile1::Tile<T>(const U&)> tileLoader,
 					component::tile1::TileLayer<T>& layer
 				)

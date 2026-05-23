@@ -35,7 +35,7 @@ namespace engine
 				{
 				private:
 					engine::spatial::PositionF m_pos;
-					spatial::SizeF m_size;
+					math::SizeF m_size;
 					::engine::graphics::ColorF m_color;
 					float m_rotation;
 
@@ -43,7 +43,7 @@ namespace engine
 					DrawQuadCommand(
 						::engine::graphics::renderer::IRenderer& renderer,
 						engine::spatial::PositionF pos,
-						spatial::SizeF size,
+						math::SizeF size,
 						::engine::graphics::ColorF color,
 						float rotation
 					) :
@@ -95,7 +95,7 @@ namespace engine
 				private:
 					const ::engine::graphics::Sprite& m_sprite;
 					engine::spatial::PositionF m_pos;
-					spatial::SizeF m_size;
+					math::SizeF m_size;
 					::engine::graphics::ColorF m_color;
 					float m_rotation;
 				public:
@@ -103,7 +103,7 @@ namespace engine
 						engine::graphics::renderer::IRenderer& renderer,
 						const engine::graphics::Sprite& sprite,
 						engine::spatial::PositionF pos,
-						spatial::SizeF size,
+						math::SizeF size,
 						::engine::graphics::ColorF color,
 						float rotation
 					) :
@@ -126,7 +126,7 @@ namespace engine
 				private:
 					const ::engine::graphics::Sprite m_sprite;
 					engine::spatial::PositionF m_pos;
-					spatial::SizeF m_size;
+					math::SizeF m_size;
 					::engine::graphics::ColorF m_color;
 					float m_rotation;
 				public:
@@ -134,7 +134,7 @@ namespace engine
 						::engine::graphics::renderer::IRenderer& renderer,
 						const ::engine::graphics::Sprite& sprite,
 						engine::spatial::PositionF pos,
-						spatial::SizeF size,
+						math::SizeF size,
 						::engine::graphics::ColorF color,
 						float rotation
 					) :
@@ -155,13 +155,13 @@ namespace engine
 				class SetClipRegionCommand : public DrawCommandBase
 				{
 				private:
-					const engine::math::geometry::RectF m_region;
+					const engine::math::RectF m_region;
 					bool m_enable;
 
 				public:
 					SetClipRegionCommand(
 						::engine::graphics::renderer::IRenderer& renderer,
-						const engine::math::geometry::RectF& region,
+						const engine::math::RectF& region,
 						bool enable
 					) :
 						DrawCommandBase(renderer),
@@ -187,7 +187,7 @@ namespace engine
 					{
 						engine::graphics::Sprite sprite;	// what to draw
 						engine::spatial::PositionF pos;		// world position
-						engine::spatial::SizeF size;		// size on screen
+						engine::math::SizeF size;		// size on screen
 						engine::graphics::ColorF tint;		// color modulation
 						float rotation;						// rotation angle
 						float depth;						// depth value	

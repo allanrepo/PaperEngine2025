@@ -10,7 +10,7 @@ bool engine::graphics::Canvas::Initialize(void* pWindowHandle)
     return impl->Initialize(pWindowHandle);
 }
 
-void engine::graphics::Canvas::Resize(const spatial::Size<uint32_t>& size)
+void engine::graphics::Canvas::Resize(const math::Size<uint32_t>& size)
 {
     impl->Resize(size);
 }
@@ -35,7 +35,7 @@ void engine::graphics::Canvas::SetViewPort()
     impl->SetViewPort();
 }
 
-void engine::graphics::Canvas::SetViewPort(const engine::math::geometry::RectF& rect)
+void engine::graphics::Canvas::SetViewPort(const engine::math::RectF& rect)
 {
 	impl->SetViewPort(rect);
 }
@@ -45,7 +45,7 @@ void engine::graphics::Canvas::Clear(const engine::graphics::ColorF& color)
 	impl->Clear(color);
 }
 
-engine::math::geometry::RectF engine::graphics::Canvas::GetViewPort() const
+engine::math::RectF engine::graphics::Canvas::GetViewPort() const
 {
 	return impl->GetViewPort();
 }

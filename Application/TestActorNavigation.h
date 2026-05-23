@@ -48,7 +48,6 @@ namespace TestActorNavigation
 	using namespace engine::loader::tile;
 	using namespace engine::spatial;
 	using namespace engine::math;
-	using namespace engine::math::geometry;
 	using namespace engine::component;
 	using namespace engine::graphics::tile;
 	using namespace engine::navigation::tile;
@@ -405,7 +404,7 @@ namespace TestActorNavigation
 
 			// get region extents of our tilemap. we will feed it into path finder			
 			TileRegion<RenderableTile>& region = Registry<TileRegion<RenderableTile>>::Instance().Get("1x8_256x32_tile");
-			math::geometry::Rect<int> map = { 0, 0, (int)region.GetWidth(), (int)region.GetHeight() };
+			math::Rect<int> map = { 0, 0, (int)region.GetWidth(), (int)region.GetHeight() };
 
 			// find path
 			vector<Coord> path;

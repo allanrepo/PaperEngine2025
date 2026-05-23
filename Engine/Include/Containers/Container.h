@@ -22,7 +22,7 @@ namespace engine::container
 
 		virtual T& Get(size_t index) = 0;
 
-		virtual void Reserve(const spatial::Size<size_t>& size) = 0;
+		virtual void Reserve(const math::Size<size_t>& size) = 0;
 
 		virtual size_t GetElementCount() const = 0;
 

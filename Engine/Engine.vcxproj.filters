@@ -174,9 +174,6 @@
     <ClInclude Include="Include\Spatial\Position.h">
       <Filter>Spatial</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Spatial\Size.h">
-      <Filter>Spatial</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Spatial\Transform.h">
       <Filter>Spatial</Filter>
     </ClInclude>
@@ -398,6 +395,9 @@
     </ClInclude>
     <ClInclude Include="Include\Scene\Scene.h">
       <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Size.h">
+      <Filter>Math</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

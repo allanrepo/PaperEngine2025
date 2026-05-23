@@ -2,7 +2,7 @@
 #include <vector>
 #include <memory>
 #include <Containers/Grid.h>
-#include <Spatial/Size.h>
+#include <Math/Size.h>
 #include <Spatial/Coord.h>
 #include <Containers/Dictionary.h>
 
@@ -259,7 +259,7 @@ namespace engine
 				return m_map.GetHeight();
 			}
 
-			spatial::Size<size_t> GetSize() const
+			math::Size<size_t> GetSize() const
 			{
 				return m_map.GetSize();
 			}
@@ -327,7 +327,7 @@ namespace engine
 				}
 			}
 
-			void Initialize(engine::spatial::Size<size_t> size)
+			void Initialize(engine::math::Size<size_t> size)
 			{
 				Initialize(size.width, size.height);
 			}
@@ -357,7 +357,7 @@ namespace engine
 			// clears all cells of their content. keeps cells in grid
 			void Reset()
 			{
-				engine::spatial::Size<size_t> size = GetSize();
+				engine::math::Size<size_t> size = GetSize();
 				for (size_t i = 0; i < size.width * size.height; ++i)
 				{
 					m_map.Get(i).Clear();

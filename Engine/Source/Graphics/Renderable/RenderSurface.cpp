@@ -45,9 +45,9 @@ float engine::graphics::renderable::RenderSurface::GetHeight() const
 	return static_cast<float>(m_texture->GetHeight());
 }
 
-engine::spatial::SizeF engine::graphics::renderable::RenderSurface::GetSize() const
+engine::math::SizeF engine::graphics::renderable::RenderSurface::GetSize() const
 {
-	return spatial::SizeF
+	return math::SizeF
 	{
 		static_cast<float>(m_texture->GetWidth()),
 		static_cast<float>(m_texture->GetHeight())
@@ -56,7 +56,7 @@ engine::spatial::SizeF engine::graphics::renderable::RenderSurface::GetSize() co
 
 const engine::graphics::Sprite engine::graphics::renderable::RenderSurface::GetSprite() const
 {
-	return engine::graphics::Sprite(m_texture.get(), engine::math::geometry::RectF{ 0, 0, 1, 1 });
+	return engine::graphics::Sprite(m_texture.get(), engine::math::RectF{ 0, 0, 1, 1 });
 }
 
 bool engine::graphics::renderable::RenderSurface::IsValid() const

@@ -248,7 +248,7 @@ namespace engine
 
 
 			bool PathFinder::FindPath(
-				const math::geometry::Rect<int>& region,
+				const math::Rect<int>& region,
 				const engine::spatial::Coord& start,
 				const engine::spatial::Coord& goal,
 				std::vector<engine::spatial::Coord>& outPath
@@ -406,7 +406,7 @@ namespace engine
 			}
 
 			bool PathFinderUsingPriorityQueue::FindPath(
-				const engine::math::geometry::Rect<int>& region,
+				const engine::math::Rect<int>& region,
 				const engine::spatial::Coord& start,
 				const engine::spatial::Coord& goal,
 				std::vector<engine::spatial::Coord>& outPath

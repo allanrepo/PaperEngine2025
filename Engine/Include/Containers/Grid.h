@@ -66,9 +66,9 @@ namespace engine::container
 			return (m_data.size() + m_width - 1) / m_width;
 		}
 
-		spatial::Size<size_t> GetSize() const
+		math::Size<size_t> GetSize() const
 		{
-			return spatial::Size<size_t>{ GetWidth(), GetHeight() };
+			return math::Size<size_t>{ GetWidth(), GetHeight() };
 		}
 
 		size_t GetElementCount() const
@@ -262,7 +262,7 @@ namespace engine::container
 #pragma endregion
 
 #pragma region // content management
-		void Reserve(const spatial::Size<size_t>& size)
+		void Reserve(const math::Size<size_t>& size)
 		{
 			m_data.reserve(size.width * size.height);
 		}
@@ -316,7 +316,7 @@ namespace engine::container
 			m_data.resize(width * height, data);
 		}
 
-		void Initialize(const engine::spatial::Size<size_t> size, const T& data)
+		void Initialize(const engine::math::Size<size_t> size, const T& data)
 		{
 			Initialize(size.width, size.height, data);
 		}

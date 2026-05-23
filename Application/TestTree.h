@@ -43,7 +43,7 @@ namespace engine
 			{
 				engine::graphics::Sprite sprite;						// what to draw
 				engine::spatial::PositionF pos;		// world position
-				engine::spatial::SizeF size;		// size on screen
+				engine::math::SizeF size;		// size on screen
 				engine::graphics::ColorF tint;		// color modulation
 				float depth;						// depth
 				float rotation;						// rotation angle
@@ -110,7 +110,7 @@ namespace engine
 		{
 			engine::graphics::Sprite sprite;              // what to draw
 			engine::spatial::PositionF pos;    // world position
-			engine::spatial::SizeF size;       // size on screen
+			engine::math::SizeF size;       // size on screen
 			engine::graphics::ColorF tint;     // color modulation
 			float rotation;                    // rotation angle
 			float depth;
@@ -164,7 +164,7 @@ namespace engine
 			engine::component::tile1::TileMap<T>& map,
 			DrawQueue& queue,
 			int row, int col,
-			const engine::spatial::SizeF& tilesize,
+			const engine::math::SizeF& tilesize,
 			const engine::spatial::PositionF& pos,
 			float depth,
 			const engine::graphics::ColorF& tint = { 1,1,1,1 }
@@ -324,7 +324,7 @@ namespace engine
 
 			bool FindPath(const engine::spatial::Coord& start, const engine::spatial::Coord& end, std::vector<engine::spatial::Coord>& path)
 			{
-				math::geometry::Rect<int> map = { 0, 0, (int)m_grid.GetWidth(), (int)m_grid.GetHeight() };
+				math::Rect<int> map = { 0, 0, (int)m_grid.GetWidth(), (int)m_grid.GetHeight() };
 
 				return m_pathFinder.FindPath(
 					map,
@@ -346,7 +346,7 @@ namespace engine
 				}
 			}
 
-			void Initialize(engine::spatial::Size<size_t> size, engine::navigation::tile::TileConstraint constraint)
+			void Initialize(engine::math::Size<size_t> size, engine::navigation::tile::TileConstraint constraint)
 			{
 				Initialize(size.width, size.height, constraint);
 			}
@@ -402,7 +402,7 @@ namespace engine
 				return (m_grid.Get(row, col) | constraint) != engine::navigation::tile::TileConstraint::NONE;
 			}
 
-			engine::spatial::Size<size_t> GetSize() const
+			engine::math::Size<size_t> GetSize() const
 			{
 				return m_grid.GetSize();
 			}
@@ -411,7 +411,7 @@ namespace engine
 		void Queue(
 			DrawQueue& queue,
 			const engine::spatial::Coord& coord,
-			const engine::spatial::SizeF& tilesize,
+			const engine::math::SizeF& tilesize,
 			const engine::spatial::PositionF& pos,
 			const engine::graphics::Sprite sprite,
 			const engine::graphics::ColorF& tint = { 1,1,1,1 }
@@ -429,13 +429,13 @@ namespace engine
 			ConstraintMap& map,
 			DrawQueue& queue,
 			const engine::graphics::resource::ISpriteAtlas& atlas,
-			const engine::spatial::SizeF& tilesize,
+			const engine::math::SizeF& tilesize,
 			const engine::spatial::PositionF& pos,
 			float depth,
 			const engine::graphics::ColorF& tint = { 1,1,1,1 }
 		)
 		{
-			engine::spatial::Size<size_t> size = map.GetSize();
+			engine::math::Size<size_t> size = map.GetSize();
 
 			for (int row = 0; row < size.height; row++)
 			{

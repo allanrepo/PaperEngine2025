@@ -57,7 +57,7 @@ namespace demo
 		engine::performance::FrameRateMonitor m_frameRateMonitor;
 		std::unique_ptr<engine::component::tile1::Tileset<RenderableTile>> m_tileSet;
 		std::unique_ptr<engine::component::tile1::TileLayer<RenderableTile>> m_layer;
-		engine::spatial::SizeF m_viewportSize;
+		engine::math::SizeF m_viewportSize;
 
 		void OnResize(size_t width, size_t height);
 

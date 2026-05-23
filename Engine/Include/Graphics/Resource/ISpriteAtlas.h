@@ -22,9 +22,9 @@ namespace engine
 				virtual ~ISpriteAtlas() = default;
 				virtual bool Initialize(const wchar_t* fileNamePath) = 0;
 				virtual bool Initialize(unsigned int width, unsigned int height, const void* srcData, unsigned int bytesPerRow) = 0;
-				virtual void AddUVRect(const engine::math::geometry::RectF& rect) = 0;
-				virtual void AddUVRects(const std::vector<engine::math::geometry::RectF>& rects) = 0;
-				virtual inline const engine::math::geometry::RectF GetUVRect(int index) const = 0;
+				virtual void AddUVRect(const engine::math::RectF& rect) = 0;
+				virtual void AddUVRects(const std::vector<engine::math::RectF>& rects) = 0;
+				virtual inline const engine::math::RectF GetUVRect(int index) const = 0;
 				virtual inline size_t GetUVRectCount() const = 0;
 				virtual engine::graphics::Sprite MakeSprite(int index, const engine::spatial::PositionF& pivot = {0,0}) const = 0;
 				virtual void Reset() = 0;

@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <Spatial/Coord.h>
-#include <Spatial/Size.h>
+#include <Math/Size.h>
 #include <Math/Rect.h>
 #include <Containers/Grid.h>
 #include <functional>
@@ -403,7 +403,7 @@ namespace engine::navigation
 			}
 
 			virtual bool FindPath(
-				const math::geometry::Rect<int>& region,
+				const math::Rect<int>& region,
 				const engine::spatial::Coord& start,
 				const engine::spatial::Coord& goal,
 				std::vector<engine::spatial::Coord>& outPath
@@ -455,7 +455,7 @@ namespace engine::navigation
 			const std::vector<engine::spatial::Coord> GetOpenTiles() const;
 
 			virtual bool FindPath(
-				const engine::math::geometry::Rect<int>& region,
+				const engine::math::Rect<int>& region,
 				const engine::spatial::Coord& start,
 				const engine::spatial::Coord& goal,
 				std::vector<engine::spatial::Coord>& outPath
@@ -551,8 +551,8 @@ namespace engine::navigation
 		{
 			using Coord = engine::spatial::Coord;
 			using Grid = engine::container::Grid<TileConstraint>;
-			using Rect = engine::math::geometry::Rect<int>;
-			using Size = engine::spatial::Size<size_t>;
+			using Rect = engine::math::Rect<int>;
+			using Size = engine::math::Size<size_t>;
 
 		private:
 #pragma region // parameters
@@ -769,7 +769,7 @@ namespace engine::navigation
 			template<typename Func>
 			void ForEach(const Func& func)
 			{
-				engine::spatial::Size<size_t> size = GetSize();
+				engine::math::Size<size_t> size = GetSize();
 				for (int row = 0; row < size.height; row++)
 				{
 					for (int col = 0; col < size.width; col++)
@@ -782,7 +782,7 @@ namespace engine::navigation
 			template<typename Func>
 			void ForEach(const Func& func) const
 			{
-				engine::spatial::Size<size_t> size = GetSize();
+				engine::math::Size<size_t> size = GetSize();
 				for (int row = 0; row < size.height; row++)
 				{
 					for (int col = 0; col < size.width; col++)

@@ -264,7 +264,7 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::End()
 {
 }
 
-void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::SetClipRegion(const engine::math::geometry::RectF& region)
+void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::SetClipRegion(const engine::math::RectF& region)
 {
 	m_clipRegion = region;
 }
@@ -274,14 +274,14 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::EnableClipping
 	m_clippingEnabled = enable;
 }
 
-engine::math::geometry::RectF engine::graphics::dx11::renderer::DX11RendererImmediateImpl::GetClipRegion() const
+engine::math::RectF engine::graphics::dx11::renderer::DX11RendererImmediateImpl::GetClipRegion() const
 {
 	return m_clipRegion;
 }
 
 void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
 	const engine::spatial::PositionF& pos,
-	const spatial::SizeF& size,
+	const math::SizeF& size,
 	const engine::graphics::ColorF& color,
 	const float rotation
 )
@@ -361,7 +361,7 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
 void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
 	const engine::graphics::Sprite& sprite,                    
 	const engine::spatial::PositionF& pos, 
-	const spatial::SizeF& size, 
+	const math::SizeF& size, 
 	const engine::graphics::ColorF& color, 
 	const float rotation
 )
@@ -383,7 +383,7 @@ void engine::graphics::dx11::renderer::DX11RendererImmediateImpl::Draw(
 #pragma endregion
 
 #pragma region // update texture transform for this draw request. the scale and translate setting will fit the size of the texture into specified size
-	engine::math::geometry::RectF rect = sprite.GetUVRect();
+	engine::math::RectF rect = sprite.GetUVRect();
 	m_UpdateConstantBuffer.texture.scale.x = (rect.right - rect.left);
 	m_UpdateConstantBuffer.texture.scale.y = (rect.bottom - rect.top);
 	m_UpdateConstantBuffer.texture.translate.x = rect.left;

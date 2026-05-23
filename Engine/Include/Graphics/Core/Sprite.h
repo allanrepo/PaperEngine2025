@@ -42,8 +42,8 @@ namespace engine::graphics
 	class Sprite : public engine::spatial::ISizeable<float>, public engine::core::IBindable
 	{
 	private:
-		engine::math::geometry::RectF m_rect;
-		engine::spatial::SizeF m_size;
+		engine::math::RectF m_rect;
+		engine::math::SizeF m_size;
 		core::View<engine::graphics::resource::ITexture> m_view;
 		engine::spatial::PositionF m_pivot;
 
@@ -52,14 +52,14 @@ namespace engine::graphics
 
 	protected:
 		// use this constructor if you have the sprite atlas and the source rect
-		Sprite(const engine::graphics::resource::ITexture* texture, const engine::math::geometry::RectF& rect, const engine::spatial::PositionF& pivot = { 0,0 });
+		Sprite(const engine::graphics::resource::ITexture* texture, const engine::math::RectF& rect, const engine::spatial::PositionF& pivot = { 0,0 });
 
 	public:
 		~Sprite() = default;
 
 		// Sprite methods
 		bool IsValid() const;
-		engine::math::geometry::RectF GetUVRect() const;
+		engine::math::RectF GetUVRect() const;
 		void SetPivot(const engine::spatial::PositionF& pos);
 		engine::spatial::PositionF GetPivot() const;
 		void SetPivotInPixels(const engine::spatial::PositionF& pixelPos);
@@ -75,7 +75,7 @@ namespace engine::graphics
 		// ISizeable methods implementation
 		float GetWidth() const override final;
 		float GetHeight() const override final;
-		spatial::SizeF GetSize() const override final;
+		math::SizeF GetSize() const override final;
 
 	};
 

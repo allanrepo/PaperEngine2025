@@ -86,7 +86,7 @@ namespace engine
 				m_objects.Clear();
 			}
 
-			void Initialize(Size<size_t> size)
+			void Initialize(engine::math::Size<size_t> size)
 			{
 				Initialize(size.width, size.height);
 			}
@@ -107,7 +107,7 @@ namespace engine
 			// -------------------------------------------------------------------------
 			// query
 			// -------------------------------------------------------------------------
-			Size<size_t> GetSize() const
+			engine::math::Size<size_t> GetSize() const
 			{
 				return m_grid.GetSize();
 			}

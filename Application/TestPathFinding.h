@@ -135,7 +135,7 @@ namespace TestPathFinding
 		double m_elapsed;
 
 		engine::spatial::PositionF m_pos;
-		engine::spatial::SizeF m_tilesize;
+		engine::math::SizeF m_tilesize;
 
 		
 		std::unique_ptr<engine::component::tile1::TileRegion<TileDefinition>> m_regionTD;
@@ -507,7 +507,7 @@ namespace TestPathFinding
 			if (m_useTileNavigationResolver)
 			{
 				// get map size
-				engine::spatial::Size<size_t> size = m_regionTD->GetSize();
+				engine::math::Size<size_t> size = m_regionTD->GetSize();
 
 				// if row and col is out of bounds, bail out
 				if (col >= size.width || row >= size.height) return;
@@ -552,7 +552,7 @@ namespace TestPathFinding
 			else
 			{
 				// get map size
-				engine::spatial::Size<size_t> size = m_regionRT->GetSize();
+				engine::math::Size<size_t> size = m_regionRT->GetSize();
 
 				// if row and col is out of bounds, bail out
 				if (col >= size.width || row >= size.height) return;
@@ -608,7 +608,7 @@ namespace TestPathFinding
 			if (m_useTileNavigationResolver)
 			{
 				// find path
-				math::geometry::Rect<int> map = { 0, 0, (int)m_regionTD->GetWidth(), (int)m_regionTD->GetHeight() };
+				math::Rect<int> map = { 0, 0, (int)m_regionTD->GetWidth(), (int)m_regionTD->GetHeight() };
 				m_pathFinder1.FindPath(
 					map,
 					m_startTile,
@@ -619,7 +619,7 @@ namespace TestPathFinding
 			else
 			{
 				// find path
-				math::geometry::Rect<int> map = { 0, 0, (int)m_regionRT->GetWidth(), (int)m_regionRT->GetHeight() };
+				math::Rect<int> map = { 0, 0, (int)m_regionRT->GetWidth(), (int)m_regionRT->GetHeight() };
 				m_pathFinder.FindPath(
 					map,
 					m_startTile,
@@ -728,7 +728,7 @@ namespace TestPathFinding
 		void DrawNavigation(
 			engine::graphics::renderer::IRenderer& renderer,
 			const engine::component::tile1::TileMap<T>& tilemap,
-			const engine::spatial::SizeF& tilesize,
+			const engine::math::SizeF& tilesize,
 			const engine::spatial::PositionF& pos,
 			const engine::graphics::ColorF& color,
 			const engine::spatial::Coord& coord,
@@ -746,7 +746,7 @@ namespace TestPathFinding
 				coord.row * tilesize.height
 			};
 
-			engine::spatial::SizeF size = tilesize;
+			engine::math::SizeF size = tilesize;
 			size.width *= scale.x;
 			size.height *= scale.y;
 

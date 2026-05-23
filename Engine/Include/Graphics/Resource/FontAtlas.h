@@ -37,7 +37,7 @@ namespace engine
 				// ISizeable methods
 				float GetWidth() const override final;
 				float GetHeight() const override final;
-				SizeF GetSize() const override final;
+				engine::math::SizeF GetSize() const override final;
 			};
 		}
 	}

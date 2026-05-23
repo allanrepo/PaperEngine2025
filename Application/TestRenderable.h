@@ -75,10 +75,10 @@ namespace TestRenderable
 	using Tileset = engine::tile::Tileset<T>;
 
 	template<typename T>
-	using Rect = engine::math::geometry::Rect<T>;
+	using Rect = engine::math::Rect<T>;
 
 	template<typename T>
-	using Size = engine::spatial::Size<T>;
+	using Size = engine::math::Size<T>;
 
 	using AutoTileResolver = engine::tile::AutoTileResolver;
 	using TileVariant = engine::tile::TileVariant;
@@ -143,7 +143,7 @@ namespace TestRenderable
 			return m_tilemap.GetHeight();
 		}
 
-		spatial::Size<size_t> GetSize() const
+		Size<size_t> GetSize() const
 		{
 			return m_tilemap.GetSize();
 		}
@@ -436,7 +436,7 @@ namespace TestRenderable
 			ResolveNeighbors(coord);
 		}
 
-		void Set(engine::spatial::Size<size_t> size, TileGrid<T>& grid, const Tileset<T>& set)
+		void Set(engine::math::Size<size_t> size, TileGrid<T>& grid, const Tileset<T>& set)
 		{
 			for (int row = 0; row < size.height; row++)
 			{
@@ -447,7 +447,7 @@ namespace TestRenderable
 			}
 		}
 
-		void Remove(engine::spatial::Size<size_t> size, TileGrid<T>& grid, const Tileset<T>& set)
+		void Remove(engine::math::Size<size_t> size, TileGrid<T>& grid, const Tileset<T>& set)
 		{
 			for (int row = 0; row < size.height; row++)
 			{
@@ -467,7 +467,7 @@ namespace TestRenderable
 	{
 	private:
 		std::vector<MapLayer> m_layers;
-		engine::spatial::Size<size_t> m_size;
+		engine::math::Size<size_t> m_size;
 
 	public:
 
@@ -478,7 +478,7 @@ namespace TestRenderable
 	{
 		engine::graphics::Sprite sprite;              // what to draw
 		engine::spatial::PositionF pos;    // world position
-		engine::spatial::SizeF size;       // size on screen
+		engine::math::SizeF size;       // size on screen
 		engine::graphics::ColorF tint;     // color modulation
 		float rotation;                    // rotation angle
 		float depth;
@@ -1253,7 +1253,7 @@ namespace TestRenderable
 			TileGrid<T>& map,
 			DrawQueue& queue,
 			int row, int col,
-			const engine::spatial::SizeF& tilesize,
+			const engine::math::SizeF& tilesize,
 			const engine::spatial::PositionF& pos,
 			float depth,
 			const engine::graphics::ColorF& tint = { 1,1,1,1 },
@@ -1274,7 +1274,7 @@ namespace TestRenderable
 					row * tilesize.height
 				};
 
-				engine::spatial::SizeF scaledtilesize
+				engine::math::SizeF scaledtilesize
 				{
 					tilesize.width* scale.x,
 					tilesize.height* scale.y

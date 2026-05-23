@@ -16,7 +16,7 @@ demo::LoadTileMapState::LoadTileMapState(const std::string& filePath) :
 void demo::LoadTileMapState::Enter(Demo& owner)
 {
 	// using factory, create sprite atlas
-	engine::graphics::factory::SpriteAtlasFactory::Create("demoTileMapAtlas", L"../Assets/4x1_128x32_tile.png", std::vector<engine::math::geometry::RectF>());
+	engine::graphics::factory::SpriteAtlasFactory::Create("demoTileMapAtlas", L"../Assets/4x1_128x32_tile.png", std::vector<engine::math::RectF>());
 
 	// add UV rects on our sprite atlas
 	engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("demoTileMapAtlas");
@@ -88,7 +88,7 @@ bool demo::RenderTileMapState::IsFinished(Demo& owner)
 
 void demo::RenderTileMapState::OnResize(size_t width, size_t height)
 {
-	m_viewportSize = engine::spatial::SizeF({ static_cast<float>(width - 50), static_cast<float>(height - 50) });
+	m_viewportSize = engine::math::SizeF({ static_cast<float>(width - 50), static_cast<float>(height - 50) });
 }
 
 #pragma endregion

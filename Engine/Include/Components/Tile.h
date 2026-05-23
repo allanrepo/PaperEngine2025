@@ -21,7 +21,7 @@
 
 #pragma once
 #include <Spatial/ISizeable.h>
-#include <Spatial/Size.h>
+#include <Math/Size.h>
 #include <Containers/Dictionary.h>
 #include <Core/View.h>
 #include <vector>
@@ -163,9 +163,9 @@ namespace engine::component::tile1
 			return m_width > 0? (m_map.size() / m_width) : 0;
 		}
 
-		spatial::Size<size_t> GetSize() const override
+		math::Size<size_t> GetSize() const override
 		{
-			return spatial::Size<size_t>
+			return math::Size<size_t>
 			{
 				GetWidth(),
 				GetHeight()
@@ -230,7 +230,7 @@ namespace engine::component::tile1
 			return m_map[index];
 		}
 
-		void Reserve(const spatial::Size<size_t>& size) override
+		void Reserve(const math::Size<size_t>& size) override
 		{
 			m_map.reserve(size.width * size.height);
 		}
@@ -385,7 +385,7 @@ namespace engine::component::tile1
 			return m_tilegrid.GetWidth();
 		}
 
-		spatial::Size<size_t> GetSize() const override final
+		math::Size<size_t> GetSize() const override final
 		{
 			return m_tilegrid.GetSize();
 		}
@@ -442,7 +442,7 @@ namespace engine::component::tile1
 			return m_tilegrid.Get(index);
 		}
 
-		void Reserve(const spatial::Size<size_t>& size) override
+		void Reserve(const math::Size<size_t>& size) override
 		{
 			m_tilegrid.Reserve(size);
 		}
@@ -588,9 +588,9 @@ namespace engine::component::tile1
 			return m_width;
 		}
 
-		spatial::Size<size_t> GetSize() const override
+		math::Size<size_t> GetSize() const override
 		{
-			return spatial::Size<size_t>
+			return math::Size<size_t>
 			{
 				GetWidth(),
 				GetHeight()
@@ -675,7 +675,7 @@ namespace engine::component::tile1
 			return m_regions[index];
 		}
 
-		void Reserve(const spatial::Size<size_t>& size) override
+		void Reserve(const math::Size<size_t>& size) override
 		{
 			m_regions.reserve(size.width * size.height);
 		}
@@ -783,7 +783,7 @@ namespace engine::component::tile1
 			return m_view->GetHeight();
 
 		}
-		virtual spatial::Size<size_t> GetSize() const override final
+		virtual math::Size<size_t> GetSize() const override final
 		{
 			return m_view->GetSize();
 		}
@@ -961,7 +961,7 @@ namespace engine
 				return m_map.GetHeight();
 			}
 
-			spatial::Size<size_t> GetSize() const
+			math::Size<size_t> GetSize() const
 			{
 				return m_map.GetSize();
 			}
@@ -1050,7 +1050,7 @@ namespace engine
 #pragma endregion
 
 #pragma region // content management
-			void Reserve(const spatial::Size<size_t>& size)
+			void Reserve(const math::Size<size_t>& size)
 			{
 				m_map.Reserve(size);
 			}
@@ -1073,7 +1073,7 @@ namespace engine
 				}
 			}
 
-			void Initialize(engine::spatial::Size<size_t> size, const Tile<T>& data)
+			void Initialize(engine::math::Size<size_t> size, const Tile<T>& data)
 			{
 				Initialize(size.width, size.height, data);
 			}

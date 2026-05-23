@@ -38,7 +38,7 @@ namespace engine
 				static engine::graphics::resource::ISpriteAtlas& Load(
 					const std::string& name,
 					const std::wstring& filepath,
-					const std::vector<engine::math::geometry::RectF>& uvs
+					const std::vector<engine::math::RectF>& uvs
 				)
 				{
 					auto& registry = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance();

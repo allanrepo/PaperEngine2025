@@ -90,6 +90,7 @@
     <ClInclude Include="Include\Job\IJob.h" />
     <ClInclude Include="Include\Job\Job.h" />
     <ClInclude Include="Include\Math\Rect.h" />
+    <ClInclude Include="Include\Math\Size.h" />
     <ClInclude Include="Include\Math\Vector.h" />
     <ClInclude Include="Include\Performance\FrameRateMonitor.h" />
     <ClInclude Include="Include\Scene\Scene.h" />
@@ -100,7 +101,6 @@
     <ClInclude Include="Include\Spatial\Motion.h" />
     <ClInclude Include="Include\Spatial\ObjectGrid.h" />
     <ClInclude Include="Include\Spatial\Position.h" />
-    <ClInclude Include="Include\Spatial\Size.h" />
     <ClInclude Include="Include\Spatial\Spatial.h" />
     <ClInclude Include="Include\Spatial\SpatialOccupancyGrid.h" />
     <ClInclude Include="Include\Spatial\Transform.h" />

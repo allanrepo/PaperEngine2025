@@ -45,7 +45,7 @@ namespace engine::graphics::renderable
 		// ISizeable methods implementation
 		virtual float GetWidth() const override final;
 		virtual float GetHeight() const override final;
-		virtual spatial::SizeF GetSize() const override final;
+		virtual math::SizeF GetSize() const override final;
 
 		// IRenderable methods implementation
 		const engine::graphics::Sprite GetSprite() const override final;

@@ -1,6 +1,6 @@
 #pragma once
 #include <Spatial/Position.h>
-#include <Spatial/Size.h>
+#include <Math/Size.h>
 
 namespace engine::spatial
 {
@@ -9,7 +9,7 @@ namespace engine::spatial
 	{
 	private:
 		engine::spatial::Position<T> m_position;
-		spatial::Size<T> m_scale;
+		math::Size<T> m_scale;
 		float m_rotation = 0; // in radians
 		math::VecF m_translate;
 

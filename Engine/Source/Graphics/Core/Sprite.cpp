@@ -2,13 +2,13 @@
 #include <Graphics/Resource/ISpriteAtlas.h>
 #include <Graphics/Resource/SpriteAtlas.h>
 
-engine::graphics::Sprite::Sprite(const engine::graphics::resource::ITexture* texture, const engine::math::geometry::RectF& rect, const engine::spatial::PositionF& pivot):
+engine::graphics::Sprite::Sprite(const engine::graphics::resource::ITexture* texture, const engine::math::RectF& rect, const engine::spatial::PositionF& pivot):
 	m_view(texture),
 	m_rect(rect),
 	m_pivot(pivot)
 {
 	// if making invalid sprite, size will be 0,0
-	m_size = spatial::SizeF{
+	m_size = math::SizeF{
 	(texture != nullptr? m_view->GetWidth() : 0.0f) * (m_rect.right - m_rect.left),
 	(texture != nullptr ? m_view->GetHeight() : 0.0f) * (m_rect.bottom - m_rect.top)
 	};
@@ -29,7 +29,7 @@ bool engine::graphics::Sprite::CanBind() const
 	return m_view->CanBind();
 }
 
-engine::math::geometry::RectF engine::graphics::Sprite::GetUVRect() const
+engine::math::RectF engine::graphics::Sprite::GetUVRect() const
 {
 	return m_rect;
 }
@@ -54,7 +54,7 @@ float engine::graphics::Sprite::GetHeight() const
 	return m_size.height;
 }
 
-engine::spatial::SizeF engine::graphics::Sprite::GetSize() const
+engine::math::SizeF engine::graphics::Sprite::GetSize() const
 {
 	return m_size;
 }

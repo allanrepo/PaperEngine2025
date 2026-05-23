@@ -348,7 +348,7 @@ bool demo::RenderAsyncLoaderState::IsFinished(Demo& owner)
 
 void demo::RenderAsyncLoaderState::OnResize(size_t width, size_t height)
 {
-	m_viewportSize = engine::spatial::SizeF({ static_cast<float>(width - 50), static_cast<float>(height - 50) });
+	m_viewportSize = engine::math::SizeF({ static_cast<float>(width - 50), static_cast<float>(height - 50) });
 }
 
 #pragma endregion

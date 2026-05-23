@@ -23,7 +23,7 @@
 #include <Graphics/Core/IAnimated.h>
 #include <Graphics/Core/Renderable.h>
 #include <Graphics/Core/Animated.h>
-#include <Spatial/Size.h>
+#include <Math/Size.h>
 #include <Command/DrawCommand.h>
 #include <Graphics/Core/Color.h>
 #include <Utilities/CSVParser.h>
@@ -60,7 +60,7 @@ namespace TestMapEditor
 	using IRenderer = engine::graphics::renderer::IRenderer;
 	using StopWatch = timer::StopWatch;
 	using PositionF = spatial::PositionF;
-	using SizeF = spatial::SizeF;
+	using SizeF = math::SizeF;
 	using Coord = spatial::Coord;
 	using CanvasFactory = engine::graphics::CanvasFactory;
 	using RendererFactory = engine::graphics::factory::RendererFactory;
@@ -86,7 +86,7 @@ namespace TestMapEditor
 	using VecF = engine::math::VecF;
 	using InputEvent = engine::input::InputEvent;
 	using TileConstraint = engine::navigation::tile::TileConstraint;
-	using RectF = engine::math::geometry::RectF;
+	using RectF = engine::math::RectF;
 	using CSVFileParser = engine::io::CSVFileParser;
 	using NavigationGrid = engine::navigation::tile::NavigationGrid;
 	using SpriteAtlasLoader = engine::graphics::loader::SpriteAtlasLoader;
@@ -137,8 +137,10 @@ namespace TestMapEditor
 	using Dictionary = engine::container::Dictionary<K, T>;
 
 	template<typename T>
-	using Rect = engine::math::geometry::Rect<T>;
+	using Rect = engine::math::Rect<T>;
 
+	template<typename T>
+	using Size = engine::math::Size<T>;
 
 #pragma endregion
 
@@ -223,7 +225,7 @@ namespace TestMapEditor
 			return m_map.GetHeight();
 		}
 
-		spatial::Size<size_t> GetSize() const
+		math::Size<size_t> GetSize() const
 		{
 			return m_map.GetSize();
 		}
@@ -299,7 +301,7 @@ namespace TestMapEditor
 #pragma endregion
 
 #pragma region // content management
-		void Reserve(const spatial::Size<size_t>& size)
+		void Reserve(const Size<size_t>& size)
 		{
 			m_map.Reserve(size);
 		}
@@ -323,7 +325,7 @@ namespace TestMapEditor
 			}
 		}
 
-		void Initialize(engine::spatial::Size<size_t> size, const Tile& data)
+		void Initialize(engine::math::Size<size_t> size, const Tile& data)
 		{
 			Initialize(size.width, size.height, data);
 		}
@@ -740,7 +742,7 @@ namespace TestMapEditor
 		}
 
 		template<typename T>
-		void Set(AutoTileContext<T>& ctx, const AutoTileConfig& autoTileConfig, engine::spatial::Size<size_t> size)
+		void Set(AutoTileContext<T>& ctx, const AutoTileConfig& autoTileConfig, engine::math::Size<size_t> size)
 		{
 			for (int row = 0; row < size.height; row++)
 			{
@@ -752,7 +754,7 @@ namespace TestMapEditor
 		}
 
 		template<typename T>
-		void Remove(AutoTileContext<T>& ctx, const AutoTileConfig& autoTileConfig, engine::spatial::Size<size_t> size)
+		void Remove(AutoTileContext<T>& ctx, const AutoTileConfig& autoTileConfig, engine::math::Size<size_t> size)
 		{
 			for (int row = 0; row < size.height; row++)
 			{
@@ -3251,7 +3253,7 @@ namespace TestMapEditor
 
 					// apply scale to tile size in case we want to draw the tile at different size. 
 					// note that only size change. position is still based on original tile size 
-					engine::spatial::SizeF scaledtilesize
+					engine::math::SizeF scaledtilesize
 					{
 						tileSize.width * scale.x,
 						tileSize.height * scale.y
@@ -3300,7 +3302,7 @@ namespace TestMapEditor
 
 					// apply scale to tile size in case we want to draw the tile at different size. 
 					// note that only size change. position is still based on original tile size 
-					engine::spatial::SizeF scaledtilesize
+					engine::math::SizeF scaledtilesize
 					{
 						tileSize.width * scale.x,
 						tileSize.height * scale.y
@@ -3345,7 +3347,7 @@ namespace TestMapEditor
 
 				// apply scale to tile size in case we want to draw the tile at different size. 
 				// note that only size change. position is still based on original tile size 
-				engine::spatial::SizeF scaledtilesize
+				engine::math::SizeF scaledtilesize
 				{
 					tileSize.width * scale.x,
 					tileSize.height * scale.y
@@ -3424,7 +3426,7 @@ namespace TestMapEditor
 
 				// apply scale to tile size in case we want to draw the tile at different size. 
 				// note that only size change. position is still based on original tile size 
-				engine::spatial::SizeF scaledtilesize
+				engine::math::SizeF scaledtilesize
 				{
 					tileSize.width * scale.x,
 					tileSize.height * scale.y
@@ -3505,7 +3507,7 @@ namespace TestMapEditor
 
 				// apply scale to tile size in case we want to draw the tile at different size. 
 				// note that only size change. position is still based on original tile size 
-				engine::spatial::SizeF scaledtilesize
+				engine::math::SizeF scaledtilesize
 				{
 					tileSize.width * scale.x,
 					tileSize.height * scale.y
@@ -6035,7 +6037,7 @@ namespace TestMapEditor
 			renderer.Draw(pos + PositionF{ 3,3 }, widget->GetSize() - SizeF{ 6,6 }, color, 0);
 
 			// set clip region
-			Size size = widget->GetSize();
+			SizeF size = widget->GetSize();
 			RectF clip{};
 			clip.left = pos.x;
 			clip.top = pos.y;
@@ -6226,10 +6228,7 @@ namespace TestMapEditor
 				dialog->AddChild(std::move(child));
 
 				m_ux.GetRoot().AddChild(std::move(dialog));
-
 			}
-
-
 		}
 
 		void OnMouseMove(int x, int y) override

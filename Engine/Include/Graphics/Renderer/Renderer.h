@@ -31,14 +31,14 @@ namespace engine::graphics::renderer
         virtual void End() override final;
 
         // clipping region for rendering
-		virtual void SetClipRegion(const engine::math::geometry::RectF& region) override final;
+		virtual void SetClipRegion(const engine::math::RectF& region) override final;
 		virtual void EnableClipping(const bool enable) override final;
-        virtual engine::math::geometry::RectF GetClipRegion() const override final;
+        virtual engine::math::RectF GetClipRegion() const override final;
 
         // Draws a colored quad at the specified position, size, and rotation
         virtual void Draw(
             const engine::spatial::PositionF& pos,                                 // Top-left screen position
-            const spatial::SizeF& size,                               // Sprite dimensions
+            const math::SizeF& size,                               // Sprite dimensions
             const engine::graphics::ColorF& color,                                   // RGBA color tint
             const float rotation                                                    // Rotation in radians
         ) override final;
@@ -55,7 +55,7 @@ namespace engine::graphics::renderer
         virtual void Draw(
             const engine::graphics::Sprite& sprite,                    // renderable object
             const engine::spatial::PositionF& pos,                                 // Top-left screen position
-            const spatial::SizeF& size,                               // Sprite dimensions
+            const math::SizeF& size,                               // Sprite dimensions
             const engine::graphics::ColorF& color,                                   // RGBA color tint
             const float rotation                                                    // Rotation in radians
         )  override final;

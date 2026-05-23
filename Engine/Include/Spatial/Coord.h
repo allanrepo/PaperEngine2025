@@ -1,6 +1,6 @@
 #pragma once
 #include <Spatial/Position.h>
-#include <Spatial/Size.h>
+#include <Math/Size.h>
 #include <Math/Rect.h>
 #include <unordered_map>
 #include <vector>
@@ -32,7 +32,7 @@ namespace engine
 			Coord() : row(0), col(0) {}
 		};
 
-		inline Coord PositionToCoord(const engine::spatial::PositionF& position, const spatial::SizeF& cellsize) noexcept
+		inline Coord PositionToCoord(const engine::spatial::PositionF& position, const math::SizeF& cellsize) noexcept
 		{
 			return Coord(
 				static_cast<int>(std::floor(position.y / cellsize.height)),
@@ -40,7 +40,7 @@ namespace engine
 			);
 		}
 
-		inline engine::spatial::PositionF CoordToPosition(const engine::spatial::Coord& coord, const spatial::SizeF& cellsize) noexcept
+		inline engine::spatial::PositionF CoordToPosition(const engine::spatial::Coord& coord, const math::SizeF& cellsize) noexcept
 		{
 			return engine::spatial::PositionF(
 				coord.col * cellsize.width,
@@ -49,8 +49,8 @@ namespace engine
 		}
 
 		inline std::vector<Coord> QueryCoords(
-			const engine::math::geometry::RectF& boundingbox,
-			const SizeF& cellsize)
+			const engine::math::RectF& boundingbox,
+			const engine::math::SizeF& cellsize)
 		{
 			// ------------------------------------------------------------
 			// 1. Normalize AABB (safety against flipped rectangles)
@@ -99,9 +99,9 @@ namespace engine
 
 		// the "aabb" or boundingbox already implies overlap. the cellsize and gridsize implies we're querying a grid/map
 		static std::vector<Coord> QueryCoords(
-			const  engine::math::geometry::RectF& boundingbox,
-			const SizeF& cellsize,
-			const Size<size_t> gridsize)
+			const engine::math::RectF& boundingbox,
+			const engine::math::SizeF& cellsize,
+			const engine::math::Size<size_t> gridsize)
 		{
 			// ------------------------------------------------------------
 			// 1. Normalize AABB (safety against flipped rectangles)

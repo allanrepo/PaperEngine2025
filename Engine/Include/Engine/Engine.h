@@ -99,7 +99,7 @@ namespace engine
 			return m_commandQueue;
 		}
 
-		engine::math::geometry::RectF GetViewPort() const
+		engine::math::RectF GetViewPort() const
 		{
 			return m_canvas->GetViewPort();
 		}
@@ -132,22 +132,22 @@ namespace engine
 			};
 		}
 
-		void QueueEnableClipRegionCommand(engine::math::geometry::RectF region)
+		void QueueEnableClipRegionCommand(engine::math::RectF region)
 		{
 			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::SetClipRegionCommand>(*m_renderer, region, true));
 		}
 
 		void QueueDisableClipRegionCommand()
 		{
-			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::SetClipRegionCommand>(*m_renderer, engine::math::geometry::RectF{}, false));
+			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::SetClipRegionCommand>(*m_renderer, engine::math::RectF{}, false));
 		}
 
-		void QueueDrawQuadCommand(engine::spatial::PositionF pos, spatial::SizeF size, ::engine::graphics::ColorF color, float rot)
+		void QueueDrawQuadCommand(engine::spatial::PositionF pos, math::SizeF size, ::engine::graphics::ColorF color, float rot)
 		{
 			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::DrawQuadCommand>(*m_renderer, pos, size, color, rot));
 		}
 
-		void QueueDrawSpriteCommand(::engine::graphics::Sprite sprite, engine::spatial::PositionF pos, spatial::SizeF size, ::engine::graphics::ColorF color, float rot)
+		void QueueDrawSpriteCommand(::engine::graphics::Sprite sprite, engine::spatial::PositionF pos, math::SizeF size, ::engine::graphics::ColorF color, float rot)
 		{
 			m_commandQueue.Enqueue(std::make_unique<engine::command::graphics::renderer::DrawSpriteCommand>(*m_renderer, sprite, pos, size, color, rot));
 		}

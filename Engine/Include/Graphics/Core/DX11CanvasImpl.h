@@ -38,7 +38,7 @@ namespace engine::graphics::dx11
         bool Initialize(void* windowHandle) override;
 
         // Handles resizing of the swap chain and render target view
-        void Resize(const spatial::Size<uint32_t>& size) override;
+        void Resize(const math::Size<uint32_t>& size) override;
 
         // Cleans up all DX11 resources
         void ShutDown() override;
@@ -55,13 +55,13 @@ namespace engine::graphics::dx11
 
         // Sets a custom viewport rectangle
         //void SetViewPort(float x, float y, float width, float height) override;
-        void SetViewPort(const engine::math::geometry::RectF& rect) override;
+        void SetViewPort(const engine::math::RectF& rect) override;
 
         // Sets the default viewport to cover the entire render target
         void SetViewPort() override;
 
 		// Retrieves the current viewport rectangle
-        engine::math::geometry::RectF GetViewPort() const override final;
+        engine::math::RectF GetViewPort() const override final;
 
         // this class means it is implemented with directx 11
         static constexpr const char* TypeName = "DirectX11";

@@ -77,7 +77,7 @@ namespace TestTile
 		engine::timer::StopWatch m_stopwatch;
 		engine::component::tile1::Tileset<RenderableTile> m_tileset;
 		engine::component::tile1::TileGrid<RenderableTile> m_tilegrid;
-		engine::spatial::SizeF m_tileSize{ 32.0f, 32.0f };
+		engine::math::SizeF m_tileSize{ 32.0f, 32.0f };
 
 	public:
 		Test()
@@ -124,8 +124,8 @@ namespace TestTile
 
 			// load sprite atlas UVs from csv manually for demo purpose. we calculate UVs here by assuming a grid of 8 rows and 12 columns
 			// in real scenario, you would use SpriteAtlasLoader to load from csv file 
-			std::vector<engine::math::geometry::RectF> uvs = CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
-			for (engine::math::geometry::RectF& rect : uvs)
+			std::vector<engine::math::RectF> uvs = CalcUV(1, 4, (int)m_spriteAtlas->GetWidth(), (int)m_spriteAtlas->GetHeight());
+			for (engine::math::RectF& rect : uvs)
 			{
 				m_spriteAtlas->AddUVRect(rect);
 			}
@@ -213,9 +213,9 @@ namespace TestTile
 			m_canvas->SetViewPort();
 		}
 
-		std::vector<engine::math::geometry::RectF> CalcUV(int row, int col, int fileWidth, int fileHeight)
+		std::vector<engine::math::RectF> CalcUV(int row, int col, int fileWidth, int fileHeight)
 		{
-			std::vector<engine::math::geometry::RectF> uvs;
+			std::vector<engine::math::RectF> uvs;
 			float width = static_cast<float>(fileWidth / col);
 			float height = static_cast<float>(fileHeight / row);
 			float left = 0;
@@ -237,7 +237,7 @@ namespace TestTile
 					right /= fileWidth;
 					bottom /= fileHeight;
 
-					uvs.push_back(engine::math::geometry::RectF{ left, top, right, bottom });
+					uvs.push_back(engine::math::RectF{ left, top, right, bottom });
 
 					//LOG(std::to_string(left) << ", " << std::to_string(top) << ", " << std::to_string(right) << ", " << std::to_string(bottom));
 				}

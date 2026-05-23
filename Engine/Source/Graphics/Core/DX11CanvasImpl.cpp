@@ -78,7 +78,7 @@ bool engine::graphics::dx11::DX11CanvasImpl::Initialize(void* windowHandle)
 }
 
 // Resizes the swap chain buffers and recreates the render target view
-void engine::graphics::dx11::DX11CanvasImpl::Resize(const spatial::Size<uint32_t>& size)
+void engine::graphics::dx11::DX11CanvasImpl::Resize(const math::Size<uint32_t>& size)
 {
     if (!swapChain)
         return;
@@ -171,7 +171,7 @@ void engine::graphics::dx11::DX11CanvasImpl::Clear(const engine::graphics::Color
 //    core.GetContext()->RSSetViewports(1, &viewport);
 //}
 
-void engine::graphics::dx11::DX11CanvasImpl::SetViewPort(const engine::math::geometry::RectF& rect)
+void engine::graphics::dx11::DX11CanvasImpl::SetViewPort(const engine::math::RectF& rect)
 {
     DX11Core& core = DX11Core::Instance();
 
@@ -199,7 +199,7 @@ void engine::graphics::dx11::DX11CanvasImpl::SetViewPort()
     }
 }
 
-engine::math::geometry::RectF engine::graphics::dx11::DX11CanvasImpl::GetViewPort() const
+engine::math::RectF engine::graphics::dx11::DX11CanvasImpl::GetViewPort() const
 {
     D3D11_VIEWPORT viewport{};
 	unsigned int numViewports = 1;
@@ -208,10 +208,10 @@ engine::math::geometry::RectF engine::graphics::dx11::DX11CanvasImpl::GetViewPor
     if (numViewports == 0) 
     { 
         // No viewport set, return an empty rect 
-        return engine::math::geometry::RectF{0.0f, 0.0f, 0.0f, 0.0f}; 
+        return engine::math::RectF{0.0f, 0.0f, 0.0f, 0.0f}; 
     }
 
-    return engine::math::geometry::RectF
+    return engine::math::RectF
     { 
         viewport.TopLeftX,
         viewport.TopLeftY,

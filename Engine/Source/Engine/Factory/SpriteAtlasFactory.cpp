@@ -6,9 +6,9 @@
 
 // helper function to calculate a set of UV rects with the assumption that sprite atlas's extent is evenly divided 
 // by given row and column
-std::vector<engine::math::geometry::RectF> engine::graphics::factory::SpriteAtlasFactory::CalcUV(size_t row, size_t col, float fileWidth, float fileHeight)
+std::vector<engine::math::RectF> engine::graphics::factory::SpriteAtlasFactory::CalcUV(size_t row, size_t col, float fileWidth, float fileHeight)
 {
-    std::vector<engine::math::geometry::RectF> uvs;
+    std::vector<engine::math::RectF> uvs;
     float width = fileWidth / col;
     float height = fileHeight / row;
     float left = 0;
@@ -30,7 +30,7 @@ std::vector<engine::math::geometry::RectF> engine::graphics::factory::SpriteAtla
             right /= fileWidth;
             bottom /= fileHeight;
 
-            uvs.push_back(engine::math::geometry::RectF{ left, top, right, bottom });
+            uvs.push_back(engine::math::RectF{ left, top, right, bottom });
         }
     }
     return uvs;
@@ -67,7 +67,7 @@ std::unique_ptr<engine::graphics::resource::ISpriteAtlas> engine::graphics::fact
 bool engine::graphics::factory::SpriteAtlasFactory::Create(
     const std::string& name, 
     const std::wstring& filepath, 
-    const std::vector<engine::math::geometry::RectF>& uvs
+    const std::vector<engine::math::RectF>& uvs
 )
 {
     std::unique_ptr<engine::graphics::resource::ISpriteAtlas> atlas = engine::graphics::factory::SpriteAtlasFactory::Create(filepath, uvs);
@@ -122,7 +122,7 @@ std::unique_ptr<engine::graphics::resource::ISpriteAtlas> engine::graphics::fact
     }
 
     // create UV list and load them to atlas 
-    std::vector<engine::math::geometry::RectF> uvs = CalcUV(row, col, atlas->GetWidth(), atlas->GetHeight());
+    std::vector<engine::math::RectF> uvs = CalcUV(row, col, atlas->GetWidth(), atlas->GetHeight());
     if (!uvs.empty())
     {
         atlas->AddUVRects(uvs);
@@ -133,7 +133,7 @@ std::unique_ptr<engine::graphics::resource::ISpriteAtlas> engine::graphics::fact
 
 std::unique_ptr<engine::graphics::resource::ISpriteAtlas> engine::graphics::factory::SpriteAtlasFactory::Create(
     const std::wstring& filepath,
-    const std::vector<engine::math::geometry::RectF>& uvs
+    const std::vector<engine::math::RectF>& uvs
 )
 {
     std::unique_ptr<engine::graphics::resource::ISpriteAtlas> atlas = engine::graphics::factory::SpriteAtlasFactory::Create();

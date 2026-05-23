@@ -15,7 +15,7 @@ namespace engine
 			void DrawTileMap(
 				engine::graphics::renderer::IRenderer& renderer,
 				const engine::component::tile1::TileMap<T>& tilemap,
-				const engine::spatial::SizeF& tilesize,
+				const engine::math::SizeF& tilesize,
 				const engine::spatial::PositionF& pos,
 				const engine::graphics::ColorF& color
 			)
@@ -49,7 +49,7 @@ namespace engine
 			void DrawTileMap(
 				engine::graphics::renderer::IRenderer& renderer,
 				const engine::component::tile1::TileMap<T>& tilemap,
-				const engine::spatial::SizeF& tilesize,
+				const engine::math::SizeF& tilesize,
 				const engine::spatial::PositionF& pos,
 				const engine::graphics::ColorF& color,
 				const engine::spatial::PositionF& offset,
@@ -81,7 +81,7 @@ namespace engine
 
 							origin += offset;
 
-							engine::spatial::SizeF ts =
+							engine::math::SizeF ts =
 							{
 								tilesize.width * scale.x,
 								tilesize.height * scale.y
@@ -105,7 +105,7 @@ namespace engine
 			void DrawWaypoints(
 				engine::graphics::renderer::IRenderer& renderer,
 				const std::vector<engine::spatial::Coord>& wp,
-				const engine::spatial::SizeF& tilesize,
+				const engine::math::SizeF& tilesize,
 				const engine::spatial::PositionF& pos,
 				const engine::graphics::ColorF& color,
 				float thickness)

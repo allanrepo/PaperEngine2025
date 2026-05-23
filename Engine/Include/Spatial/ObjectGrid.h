@@ -1,6 +1,6 @@
 #pragma once
 #include <Containers/Dictionary.h>
-#include <Spatial/Size.h>
+#include <Math/Size.h>
 #include <Containers/Grid.h>
 #include <vector>
 
@@ -233,7 +233,7 @@ namespace engine
 				return m_map.GetHeight();
 			}
 
-			spatial::Size<size_t> GetSize() const
+			math::Size<size_t> GetSize() const
 			{
 				return m_map.GetSize();
 			}
@@ -313,7 +313,7 @@ namespace engine
 			// clears all cells of their content. keeps cells in grid
 			void Clear()
 			{
-				Size<size_t> size = GetSize();
+				engine::math::Size<size_t> size = GetSize();
 				for (size_t i = 0; i < size.width * size.height; ++i)
 				{
 					m_map.Get(i).Clear();
@@ -338,7 +338,7 @@ namespace engine
 				}
 			}
 
-			void Initialize(Size<size_t> size)
+			void Initialize(engine::math::Size<size_t> size)
 			{
 				Initialize(size.width, size.height);
 			}

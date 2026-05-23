@@ -39,7 +39,7 @@ namespace demo
 
 namespace demo
 {
-	std::vector<engine::math::geometry::RectF> CalcUV(int row, int col, int fileWidth, int fileHeight);
+	std::vector<engine::math::RectF> CalcUV(int row, int col, int fileWidth, int fileHeight);
 	
 	class RenderableTile
 	{
@@ -76,7 +76,7 @@ namespace demo
 	private:
 		engine::spatial::PositionF m_pos;
 		engine::component::tile1::TileMap<T> m_tilemap;
-		engine::spatial::SizeF m_tilesize;
+		engine::math::SizeF m_tilesize;
 		float m_alpha;
 		engine::math::VecF m_scale;
 		engine::math::VecF m_offset;
@@ -86,7 +86,7 @@ namespace demo
 			engine::graphics::renderer::IRenderer& renderer,
 			engine::component::tile1::TileMap<T> tilemap,
 			engine::spatial::PositionF pos = {50.0f, 50.0f},
-			engine::spatial::SizeF tilesize = { 8.0f, 8.0f },
+			engine::math::SizeF tilesize = { 8.0f, 8.0f },
 			engine::math::VecF offset = {0,0},
 			engine::math::VecF scale = {1,1},
 			float alpha = 1.0f
@@ -123,7 +123,7 @@ namespace demo
 
 						pos += m_pos + m_offset;
 
-						engine::spatial::SizeF tilesize =
+						engine::math::SizeF tilesize =
 						{
 							m_tilesize.width * m_scale.x,
 							m_tilesize.height * m_scale.y
@@ -142,7 +142,7 @@ namespace demo
 	private:
 		engine::spatial::PositionF m_pos;
 		engine::component::tile1::TileMap<T> m_tilemap;
-		engine::spatial::SizeF m_tilesize;
+		engine::math::SizeF m_tilesize;
 		float m_alpha;
 		engine::math::VecF m_scale;
 		engine::math::VecF m_offset;
@@ -154,7 +154,7 @@ namespace demo
 			engine::component::tile1::TileMap<T> tilemap,
 			engine::spatial::CameraF& camera,
 			engine::spatial::PositionF pos = { 50.0f, 50.0f },
-			engine::spatial::SizeF tilesize = { 8.0f, 8.0f },
+			engine::math::SizeF tilesize = { 8.0f, 8.0f },
 			engine::math::VecF offset = { 0,0 },
 			engine::math::VecF scale = { 1,1 },
 			float alpha = 1.0f
@@ -172,7 +172,7 @@ namespace demo
 
 		void Execute() override
 		{
-			engine::math::geometry::RectF vp = m_camera.GetViewport();
+			engine::math::RectF vp = m_camera.GetViewport();
 			engine::spatial::PositionF camPos = m_camera.GetPosition();
 
 			// the whole tilemap might be bigger than viewport. so we may not need to draw all the tiles as some are outside viewport
@@ -215,7 +215,7 @@ namespace demo
 
 						pos += m_offset;
 
-						engine::spatial::SizeF tilesize =
+						engine::math::SizeF tilesize =
 						{
 							m_tilesize.width * m_scale.x,
 							m_tilesize.height * m_scale.y
@@ -261,7 +261,7 @@ namespace demo
 		engine::manager::TileMapManager<AnimatedTile>& TileMapManager() { return m_tileMapManager; }
 
 		void DrawTextCommandTopRightScreen(const std::string& text, float y);
-		void DrawProgressBarCommand(engine::spatial::PositionF pos, engine::spatial::SizeF size, float current, float total);
+		void DrawProgressBarCommand(engine::spatial::PositionF pos, engine::math::SizeF size, float current, float total);
 		void DrawTextCommand(const std::string& text, engine::spatial::PositionF pos, engine::graphics::ColorF color);
 		void DrawStatisticsCommand(const std::list<std::string>& logs);
 
@@ -269,7 +269,7 @@ namespace demo
 		void RenderTileMapCommand(
 			engine::component::tile1::TileMap<T> map,
 			engine::spatial::PositionF pos = { 50.0f, 50.0f },
-			engine::spatial::SizeF tilesize = { 8.0f, 8.0f },
+			engine::math::SizeF tilesize = { 8.0f, 8.0f },
 			engine::math::VecF offset = { 0,0 },
 			engine::math::VecF scale = { 1,1 },
 			float alpha = 1.0f)
@@ -292,7 +292,7 @@ namespace demo
 			engine::component::tile1::TileMap<T> map,
 			engine::spatial::CameraF& camera,
 			engine::spatial::PositionF pos = { 50.0f, 50.0f },
-			engine::spatial::SizeF tilesize = { 8.0f, 8.0f },
+			engine::math::SizeF tilesize = { 8.0f, 8.0f },
 			engine::math::VecF offset = { 0,0 },
 			engine::math::VecF scale = { 1,1 },
 			float alpha = 1.0f)
@@ -344,7 +344,7 @@ namespace demo
 
 		void Execute() override
 		{
-			engine::spatial::SizeF tileSize{ 8.0f, 8.0f };
+			engine::math::SizeF tileSize{ 8.0f, 8.0f };
 
 			for (int row = 0; row <= m_tilegrid.GetHeight(); ++row)
 			{
@@ -394,7 +394,7 @@ namespace demo
 
 		void Execute() override
 		{
-			engine::spatial::SizeF tileSize{ 8.0f, 8.0f };
+			engine::math::SizeF tileSize{ 8.0f, 8.0f };
 
 			for (int row = 0; row <= m_region.GetHeight(); ++row)
 			{
@@ -444,7 +444,7 @@ namespace demo
 
 		void Execute() override
 		{
-			engine::spatial::SizeF tileSize{ 8.0f, 8.0f };
+			engine::math::SizeF tileSize{ 8.0f, 8.0f };
 
 			size_t regionRows = m_layer.GetHeight();
 			size_t regionCols = m_layer.GetWidth();
@@ -530,7 +530,7 @@ namespace demo
 		engine::spatial::PositionF m_lastMousePos;
 		bool m_isPanning;
 		engine::spatial::PositionF m_focusPos;
-		engine::spatial::SizeF m_tileSize;
+		engine::math::SizeF m_tileSize;
 
 
 	public:
@@ -563,7 +563,7 @@ namespace demo
 		engine::spatial::PositionF m_lastMousePos;
 		bool m_isPanning;
 		engine::spatial::PositionF m_focusPos;
-		engine::spatial::SizeF m_tileSize;
+		engine::math::SizeF m_tileSize;
 
 
 	public:

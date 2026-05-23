@@ -32,7 +32,7 @@ namespace test
 		std::unique_ptr<engine::graphics::ICanvas> m_canvas;
 		std::unique_ptr<engine::graphics::renderer::IRenderer> m_renderer;
 		std::unique_ptr<engine::graphics::Sprite> m_sprite;
-		engine::spatial::SizeF m_spriteSize{};
+		engine::math::SizeF m_spriteSize{};
 		engine::input::Input m_input;
 
 	public:
@@ -92,7 +92,7 @@ namespace test
 			engine::graphics::resource::ISpriteAtlas& atlas = engine::cache::Registry<engine::graphics::resource::ISpriteAtlas>::Instance().Get("CharacterTest_2304x1536_12x8");
 
 			// find the sprite cell from sprite atlas based on mouse position
-			engine::spatial::SizeF size = atlas.GetSize();
+			engine::math::SizeF size = atlas.GetSize();
 
 			// dividing by 2 because sprite atlas is drawn at half size
 			int col = static_cast<int>(x / (m_spriteSize.width / 2));
@@ -124,7 +124,7 @@ namespace test
 					// draw the sprite atlas at half size
 					m_renderer->Draw(atlas.GetSprite(),
 						engine::spatial::PositionF{ 0, 0 },
-						engine::spatial::SizeF{ atlas.GetWidth()/2, atlas.GetHeight()/2},
+						engine::math::SizeF{ atlas.GetWidth()/2, atlas.GetHeight()/2},
 						engine::graphics::ColorF{ 1,1,1,1 },
 						0
 					);
@@ -132,7 +132,7 @@ namespace test
 					// draw the selected sprite cell next to the sprite atlas
 					m_renderer->Draw(*m_sprite,
 						engine::spatial::PositionF{ atlas.GetWidth() / 2.0f + 10.0f, 0.0f },
-						engine::spatial::SizeF{ m_sprite->GetWidth(), m_sprite->GetHeight() },
+						engine::math::SizeF{ m_sprite->GetWidth(), m_sprite->GetHeight() },
 						engine::graphics::ColorF{ 1,1,1,1 },
 						0
 					);

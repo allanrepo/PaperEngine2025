@@ -72,10 +72,10 @@ namespace TestProp
 	using Tileset = engine::tile::Tileset<T>;
 
 	template<typename T>
-	using Rect = engine::math::geometry::Rect<T>;
+	using Rect = engine::math::Rect<T>;
 
 	template<typename T>
-	using Size = engine::spatial::Size<T>;
+	using Size = engine::math::Size<T>;
 
 	using AutoTileResolver = engine::tile::AutoTileResolver;
 	using TileVariant = engine::tile::TileVariant;
@@ -95,7 +95,7 @@ namespace TestProp
 	{
 		engine::graphics::Sprite sprite;              // what to draw
 		engine::spatial::PositionF pos;    // world position
-		engine::spatial::SizeF size;       // size on screen
+		engine::math::SizeF size;       // size on screen
 		engine::graphics::ColorF tint;     // color modulation
 		float rotation;                    // rotation angle
 		float depth;
@@ -1056,7 +1056,7 @@ namespace TestProp
 			TileGrid<T>& map,
 			DrawQueue& queue,
 			int row, int col,
-			const engine::spatial::SizeF& tilesize,
+			const engine::math::SizeF& tilesize,
 			const engine::spatial::PositionF& pos,
 			float depth,
 			const engine::graphics::ColorF& tint = { 1,1,1,1 },
@@ -1077,7 +1077,7 @@ namespace TestProp
 					row * tilesize.height
 				};
 
-				engine::spatial::SizeF scaledtilesize
+				engine::math::SizeF scaledtilesize
 				{
 					tilesize.width * scale.x,
 					tilesize.height * scale.y

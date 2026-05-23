@@ -83,8 +83,8 @@ namespace test
 			{
 				m_renderer->Begin();
 				{
-					m_renderer->Draw(engine::spatial::PositionF{ 10, 10 }, engine::spatial::SizeF{ 128, 128 }, engine::graphics::ColorF{ 0.5f,0,0,1 }, 0);
-					m_renderer->Draw(engine::spatial::PositionF{ 100, 100 }, engine::spatial::SizeF{ 96, 96 }, engine::graphics::ColorF{ 0, 0, 1.0f,0.5f }, 0);
+					m_renderer->Draw(engine::spatial::PositionF{ 10, 10 }, engine::math::SizeF{ 128, 128 }, engine::graphics::ColorF{ 0.5f,0,0,1 }, 0);
+					m_renderer->Draw(engine::spatial::PositionF{ 100, 100 }, engine::math::SizeF{ 96, 96 }, engine::graphics::ColorF{ 0, 0, 1.0f,0.5f }, 0);
 					m_renderer->Draw(*m_fontAtlas, "Drawn on surface!!!", engine::spatial::PositionF{ 10, 200 }, engine::graphics::ColorF{ 0,0,0,1 });
 				}
 				m_renderer->End();
@@ -104,7 +104,7 @@ namespace test
 				m_renderer->Begin();
 				{
 					// draw a rectangle fill
-					m_renderer->Draw(engine::spatial::PositionF{ 500, 50 }, engine::spatial::SizeF{ 100, 100 }, engine::graphics::ColorF{ 1,1,0,1 }, 0);
+					m_renderer->Draw(engine::spatial::PositionF{ 500, 50 }, engine::math::SizeF{ 100, 100 }, engine::graphics::ColorF{ 1,1,0,1 }, 0);
 
 					// draw the drawable surface
 					m_renderer->Draw(m_renderSurface->GetSprite(), engine::spatial::PositionF{200, 200}, m_renderSurface->GetSize(), engine::graphics::ColorF{1,1,1,1}, 0);

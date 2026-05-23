@@ -55,8 +55,8 @@
 //				m_surface->Clear(0, 0.5f, 0, 1);
 //				m_engine.Renderer().Begin();
 //				{
-//					m_engine.Renderer().Draw(engine::spatial::PositionF{ 32, 32 }, engine::spatial::SizeF{ 64, 64 }, engine::graphics::ColorF{ 0.5f,0,0,1 }, 0);
-//					m_engine.Renderer().Draw(engine::spatial::PositionF{ 48, 56 }, engine::spatial::SizeF{ 64, 48 }, engine::graphics::ColorF{ 0,0,0.5f,1 }, 0);
+//					m_engine.Renderer().Draw(engine::spatial::PositionF{ 32, 32 }, engine::math::SizeF{ 64, 64 }, engine::graphics::ColorF{ 0.5f,0,0,1 }, 0);
+//					m_engine.Renderer().Draw(engine::spatial::PositionF{ 48, 56 }, engine::math::SizeF{ 64, 48 }, engine::graphics::ColorF{ 0,0,0.5f,1 }, 0);
 //				}
 //				m_engine.Renderer().End();
 //			}
@@ -66,7 +66,7 @@
 //		void OnRender()
 //		{
 //			// draw a rectangle fill
-//			m_engine.Renderer().Draw(engine::spatial::PositionF{50, 50}, engine::spatial::SizeF{100, 100}, engine::graphics::ColorF{1,1,0,1}, 0);
+//			m_engine.Renderer().Draw(engine::spatial::PositionF{50, 50}, engine::math::SizeF{100, 100}, engine::graphics::ColorF{1,1,0,1}, 0);
 //
 //			// draw the drawable surface
 //			m_engine.Renderer().Draw(*m_surface, engine::spatial::PositionF{ 250, 250 }, m_surface->GetSize(), engine::graphics::ColorF{ 1,1,1,1 }, 0);

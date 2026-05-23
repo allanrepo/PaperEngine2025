@@ -34,7 +34,7 @@ void engine::graphics::renderer::Renderer::End()
     impl->End();
 }
 
-void engine::graphics::renderer::Renderer::SetClipRegion(const engine::math::geometry::RectF& region)
+void engine::graphics::renderer::Renderer::SetClipRegion(const engine::math::RectF& region)
 {
 	impl->SetClipRegion(region);
 }
@@ -44,7 +44,7 @@ void engine::graphics::renderer::Renderer::EnableClipping(const bool enable)
 	impl->EnableClipping(enable);
 }
 
-engine::math::geometry::RectF engine::graphics::renderer::Renderer::GetClipRegion() const
+engine::math::RectF engine::graphics::renderer::Renderer::GetClipRegion() const
 {
     return impl->GetClipRegion();
 }
@@ -52,7 +52,7 @@ engine::math::geometry::RectF engine::graphics::renderer::Renderer::GetClipRegio
 // Draws a colored quad at the specified position, size, and rotation
 void engine::graphics::renderer::Renderer::Draw(
     const engine::spatial::PositionF& pos,
-    const spatial::SizeF& size,
+    const math::SizeF& size,
     const engine::graphics::ColorF& color,
     const float rotation
 )
@@ -74,7 +74,7 @@ void engine::graphics::renderer::Renderer::Draw(
 void engine::graphics::renderer::Renderer::Draw(
     const engine::graphics::Sprite& sprite,                          // sprite object
     const engine::spatial::PositionF& pos,                                 // Top-left screen position
-    const spatial::SizeF& size,                                     // Sprite dimensions
+    const math::SizeF& size,                                     // Sprite dimensions
     const engine::graphics::ColorF& color,                                   // RGBA color tint
     const float rotation                                                    // Rotation in radians
 )

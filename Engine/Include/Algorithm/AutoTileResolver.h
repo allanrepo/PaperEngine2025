@@ -211,7 +211,7 @@ namespace engine
 
 			void Set()
 			{
-				engine::spatial::Size<size_t> size = m_region.GetSize();
+				engine::math::Size<size_t> size = m_region.GetSize();
 
 				for (int row = 0; row < size.height; row++)
 				{
@@ -224,7 +224,7 @@ namespace engine
 
 			void Remove()
 			{
-				engine::spatial::Size<size_t> size = m_region.GetSize();
+				engine::math::Size<size_t> size = m_region.GetSize();
 
 				for (int row = 0; row < size.height; row++)
 				{
@@ -664,7 +664,7 @@ namespace engine
 				ResolveNeighbors(coord);
 			}
 
-			void Set(engine::spatial::Size<size_t> size)
+			void Set(engine::math::Size<size_t> size)
 			{
 				for (int row = 0; row < size.height; row++)
 				{
@@ -675,7 +675,7 @@ namespace engine
 				}
 			}
 
-			void Remove(engine::spatial::Size<size_t> size)
+			void Remove(engine::math::Size<size_t> size)
 			{
 				for (int row = 0; row < size.height; row++)
 				{

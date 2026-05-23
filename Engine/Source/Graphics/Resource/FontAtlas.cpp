@@ -26,7 +26,7 @@ bool engine::graphics::resource::FontAtlas::Initialize(const string& fontName, c
 		});
 
 	unsigned int width, height; //  this will be the width and height of the bitmap where the text will be rendered
-	std::vector<engine::math::geometry::RectF> textUVs; // glyph UVs (normalized coordinates of characters in bitmap
+	std::vector<engine::math::RectF> textUVs; // glyph UVs (normalized coordinates of characters in bitmap
 	{
 		// generate font atlas bitmap data
 		// create a font atlas of specified font drawn in a bitmap array
@@ -135,9 +135,9 @@ float engine::graphics::resource::FontAtlas::GetHeight() const
 	return static_cast<float>(m_spriteAtlas->GetHeight());
 }
 
-SizeF engine::graphics::resource::FontAtlas::GetSize() const
+engine::math::SizeF engine::graphics::resource::FontAtlas::GetSize() const
 {
-	return spatial::SizeF
+	return engine::math::SizeF
 	{
 		static_cast<float>(m_spriteAtlas->GetWidth()),
 		static_cast<float>(m_spriteAtlas->GetHeight())

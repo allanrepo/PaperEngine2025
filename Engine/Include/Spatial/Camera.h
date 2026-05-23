@@ -34,10 +34,10 @@ namespace engine::spatial
 
 		// the rectangle on the screen where the world is drawn.
 		// defines the visible area size (width/height) and offset (left/top).
-		engine::math::geometry::Rect<T> m_viewport;
+		engine::math::Rect<T> m_viewport;
 
 		// the total size of the world/map
-		spatial::Size<T> m_worldSize;
+		math::Size<T> m_worldSize;
 
 		T m_zoom;
 
@@ -57,10 +57,10 @@ namespace engine::spatial
 		}
 
 	public:
-		Camera(engine::math::geometry::RectF viewport) :
+		Camera(engine::math::RectF viewport) :
 			m_viewport(viewport),
 			m_position(Position<T>(0,0)),
-			m_worldSize(Size<T>(0,0)),
+			m_worldSize(engine::math::Size<T>(0,0)),
 			m_zoom(static_cast<T>(1))
 		{
 		}
@@ -71,13 +71,13 @@ namespace engine::spatial
 			ClampToBounds();
 		}
 
-		void SetWorldSize(const engine::spatial::Size<T>& size)
+		void SetWorldSize(const engine::math::Size<T>& size)
 		{
 			m_worldSize = size;
 			ClampToBounds();
 		}
 
-		void SetViewport(engine::math::geometry::Rect<T> viewport)
+		void SetViewport(engine::math::Rect<T> viewport)
 		{
 			m_viewport = viewport;
 			ClampToBounds();
@@ -116,7 +116,7 @@ namespace engine::spatial
 			return m_position;
 		}
 
-		engine::math::geometry::Rect<T> GetViewport() const
+		engine::math::Rect<T> GetViewport() const
 		{
 			return m_viewport;
 		}

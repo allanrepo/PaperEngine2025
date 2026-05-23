@@ -37,7 +37,7 @@ namespace engine::container
 		{
 		}
 
-		Table(const engine::spatial::Size<size_t> size, const T& t):
+		Table(const engine::math::Size<size_t> size, const T& t):
 			m_width(size.width)
 		{
 			while (m_data.size() < size.width * size.height)
@@ -102,7 +102,7 @@ namespace engine::container
 			}
 		}
 
-		void Reserve(const spatial::Size<size_t>& size) override
+		void Reserve(const math::Size<size_t>& size) override
 		{
 			m_data.reserve(size.width * size.height);
 		}
@@ -213,9 +213,9 @@ namespace engine::container
 			return m_width > 0 ? (m_data.size() + m_width - 1) / m_width : 0;
 		}
 
-		spatial::Size<size_t> GetSize() const override
+		math::Size<size_t> GetSize() const override
 		{
-			return spatial::Size<size_t>
+			return math::Size<size_t>
 			{
 				GetWidth(),
 				GetHeight()
@@ -275,7 +275,7 @@ namespace engine::container
 			return m_height;
 		}
 
-		spatial::Size<size_t> GetSize() const override
+		math::Size<size_t> GetSize() const override
 		{
 			return { m_width, m_height };
 		}

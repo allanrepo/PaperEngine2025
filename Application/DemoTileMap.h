@@ -28,7 +28,7 @@ namespace demo
 	{
 	private:
 		engine::performance::FrameRateMonitor m_frameRateMonitor;
-		engine::spatial::SizeF m_viewportSize;
+		engine::math::SizeF m_viewportSize;
 
 		void OnResize(size_t width, size_t height);
 

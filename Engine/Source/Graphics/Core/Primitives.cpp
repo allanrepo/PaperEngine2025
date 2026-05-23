@@ -40,7 +40,7 @@ void engine::graphics::primitives::DrawLineSegment(
 	position -= engine::math::VecF(0.0f, thickness / 2.0f);
 
 	// define the line segment's rectangle size. this is the size of the line segment before rotation is applied
-	engine::spatial::SizeF size{ length, thickness };
+	engine::math::SizeF size{ length, thickness };
 
 	// calculate the angle of the line segment in radians
 	float angle = std::atan2(end.y - start.y, end.x - start.x);
@@ -56,7 +56,7 @@ void engine::graphics::primitives::DrawCircleOutline(
 	const engine::graphics::ColorF& color, 
 	float thickness, int segments)
 {
-	using namespace math::geometry;
+	using namespace math;
 
 	const float angleStep = 2.0f * 3.14159265f / segments;
 

@@ -13,9 +13,9 @@
 
 #pragma region demo
 
-std::vector<engine::math::geometry::RectF> demo::CalcUV(int row, int col, int fileWidth, int fileHeight)
+std::vector<engine::math::RectF> demo::CalcUV(int row, int col, int fileWidth, int fileHeight)
 {
-	std::vector<engine::math::geometry::RectF> uvs;
+	std::vector<engine::math::RectF> uvs;
 	float width = static_cast<float>(fileWidth / col);
 	float height = static_cast<float>(fileHeight / row);
 	float left = 0;
@@ -37,7 +37,7 @@ std::vector<engine::math::geometry::RectF> demo::CalcUV(int row, int col, int fi
 			right /= fileWidth;
 			bottom /= fileHeight;
 
-			uvs.push_back(engine::math::geometry::RectF{ left, top, right, bottom });
+			uvs.push_back(engine::math::RectF{ left, top, right, bottom });
 		}
 	}
 	return uvs;
@@ -121,7 +121,7 @@ void demo::Demo::DrawTextCommandTopRightScreen(const std::string& text, float y)
 }
 
 
-void demo::Demo::DrawProgressBarCommand(engine::spatial::PositionF pos, engine::spatial::SizeF size, float current, float total)
+void demo::Demo::DrawProgressBarCommand(engine::spatial::PositionF pos, engine::math::SizeF size, float current, float total)
 {
 	std::unique_ptr<engine::command::graphics::renderer::DrawQuadCommand> drawQuadCmd =
 		std::make_unique<engine::command::graphics::renderer::DrawQuadCommand>(
@@ -137,7 +137,7 @@ void demo::Demo::DrawProgressBarCommand(engine::spatial::PositionF pos, engine::
 		std::make_unique<engine::command::graphics::renderer::DrawQuadCommand>(
 			m_engine.Renderer(),
 			pos,
-			engine::spatial::SizeF
+			engine::math::SizeF
 			{
 				size.width * current / total,
 				size.height
@@ -195,7 +195,7 @@ void demo::Demo::RenderTileGridCommand(engine::component::tile1::TileGrid<Render
 
 	return;
 
-	//math::geometry::RectF vp = m_camera.GetViewport();
+	//math::RectF vp = m_camera.GetViewport();
 	//spatial::PositionF camPos = m_camera.GetPosition();
 
 	//int left = (int)(camPos.x / m_tileSize.width);
@@ -203,7 +203,7 @@ void demo::Demo::RenderTileGridCommand(engine::component::tile1::TileGrid<Render
 	//int right = (int)((camPos.x + vp.GetWidth()) / m_tileSize.width);
 	//int bottom = (int)((camPos.y + vp.GetHeight()) / m_tileSize.height);
 
-	engine::spatial::SizeF tileSize{ 16.0f, 16.0f };
+	engine::math::SizeF tileSize{ 16.0f, 16.0f };
 
 	for (int row = 0; row <= tilegrid.GetHeight(); ++row)
 	{
@@ -559,7 +559,7 @@ void demo::DemoStateCameraMap::Update(Demo& owner, double delta)
 	owner.Engine().QueueEnableClipRegionCommand(m_camera.GetViewport());
 
 	// draw dark background in viewport so we know the boundaries of viewport
-	engine::math::geometry::RectF vp = m_camera.GetViewport();
+	engine::math::RectF vp = m_camera.GetViewport();
 	owner.Engine().QueueDrawQuadCommand(vp.GetTopLeft(), vp.GetSize(), engine::graphics::ColorF{ 0.2f,0.2f,0.2f,1 }, 0.0f);
 
 	// this is the position of map's top-left in the world.
