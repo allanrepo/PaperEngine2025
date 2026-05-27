@@ -5622,6 +5622,8 @@ namespace TestMapEditor
 	//	- mouse capturable
 	// 
 	//
+	class PopupTrigger;
+	class UISystem;
 
 	class Widget
 	{
@@ -5629,7 +5631,7 @@ namespace TestMapEditor
 
 		friend class UISystem;
 
-		UISystem* m_system = nullptr;
+		//UISystem* m_system = nullptr;
 
 		enum MoveBehavior
 		{
@@ -5659,17 +5661,22 @@ namespace TestMapEditor
 		PositionF m_beginMousePosition;
 		PositionF m_beginMovePosition;
 
-		UISystem* GetSystem()
+		virtual UISystem* GetSystem() const
 		{
-			UISystem* system = m_system;
-
-			if (!system)
+			if (m_parent)
 			{
-				system = m_parent->GetSystem();
+				return m_parent->GetSystem();
 			}
 
-			return system;
+			return nullptr;
 		}
+
+		virtual bool RegisterToSystem(UISystem* system)
+		{
+			return true;
+		}
+
+		virtual bool UnregisterToSystem(UISystem* system);
 
 	public:
 		virtual ~Widget() = default;
@@ -5681,9 +5688,14 @@ namespace TestMapEditor
 		{
 			child->m_parent = this;
 
-			child->m_system = m_system;
-
+			Widget* c = child.get();
 			m_children.push_back(std::move(child));
+
+			c->ForEachWidget([&](Widget* w)
+				{
+					w->RegisterToSystem(GetSystem());
+					return true;
+				});
 		}
 
 		void RemoveChild(Widget* widget)
@@ -5698,8 +5710,42 @@ namespace TestMapEditor
 
 			if (it != m_children.end())
 			{
+				widget->ForEachWidget([&](Widget* w)
+					{
+						w->UnregisterToSystem(GetSystem());
+						return true;
+					});
+
 				m_children.erase(it);
 			}
+		}
+
+		bool Remove(Widget* widget)
+		{
+			bool result = false;
+			// do not remove self, so just start searching from children onwards
+			for (const std::unique_ptr<Widget>& child : m_children)
+			{
+				ForEachWidget([&](Widget* w)
+					{
+						if (w == widget)
+						{
+							if (!w->m_parent)
+							{
+								throw std::runtime_error("how come this widget has no parent and is getting remove?");
+							}
+
+							w->m_parent->RemoveChild(w);
+							result = true;
+
+							return false;
+						}
+
+						return true;
+					});
+			}
+
+			return result;
 		}
 
 		Widget* GetParent() const
@@ -5712,14 +5758,14 @@ namespace TestMapEditor
 			return m_children;
 		}
 
-		template<typename Func>
-		void ForEachChild(const Func& func)
-		{
-			for (const std::unique_ptr<Widget>& child : m_children)
-			{
-				func(child.get());
-			}
-		}
+		//template<typename Func>
+		//void ForEachChildFromTop(const Func& func)
+		//{
+		//	for (int i = m_children.size() - 1; i >= 0; i--)
+		//	{
+		//		func(i, m_children[i].get());
+		//	}
+		//}
 
 		// --------------------------------------------------------------------------------
 		// Z ORDER
@@ -5897,7 +5943,7 @@ namespace TestMapEditor
 				// calculate the mouse movement delta between its position at start of mouse drag and its position now
 				// factor in the move state - free? horizontal? vertical?
 				VecF delta =
-				{ 
+				{
 					// if we can move horizontally, use the mouse position. otherwise, use begin position
 					(m_moveBehavior & MoveBehavior::Horizontal) ? position.x - m_beginMousePosition.x : 0.0f,
 
@@ -5921,19 +5967,19 @@ namespace TestMapEditor
 		// --------------------------------------------------------------------------------
 		// FOCUS
 		// --------------------------------------------------------------------------------
-		virtual void OnGotFocus() 
+		virtual void OnGotFocus()
 		{
 		}
 
-		virtual void OnLostFocus() 
+		virtual void OnLostFocus()
 		{
 		}
 
-		virtual void OnKeyDown(int key) 
+		virtual void OnKeyDown(int key)
 		{
 		}
 
-		virtual void OnKeyUp(int key) 
+		virtual void OnKeyUp(int key)
 		{
 		}
 
@@ -5996,6 +6042,74 @@ namespace TestMapEditor
 			return nullptr;
 		}
 
+		Widget* FindAndResolveZOrderAt(const PositionF& position)
+		{
+			Widget* widget = this;
+
+			// if widget is not visible, bail out.
+			if (!widget->IsVisible())
+			{
+				return nullptr;
+			}
+
+			// if widget is disabled, bail out.
+			if (!widget->IsEnabled())
+			{
+				return nullptr;
+			}
+
+			// check first if point is inside the root. bail out if not.
+			if (!widget->Contains(position))
+			{
+				return nullptr;
+			}
+
+			while (true)
+			{
+				// returns nullptr if none of the widget's child intersects with p
+				Widget* child = widget->FindTopChildAt(position);
+
+				// bring the child to front is not really part of routing. this is z order handling
+				// but its convenient here. the right way architecturally is to collect route path 
+				// then process the route path outside of routing. however, that may introduce unnecessary
+				// performance impact so doing z order handling here is the best.				
+				if (child)
+				{
+					widget->BringChildToFront(child);
+				}
+				else
+				{
+					break;
+				}
+
+				widget = child;
+			}
+
+			return widget;
+		}
+
+		template<typename Func>
+		void ForEachChild(const Func& func)
+		{
+			for (const std::unique_ptr<Widget>& child : m_children)
+			{
+				func(child.get());
+			}
+		}
+
+		template<typename Func>
+		bool ForEachWidget(const Func& func)
+		{
+			if (!func(this)) return false;
+
+			for (const std::unique_ptr<Widget>& child : m_children)
+			{
+				if (!child->ForEachWidget(func)) return false;
+			}
+
+			return true;
+		}
+
 
 		// --------------------------------------------------------------------------------
 		// DRAW TRAVERSAL
@@ -6005,25 +6119,75 @@ namespace TestMapEditor
 	class Popup : public Widget
 	{
 	private:
-		friend class UISystem;
-
 		Widget* m_owner;
+		UISystem* m_system;
+
+	protected:
+		UISystem* GetSystem() const override final
+		{
+			return m_system;
+		}
 
 	public:
-		Popup(Widget* owner, const PositionF& pos, const SizeF& size):
+		Popup(UISystem* system, Widget* owner, const PositionF& pos, const SizeF& size) :
 			m_owner(owner)
 		{
 			m_moveBehavior = MoveBehavior::None;
 			SetPosition(pos);
 			SetSize(size);
+			m_system = system;
+		}
+
+		Widget* GetOwner() const
+		{
+			return m_owner;
 		}
 	};
 
-	class UISystem
+	struct PopupBuildDescription
+	{
+		PositionF position;
+		SizeF size;
+		std::function<std::unique_ptr<Widget>(UISystem&)> builder;
+	};
+
+	class Root : public Widget
+	{
+	protected:
+		UISystem* m_system;
+
+		UISystem* GetSystem() const override final
+		{
+			return m_system;
+		}
+
+	public:
+		Root(UISystem* system) :
+			m_system(system)
+		{
+		}
+	};
+
+	class PopupLayer
 	{
 	private:
+		UISystem* m_system;
+		std::vector<std::unique_ptr<Popup>> m_popups;
 
-		struct PopupRequest
+	public:
+		PopupLayer(UISystem* system) :
+			m_system(system)
+		{
+		}
+
+		struct RouteResult
+		{
+			Widget* popup = nullptr;
+			Widget* target = nullptr;
+			int index = -1;
+		};
+
+		struct Request
 		{
 			int command;
 			Widget* owner;
@@ -6032,10 +6196,59 @@ namespace TestMapEditor
 			std::unique_ptr<Widget> payload;
 		};
 
-		Widget m_root;
+		RouteResult FindRouteAt(const PositionF& position)
+		{
+			RouteResult result;
+
+			for (int i = (int)m_popups.size() - 1; i >= 0; i--)
+			{
+				if (!m_popups[i]->IsVisible()) continue;
+				if (!m_popups[i]->IsEnabled()) continue;
+				if (!m_popups[i]->Contains(position)) continue;
+
+				result.popup = m_popups[i].get();
+				result.index = i;
+				result.target = m_popups[i]->FindTopWidgetAt(position);
+				break;
+			}
+
+			return result;
+		}
+
+		void CollapseAbove(const RouteResult& result)
+		{
+			if (result.index < 0 || result.index >= (int)m_popups.size()) return;
+
+			m_popups.erase(m_popups.begin() + result.index, m_popups.end());
+		}
+	};
+
+	class UISystem
+	{
+	private:
+		struct RouteResult
+		{
+			Widget* popup = nullptr;
+			Widget* target = nullptr;
+			int index = -1;
+		};
+
+		struct PopupCommand
+		{
+			int command;
+			Widget* owner = nullptr;
+			int index;
+			PositionF position;
+			SizeF size;
+			std::function<std::unique_ptr<Widget>(UISystem&)> builder;
+		};
+
+		Root m_root;
+
+		PopupLayer m_popupLayer;
 		std::vector<std::unique_ptr<Popup>> m_popups;
-		
-		std::vector<std::unique_ptr<PopupRequest>> m_popupRequests;
+		std::vector<std::unique_ptr<PopupCommand>> m_PopupCommands;
+		Dictionary<Widget*, PopupBuildDescription> m_PopupBuildDescriptions;
 
 		Widget* m_mouseCapture = nullptr;
 		Widget* m_mouseOver = nullptr;
@@ -6052,7 +6265,7 @@ namespace TestMapEditor
 				m_focus->OnLostFocus();
 				m_focus = nullptr;
 			}
-			
+
 			// if new focus widget does not exist, bail out
 			if (!widget) return;
 
@@ -6073,15 +6286,25 @@ namespace TestMapEditor
 		}
 
 	public:
-		UISystem()
+		UISystem() :
+			m_root(this),
+			m_popupLayer(this)
 		{
-			m_root.m_system = this;
 		}
 
-		// TODO: don't do this. we only have this for debugging
-		Widget& GetRoot()
+		void SetSize(const SizeF& size)
 		{
-			return m_root;
+			m_root.SetSize(size);
+		}
+
+		void SetPosition(const PositionF& pos)
+		{
+			m_root.SetPosition(pos);
+		}
+
+		void Show()
+		{
+			m_root.Show();
 		}
 
 		void Draw(IRenderer& renderer, Widget* widget)
@@ -6094,7 +6317,7 @@ namespace TestMapEditor
 			if (widget == m_mouseOver) color = { 0, 0, 1, 1 };
 			if (widget == m_focus) color = { 1, 0, 1, 1 };
 			if (widget == m_mouseCapture) color = { 1, 0, 0, 1 };
-			if(!widget->IsEnabled()) color = { 0.5f, 0.5f, 0.5f, 1 };
+			if (!widget->IsEnabled()) color = { 0.5f, 0.5f, 0.5f, 1 };
 
 			renderer.Draw(pos, widget->GetSize(), { 0,0,0,1 }, 0);
 			renderer.Draw(pos + PositionF{ 3,3 }, widget->GetSize() - SizeF{ 6,6 }, color, 0);
@@ -6131,50 +6354,86 @@ namespace TestMapEditor
 
 		}
 
-		Widget* RouteCheck(Widget* w, const PositionF& position, bool updateZOrder = false)
+		RouteResult FindPopupRouteFromTopAt(const PositionF& position)
 		{
-			Widget* widget = w;
+			RouteResult result;
 
-			// if widget is not visible, bail out.
-			if (!widget->IsVisible())
+			for (int i = (int)m_popups.size() - 1; i >= 0; i--)
 			{
-				return nullptr;
-			}
-
-			// if widget is disabled, bail out.
-			if (!widget->IsEnabled())
-			{
-				return nullptr;
-			}
-
-			// check first if point is inside the root. bail out if not.
-			if (!widget->Contains(position))
-			{
-				return nullptr;
-			}
-
-			while (true)
-			{
-				// returns nullptr if none of the widget's child intersects with p
-				Widget* child = widget->FindTopChildAt(position);
-
-				// bring the child to front is not really part of routing. this is z order handling
-				// but its convenient here. the right way architecturally is to collect route path 
-				// then process the route path outside of routing. however, that may introduce unnecessary
-				// performance impact so doing z order handling here is the best.				
-				if (child)
+				Widget* widget = m_popups[i]->FindTopWidgetAt(position);
+				if (widget)
 				{
-					if(updateZOrder) widget->BringChildToFront(child);
-				}
-				else
-				{
+					result.target = widget;
+					result.index = i;
+					result.popup = m_popups[i].get();
 					break;
 				}
-
-				widget = child;
 			}
 
-			return widget;
+			return result;
+		}
+
+		void CollapsePopupAbove(const RouteResult& route)
+		{
+			RouteResult routeAbove = route;
+			routeAbove.index++;
+
+			CollapsePopupAt(routeAbove);
+		}
+
+		// given a popup stack route result, let popup tree handle mouse down by performing popup stack collapse if needed, 
+		// and process on queue popup command requests e.g. toggle up/down a popup
+		void HandleMouseDownOnPopups(const RouteResult& result)
+		{
+			// collapse the popup stack above the clicked popup. we only want to keep the popup stack up to the clicked one.
+			CollapsePopupAbove(result);
+
+			// handle popup add/remove queue requests
+			for (std::unique_ptr<PopupCommand>& pr : m_PopupCommands)
+			{
+				switch (pr->command)
+				{
+				// remove/toggle off the popup that is owned by widget from popup request
+				case 0:
+				{
+					// we already have the index of the popup stack that we want to collapsed at. just validate and collapse with it
+					if (pr->index >= 0 && pr->index < m_popups.size())
+					{
+						RouteResult route{};
+						route.index = pr->index;
+						CollapsePopupAt(route);
+					}
+					break;
+				}
+				// add this popup on top of stack
+				case 1:
+				{
+					std::unique_ptr<Popup> popup = std::make_unique<Popup>(this, pr->owner, pr->position, pr->size);
+
+					if (pr->builder)
+					{
+						std::unique_ptr<Widget> payload = pr->builder(*this);
+						if (payload)
+						{
+							popup->AddChild(std::move(payload));
+						}
+					}
+
+					m_popups.push_back(std::move(popup));
+					break;
+				}
+				default:
+					break;
+				}
+			}
+			m_PopupCommands.clear();
+		}
+
+		void Detach(Widget* widget)
+		{
+			if (m_mouseCapture == widget) SetCapture(nullptr);
+			if (m_focus == widget) SetFocus(nullptr);
+			if (m_mouseOver == widget) m_mouseOver = nullptr;
 		}
 
 		// scenario 1 - no popup exists, popupbutton is clicked
@@ -6236,89 +6495,34 @@ namespace TestMapEditor
 		//
 		void MouseDown(const PositionF& p)
 		{
-			m_popupRequests.clear();
+			m_PopupCommands.clear();
 
 			// do hit test on all popups starting at top to bottom
-			std::vector<std::unique_ptr<Popup>>::reverse_iterator toCollapseHere = m_popups.rend();
-			Widget* widget = nullptr;
-			for (std::vector<std::unique_ptr<Popup>>::reverse_iterator it = m_popups.rbegin(); it != m_popups.rend(); it++)
-			{
-				// check if this popup intersects with point. 
-				widget = RouteCheck((*it).get(), p, false);
-				if (widget)
-				{
-					break;
-				}
+			RouteResult result = FindPopupRouteFromTopAt(p);
 
-				// if this popup failed hit test, then popup stack should collapse here onwards. we remember this iterator for removal later
-				toCollapseHere = it;
-			} 
+			// check what widget got clicked if any
+			Widget* widget = result.target;
+
+			// if there were no popups clicked, let's find the clicked widget in layout tree then
+			if (!widget) widget = m_root.FindAndResolveZOrderAt(p);
+
+			// propagate event here
+			if (widget) widget->OnMouseDown(p);
+
+			// collapse the popup stack above the clicked popup. we only want to keep the popup stack up to the clicked one.
+			//CollapsePopupAbove(result);
+
+			// since popup is clicked, there might be some popup commands on queue requested by the widgets inside the clicked popup. 
+			HandleMouseDownOnPopups(result);
 			
-			// route check on layout tree
-			if (!widget)
-			{
-				widget = RouteCheck(&m_root, p, true);
-			}
+			// we are now unregistering popups that were collapsed as well as their children from system so we can now set capture, focus, hover anywhere after popup tree mutation
 
 			// set the clicked widget as capture. if no widget was clicked, this will be nullptr
 			SetCapture(widget);
 
-			// propagate event here
-			if(widget)	widget->OnMouseDown(p);
-
 			// resolve focus
 			SetFocus(widget);
 
-			// collapse the popup stack if needed
-			if (toCollapseHere != m_popups.rend())
-			{
-				// toCollapseHere is reverse iterator. querying base converts it to forward iterator which is what we need here
-				auto forwardIt = std::prev(toCollapseHere.base());
-				m_popups.erase(forwardIt, m_popups.end());
-			}
-
-			// handle popup add/remove queue requests
-			for (std::unique_ptr<PopupRequest>& pr : m_popupRequests)
-			{
-				switch (pr->command)
-				{
-				// remove/toggle off the popup that is owned by widget from popup request
-				case 0:
-				{
-					std::vector<std::unique_ptr<Popup>>::reverse_iterator toCollapseFromHere = m_popups.rend();
-					for (std::vector<std::unique_ptr<Popup>>::reverse_iterator it = m_popups.rbegin(); it != m_popups.rend(); it++)
-					{
-						// found the popup in popup tree that is owned by this popup request
-						if ((*it).get()->m_owner == pr->owner)
-						{
-							toCollapseFromHere = it;
-							break;
-						}
-					}
-
-					if (toCollapseFromHere != m_popups.rend())
-					{
-						// toCollapseHere is reverse iterator. querying base converts it to forward iterator which is what we need here
-						auto forwardIt = std::prev(toCollapseFromHere.base());
-						m_popups.erase(forwardIt, m_popups.end());
-					}
-					break;
-
-				}
-				// add this popup on top of stack
-				case 1: 
-				{
-					std::unique_ptr<Popup> popup = std::make_unique<Popup>(pr->owner, pr->position, pr->size);
-					popup->m_system = this;
-					popup->AddChild(std::move(pr->payload));
-					m_popups.push_back(std::move(popup));
-					break;
-				}
-				default:
-					break;
-				}
-			}
-			m_popupRequests.clear();
 		}
 
 		void MouseUp(const PositionF& p)
@@ -6343,7 +6547,7 @@ namespace TestMapEditor
 			for (std::vector<std::unique_ptr<Popup>>::reverse_iterator it = m_popups.rbegin(); it != m_popups.rend(); it++)
 			{
 				// check if this popup intersects with point. 
-				hover = RouteCheck((*it).get(), p, false);
+				hover = (*it)->FindTopWidgetAt(p);
 				if (hover)
 				{
 					break;
@@ -6393,96 +6597,201 @@ namespace TestMapEditor
 			}
 		}
 
-		void AddPopup(Widget* owner, const PositionF& pos, const SizeF& size)
+		void TogglePopup(Widget* owner)
 		{
-			std::unique_ptr<Popup> popup = std::make_unique<Popup>(owner, pos, size);
-
-			m_popups.push_back(std::move(popup));
-		}
-
-		void SetPopup(Widget* owner, const PositionF& pos, const SizeF& size)
-		{
-			ClearPopups();
-			AddPopup(owner, pos, size);
-		}
-
-		void ClearPopups()
-		{
-			m_popups.clear();
-		}
-
-		Widget* GetPopupOwnedBy(Widget* owner)
-		{
-			for (auto& widget : m_popups)
+			for (int i = 0; i < m_popups.size(); i++)
 			{
-				if (widget.get()->m_owner == owner)
+				// if this widget is an owner of existing popup, then popup is active. collapse popup stack on it
+				if (m_popups[i].get()->GetOwner() == owner)
 				{
-					return widget.get();
-				}
-			}
-			return nullptr;
-		}
-
-		void RequestTogglePopup(Widget* owner, const PositionF& pos, const SizeF& size, std::unique_ptr<Widget> payload)
-		{
-			for (auto& widget : m_popups)
-			{
-				if (widget.get()->m_owner == owner)
-				{
-					// this widget's popup exists already. so we're supposed to remove it to toggle it off
-					std::unique_ptr<PopupRequest> pr = std::make_unique<PopupRequest>();
+					std::unique_ptr<PopupCommand> pr = std::make_unique<PopupCommand>();
 					pr->command = 0;
+					pr->index = i;
 					pr->owner = owner;
-					pr->position = pos;
-					pr->size = size;
-					pr->payload = std::move(payload);
-					m_popupRequests.push_back(std::move(pr));
+					m_PopupCommands.push_back(std::move(pr));
 					return;
 				}
 			}
 
-			// this widget's popup does not exist in popup tree. so we're supposed to add it to popup tree
-			std::unique_ptr<PopupRequest> pr = std::make_unique<PopupRequest>();
+			// this widget's popup does not exist in popup stack. create it and add into top of the stack. but first, check if this widget has registered popup build command
+			if (!m_PopupBuildDescriptions.Has(owner))
+			{
+				throw std::runtime_error("command for this owner does not exist");
+			}
+
+			// get the popu build command 
+			PopupBuildDescription& cmd = m_PopupBuildDescriptions.Get(owner);
+
+			// create popup build request
+			std::unique_ptr<PopupCommand> pr = std::make_unique<PopupCommand>();
 			pr->command = 1;
 			pr->owner = owner;
-			pr->position = pos;
-			pr->size = size;
-			pr->payload = std::move(payload);
-			m_popupRequests.push_back(std::move(pr));
+			pr->position = owner->GetAbsolutePosition() + cmd.position;
+			pr->size = cmd.size;
+			pr->builder = cmd.builder;
+			m_PopupCommands.push_back(std::move(pr));
+		}
+
+		bool RegisterPopup(Widget* widget, const PopupBuildDescription& cmd)
+		{
+			return m_PopupBuildDescriptions.Register(widget, cmd);
+		}
+
+		bool UnregisterPopup(Widget* owner)
+		{
+			// then we unregister it from our popup layer
+			return m_PopupBuildDescriptions.Unregister(owner);
+		}
+
+		void CollapsePopupAt(const RouteResult& result)
+		{
+			if (result.index < 0)
+			{
+				for (auto& popup : m_popups)
+				{
+					popup->ForEachWidget([&](Widget* widget)
+						{
+							widget->UnregisterToSystem(this);
+							return true;
+						});
+				}
+				m_popups.clear();
+				return;
+			}
+
+			if (result.index >= (int)m_popups.size()) return;
+
+			for (size_t i = result.index; i < m_popups.size(); ++i)
+			{
+				m_popups[i]->ForEachWidget([&](Widget* widget)
+					{
+						widget->UnregisterToSystem(this);
+						return true;
+					});
+			}
+
+			m_popups.erase(m_popups.begin() + result.index, m_popups.end());
+		}
+
+		void AddWidget(std::unique_ptr<Widget> widget)
+		{
+			m_root.AddChild(std::move(widget));
+		}
+
+		void RemoveWidget(Widget* widget)
+		{
+			// bail out if invalid
+			if (!widget) return;
+
+			// is widget owner of a popup?
+			RouteResult result;
+			result.index = (int)m_popups.size(); 
+			widget->ForEachWidget([&](Widget* w) 
+				{
+					for (int i = 0; i < m_popups.size(); i++)
+					{
+						// this widget owns this popup
+						if (m_popups[i]->GetOwner() == w)
+						{
+							if (result.index > i)
+							{
+								result.index = i;
+							}
+							return true;
+						}
+					}
+					return true;
+				});
+			CollapsePopupAt(result);
+
+
+			// we can now remove this widget. this will remove the widget's whole tree. 
+			if (!m_root.Remove(widget))
+			{
+				// let's be strict for now to catch any silent error
+				throw std::runtime_error("failed to remove a widget from root");
+			}
 		}
 	};
 
-	class PopupButton : public Widget
+	class PopupTrigger : public Widget
 	{
+	protected:
+		PopupBuildDescription m_cmd;
+
+		// this is fired up when this widget is added to a widget tree with a UI system. it will register its popup descriptor into the system
+		bool RegisterToSystem(UISystem* system) override final
+		{
+			if (system)
+			{
+				// be strict for now
+				if (!system->RegisterPopup(this, m_cmd))
+				{
+					throw std::runtime_error("failed to register popup");
+				}
+			}
+
+			// do internal registry to system process...
+			Widget::RegisterToSystem(system);
+
+			return true;
+		}
+
+		// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its popup descriptor into the system
+		bool UnregisterToSystem(UISystem* system) override final
+		{
+			// do internal unregister to system process like unhooking to capture, focus, hover
+			Widget::UnregisterToSystem(system);
+
+			if (system)
+			{
+				// be strict for now
+				if (!system->UnregisterPopup(this))
+				{
+					throw std::runtime_error("failed to unregister popup");
+				}
+			}
+
+			return true;
+		}
+
+		// requests system to toggle this widget's popup
+		void Toggle()
+		{
+			UISystem* system = GetSystem();
+			if (system)
+			{
+				system->TogglePopup(this);
+			}
+		}
+
 	public:
-		PopupButton()
+		PopupTrigger(const PopupBuildDescription& cmd) :
+			m_cmd(cmd)
 		{
 			m_moveBehavior = MoveBehavior::None;
 		}
 
 		virtual void OnMouseDown(const PositionF& position)
 		{
-			UISystem* system = GetSystem();
-			if (system)
-			{
-				PositionF pos = GetAbsolutePosition();
-				pos.y += GetSize().height;
-
-				std::unique_ptr<PopupButton> payload = std::make_unique<PopupButton>();
-				payload->SetPosition({ 0,0 });
-				payload->SetSize(GetSize());
-				system->RequestTogglePopup(this, pos, GetSize(), std::move(payload));
-
-			}
+			Toggle();
 		}
 	};
+
+	bool Widget::UnregisterToSystem(UISystem* system)
+	{
+		if (system) system->Detach(this);
+
+		return true;
+	}
 #pragma endregion
 
 #pragma region // gui scene
 	class GuiScene : public Scene
 	{
 		PositionF m_mousePos;
-
+		Widget* m_popupTrigger = nullptr;
+		Widget* m_dialog = nullptr;
 		UISystem m_ux;
 
 		std::unique_ptr<Widget> CreateWidget(const PositionF& pos, const SizeF& size)
@@ -6493,53 +6802,156 @@ namespace TestMapEditor
 			return widget;
 		}
 
-		std::unique_ptr<Widget> CreatePopupButton(const PositionF& pos, const SizeF& size)
+		std::unique_ptr<Widget> CreatePopupTrigger(const PositionF& pos, const SizeF& size)
 		{
-			std::unique_ptr<PopupButton> widget = std::make_unique<PopupButton>();
+			PopupBuildDescription cmd
+			{
+				PositionF{0, size.height},
+				SizeF(size)
+			};
+			std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
 			widget->SetPosition(pos);
 			widget->SetSize(size);
 			return widget;
 		}
-
 	public:
+		// this method creates a popup build description where a PopupTrigger's Popup contains another PopupTrigger
+		// this cascades multiple popups. the depth determines how many tiers of popups can exist. This is used to test 
+		// popup behavior of the UI system
+		PopupBuildDescription CreateBuildDescWithCascadedPopups(int tier, const SizeF& size, const PositionF& position)
+		{
+			PopupBuildDescription cmd;
+
+			// this is the position of the popup relative to its owner PopupTrigger local space
+			cmd.position = position;
+
+			// size of the Popup. this will also be the size of the PopupTrigger that will be child of the Popup
+			cmd.size = size;
+
+			// we will cascade up to given number of tier
+			if (tier > 0)
+			{
+				// this will be the build function. it will build a popup trigger which will be child to this trigger's popup
+				cmd.builder = [this, tier, size, position](UISystem& system)
+					{
+						std::unique_ptr<PopupTrigger> popupTrigger = std::make_unique<PopupTrigger>(CreateBuildDescWithCascadedPopups(tier - 1, size, position));
+
+						// this trigger's position is at top left corner of its parent popup
+						popupTrigger->SetPosition({0,0});
+
+						// this trigger's size is same as its parent popup size so it will fill up the whole popup
+						popupTrigger->SetSize(size);
+
+						return popupTrigger;
+					};
+			}
+
+			return cmd;
+		}
+
 		void OnEnter() override
 		{
-			m_ux.GetRoot().SetPosition({ 0,0 });
-			m_ux.GetRoot().SetSize({ 0,0 });
-			m_ux.GetRoot().Show();
+			m_ux.SetPosition({ 0,0 });
+			m_ux.SetSize({ 0,0 });
+			m_ux.Show();
 
+			if (false)
 			{
-				std::unique_ptr<Widget> dialog = CreateWidget({ 100, 100 }, { 480, 320 });
-				dialog->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
-				dialog->AddChild(std::move(CreateWidget({ 50, 50 }, { 100, 40 })));
+				PopupBuildDescription cmd = CreateBuildDescWithCascadedPopups(10, {100, 50}, { 0, 50 });
 
-				std::unique_ptr<Widget> child = CreateWidget({ 200, 10 }, { 200, 200 });
-				child->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
-				dialog->AddChild(std::move(child));
+				std::unique_ptr<PopupTrigger> popupTrigger = std::make_unique<PopupTrigger>(cmd);
 
-				m_ux.GetRoot().AddChild(std::move(dialog));
+				// position of this popup trigger relative to its parent.
+				popupTrigger->SetPosition({ 450, 100 });
+				popupTrigger->SetSize({ 100, 50 });
+
+				m_ux.AddWidget(std::move(popupTrigger));
 			}
 
+			if(false)
 			{
-				std::unique_ptr<Widget> dialog = CreateWidget({ 200, 200 }, { 480, 320 });
-				dialog->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
-				dialog->AddChild(std::move(CreateWidget({ 100, 50 }, { 150, 100 })));
+			//	m_ux.AddWidget(CreatePopupTrigger({ 300, 100 }, { 100, 50 }));
 
-				std::unique_ptr<Widget> child = CreateWidget({ 200, 10 }, { 200, 200 });
-				child->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
-				child->Disable();
-				dialog->AddChild(std::move(child));
+				PopupBuildDescription cmd
+				{
+					PositionF{0, 50},
+					SizeF({100, 50}),
+					nullptr
+				};
 
-				m_ux.GetRoot().AddChild(std::move(dialog));
+				cmd.builder = [&](UISystem& system) 
+					{
+						PopupBuildDescription cmd
+						{
+							PositionF{0, 50},
+							SizeF({100, 50}),
+							nullptr
+						};
+
+						cmd.builder = [](UISystem& system)
+							{
+								std::unique_ptr<Widget> widget = std::make_unique<Widget>();
+								widget->SetPosition({ 0, 0 });
+								widget->SetSize({ 100, 50 });
+								return widget;
+							};
+
+
+						std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
+						widget->SetPosition({ 0, 0 });
+						widget->SetSize({ 100, 50 });
+						return widget;
+					};
+
+				std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
+				widget->SetPosition({ 450, 100 });
+				widget->SetSize({ 100, 50 });
+
+				m_ux.AddWidget(std::move(widget));
 			}
 
+			if(false)
 			{
-				std::unique_ptr<Widget> dialog = CreateWidget({ 300, 300 }, { 480, 256 });
-				dialog->AddChild(std::move(CreatePopupButton({ 25, 25 }, { 150, 40 })));
-				dialog->AddChild(std::move(CreatePopupButton({ 200, 25 }, { 150, 40 })));
+				std::unique_ptr<Widget> dialog = CreateWidget({ 100, 250 }, { 480, 320 });
+				dialog->AddChild(CreatePopupTrigger({ 50, 50 }, { 100, 50 }));
+				dialog->AddChild(CreatePopupTrigger({ 200, 50 }, { 100, 50 }));
 
-				m_ux.GetRoot().AddChild(std::move(dialog));
+				m_ux.AddWidget(std::move(dialog));
+
 			}
+
+			//{
+			//	std::unique_ptr<Widget> dialog = CreateWidget({ 100, 100 }, { 480, 320 });
+			//	dialog->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
+			//	dialog->AddChild(std::move(CreateWidget({ 50, 50 }, { 100, 40 })));
+
+			//	std::unique_ptr<Widget> child = CreateWidget({ 200, 10 }, { 200, 200 });
+			//	child->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
+			//	dialog->AddChild(std::move(child));
+
+			//	m_ux.GetRoot().AddChild(std::move(dialog));
+			//}
+
+			//{
+			//	std::unique_ptr<Widget> dialog = CreateWidget({ 200, 200 }, { 480, 320 });
+			//	dialog->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
+			//	dialog->AddChild(std::move(CreateWidget({ 100, 50 }, { 150, 100 })));
+
+			//	std::unique_ptr<Widget> child = CreateWidget({ 200, 10 }, { 200, 200 });
+			//	child->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
+			//	child->Disable();
+			//	dialog->AddChild(std::move(child));
+
+			//	m_ux.GetRoot().AddChild(std::move(dialog));
+			//}
+
+			//{
+			//	std::unique_ptr<Widget> dialog = CreateWidget({ 300, 300 }, { 480, 256 });
+			//	dialog->AddChild(std::move(CreatePopupButton({ 25, 25 }, { 150, 40 })));
+			//	dialog->AddChild(std::move(CreatePopupButton({ 200, 25 }, { 150, 40 })));
+
+			//	m_ux.GetRoot().AddChild(std::move(dialog));
+			//}
 		}
 
 		void OnMouseMove(int x, int y) override
@@ -6575,6 +6987,64 @@ namespace TestMapEditor
 		void OnKeyDown(int key) override
 		{
 			m_ux.KeyDown(key);
+
+			switch (key)
+			{
+			case 9: // TAB
+				break;
+			case 27: // ESC
+				break;
+			case 32: // SPACE
+				break;
+			case 49: // 1
+				if (!m_popupTrigger)
+				{
+					PopupBuildDescription cmd = CreateBuildDescWithCascadedPopups(10, { 100, 50 }, { 0, 50 });
+					std::unique_ptr<PopupTrigger> popupTrigger = std::make_unique<PopupTrigger>(cmd);
+
+					// position of this popup trigger relative to its parent.
+					popupTrigger->SetPosition({ 450, 100 });
+					popupTrigger->SetSize({ 100, 50 });
+
+					m_popupTrigger = popupTrigger.get();
+
+					m_ux.AddWidget(std::move(popupTrigger));
+				}
+				else
+				{
+					m_ux.RemoveWidget(m_popupTrigger);
+					m_popupTrigger = nullptr;
+				}
+				break;
+			case 50: // 2
+				if (!m_dialog)
+				{
+					std::unique_ptr<Widget> dialog = CreateWidget({ 100, 250 }, { 320, 240 });
+					m_dialog = dialog.get();
+
+					PopupBuildDescription cmd = CreateBuildDescWithCascadedPopups(5, { 100, 50 }, { 25, 50 });
+					std::unique_ptr<PopupTrigger> popupTrigger = std::make_unique<PopupTrigger>(cmd);
+					popupTrigger->SetPosition({ 25, 25 });
+					popupTrigger->SetSize({ 100, 50 });
+					dialog->AddChild(std::move(popupTrigger));
+
+					m_ux.AddWidget(std::move(dialog));
+				}
+				else
+				{
+					m_ux.RemoveWidget(m_dialog);
+					m_dialog = nullptr;
+				}
+
+
+				break;
+			case 51: // 3 
+				break;
+			case 52: // 4
+				break;
+			default:
+				break;
+			}
 		}
 
 
@@ -6595,7 +7065,7 @@ namespace TestMapEditor
 
 		void OnResize(size_t width, size_t height) override
 		{
-			m_ux.GetRoot().SetSize({ static_cast<float>(width), static_cast<float>(height) });
+			m_ux.SetSize({ static_cast<float>(width), static_cast<float>(height) });
 		}
 
 
