@@ -5630,8 +5630,6 @@ namespace TestMapEditor
 	{
 	protected:
 
-		//friend class UISystem;
-
 		enum MoveBehavior
 		{
 			None = 0,
@@ -5660,6 +5658,9 @@ namespace TestMapEditor
 		PositionF m_beginMousePosition;
 		PositionF m_beginMovePosition;
 
+		// --------------------------------------------------------------------------------
+		// SYSTEM 
+		// --------------------------------------------------------------------------------
 		virtual UISystem* GetSystem() const
 		{
 			if (m_parent)
@@ -5690,15 +5691,17 @@ namespace TestMapEditor
 			Widget* c = child.get();
 			m_children.push_back(std::move(child));
 
-			c->ForEachWidget([&](Widget* w)
+			// traverse through this widget's whole tree including itself and register them to system
+			c->ForEachWidget([&](Widget* widget)
 				{
-					w->RegisterToSystem();
+					widget->RegisterToSystem();
 					return true;
 				});
 		}
 
 		void RemoveChild(Widget* widget)
 		{
+			// is this widget our child?
 			auto it = std::find_if(
 				m_children.begin(),
 				m_children.end(),
@@ -5707,6 +5710,7 @@ namespace TestMapEditor
 					return ptr.get() == widget;
 				});
 
+			// unregister this widget's whole tree including itself. then remove this widget
 			if (it != m_children.end())
 			{
 				widget->ForEachWidget([&](Widget* w)
@@ -5721,6 +5725,7 @@ namespace TestMapEditor
 
 		void RemoveChildren()
 		{
+			// remove all children and unregister their trees from system
 			while (m_children.size())
 			{
 				m_children.back()->ForEachWidget([&](Widget* w)
@@ -5863,7 +5868,6 @@ namespace TestMapEditor
 		// --------------------------------------------------------------------------------
 		// TRANSFORM
 		// --------------------------------------------------------------------------------
-
 		float GetWidth() const
 		{
 			return m_size.width;
@@ -5973,6 +5977,14 @@ namespace TestMapEditor
 		{
 		}
 
+		virtual void OnKeyDown(int key)
+		{
+		}
+
+		virtual void OnKeyUp(int key)
+		{
+		}
+
 		// --------------------------------------------------------------------------------
 		// FOCUS
 		// --------------------------------------------------------------------------------
@@ -5981,14 +5993,6 @@ namespace TestMapEditor
 		}
 
 		virtual void OnLostFocus()
-		{
-		}
-
-		virtual void OnKeyDown(int key)
-		{
-		}
-
-		virtual void OnKeyUp(int key)
 		{
 		}
 
@@ -6119,10 +6123,18 @@ namespace TestMapEditor
 			return true;
 		}
 
+		// --------------------------------------------------------------------------------
+		// TOOLTIP
+		// --------------------------------------------------------------------------------
 
-		// --------------------------------------------------------------------------------
-		// DRAW TRAVERSAL
-		// --------------------------------------------------------------------------------
+		virtual bool HasTooltip() const 
+		{
+			return false;
+		}
+
+		virtual void BuildTooltip(Widget& tooltip) 
+		{
+		}
 	};
 
 	class Popup : public Widget
@@ -6144,7 +6156,7 @@ namespace TestMapEditor
 		{
 			PositionF position;
 			SizeF size;
-			std::function<std::unique_ptr<Widget>()> builder;
+			std::function<void(Widget*)> builder;
 		};
 
 		Popup(UISystem* system, Widget* owner, const PositionF& pos, const SizeF& size) :
@@ -6401,7 +6413,7 @@ namespace TestMapEditor
 			int index;
 			PositionF position;
 			SizeF size;
-			std::function<std::unique_ptr<Widget>()> builder;
+			std::function<void(Widget*)> builder;
 		};
 
 		PopupStack m_stack;
@@ -6461,11 +6473,7 @@ namespace TestMapEditor
 					// if it has a payload, build it and add to popup as child
 					if (cmd->builder)
 					{
-						std::unique_ptr<Widget> payload = cmd->builder();
-						if (payload)
-						{
-							popup->AddChild(std::move(payload));
-						}
+						cmd->builder(popup.get());
 					}
 
 					// finally, add popup to top of stack
@@ -6539,11 +6547,85 @@ namespace TestMapEditor
 		}
 	};
 
+	// design consideration:
+	// - only one tooltip exists
+	// - tooltip information belongs to a widget
+	// - not all widgets has tooltip
+	// - tooltip should not show during capture/drag
+	// - tooltip position is relative to owner widget
+	// - delayed appearance is a system timing concern, not widget concern
+	// design consideration:
+	// - "it does not decide whether to show or hide a tooltip, but if it's told to show a tooltip, it will show it his way"
+	//		- what it means is that UISystem decides if a tooltip is shown or hidden and requests ToolTipManager to do it
+	//		- but ToolTipManager decides how tooltip is shown e.g. TooltipManager will apply delay before showing tooltip
+	// - the following policies are enforced by UISystem regarding showing or hiding of tooltip
+	//		- if mouse is captured by widget, tooltip must be hidden
+	//		- if mouse hovers over a widget while mouse is not captured and widget has tooltip, tooltip is displayed
+	class TooltipManager
+	{
+	private:
+		Widget m_tooltip;
+		Widget* m_owner;
+
+	public:
+		TooltipManager():
+			m_owner(nullptr)
+		{
+			m_tooltip.SetPosition({ 0,0 });
+			m_tooltip.SetSize({ 0,0 });
+		}
+
+		void Hide()
+		{
+			m_tooltip.RemoveChildren();
+			m_tooltip.SetPosition({ 0,0 });
+			m_tooltip.SetSize({ 0,0 });
+			m_tooltip.Hide();
+
+			//if (m_toolTip)
+			//{
+			//	m_toolTip->RemoveChildren();
+			//	m_toolTip.reset();
+			//}
+		}
+
+		// toggle the popup
+		void Show(Widget* hover)
+		{
+			if (!hover || !hover->HasTooltip())
+			{
+				Hide();
+				return;
+			}
+
+			if (hover != m_owner)
+			{
+				// do this first to flush the old tooltip
+				Hide();
+
+				// rebuild tooltip for new owner
+				hover->BuildTooltip(m_tooltip);
+
+				// this is new tooltip owner now
+				m_owner = hover;
+			}
+
+			// show tooltip
+			m_tooltip.Show();
+		}
+
+		const Widget* Get() const
+		{
+			return &m_tooltip;
+		}
+	};
+
 	class UISystem
 	{
 	private:
 		Root m_layoutTree;
 		PopupManager m_popupManager;
+		TooltipManager m_tooltipManager;
 
 		Widget* m_mouseCapture = nullptr;
 		Widget* m_mouseOver = nullptr;
@@ -6638,6 +6720,17 @@ namespace TestMapEditor
 			renderer.SetClipRegion(prev);
 		}
 
+		void DrawTooltip(IRenderer& renderer, const Widget* widget)
+		{
+			if (!widget) return;
+
+			if (!widget->IsVisible()) return;
+
+			PositionF pos = widget->GetAbsolutePosition();
+			renderer.Draw(pos, widget->GetSize(), { 0,0,0, 1 }, 0);
+			renderer.Draw(pos + PositionF{ 3,3 }, widget->GetSize() - SizeF{ 6,6 }, { 1, 1, 1, 1 }, 0);
+		}
+
 		void Draw(IRenderer& renderer)
 		{
 			// draw layout tree
@@ -6648,7 +6741,10 @@ namespace TestMapEditor
 				{
 					Draw(renderer, widget);
 				});
-		}	
+
+			//DrawTooltip(renderer, m_toolTip.get());
+			DrawTooltip(renderer, m_tooltipManager.Get());
+		}
 
 		// this "detaches" the widget from system. if widget is mouse capture, hover, or focus, these states will be reset to null
 		void Detach(Widget* widget)
@@ -6746,6 +6842,8 @@ namespace TestMapEditor
 			// resolve focusPopupManager::BuildDescription
 			SetFocus(widget);
 
+			// if mouse is down, tooltip should be hidden regardless of where the mouse is clicked
+			m_tooltipManager.Hide();
 		}
 
 		void MouseUp(const PositionF& p)
@@ -6753,6 +6851,9 @@ namespace TestMapEditor
 			if (!m_mouseCapture) return;
 			m_mouseCapture->OnMouseUp(p);
 			m_mouseCapture = nullptr;
+
+			// by right, tooltip of the widget (if it has tooltip) the mouse hovers now should appear... 
+			// but after mouse up, we don't have mouse over widget yet, so we don't bother showing tooltip now
 		}
 
 		void MouseMove(const PositionF& p)
@@ -6761,6 +6862,10 @@ namespace TestMapEditor
 			if (m_mouseCapture)
 			{
 				m_mouseCapture->OnMouseMove(p);
+
+				// since mouse is captured, tooltip should be hidden
+				m_tooltipManager.Hide();
+
 				return;
 			}
 
@@ -6793,6 +6898,9 @@ namespace TestMapEditor
 			{
 				m_mouseOver->OnMouseMove(p);
 			}
+
+			// if you reach this point, then mouse hovers a widget that might have a tooltip. show it.
+			m_tooltipManager.Show(m_mouseOver);
 		}
 
 		void KeyDown(int key)
@@ -6848,7 +6956,7 @@ namespace TestMapEditor
 	class PopupTrigger : public Widget
 	{
 	protected:
-		Popup::BuildDescription m_cmd;
+		Popup::BuildDescription m_popupBuildDesc;
 
 		// this is fired up when this widget is added to a widget tree with a UI system. it will register its popup descriptor into the system
 		bool RegisterToSystem() override final
@@ -6857,7 +6965,7 @@ namespace TestMapEditor
 			if (system)
 			{
 				// be strict for now
-				if (!system->RegisterPopup(this, m_cmd))
+				if (!system->RegisterPopup(this, m_popupBuildDesc))
 				{
 					throw std::runtime_error("failed to register popup");
 				}
@@ -6899,8 +7007,8 @@ namespace TestMapEditor
 		}
 
 	public:
-		PopupTrigger(const Popup::BuildDescription& cmd) :
-			m_cmd(cmd)
+		PopupTrigger(const Popup::BuildDescription& popupBuildDesc) :
+			m_popupBuildDesc(popupBuildDesc)
 		{
 			m_moveBehavior = MoveBehavior::None;
 		}
@@ -6909,26 +7017,18 @@ namespace TestMapEditor
 		{
 			Toggle();
 		}
-	};
 
-	// design consideration:
-	// - only one tooltip exists
-	// - tooltip information belongs to a widget
-	// - not all widgets has tooltip
-	// - tooltip should not show during capture/drag
-	// - tooltip position is relative to owner widget
-	// - delayed appearance is a system timing concern, not widget concern
-
-	class Tooltip
-	{
-	private:
-	public:
-		struct Description
+		virtual bool HasTooltip() const
 		{
-			PositionF offset;
-			SizeF size;
-			std::function<std::unique_ptr<Widget>()> builder;
-		};
+			return true;
+		}
+
+		virtual void BuildTooltip(Widget& tooltip)
+		{
+			// this is just for debug purposes. can formalize this later
+			tooltip.SetSize({80,30});
+			tooltip.SetPosition(GetAbsolutePosition() + PositionF{ GetSize().width + 5, 0 });
+		}
 	};
 
 	bool Widget::UnregisterToSystem()
@@ -6956,18 +7056,24 @@ namespace TestMapEditor
 			return widget;
 		}
 
-		std::unique_ptr<Widget> CreatePopupTrigger(const PositionF& pos, const SizeF& size)
-		{
-			Popup::BuildDescription cmd
-			{
-				PositionF{0, size.height},
-				SizeF(size)
-			};
-			std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
-			widget->SetPosition(pos);
-			widget->SetSize(size);
-			return widget;
-		}
+		//std::unique_ptr<Widget> CreatePopupTrigger(const PositionF& pos, const SizeF& size)
+		//{
+		//	Popup::BuildDescription cmd
+		//	{
+		//		PositionF{0, size.height},
+		//		SizeF(size)
+		//	};
+
+		//	Tooltip::BuildDescription tooltip
+		//	{
+
+		//	}
+
+		//	std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
+		//	widget->SetPosition(pos);
+		//	widget->SetSize(size);
+		//	return widget;
+		//}
 	public:
 		// this method creates a popup build description where a PopupTrigger's Popup contains another PopupTrigger
 		// this cascades multiple popups. the depth determines how many tiers of popups can exist. This is used to test 
@@ -6986,7 +7092,7 @@ namespace TestMapEditor
 			if (tier > 0)
 			{
 				// this will be the build function. it will build a popup trigger which will be child to this trigger's popup
-				cmd.builder = [this, tier, size, position]()
+				cmd.builder = [this, tier, size, position](Widget* parent)
 					{
 						std::unique_ptr<PopupTrigger> popupTrigger = std::make_unique<PopupTrigger>(CreateBuildDescWithCascadedPopups(tier - 1, size, position));
 
@@ -6996,7 +7102,7 @@ namespace TestMapEditor
 						// this trigger's size is same as its parent popup size so it will fill up the whole popup
 						popupTrigger->SetSize(size);
 
-						return popupTrigger;
+						parent->AddChild(std::move(popupTrigger));			
 					};
 			}
 
@@ -7013,11 +7119,15 @@ namespace TestMapEditor
 			{
 				Popup::BuildDescription cmd = CreateBuildDescWithCascadedPopups(10, {100, 50}, { 0, 50 });
 
+				PositionF pos{ 450, 100 };
+				SizeF size{ 100, 50 };
+
+
 				std::unique_ptr<PopupTrigger> popupTrigger = std::make_unique<PopupTrigger>(cmd);
 
 				// position of this popup trigger relative to its parent.
-				popupTrigger->SetPosition({ 450, 100 });
-				popupTrigger->SetSize({ 100, 50 });
+				popupTrigger->SetPosition(pos);
+				popupTrigger->SetSize(size);
 
 				m_ux.AddWidget(std::move(popupTrigger));
 			}
@@ -7033,7 +7143,7 @@ namespace TestMapEditor
 					nullptr
 				};
 
-				cmd.builder = [&]() 
+				cmd.builder = [&](Widget* parent)
 					{
 						Popup::BuildDescription cmd
 						{
@@ -7042,37 +7152,44 @@ namespace TestMapEditor
 							nullptr
 						};
 
-						cmd.builder = []()
+						cmd.builder = [](Widget* parent)
 							{
 								std::unique_ptr<Widget> widget = std::make_unique<Widget>();
 								widget->SetPosition({ 0, 0 });
 								widget->SetSize({ 100, 50 });
-								return widget;
+
+								parent->AddChild(std::move(widget));
 							};
 
+						PositionF pos{ 0, 0 };
+						SizeF size{ 100, 50 };
 
 						std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
-						widget->SetPosition({ 0, 0 });
-						widget->SetSize({ 100, 50 });
-						return widget;
+						widget->SetPosition(pos);
+						widget->SetSize(size);
+
+						parent->AddChild(std::move(widget));
 					};
 
+				PositionF pos{ 450, 100 };
+				SizeF size{ 100, 50 };
+
 				std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
-				widget->SetPosition({ 450, 100 });
-				widget->SetSize({ 100, 50 });
+				widget->SetPosition(pos);
+				widget->SetSize(size);
 
 				m_ux.AddWidget(std::move(widget));
 			}
 
-			if(false)
-			{
-				std::unique_ptr<Widget> dialog = CreateWidget({ 100, 250 }, { 480, 320 });
-				dialog->AddChild(CreatePopupTrigger({ 50, 50 }, { 100, 50 }));
-				dialog->AddChild(CreatePopupTrigger({ 200, 50 }, { 100, 50 }));
+			//if(false)
+			//{
+			//	std::unique_ptr<Widget> dialog = CreateWidget({ 100, 250 }, { 480, 320 });
+			//	dialog->AddChild(CreatePopupTrigger({ 50, 50 }, { 100, 50 }));
+			//	dialog->AddChild(CreatePopupTrigger({ 200, 50 }, { 100, 50 }));
 
-				m_ux.AddWidget(std::move(dialog));
+			//	m_ux.AddWidget(std::move(dialog));
 
-			}
+			//}
 
 			//{
 			//	std::unique_ptr<Widget> dialog = CreateWidget({ 100, 100 }, { 480, 320 });
@@ -7153,12 +7270,15 @@ namespace TestMapEditor
 			case 49: // 1
 				if (!m_popupTrigger)
 				{
+					PositionF pos{ 350, 100 };
+					SizeF size{ 100, 50 };
+
 					Popup::BuildDescription cmd = CreateBuildDescWithCascadedPopups(10, { 100, 50 }, { 25, 25 });
 					std::unique_ptr<PopupTrigger> popupTrigger = std::make_unique<PopupTrigger>(cmd);
 
 					// position of this popup trigger relative to its parent.
-					popupTrigger->SetPosition({ 350, 100 });
-					popupTrigger->SetSize({ 100, 50 });
+					popupTrigger->SetPosition(pos);
+					popupTrigger->SetSize(size);
 
 					m_popupTrigger = popupTrigger.get();
 
@@ -7176,10 +7296,13 @@ namespace TestMapEditor
 					std::unique_ptr<Widget> dialog = CreateWidget({ 100, 250 }, { 320, 240 });
 					m_dialog = dialog.get();
 
-					Popup::BuildDescription cmd = CreateBuildDescWithCascadedPopups(5, { 100, 50 }, { 25, 25 });
+					PositionF pos{ 25, 25 };
+					SizeF size{ 100, 50 };
+
+					Popup::BuildDescription cmd = CreateBuildDescWithCascadedPopups(5, size, pos);
 					std::unique_ptr<PopupTrigger> popupTrigger = std::make_unique<PopupTrigger>(cmd);
-					popupTrigger->SetPosition({ 25, 25 });
-					popupTrigger->SetSize({ 100, 50 });
+					popupTrigger->SetPosition(pos);
+					popupTrigger->SetSize(size);
 					dialog->AddChild(std::move(popupTrigger));
 
 					{
@@ -7190,12 +7313,8 @@ namespace TestMapEditor
 							nullptr
 						};
 
-						cmd.builder = [&]()
+						cmd.builder = [&](Widget* parent)
 							{
-								std::unique_ptr<Widget> dialog = std::make_unique<Widget>();
-								dialog->SetPosition({ 0, 0 });
-								dialog->SetSize({ 200, 200 });
-
 								Popup::BuildDescription cmd2
 								{
 									PositionF{200, 0},
@@ -7203,13 +7322,8 @@ namespace TestMapEditor
 									nullptr
 								};
 
-
-								cmd2.builder = [&]()
+								cmd2.builder = [&](Widget* parent)
 									{
-										std::unique_ptr<Widget> dialog3 = std::make_unique<Widget>();
-										dialog3->SetPosition({ 0, 0 });
-										dialog3->SetSize({ 200, 200 });
-
 										Popup::BuildDescription cmd3
 										{
 											PositionF{200, 0},
@@ -7217,35 +7331,40 @@ namespace TestMapEditor
 											nullptr
 										};
 
+										PositionF pos{ 10, 10 };
+										SizeF size{ 180, 50 };
+
 										std::unique_ptr<PopupTrigger> trigger3 = std::make_unique<PopupTrigger>(cmd3);
-										trigger3->SetPosition({ 10, 10 });
-										trigger3->SetSize({ 180, 50 });
-										dialog3->AddChild(std::move(trigger3));
+										trigger3->SetPosition(pos);
+										trigger3->SetSize(size);
+										parent->AddChild(std::move(trigger3));
 
 										std::unique_ptr<Widget> widget3 = std::make_unique<Widget>();
 										widget3->SetPosition({ 10, 60 });
 										widget3->SetSize({ 100, 50 });
-										dialog3->AddChild(std::move(widget3));
-
-										return dialog3;
+										parent->AddChild(std::move(widget3));
 									};
+
+								PositionF pos{ 10, 10 };
+								SizeF size{ 180, 50 };
 
 								std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd2);
 								widget->SetPosition({ 10, 10 });
 								widget->SetSize({ 180, 50 });
-								dialog->AddChild(std::move(widget));
+								parent->AddChild(std::move(widget));
 
 								widget = std::make_unique<PopupTrigger>(cmd2);
 								widget->SetPosition({ 10, 60 });
 								widget->SetSize({ 180, 50 });
-								dialog->AddChild(std::move(widget));
-
-								return dialog;
+								parent->AddChild(std::move(widget));
 							};
 
+						PositionF pos{ 150, 25 };
+						SizeF size{ 100, 50 };
+
 						std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
-						widget->SetPosition({ 150, 25 });
-						widget->SetSize({ 100, 50 });
+						widget->SetPosition(pos);
+						widget->SetSize(size);
 
 						dialog->AddChild(std::move(widget));
 					}
@@ -7268,12 +7387,8 @@ namespace TestMapEditor
 						nullptr
 					};
 
-					cmd.builder = [&]()
+					cmd.builder = [&](Widget* parent)
 						{
-							std::unique_ptr<Widget> dialog = std::make_unique<Widget>();
-							dialog->SetPosition({ 0, 0 });
-							dialog->SetSize({ 200, 200 });
-
 							Popup::BuildDescription cmd
 							{
 								PositionF{200, 0},
@@ -7281,23 +7396,34 @@ namespace TestMapEditor
 								nullptr
 							};
 
-							std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
-							widget->SetPosition({ 10, 10 });
-							widget->SetSize({ 180, 50 });
-							dialog->AddChild(std::move(widget));
+							{
+								PositionF pos{ 10, 10 };
+								SizeF size{ 180, 50 };
 
-							widget = std::make_unique<PopupTrigger>(cmd);
-							widget->SetPosition({ 10, 60 });
-							widget->SetSize({ 180, 50 });
-							dialog->AddChild(std::move(widget));
+								std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
+								widget->SetPosition(pos);
+								widget->SetSize(size);
+								parent->AddChild(std::move(widget));
+							}
 
-							return dialog;
+							{
+								PositionF pos{ 10, 60 };
+								SizeF size{ 180, 50 };
+
+								std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
+								widget->SetPosition(pos);
+								widget->SetSize(size);
+								parent->AddChild(std::move(widget));
+							}
 						};
+
+					PositionF pos{ 500, 100 };
+					SizeF size{ 100, 50 };
 
 					std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
 					m_multiPopupTrigger = widget.get();
-					widget->SetPosition({ 500, 100 });
-					widget->SetSize({ 100, 50 });
+					widget->SetPosition(pos);
+					widget->SetSize(size);
 
 					m_ux.AddWidget(std::move(widget));
 				}
@@ -7628,7 +7754,6 @@ namespace TestMapEditor
 		{
 			return;
 		}
-
 
 		void OnMouseMove(int x, int y)
 		{
