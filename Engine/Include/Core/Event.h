@@ -243,18 +243,6 @@ namespace engine::event
             m_unsubscribers.clear();
         }
 
-    public:
-        Event() :
-            m_dispatching(false)
-        {
-
-        }
-
-        virtual ~Event()
-        {
-            Clear();
-        }
-
         void Clear()
         {
             // we store pointers. explicitly destroy the objects the pointers points to first
@@ -273,6 +261,18 @@ namespace engine::event
         size_t Size() const
         {
             return m_subscribers.size();
+        }
+
+    public:
+        Event() :
+            m_dispatching(false)
+        {
+
+        }
+
+        virtual ~Event()
+        {
+            Clear();
         }
 
         // dispatch
@@ -391,6 +391,20 @@ namespace engine::event
                 }
             }
         }
+
+        template<typename Func>
+        void operator+=(Func&& func)
+        {
+            using FunctionType = std::function<void(Args...)>;
+
+            m_subscribers.push_back(
+                new Delegate<
+                void,
+                FunctionType,
+                Args...
+                >(FunctionType(std::forward<Func>(func)))
+            );
+        }
     };
 };
 
@@ -490,71 +504,71 @@ namespace engine::event
 
         }
 
-        inline void TestEvent()
-        {
-            // test methods
-            std::cout << "Testing Event class methods..." << std::endl;
-            {
-                TestClass tc;
-                Event<int> evtOneArgInt;
+        //inline void TestEvent()
+        //{
+        //    // test methods
+        //    std::cout << "Testing Event class methods..." << std::endl;
+        //    {
+        //        TestClass tc;
+        //        Event<int> evtOneArgInt;
 
-                evtOneArgInt += engine::event::Handler(&FuncNoReturnOneArgInt);
-                evtOneArgInt += engine::event::Handler(&FuncNoReturnOneArgConstInt);
-                evtOneArgInt += engine::event::Handler(&tc, &TestClass::MethodNoReturnOneArgInt);
-                evtOneArgInt += engine::event::Handler(&tc, &TestClass::MethodNoReturnOneArgConstInt);
-                std::cout << "Added 4 listeners to event. Number of listers in event : " << evtOneArgInt.Size() << std::endl;
+        //        evtOneArgInt += engine::event::Handler(&FuncNoReturnOneArgInt);
+        //        evtOneArgInt += engine::event::Handler(&FuncNoReturnOneArgConstInt);
+        //        evtOneArgInt += engine::event::Handler(&tc, &TestClass::MethodNoReturnOneArgInt);
+        //        evtOneArgInt += engine::event::Handler(&tc, &TestClass::MethodNoReturnOneArgConstInt);
+        //        std::cout << "Added 4 listeners to event. Number of listers in event : " << evtOneArgInt.Size() << std::endl;
 
-                evtOneArgInt(4);
-                std::cout << "event has been fired. check how many lines were printed. are there " << evtOneArgInt.Size() << "?" << std::endl;
+        //        evtOneArgInt(4);
+        //        std::cout << "event has been fired. check how many lines were printed. are there " << evtOneArgInt.Size() << "?" << std::endl;
 
-                evtOneArgInt.Clear();
-                std::cout << "event has removed all its listeners. Number of listers in event : " << evtOneArgInt.Size() << ". Is it 0?" << std::endl;
-            }
-            {
-                TestClass tc;
-                Event evtNoArgs;
-                evtNoArgs += engine::event::Handler(&FuncNoReturnNoArgs);
-                evtNoArgs += engine::event::Handler(&tc, &TestClass::MethodNoReturnNoArgs);
-                std::cout << "Created another event Added 2 listeners. Number of listers in event : " << evtNoArgs.Size() << ". Is this correct?" << std::endl;
+        //        evtOneArgInt.Clear();
+        //        std::cout << "event has removed all its listeners. Number of listers in event : " << evtOneArgInt.Size() << ". Is it 0?" << std::endl;
+        //    }
+        //    {
+        //        TestClass tc;
+        //        Event evtNoArgs;
+        //        evtNoArgs += engine::event::Handler(&FuncNoReturnNoArgs);
+        //        evtNoArgs += engine::event::Handler(&tc, &TestClass::MethodNoReturnNoArgs);
+        //        std::cout << "Created another event Added 2 listeners. Number of listers in event : " << evtNoArgs.Size() << ". Is this correct?" << std::endl;
 
-                evtNoArgs();
-                std::cout << "event has been fired. check how many lines were printed. are there " << evtNoArgs.Size() << "?" << std::endl;
+        //        evtNoArgs();
+        //        std::cout << "event has been fired. check how many lines were printed. are there " << evtNoArgs.Size() << "?" << std::endl;
 
-                evtNoArgs += engine::event::Handler(&FuncNoReturnNoArgs);
-                evtNoArgs -= engine::event::Handler(&tc, &TestClass::MethodNoReturnNoArgs);
-                std::cout << "Remove 2 listeners from event. Number of listers in event : " << evtNoArgs.Size() << ". Are there 0 listeners?" << std::endl;
-            }
-            {
-                TestClass tc;
-                Event<std::string, double> evtTwoArgsStringDouble;
+        //        evtNoArgs += engine::event::Handler(&FuncNoReturnNoArgs);
+        //        evtNoArgs -= engine::event::Handler(&tc, &TestClass::MethodNoReturnNoArgs);
+        //        std::cout << "Remove 2 listeners from event. Number of listers in event : " << evtNoArgs.Size() << ". Are there 0 listeners?" << std::endl;
+        //    }
+        //    {
+        //        TestClass tc;
+        //        Event<std::string, double> evtTwoArgsStringDouble;
 
-                evtTwoArgsStringDouble += engine::event::Handler(&FuncNoReturnTwoArgsStringDouble);
-                evtTwoArgsStringDouble += engine::event::Handler(&FuncNoReturnTwoArgsConstStringConstDouble);
-                evtTwoArgsStringDouble += engine::event::Handler(&tc, &TestClass::MethodNoReturnTwoArgsStringDouble);
-                evtTwoArgsStringDouble += engine::event::Handler(&tc, &TestClass::MethodNoReturnTwoArgsConstStringConstDouble);
-                std::cout << "Added 4 listeners to event. Number of listers in event : " << evtTwoArgsStringDouble.Size() << std::endl;
+        //        evtTwoArgsStringDouble += engine::event::Handler(&FuncNoReturnTwoArgsStringDouble);
+        //        evtTwoArgsStringDouble += engine::event::Handler(&FuncNoReturnTwoArgsConstStringConstDouble);
+        //        evtTwoArgsStringDouble += engine::event::Handler(&tc, &TestClass::MethodNoReturnTwoArgsStringDouble);
+        //        evtTwoArgsStringDouble += engine::event::Handler(&tc, &TestClass::MethodNoReturnTwoArgsConstStringConstDouble);
+        //        std::cout << "Added 4 listeners to event. Number of listers in event : " << evtTwoArgsStringDouble.Size() << std::endl;
 
-                evtTwoArgsStringDouble("Hello", 1.7);
-                std::cout << "event has been fired. check how many lines were printed. are there " << evtTwoArgsStringDouble.Size() << "?" << std::endl;
+        //        evtTwoArgsStringDouble("Hello", 1.7);
+        //        std::cout << "event has been fired. check how many lines were printed. are there " << evtTwoArgsStringDouble.Size() << "?" << std::endl;
 
-                evtTwoArgsStringDouble -= engine::event::Handler(&FuncNoReturnTwoArgsConstStringConstDouble);
-                std::cout << "Remove 1 listener from event. Number of listers in event : " << evtTwoArgsStringDouble.Size() << ". Are there 3 listeners?" << std::endl;
+        //        evtTwoArgsStringDouble -= engine::event::Handler(&FuncNoReturnTwoArgsConstStringConstDouble);
+        //        std::cout << "Remove 1 listener from event. Number of listers in event : " << evtTwoArgsStringDouble.Size() << ". Are there 3 listeners?" << std::endl;
 
-                evtTwoArgsStringDouble.Clear();
-                std::cout << "event has removed all its listeners. Number of listers in event : " << evtTwoArgsStringDouble.Size() << ". Is it 0?" << std::endl;
-            }
-        }
+        //        evtTwoArgsStringDouble.Clear();
+        //        std::cout << "event has removed all its listeners. Number of listers in event : " << evtTwoArgsStringDouble.Size() << ". Is it 0?" << std::endl;
+        //    }
+        //}
 
-        inline void Go()
-        {
-            //bool bPrevLoggerState = Logger::Enable;
-            //Logger::Enable = bLog;
+        //inline void Go()
+        //{
+        //    //bool bPrevLoggerState = Logger::Enable;
+        //    //Logger::Enable = bLog;
 
-            TestDelegate();
-            TestEvent();
+        //    TestDelegate();
+        //    TestEvent();
 
-            //Logger::Enable = bPrevLoggerState;
-            return;
-        }
+        //    //Logger::Enable = bPrevLoggerState;
+        //    return;
+        //}
     }
 }

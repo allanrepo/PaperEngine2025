@@ -610,7 +610,6 @@ namespace engine
 
 			virtual ~AutoTileResolver()
 			{
-				TileVariantChangedEvent.Clear();
 			}
 
 			void Set(const engine::spatial::Coord& coord)

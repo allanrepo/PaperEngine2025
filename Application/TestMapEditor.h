@@ -5611,7 +5611,7 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // gui
+#pragma region // Widget
 	// features
 	//	- widget tree system
 	//  - z order management
@@ -5635,6 +5635,31 @@ namespace TestMapEditor
 	class OverlayTrigger;
 	class UISystem;
 	class OverlayStack;
+	class Widget;
+	struct UIDrawContext;
+	class Overlay;
+	class Frame;
+	class Tooltip;
+
+	class UISkin
+	{
+	public:
+		virtual ~UISkin() = default;
+
+		virtual void DrawButton(const class Button& button, const UIDrawContext& ctx) const = 0;
+		virtual void DrawOverlay(const class Overlay& overlay, const UIDrawContext& ctx) const = 0;
+		virtual void DrawFrame(const class Frame& frame, const UIDrawContext& ctx) const = 0;
+		virtual void DrawTooltip(const class Tooltip& tooltip, const UIDrawContext& ctx) const = 0;
+	};
+
+	struct UIDrawContext
+	{
+		IRenderer& renderer;
+		UISkin* skin = nullptr;
+		Widget* hover = nullptr;
+		Widget* focus = nullptr;
+		Widget* capture = nullptr;
+	};
 
 	class Widget
 	{
@@ -5665,8 +5690,24 @@ namespace TestMapEditor
 		bool m_focusable = true;
 		MoveBehavior m_moveBehavior = MoveBehavior::Free;
 
+		// tooltip support
+		std::function<void(Widget&)> m_tooltipBuilder;
+
 		PositionF m_beginMousePosition;
 		PositionF m_beginMovePosition;
+
+		// --------------------------------------------------------------------------------
+		// CHANGE PARAMETER HANDLERS
+		// --------------------------------------------------------------------------------
+		virtual void OnPositionChanged(const PositionF& oldPos, const PositionF& newPos)
+		{
+			// default implementation does nothing. derived class can override this to react to position change
+		}
+
+		virtual void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize)
+		{
+			// default implementation does nothing. derived class can override this to react to size change
+		}
 
 		// --------------------------------------------------------------------------------
 		// SYSTEM 
@@ -5794,7 +5835,6 @@ namespace TestMapEditor
 		// --------------------------------------------------------------------------------
 		// Z ORDER
 		// --------------------------------------------------------------------------------
-
 		void BringChildToFront(Widget* child)
 		{
 			// use find_if better than for loop because you iterator on erase()
@@ -5895,7 +5935,9 @@ namespace TestMapEditor
 
 		void SetSize(const SizeF& size)
 		{
+			SizeF oldSize = m_size;
 			m_size = size;
+			OnSizeChanged(oldSize, size);
 		}
 
 		PositionF GetAbsolutePosition() const
@@ -5910,7 +5952,22 @@ namespace TestMapEditor
 
 		void SetPosition(const PositionF& pos)
 		{
+			PositionF oldPos = m_position;
 			m_position = pos;
+			OnPositionChanged(oldPos, m_position);
+		}
+
+		RectF GetAbsoluteRect() const
+		{
+			PositionF absPos = GetAbsolutePosition();
+			SizeF size = GetSize();
+			return RectF
+			{
+				absPos.x,
+				absPos.y,
+				absPos.x + size.width,
+				absPos.y + size.height
+			};
 		}
 
 		// --------------------------------------------------------------------------------
@@ -6009,7 +6066,7 @@ namespace TestMapEditor
 		// --------------------------------------------------------------------------------
 		// TREE TRAVERSAL
 		// --------------------------------------------------------------------------------
-		
+
 		enum SearchFlags
 		{
 			Visible = 1 << 0,
@@ -6036,7 +6093,7 @@ namespace TestMapEditor
 			if (!IsFocusable() && (flag & SearchFlags::Focusable))
 			{
 				return nullptr;
-			}			
+			}
 
 			// do self test first. if this widget did not intersect with point, none of the children can. bail out
 			if (!Contains(position))
@@ -6140,6 +6197,15 @@ namespace TestMapEditor
 		}
 
 		template<typename Func>
+		void ForEachChild(const Func& func) const
+		{
+			for (const std::unique_ptr<Widget>& child : m_children)
+			{
+				func(child.get());
+			}
+		}
+
+		template<typename Func>
 		bool ForEachWidget(const Func& func)
 		{
 			if (!func(this)) return false;
@@ -6156,33 +6222,35 @@ namespace TestMapEditor
 		// TOOLTIP
 		// --------------------------------------------------------------------------------
 
-		virtual bool HasTooltip() const 
+		bool HasTooltip() const
 		{
-			return false;
+			return m_tooltipBuilder != nullptr;
 		}
 
-		virtual void BuildTooltip(Widget& tooltip) 
+		void BuildTooltip(Widget& tooltip)
 		{
+			if (m_tooltipBuilder)
+			{
+				m_tooltipBuilder(tooltip);
+			}
+		}
+
+		void SetTooltip(std::function<void(Widget&)> builder)
+		{
+			m_tooltipBuilder = std::move(builder);
+		}
+
+		// --------------------------------------------------------------------------------
+		// Draw
+		// --------------------------------------------------------------------------------
+		virtual void Draw(const UIDrawContext& context) const
+		{
+			// default implementation does nothing. derived class can override this to draw itself
 		}
 	};
+#pragma endregion
 
-	class Root : public Widget
-	{
-	protected:
-		UISystem* m_system;
-
-		UISystem* GetSystem() const override final
-		{
-			return m_system;
-		}
-
-	public:
-		Root(UISystem* system) :
-			m_system(system)
-		{
-		}
-	};
-
+#pragma region // Overlay
 	class Overlay : public Widget
 	{
 	public:
@@ -6208,20 +6276,22 @@ namespace TestMapEditor
 	public:
 		struct BuildDescription
 		{
-			PositionF position;
-			SizeF size;
-			std::function<void(Widget*)> builder;
-			Type type;
+			PositionF position = {};
+			SizeF size = {};
+			std::function<void(Widget*)> builder = nullptr;
+			Type type = Type::Popup;
+			bool movable = false;
 		};
 
-		Overlay(UISystem* system, Widget* owner, const PositionF& pos, const SizeF& size, const Type& type) :
+		Overlay(UISystem* system, Widget* owner, const PositionF& pos, const SizeF& size, const Type& type, bool movable) :
 			m_owner(owner),
 			m_system(system),
-			m_type(type)
+			m_type(type)		
 		{
-			m_moveBehavior = MoveBehavior::None;
+			m_moveBehavior = movable? Widget::MoveBehavior::Free : Widget::MoveBehavior::None;
 			SetPosition(pos);
 			SetSize(size);
+			m_focusable = false;
 		}
 
 		Widget* GetOwner() const
@@ -6232,6 +6302,11 @@ namespace TestMapEditor
 		bool IsModal() const
 		{
 			return m_type == Type::Modal;
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawOverlay(*this, context);
 		}
 	};
 
@@ -6482,6 +6557,7 @@ namespace TestMapEditor
 			SizeF size;
 			std::function<void(Widget*)> builder;
 			Overlay::Type type;
+			bool movable;
 		};
 
 		OverlayStack m_stack;
@@ -6525,7 +6601,7 @@ namespace TestMapEditor
 			{
 				switch (cmd.command)
 				{
-				// remove/toggle off the overlay that is owned by widget from overlay request
+					// remove/toggle off the overlay that is owned by widget from overlay request
 				case Command::Remove:
 				{
 					// we already have the index of the overlay stack that we want to collapsed at. just validate and collapse with it
@@ -6541,7 +6617,7 @@ namespace TestMapEditor
 				case Command::Add:
 				{
 					// create the overlay
-					std::unique_ptr<Overlay> overlay = std::make_unique<Overlay>(m_system, cmd.owner, cmd.position, cmd.size, cmd.type);
+					std::unique_ptr<Overlay> overlay = std::make_unique<Overlay>(m_system, cmd.owner, cmd.position, cmd.size, cmd.type, cmd.movable);
 
 					// if it has a payload, build it and add to overlay as child
 					if (cmd.builder)
@@ -6601,6 +6677,7 @@ namespace TestMapEditor
 			cmd.size = desc.size;
 			cmd.builder = desc.builder;
 			cmd.type = desc.type;
+			cmd.movable = desc.movable;
 			m_commands.push_back(cmd);
 		}
 
@@ -6638,6 +6715,7 @@ namespace TestMapEditor
 			cmd.size = desc.size;
 			cmd.builder = desc.builder;
 			cmd.type = desc.type;
+			cmd.movable = desc.movable;
 			m_commands.push_back(cmd);
 		}
 
@@ -6646,6 +6724,77 @@ namespace TestMapEditor
 			Command cmd{};
 			cmd.command = Command::Collapse;
 			m_commands.push_back(cmd);
+		}
+	};
+
+#pragma endregion
+
+#pragma region // UIRenderer
+	class UIRenderer
+	{
+	private:
+	public:
+		static void Draw(const UIDrawContext& context, const Widget& widget)
+		{
+			// if widget is hidden, its whole tree is also hidden. bail out
+			if (!widget.IsVisible()) return;
+
+			// draw this widget
+			widget.Draw(context);
+
+			// get current clip region from renderer. intersect with this widget's rect to get effective clip region. 
+			RectF orig = context.renderer.GetClipRegion();
+			RectF effective = widget.GetAbsoluteRect().Intersect(orig);
+
+			// apply effective clip region to renderer. this will make sure this widget's tree will be clipped by this widget's rect
+			context.renderer.SetClipRegion(effective);
+
+			// draw children
+			widget.ForEachChild([&](Widget* widget)
+				{
+					Draw(context, *widget);
+				});
+
+			// restore previous clip region after drawing this widget's tree
+			context.renderer.SetClipRegion(orig);
+		}
+	};
+#pragma endregion
+
+#pragma region // Root
+	class Root : public Widget
+	{
+	protected:
+		UISystem* m_system;
+
+		UISystem* GetSystem() const override final
+		{
+			return m_system;
+		}
+
+	public:
+		Root(UISystem* system) :
+			m_system(system)
+		{
+		}
+	};
+#pragma endregion
+
+#pragma region // gui
+
+	class Tooltip : public Widget
+	{
+	private:
+	public:
+		Tooltip()
+		{
+			m_moveBehavior = MoveBehavior::None;
+			m_focusable = false;
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawTooltip(*this, context);
 		}
 	};
 
@@ -6666,7 +6815,7 @@ namespace TestMapEditor
 	class TooltipManager
 	{
 	private:
-		Widget m_tooltip;
+		Tooltip m_tooltip;
 		Widget* m_owner;
 
 	public:
@@ -6781,66 +6930,24 @@ namespace TestMapEditor
 			m_layoutTree.Show();
 		}
 
-		void Draw(IRenderer& renderer, Widget* widget)
+		void Draw(UIDrawContext& context)
 		{
-			if (!widget->IsVisible()) return;
+			// set the input state in context so that widgets can use it when drawing themselves
+			context.capture = m_mouseCapture;
+			context.hover = m_mouseOver;
+			context.focus = m_focus;
 
-			PositionF pos = widget->GetAbsolutePosition();
-
-			ColorF color = { 0.5f, 0.5f, 1, 1 };
-			if (widget == m_mouseOver) color = { 0, 0, 1, 1 };
-			if (widget == m_focus) color = { 1, 0, 1, 1 };
-			if (widget == m_mouseCapture) color = { 1, 0, 0, 1 };
-			if (!widget->IsEnabled()) color = { 0.5f, 0.5f, 0.5f, 1 };
-
-			renderer.Draw(pos, widget->GetSize(), { 0,0,0,1 }, 0);
-			renderer.Draw(pos + PositionF{ 3,3 }, widget->GetSize() - SizeF{ 6,6 }, color, 0);
-
-			// set clip region
-			SizeF size = widget->GetSize();
-			RectF clip{};
-			clip.left = pos.x;
-			clip.top = pos.y;
-			clip.right = clip.left + size.width;
-			clip.bottom = clip.top + size.height;
-			RectF prev = renderer.GetClipRegion();
-
-			RectF effective = prev.Intersect(clip);
-			renderer.SetClipRegion(effective);
-
-			widget->ForEachChild([&](Widget* widget)
-				{
-					Draw(renderer, widget);
-				});
-
-			// restore clip region
-			renderer.SetClipRegion(prev);
-		}
-
-		void DrawTooltip(IRenderer& renderer, const Widget* widget)
-		{
-			if (!widget) return;
-
-			if (!widget->IsVisible()) return;
-
-			PositionF pos = widget->GetAbsolutePosition();
-			renderer.Draw(pos, widget->GetSize(), { 0,0,0, 1 }, 0);
-			renderer.Draw(pos + PositionF{ 3,3 }, widget->GetSize() - SizeF{ 6,6 }, { 1, 1, 1, 1 }, 0);
-		}
-
-		void Draw(IRenderer& renderer)
-		{
 			// draw layout tree
-			Draw(renderer, &m_layoutTree);
+			UIRenderer::Draw(context, m_layoutTree);
 
 			// draw overlays
-			m_overlayManager.ForEach([&](Widget* widget) 
+			m_overlayManager.ForEach([&](Widget* widget)
 				{
-					Draw(renderer, widget);
+					UIRenderer::Draw(context, *widget);
 				});
 
-			//DrawTooltip(renderer, m_toolTip.get());
-			DrawTooltip(renderer, m_tooltipManager.Get());
+			// draw tooltip
+			UIRenderer::Draw(context, *m_tooltipManager.Get());
 		}
 
 		// this "detaches" the widget from system. if widget is mouse capture, hover, or focus, these states will be reset to null
@@ -6951,7 +7058,8 @@ namespace TestMapEditor
 			SetCapture(widget);
 
 			// resolve focusOverlayManager::BuildDescription
-			SetFocus(widget);
+			if (widget && widget->IsFocusable()) SetFocus(widget);
+			else SetFocus(nullptr);
 
 			// if mouse is down, tooltip should be hidden regardless of where the mouse is clicked
 			m_tooltipManager.Hide();
@@ -7185,7 +7293,7 @@ namespace TestMapEditor
 		virtual void BuildTooltip(Widget& tooltip)
 		{
 			// this is just for debug purposes. can formalize this later
-			tooltip.SetSize({80,30});
+			tooltip.SetSize({ 80,30 });
 			tooltip.SetPosition(GetAbsolutePosition() + PositionF{ GetSize().width + 5, 0 });
 		}
 	};
@@ -7196,11 +7304,145 @@ namespace TestMapEditor
 		if (system) system->Detach(this);
 		return true;
 	}
+#pragma endregion
 
+#pragma region // gui controls
+	class Label : public Widget
+	{
+	private:
+	public:
+
+	};
+
+	class Frame : public Widget
+	{
+	private:
+	public:
+		Frame()
+		{
+			m_moveBehavior = MoveBehavior::Free;
+			m_focusable = false;
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			PositionF pos = GetAbsolutePosition();
+			SizeF size = GetSize();
+
+			ColorF color = { 0.5f, 0.5f, 1, 1 };
+			if (this == context.hover) color = { 0, 0, 1, 1 };
+			if (this == context.focus) color = { 1, 0, 1, 1 };
+			if (this == context.capture) color = { 1, 0, 0, 1 };
+			if (!IsEnabled()) color = { 0.5f, 0.5f, 0.5f, 1 };
+
+			context.renderer.Draw(pos + PositionF{ 2, 2 }, size, { 0,0,0,1 }, 0);
+			context.renderer.Draw(pos, size, { 0.5f,0.5f,0.5f,1 }, 0);
+		}
+	};
+	
+	// design consideration:
+	// - has tooltip
+	// - cannot be dragged or moved
+	// - responds to mouse click 
 	class Button : public Widget
 	{
 	private:
 	public:
+		Button()
+		{
+			m_moveBehavior = MoveBehavior::None;
+
+			// set default tooltip for debug purposes. can formalize this later
+			SetTooltip([this](Widget& tooltip)
+				{
+					tooltip.SetSize({ 80,30 });
+					tooltip.SetPosition(GetAbsolutePosition() + PositionF{ GetSize().width + 5, 0 });
+				});
+		}
+
+		event::Event<> OnClick;
+
+		void OnMouseUp(const PositionF& position) override
+		{
+			// did the mouse release occur over this button? if not, then this mouse up is not for us. ignore
+			if (!Contains(position)) return;
+
+			// handle click event
+			OnClick();
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if(context.skin) context.skin->DrawButton(*this, context);
+		}
+	};
+#pragma endregion
+
+#pragma region // UI theme/skin
+
+	class DefaultUISkin : public UISkin
+	{
+	public:
+		void DrawButton(const Button& button, const UIDrawContext& context) const override
+		{
+			PositionF pos = button.GetAbsolutePosition();
+			SizeF size = button.GetSize();
+
+			if (&button == context.capture)
+			{
+				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
+			}
+			else if (&button == context.focus)
+			{
+				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
+			}
+			else if (&button == context.hover)
+			{
+				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.55f,0.55f,0.55f,1 }, 0);
+			}
+			else
+			{
+				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
+			}
+
+
+		}
+
+		void DrawOverlay(const class Overlay& overlay, const UIDrawContext& context) const override
+		{
+			PositionF pos = overlay.GetAbsolutePosition();
+			SizeF size = overlay.GetSize();
+
+			context.renderer.Draw(pos + PositionF{ 2, 2 }, size, { 0,0,0,1 }, 0);
+
+			context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+
+			ColorF color = (&overlay == context.focus)? ColorF{0.6f, 0.6f, 0.6f, 1} : ColorF{0.5f, 0.5f, 0.5f, 1};
+			context.renderer.Draw(pos + PositionF{1, 1}, size - SizeF{2,2}, color, 0);
+		}
+
+		void DrawTooltip(const class Tooltip& tooltip, const UIDrawContext& context) const override
+		{
+			PositionF pos = tooltip.GetAbsolutePosition();
+			SizeF size = tooltip.GetSize();
+
+			context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+			context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 1,1,1,1 }, 0);
+		}
+
+		void DrawFrame(const class Frame& frame, const UIDrawContext& ctx) const override
+		{
+
+		}
 	};
 
 #pragma endregion
@@ -7214,6 +7456,7 @@ namespace TestMapEditor
 		Widget* m_dialog = nullptr;
 		Widget* m_multiModalTrigger = nullptr;
 		UISystem m_ux;
+		Button* m_button = nullptr;
 
 		std::unique_ptr<Widget> CreateWidget(const PositionF& pos, const SizeF& size)
 		{
@@ -7258,6 +7501,33 @@ namespace TestMapEditor
 			return cmd;
 		}
 
+		void SpawnMessageBox(UISystem& ux, const PositionF& position)
+		{
+			Overlay::BuildDescription cmd
+			{
+				position,
+				SizeF{200, 150},
+				nullptr,
+				Overlay::Modal
+			};
+
+			cmd.builder = [&](Widget* parent)
+				{
+					auto button = std::make_unique<Button>();
+					button->SetPosition({ 50, 80 });
+					button->SetSize({ 100, 50 });
+
+					button->OnClick += [&ux]()
+						{
+							ux.Collapse();
+						};
+
+					parent->AddChild(std::move(button));
+				};
+
+			ux.AddOverlay(cmd);
+		}
+
 		void OnEnter() override
 		{
 			m_ux.SetPosition({ 0,0 });
@@ -7291,6 +7561,8 @@ namespace TestMapEditor
 					SizeF({100, 50}),
 					nullptr
 				};
+
+				cmd.type = Overlay::Popup;
 
 				cmd.builder = [&](Widget* parent)
 					{
@@ -7407,26 +7679,49 @@ namespace TestMapEditor
 			case 32: // SPACE
 				break;
 			case 49: // 1
-				if (!m_overlayTrigger)
+				if (!m_button)
 				{
-					PositionF pos{ 350, 100 };
-					SizeF size{ 100, 50 };
+					// demo using button widget. create this button. when clicked, it spawns a modal "message box"
+					// the modal "message box" is just an overlay with a button in it. when the button in the modal is clicked, it collapses the modal again
+					std::unique_ptr<Button> button = std::make_unique<Button>();
+					button->SetPosition({ 300, 100 });
+					button->SetSize({ 100, 50 });
+					m_button = button.get();
 
-					Overlay::BuildDescription cmd = CreateBuildDescWithCascadedOverlays(10, { 100, 50 }, { 25, 25 });
-					std::unique_ptr<OverlayTrigger> overlayTrigger = std::make_unique<OverlayTrigger>(cmd);
+					button->OnClick += [&]() 
+						{
+							Overlay::BuildDescription cmd
+							{
+								PositionF{500, 250},
+								SizeF({200, 150}),
+								nullptr,
+								Overlay::Modal,
+								true
+							};
 
-					// position of this overlay trigger relative to its parent.
-					overlayTrigger->SetPosition(pos);
-					overlayTrigger->SetSize(size);
+							cmd.builder = [&](Widget* parent)
+								{
+									std::unique_ptr<Button> button = std::make_unique<Button>();
+									button->SetPosition({ 50, 80 });
+									button->SetSize({ 100, 50 });
 
-					m_overlayTrigger = overlayTrigger.get();
+									button->OnClick += [&]()
+										{
+											m_ux.Collapse();
+										};
 
-					m_ux.AddWidget(std::move(overlayTrigger));
+									parent->AddChild(std::move(button));
+								};
+
+							m_ux.AddOverlay(cmd);
+						};
+
+					m_ux.AddWidget(std::move(button));
 				}
 				else
 				{
-					m_ux.RemoveWidget(m_overlayTrigger);
-					m_overlayTrigger = nullptr;
+					m_ux.RemoveWidget(m_button);
+					m_button = nullptr;
 				}
 				break;
 			case 50: // 2
@@ -7667,7 +7962,10 @@ namespace TestMapEditor
 			IRenderer& renderer = assets.Get<IRenderer>("renderer");
 			renderer.EnableClipping(true);
 			renderer.SetClipRegion(canvas.GetViewPort());
-			m_ux.Draw(renderer);
+
+			DefaultUISkin skin;
+			UIDrawContext context{ renderer, &skin };
+			m_ux.Draw(context);
 		}
 
 		void OnResize(size_t width, size_t height) override
