@@ -285,3 +285,18 @@ TerrainBrushTool::Paint(world, position)
 
     if(applyAutoTile) // policy
         
+
+[x] Capture
+[x] Hover
+[x] Focus
+[x] Tooltip
+[x] Overlay
+[x] Modal
+
+[ ] Tab navigation
+[ ] Mouse wheel
+[ ] Verify disabled-state routing
+[ ] Verify visibility-state routing
+[ ] Verify overlay destruction clears focus/capture/hover
+
+Then stop touching UISystem.

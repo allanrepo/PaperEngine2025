@@ -4328,7 +4328,8 @@ namespace TestMapEditor
 
 		void OnUpdate(double dt) override
 		{
-
+			// update input to trigger input events
+			Input::Instance().Update();
 		}
 
 		void OnRender() override
@@ -4440,6 +4441,9 @@ namespace TestMapEditor
 
 		void OnUpdate(double dt) override
 		{
+			// update input to trigger input events
+			Input::Instance().Update();
+
 			m_stateMachine.OnUpdate(dt);
 
 			// this is for debugging only. validate every frame to ensure our containers are in good state
@@ -4688,10 +4692,10 @@ namespace TestMapEditor
 			m_isPanning = false;
 		}
 
-
 		void OnUpdate(double dt) override
 		{
-
+			// update input to trigger input events
+			Input::Instance().Update();
 		}
 
 		void OnRender() override
@@ -5087,8 +5091,11 @@ namespace TestMapEditor
 
 		void OnUpdate(double dt) override
 		{
+			// update input to trigger input events
+			Input::Instance().Update();
+
 			// this is for debugging only. validate every frame to ensure our containers are in good state
-			//m_worldMap.Validate();
+			m_worldMap.Validate();
 		}
 
 		void OnRender() override
@@ -5512,8 +5519,11 @@ namespace TestMapEditor
 
 		void OnUpdate(double dt) override
 		{
+			// update input to trigger input events
+			Input::Instance().Update();
+
 			// this is for debugging only. validate every frame to ensure our containers are in good state
-			//m_worldMap.Validate();
+			m_worldMap.Validate();
 		}
 
 		void OnRender() override
@@ -5622,9 +5632,9 @@ namespace TestMapEditor
 	//	- mouse capturable
 	// 
 	//
-	class PopupTrigger;
+	class OverlayTrigger;
 	class UISystem;
-	class PopupStack;
+	class OverlayStack;
 
 	class Widget
 	{
@@ -5999,15 +6009,34 @@ namespace TestMapEditor
 		// --------------------------------------------------------------------------------
 		// TREE TRAVERSAL
 		// --------------------------------------------------------------------------------
+		
+		enum SearchFlags
+		{
+			Visible = 1 << 0,
+			Enabled = 1 << 1,
+			Focusable = 1 << 2
+		};
 
 		// traverse through the tree and find the top-most widget that intersects with point
-		Widget* FindTopWidgetAt(const PositionF& position)
+		Widget* FindTopWidgetAt(const PositionF& position, unsigned int flag)
 		{
 			// if widget is hidden, bail out
-			if (!m_visible)
+			if (!IsVisible() && (flag & SearchFlags::Visible))
 			{
 				return nullptr;
 			}
+
+			// if widget is disabled, bail out
+			if (!IsEnabled() && (flag & SearchFlags::Enabled))
+			{
+				return nullptr;
+			}
+
+			// if widget is not focusable, bail out
+			if (!IsFocusable() && (flag & SearchFlags::Focusable))
+			{
+				return nullptr;
+			}			
 
 			// do self test first. if this widget did not intersect with point, none of the children can. bail out
 			if (!Contains(position))
@@ -6018,7 +6047,7 @@ namespace TestMapEditor
 			for (std::vector<std::unique_ptr<Widget>>::reverse_iterator it = m_children.rbegin(); it != m_children.rend(); it++)
 			{
 				// find the top widget at this child. this call will also check this child for intersect
-				Widget* hit = it->get()->FindTopWidgetAt(position);
+				Widget* hit = it->get()->FindTopWidgetAt(position, flag);
 				if (hit) return hit;
 			}
 
@@ -6137,43 +6166,6 @@ namespace TestMapEditor
 		}
 	};
 
-	class Popup : public Widget
-	{
-	private:
-		friend class PopupStack;
-
-		Widget* m_owner;
-		UISystem* m_system;
-
-	protected:
-		UISystem* GetSystem() const override final
-		{
-			return m_system;
-		}
-
-	public:
-		struct BuildDescription
-		{
-			PositionF position;
-			SizeF size;
-			std::function<void(Widget*)> builder;
-		};
-
-		Popup(UISystem* system, Widget* owner, const PositionF& pos, const SizeF& size) :
-			m_owner(owner),
-			m_system(system)
-		{
-			m_moveBehavior = MoveBehavior::None;
-			SetPosition(pos);
-			SetSize(size);
-		}
-
-		Widget* GetOwner() const
-		{
-			return m_owner;
-		}
-	};
-
 	class Root : public Widget
 	{
 	protected:
@@ -6191,134 +6183,189 @@ namespace TestMapEditor
 		}
 	};
 
-	class PopupStack
+	class Overlay : public Widget
+	{
+	public:
+		enum Type
+		{
+			Popup,
+			Modal
+		};
+
+	private:
+		friend class OverlayStack;
+
+		Widget* m_owner;
+		UISystem* m_system;
+		Type m_type;
+
+	protected:
+		UISystem* GetSystem() const override final
+		{
+			return m_system;
+		}
+
+	public:
+		struct BuildDescription
+		{
+			PositionF position;
+			SizeF size;
+			std::function<void(Widget*)> builder;
+			Type type;
+		};
+
+		Overlay(UISystem* system, Widget* owner, const PositionF& pos, const SizeF& size, const Type& type) :
+			m_owner(owner),
+			m_system(system),
+			m_type(type)
+		{
+			m_moveBehavior = MoveBehavior::None;
+			SetPosition(pos);
+			SetSize(size);
+		}
+
+		Widget* GetOwner() const
+		{
+			return m_owner;
+		}
+
+		bool IsModal() const
+		{
+			return m_type == Type::Modal;
+		}
+	};
+
+	// design consideration
+	// - enforce a policy where in finding route, search stops once a modal overlay did not intersect with input point
+	class OverlayStack
 	{
 	private:
-		std::vector<std::unique_ptr<Popup>> m_popups;
+		std::vector<std::unique_ptr<Overlay>> m_overlays;
 
 	public:
 		struct Route
 		{
-			Widget* popup = nullptr;
+			Widget* overlay = nullptr;
 			Widget* target = nullptr;
 			int index = -1;
+			bool isBlockedByModal = false;
 		};
 
-		PopupStack()
+		OverlayStack()
 		{
 		}
 
 		size_t GetSize() const
 		{
-			return m_popups.size();
+			return m_overlays.size();
 		}
 
-		// Collapses the popup stack starting at the specified popup index.
+		// Collapses the overlay stack starting at the specified overlay index.
 		//
 		// ---------------------------------------------------------------------------------
 		// DESIGN NOTES
 		// ---------------------------------------------------------------------------------
-		// Popup collapse is always performed from a popup downward toward the top
-		// of the popup stack.
+		// Overlay collapse is always performed from a overlay downward toward the top
+		// of the overlay stack.
 		//
 		// Example:
 		//
 		//	Stack:
-		//		[Popup A]
-		//		[Popup B]
-		//		[Popup C]
+		//		[Overlay A]
+		//		[Overlay B]
+		//		[Overlay C]
 		//
-		//	CollapsePopupAt(B)
+		//	CollapseAt(B)
 		//
 		//	Result:
-		//		[Popup A]
+		//		[Overlay A]
 		//
-		// Popup B and all popups above it are removed.
+		// Overlay B and all overlays above it are removed.
 		//
 		// ---------------------------------------------------------------------------------
-		// CASCADED POPUP COLLAPSE
+		// CASCADED OVERLAY COLLAPSE
 		// ---------------------------------------------------------------------------------
 		//
-		// Popups may contain PopupTriggers that own child popups higher in the stack.
+		// Overlays may contain OverlayTriggers that own child overlays higher in the stack.
 		//
 		// Example:
 		//
-		//	Popup A
+		//	Overlay A
 		//		contains Trigger B
 		//
-		//	Popup B
+		//	Overlay B
 		//		contains Trigger C
 		//
-		//	Popup C
+		//	Overlay C
 		//
-		// During collapse, popup widgets are first unregistered from the UISystem
-		// before the popup itself is erased from the popup stack.
+		// During collapse, overlay widgets are first unregistered from the UISystem
+		// before the overlay itself is erased from the overlay stack.
 		//
 		// While unregistering:
 		//
-		//	PopupTrigger::UnregisterToSystem()
-		//		-> UISystem::UnregisterPopup()
+		//	OverlayTrigger::UnregisterToSystem()
+		//		-> UISystem::UnregisterOverlay()
 		//			-> CollapseByOwner()
 		//
-		// may recursively request collapse of child popups higher in the stack.
+		// may recursively request collapse of child overlays higher in the stack.
 		//
 		// This is safe because:
-		//	- popup ownership is acyclic
-		//	- popup stack destruction only proceeds upward
-		//	- popup mutations only remove suffixes of the popup stack
+		//	- overlay ownership is acyclic
+		//	- overlay stack destruction only proceeds upward
+		//	- overlay mutations only remove suffixes of the overlay stack
 		//	- traversal is index-based (not iterator-based)
-		//	- the popup stack is never reordered during collapse
+		//	- the overlay stack is never reordered during collapse
 		//
 		// Example:
 		//
 		//	Initial stack:
 		//		[A][B][C]
 		//
-		//	CollapsePopupAt(A)
+		//	CollapseAt(A)
 		//
 		//	1. A unregisters Trigger B
 		//	2. Trigger B collapses B
 		//	3. B unregisters Trigger C
 		//	4. Trigger C collapses C
 		//
-		// Each nested collapse only removes popups above the current popup.
+		// Each nested collapse only removes overlays above the current overlay.
 		//
-		// Because nested collapses only shrink the end of the popup stack,
+		// Because nested collapses only shrink the end of the overlay stack,
 		// the outer forward traversal remains valid and will naturally terminate
-		// once the popup stack size becomes smaller than the current traversal index.
+		// once the overlay stack size becomes smaller than the current traversal index.
 		//
 		// ---------------------------------------------------------------------------------
 		// IMPORTANT INVARIANT
 		// ---------------------------------------------------------------------------------
 		//
-		// This method is only safe because popup collapse semantics are strictly:
+		// This method is only safe because overlay collapse semantics are strictly:
 		//
 		//	- synchronous
 		//	- upward-only
 		//	- suffix-removing
 		//
 		// Future changes such as below may invalidate these assumptions and require a deferred mutation model.
-		//	- arbitrary popup removal
-		//	- popup insertion during collapse
-		//	- popup reordering
+		//	- arbitrary overlay removal
+		//	- overlay insertion during collapse
+		//	- overlay reordering
 		//	- deferred destruction
 		//	- async/evented mutation
 		void CollapseAt(const Route& result)
 		{
 			int index = result.index < 0 ? 0 : result.index;
 
-			// index can be out of bounds. if there are no active popups, and this is called, if index = 0, then this condition is valid
-			if (index >= (int)m_popups.size()) return;
+			// index can be out of bounds. if there are no active overlays, and this is called, if index = 0, then this condition is valid
+			if (index >= (int)m_overlays.size()) return;
 
-			// since we're removing popups, their children must unregister to system.
-			for (size_t i = index; i < m_popups.size(); i++)
+			// since we're removing overlays, their children must unregister to system.
+			for (size_t i = index; i < m_overlays.size(); i++)
 			{
-				m_popups[i]->RemoveChildren();
-				m_popups[i]->UnregisterToSystem();
+				m_overlays[i]->RemoveChildren();
+				m_overlays[i]->UnregisterToSystem();
 			}
 
-			// after unregistering popups' tree, remove them 
-			m_popups.erase(m_popups.begin() + index, m_popups.end());
+			// after unregistering overlays' tree, remove them 
+			m_overlays.erase(m_overlays.begin() + index, m_overlays.end());
 		}
 
 		void CollapseAbove(const Route& route)
@@ -6335,26 +6382,38 @@ namespace TestMapEditor
 			CollapseAt(route);
 		}
 
-		// this is the only way to add a new popup in the stack and it will always end it at the end of the stack
-		void Add(std::unique_ptr<Popup> popup)
+		// this is the only way to add a new overlay in the stack and it will always end it at the end of the stack
+		void Add(std::unique_ptr<Overlay> overlay)
 		{
-			m_popups.push_back(std::move(popup));
+			m_overlays.push_back(std::move(overlay));
 		}
 
-		// find which top-most active popup that intersects with given point
+		// find which top-most active overlay that intersects with given point
 		Route FindRouteFromTopAt(const PositionF& position)
 		{
 			Route result;
 
-			for (int i = (int)m_popups.size() - 1; i >= 0; i--)
+			for (int i = (int)m_overlays.size() - 1; i >= 0; i--)
 			{
-				Widget* widget = m_popups[i]->FindTopWidgetAt(position);
+				Widget* widget = m_overlays[i]->FindTopWidgetAt(position, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 				if (widget)
 				{
 					result.target = widget;
 					result.index = i;
-					result.popup = m_popups[i].get();
+					result.overlay = m_overlays[i].get();
+					result.isBlockedByModal = false;
 					break;
+				}
+				// if this overlay did not intersect with point, check if it's modal
+				else
+				{
+					// is this overlay a modal? if yes, stop right here. modal overlays when active is the only widget that can absorb user input
+					if (m_overlays[i]->IsModal())
+					{
+						result.index = i;
+						result.isBlockedByModal = true;
+						break;
+					}
 				}
 			}
 
@@ -6365,14 +6424,14 @@ namespace TestMapEditor
 		{
 			Route result{ nullptr, nullptr, -1 };
 
-			// check if any active popup is owned by given owner
-			for (int i = 0; i < m_popups.size(); i++)
+			// check if any active overlay is owned by given owner
+			for (int i = 0; i < m_overlays.size(); i++)
 			{
-				// if this widget is an owner of existing popup, then popup is active. collapse popup stack on it
-				if (m_popups[i].get()->GetOwner() == owner)
+				// if this widget is an owner of existing overlay, then overlay is active. collapse overlay stack on it
+				if (m_overlays[i].get()->GetOwner() == owner)
 				{
-					result.popup = m_popups[i].get();
-					result.target = m_popups[i].get();
+					result.overlay = m_overlays[i].get();
+					result.target = m_overlays[i].get();
 					result.index = i;
 					break;
 				}
@@ -6381,61 +6440,75 @@ namespace TestMapEditor
 			return result;
 		}
 
-		// collapses popup stack on popup with the specified owner widget
+		// collapses overlay stack on overlay with the specified owner widget
 		void CollapseByOwner(Widget* owner)
 		{
-			// find the active popup that is owned by given owner, if any
+			// find the active overlay that is owned by given owner, if any
 			Route result = FindRouteByOwner(owner);
-			if (!result.popup) return;
+			if (!result.overlay) return;
 
 			// if found, since you get the index, create Route and set the index. collapse on it
 			CollapseAt(result);
 		}
 
-		// traverse through the popup stack from bottom to top
+		// traverse through the overlay stack from bottom to top
 		template<typename Func>
 		void ForEach(const Func& func)
 		{
-			for (std::vector<std::unique_ptr<Popup>>::iterator it = m_popups.begin(); it != m_popups.end(); it++)
+			for (std::vector<std::unique_ptr<Overlay>>::iterator it = m_overlays.begin(); it != m_overlays.end(); it++)
 			{
 				func(it->get());
 			}
 		}
 	};
 
-	class PopupManager
+	class OverlayManager
 	{
 	private:
+		// internal data structure to store command request 
 		struct Command
 		{
-			int command;
+			enum Type
+			{
+				Add,
+				Remove,
+				Collapse,
+			};
+
+			Type command;
 			Widget* owner = nullptr;
 			int index;
 			PositionF position;
 			SizeF size;
 			std::function<void(Widget*)> builder;
+			Overlay::Type type;
 		};
 
-		PopupStack m_stack;
+		OverlayStack m_stack;
 		UISystem* m_system;
-		Dictionary<Widget*, Popup::BuildDescription> m_buildDescriptions;
-		std::vector<std::unique_ptr<Command>> m_commands;
+		Dictionary<Widget*, Overlay::BuildDescription> m_buildDescriptions;
+		std::vector<Command> m_commands;
 
 	public:
-		PopupManager(UISystem* system) :
+		OverlayManager(UISystem* system) :
 			m_system(system)
 		{
 		}
 
-		void CollapseAbove(const PopupStack::Route& route)
+		void CollapseAbove(const OverlayStack::Route& route)
 		{
 			m_stack.CollapseAbove(route);
 		}
 
-		// find which top-most active popup that intersects with given point
-		PopupStack::Route FindRouteFromTopAt(const PositionF& position)
+		// find which top-most active overlay that intersects with given point
+		OverlayStack::Route FindRouteFromTopAt(const PositionF& position)
 		{
 			return m_stack.FindRouteFromTopAt(position);
+		}
+
+		void Collapse()
+		{
+			m_stack.Collapse();
 		}
 
 		void FlushCommands()
@@ -6443,41 +6516,46 @@ namespace TestMapEditor
 			m_commands.clear();
 		}
 
-		// given a popup stack route result, let popup tree handle mouse down by performing popup stack collapse if needed, 
-		// and process on queue popup command requests e.g. toggle up/down a popup
+		// given a overlay stack route result, let overlay tree handle mouse down by performing overlay stack collapse if needed, 
+		// and process on queue overlay command requests e.g. toggle up/down a overlay
 		void ProcessCommandRequests()
 		{
-			// handle popup add/remove queue requests
-			for (std::unique_ptr<Command>& cmd : m_commands)
+			// handle overlay add/remove queue requests
+			for (Command& cmd : m_commands)
 			{
-				switch (cmd->command)
+				switch (cmd.command)
 				{
-				// remove/toggle off the popup that is owned by widget from popup request
-				case 0:
+				// remove/toggle off the overlay that is owned by widget from overlay request
+				case Command::Remove:
 				{
-					// we already have the index of the popup stack that we want to collapsed at. just validate and collapse with it
-					if (cmd->index >= 0 && cmd->index < m_stack.GetSize())
+					// we already have the index of the overlay stack that we want to collapsed at. just validate and collapse with it
+					if (cmd.index >= 0 && cmd.index < m_stack.GetSize())
 					{
-						PopupStack::Route route{};
-						route.index = cmd->index;
+						OverlayStack::Route route{};
+						route.index = cmd.index;
 						m_stack.CollapseAt(route);
 					}
 					break;
 				}
-				// add this popup on top of stack
-				case 1:
+				// add this overlay on top of stack
+				case Command::Add:
 				{
-					// create the popup
-					std::unique_ptr<Popup> popup = std::make_unique<Popup>(m_system, cmd->owner, cmd->position, cmd->size);
+					// create the overlay
+					std::unique_ptr<Overlay> overlay = std::make_unique<Overlay>(m_system, cmd.owner, cmd.position, cmd.size, cmd.type);
 
-					// if it has a payload, build it and add to popup as child
-					if (cmd->builder)
+					// if it has a payload, build it and add to overlay as child
+					if (cmd.builder)
 					{
-						cmd->builder(popup.get());
+						cmd.builder(overlay.get());
 					}
 
-					// finally, add popup to top of stack
-					m_stack.Add(std::move(popup));
+					// finally, add overlay to top of stack
+					m_stack.Add(std::move(overlay));
+					break;
+				}
+				case Command::Collapse:
+				{
+					m_stack.Collapse();
 					break;
 				}
 				default:
@@ -6489,61 +6567,85 @@ namespace TestMapEditor
 			m_commands.clear();
 		}
 
-		// toggle the popup
-		void Toggle(Widget* owner)
+		// toggle the overlay
+		void QueueToggle(Widget* owner)
 		{
-			// check if there is an active popup that is owned by given owner
-			PopupStack::Route result = m_stack.FindRouteByOwner(owner);
-			if (result.popup)
+			// check if there is an active overlay that is owned by given owner
+			OverlayStack::Route result = m_stack.FindRouteByOwner(owner);
+
+			// if the owner's overlay is already active, queue it for removal/collapse
+			if (result.overlay)
 			{
-				std::unique_ptr<Command> pr = std::make_unique<Command>();
-				pr->command = 0;
-				pr->index = result.index;
-				pr->owner = owner;
-				m_commands.push_back(std::move(pr));
+				Command cmd{};
+				cmd.command = Command::Remove;
+				cmd.index = result.index;
+				cmd.owner = owner;
+				m_commands.push_back(cmd);
 				return;
 			}
 
-			// this widget's popup does not exist in popup stack. create it and add into top of the stack. but first, check if this widget has registered popup build command
+			// this widget's overlay does not exist in overlay stack. create it and add into top of the stack. but first, check if this widget has registered overlay build command
 			if (!m_buildDescriptions.Has(owner))
 			{
 				throw std::runtime_error("command for this owner does not exist");
 			}
 
 			// get the popu build command 
-			Popup::BuildDescription& desc = m_buildDescriptions.Get(owner);
+			Overlay::BuildDescription& desc = m_buildDescriptions.Get(owner);
 
-			// create popup build request
-			std::unique_ptr<Command> cmd = std::make_unique<Command>();
-			cmd->command = 1;
-			cmd->owner = owner;
-			cmd->position = owner->GetAbsolutePosition() + desc.position;
-			cmd->size = desc.size;
-			cmd->builder = desc.builder;
-			m_commands.push_back(std::move(cmd));
+			// create overlay build request
+			Command cmd{};
+			cmd.command = Command::Add;
+			cmd.owner = owner;
+			cmd.position = owner->GetAbsolutePosition() + desc.position;
+			cmd.size = desc.size;
+			cmd.builder = desc.builder;
+			cmd.type = desc.type;
+			m_commands.push_back(cmd);
 		}
 
-		// register a popup build description owned by given widget
-		bool Register(Widget* widget, const Popup::BuildDescription& desc)
+		// register a overlay build description owned by given widget
+		bool Register(Widget* widget, const Overlay::BuildDescription& desc)
 		{
 			return m_buildDescriptions.Register(widget, desc);
 		}
 
-		// unregister a popup build description owned by given widget
+		// unregister a overlay build description owned by given widget
 		bool Unregister(Widget* owner)
 		{
-			// collapse popup stack at the popup of this owner, if any
+			// collapse overlay stack at the overlay of this owner, if any
 			m_stack.CollapseByOwner(owner);
 
-			// then we unregister it from our popup layer
+			// then we unregister it from our overlay layer
 			return m_buildDescriptions.Unregister(owner);
 		}
 
-		// traverse through the popup stack from bottom to top
+		// traverse through the overlay stack from bottom to top
 		template<typename Func>
 		void ForEach(const Func& func)
 		{
 			m_stack.ForEach(func);
+		}
+
+		// queue add overlay based on build description as this has no owner
+		void QueueAdd(const Overlay::BuildDescription& desc)
+		{
+			// create overlay build command on top of stack based on build description
+			Command cmd{};
+			cmd.command = Command::Add;
+			cmd.owner = nullptr;
+			cmd.position = desc.position;
+			cmd.size = desc.size;
+			cmd.builder = desc.builder;
+			cmd.type = desc.type;
+			m_commands.push_back(cmd);
+		}
+
+		void QueueCollapse()
+		{
+			Command cmd{};
+			cmd.command = Command::Collapse;
+			m_commands.push_back(cmd);
 		}
 	};
 
@@ -6581,15 +6683,10 @@ namespace TestMapEditor
 			m_tooltip.SetPosition({ 0,0 });
 			m_tooltip.SetSize({ 0,0 });
 			m_tooltip.Hide();
-
-			//if (m_toolTip)
-			//{
-			//	m_toolTip->RemoveChildren();
-			//	m_toolTip.reset();
-			//}
+			m_owner = nullptr;
 		}
 
-		// toggle the popup
+		// toggle the overlay
 		void Show(Widget* hover)
 		{
 			if (!hover || !hover->HasTooltip())
@@ -6624,7 +6721,7 @@ namespace TestMapEditor
 	{
 	private:
 		Root m_layoutTree;
-		PopupManager m_popupManager;
+		OverlayManager m_overlayManager;
 		TooltipManager m_tooltipManager;
 
 		Widget* m_mouseCapture = nullptr;
@@ -6665,7 +6762,7 @@ namespace TestMapEditor
 	public:
 		UISystem() :
 			m_layoutTree(this),
-			m_popupManager(this)
+			m_overlayManager(this)
 		{
 		}
 
@@ -6736,8 +6833,8 @@ namespace TestMapEditor
 			// draw layout tree
 			Draw(renderer, &m_layoutTree);
 
-			// draw popups
-			m_popupManager.ForEach([&](Widget* widget) 
+			// draw overlays
+			m_overlayManager.ForEach([&](Widget* widget) 
 				{
 					Draw(renderer, widget);
 				});
@@ -6754,92 +6851,106 @@ namespace TestMapEditor
 			if (m_mouseOver == widget) m_mouseOver = nullptr;
 		}
 
-		// scenario 1 - no popup exists, popupbutton is clicked
-		//		- system does not check popup tree for hit, as it is empty
-		//		- popupbutton requests system to toggle its popup
-		//		- system does not have its popup yet so queue it to add
-		//		- system does not remove any popup in tree. does nothing
-		//		- system handles all queued popup requests
+		// scenario 1 - no overlay exists, overlay trigger is clicked
+		//		- system does not check overlay tree for hit, as it is empty
+		//		- overlay trigger requests system to toggle its overlay
+		//		- system does not have its overlay yet so queue it to add
+		//		- system does not remove any overlay in tree. does nothing
+		//		- system handles all queued overlay requests
 		// 
-		// scenario 2 - popups exists, popupbutton is clicked, and its popup already exists
-		//		- none of the popups in popup tree is hit, so all is queued for removal
-		//		- popupbutton requests system to toggle its popup
-		//		- system have its popup so queue it to remove
-		//		- system removes all existing popup in popup tree
-		//		- system handles all queued popup requests
+		// scenario 2 - overlays exists, overlay trigger is clicked, and its overlay already exists
+		//		- none of the overlays in overlay tree is hit, so all is queued for removal
+		//		- overlay trigger requests system to toggle its overlay
+		//		- system have its overlay so queue it to remove
+		//		- system removes all existing overlay in overlay tree
+		//		- system handles all queued overlay requests
 		// 
-		// scenario 3 - popups exists, popupbutton is clicked
-		// 		- none of the popups in popup tree is hit, so all is queued for removal
-		//		- popupbutton requests system to toggle its popup
-		//		- system does not have its popup yet so queue it to add
-		//		- system removes all existing popup in popup tree
-		//		- system handles all queued popup requests
+		// scenario 3 - overlays exists, overlay trigger is clicked
+		// 		- none of the overlays in overlay tree is hit, so all is queued for removal
+		//		- overlay trigger requests system to toggle its overlay
+		//		- system does not have its overlay yet so queue it to add
+		//		- system removes all existing overlay in overlay tree
+		//		- system handles all queued overlay requests
 		// 
-		// scenario 4 - popups exists, popupbutton's popup is active, mouse clicked somewhere not in any popup nor in popupbutton
-		// 		- none of the popups in popup tree is hit, so all is queued for removal
-		//		- popupbutton does nothing. it did not get hit.
-		//		- system removes all existing popup in popup tree
+		// scenario 4 - overlays exists, overlay trigger's overlay is active, mouse clicked somewhere not in any overlay nor in overlay trigger
+		// 		- none of the overlays in overlay tree is hit, so all is queued for removal
+		//		- overlay trigger does nothing. it did not get hit.
+		//		- system removes all existing overlay in overlay tree
 		//		- system has no pop requests to handle, does nothing
 		// 
-		// scenario 5 - popup exists, popupbutton's popup is active, mouse clicked in one of the existing popups
-		//		- system finds popup that got hit in stack. queue popups above it for removal
-		//		- popupbutton does nothing. it did not get hit.
-		//		- system removes all popups on queue for removal
+		// scenario 5 - overlay exists, overlay trigger's overlay is active, mouse clicked in one of the existing overlays
+		//		- system finds overlay that got hit in stack. queue overlays above it for removal
+		//		- overlay trigger does nothing. it did not get hit.
+		//		- system removes all overlays on queue for removal
 		//		- system has no pop requests to handle, does nothing
 		// 
-		// scenario 6 - no popup exists, mouse clicked somewhere not in any popup nor in popupbutton
-		//		- system does not check popup tree for hit, as it is empty
-		//		- popupbutton does nothing. it did not get hit.
-		//		- system does not remove any popup in tree. does nothing
+		// scenario 6 - no overlay exists, mouse clicked somewhere not in any overlay nor in overlay trigger
+		//		- system does not check overlay tree for hit, as it is empty
+		//		- overlay trigger does nothing. it did not get hit.
+		//		- system does not remove any overlay in tree. does nothing
 		//		- system has no pop requests to handle, does nothing
 		// 
-		// scenario 7 - popup exists, popupbutton a's popup is active, but popupbutton b is clicked
-		// 		- none of the popups in popup tree is hit, so all is queued for removal
-		//		- popupbutton b requests system to toggle its popup
-		//		- system checks for popbutton b's popup. if it exists, queue it for removal. otherwise, queue it for add
-		//		- popupbutton a does nothing. it did not get hit
-		//		- system removes all existing popup in popup tree
-		//		- system handles all queued popup requests
+		// scenario 7 - overlay exists, overlay trigger a's overlay is active, but overlay trigger b is clicked
+		// 		- none of the overlays in overlay tree is hit, so all is queued for removal
+		//		- overlay trigger b requests system to toggle its overlay
+		//		- system checks for popbutton b's overlay. if it exists, queue it for removal. otherwise, queue it for add
+		//		- overlay trigger a does nothing. it did not get hit
+		//		- system removes all existing overlay in overlay tree
+		//		- system handles all queued overlay requests
 		// 
-		// scenario 8 - popup opens a child popup. this only happens if popup contains a popupbutton as child (only popupbutton can request to spawn a popup, as of now)
-		//		- system finds popup that got hit in stack. queue popups above it for removal
-		//		- popupbutton clicked requests system to toggle its popup
-		//		- system checks for popbutton's popup. if it exists, queue it for removal. otherwise, queue it for add
-		//		- system removes all popups on queue for removal
-		//		- system handles all queued popup requests
+		// scenario 8 - overlay opens a child overlay. this only happens if overlay contains a overlay trigger as child (only overlay trigger can request to spawn a overlay, as of now)
+		//		- system finds overlay that got hit in stack. queue overlays above it for removal
+		//		- overlay trigger clicked requests system to toggle its overlay
+		//		- system checks for popbutton's overlay. if it exists, queue it for removal. otherwise, queue it for add
+		//		- system removes all overlays on queue for removal
+		//		- system handles all queued overlay requests
 		// 
-		// scenario 9 - modal popup exists
+		// scenario 9 - modal overlay exists
 		//		- THIS IS PROBLEM FOR ANOTHER DAY. WE DON'T HAVE MODAL YET
 		//
 		void MouseDown(const PositionF& p)
 		{
-			m_popupManager.FlushCommands();
+			m_overlayManager.FlushCommands();
 
-			// do hit test on all popups starting at top to bottom
-			//Route result = FindPopupRouteFromTopAt(p);
-			PopupStack::Route result = m_popupManager.FindRouteFromTopAt(p);
+			// do hit test on all overlays starting at top to bottom
+			OverlayStack::Route result = m_overlayManager.FindRouteFromTopAt(p);
+
+			// if mouse click outside of the top overlay in the stack and down to top-most modal overlay, the route result will be "blocked by modal"
+			// this is because when one or more modal overlay exists, the top-most modal overlay and succeeding overlays on top of it are the only ones allowed to receive mouse click
+			// if click did not hit any of them overlays, then click is ignored. 
+			if (result.isBlockedByModal)
+			{
+				// collapse into the top-most active modal overlay
+				m_overlayManager.CollapseAbove(result);
+
+				// in case focus, hover and capture are set to widgets that belong to overlay that collapsed, they are reset safely via UnregisterToSystem>Detach
+				return;
+			}
 
 			// check what widget got clicked if any
 			Widget* widget = result.target;
 
-			// if none of the active popups (or its children) were clicked, let's find the clicked widget in layout tree instead
+			// if none of the active overlays (or its children) were clicked, let's find the clicked widget in layout tree instead
 			if (!widget) widget = m_layoutTree.FindAndResolveZOrderAt(p);
 
-			// propagate event here. widget here is either from layout tree or from an active popup
+			// but if it's a descendant of an overlay, bring it to front. if this is actually overlay, calling this does not change anything
+			else widget->BringToFront();
+
+			// propagate event here. widget here is either from layout tree or from an active overlay
 			if (widget) widget->OnMouseDown(p);
 
-			// collapse the popup stack above the clicked popup. we do this because:
-			// - if none of the popups were clicked, all active popup stacks will be collapsed 
-			// - if a popup is clicked, all active popups on top of it will be collapsed
-			m_popupManager.CollapseAbove(result);
+			// collapse the overlay stack above the clicked overlay. we do this because:
+			// - if none of the overlays were clicked, all active overlay stacks will be collapsed 
+			// - if a overlay is clicked, all active overlays on top of it will be collapsed
+			m_overlayManager.CollapseAbove(result);
 
-			// if a popup trigger is clicked, it might have requested to toggle its popup. process those requests here
-			m_popupManager.ProcessCommandRequests();
+			//// if a overlay trigger is clicked, it might have requested to toggle its overlay. process those requests here
+			//m_overlayManager.ProcessCommandRequests();
 			
 			// set the clicked widget as capture. if no widget was clicked, this will be nullptr
 			SetCapture(widget);
 
-			// resolve focusPopupManager::BuildDescription
+			// resolve focusOverlayManager::BuildDescription
 			SetFocus(widget);
 
 			// if mouse is down, tooltip should be hidden regardless of where the mouse is clicked
@@ -6869,12 +6980,32 @@ namespace TestMapEditor
 				return;
 			}
 
-			// check first if mouse hovers over a popup
-			PopupStack::Route result = m_popupManager.FindRouteFromTopAt(p);
+			// check first if mouse hovers over a overlay
+			OverlayStack::Route result = m_overlayManager.FindRouteFromTopAt(p);
+
+			// if mouse hovers outside of the top overlay in the stack and down to top-most modal overlay, the route result will be "blocked by modal"
+			// this is because when one or more modal overlay exists, the top-most modal overlay and succeeding overlays on top of it are the only ones 
+			// allowed to receive mouse event or user input in general. if mouse cursor did not hover over any of them overlays, then mouse move is ignored. 
+			if (result.isBlockedByModal)
+			{
+				// just in case there is a mouse over widget somewhere, let's handle its mouse leave
+				if (m_mouseOver)
+				{
+					m_mouseOver->OnMouseLeave();
+					m_mouseOver = nullptr;
+				}
+
+				// make sure to hide any active tooltip as well
+				m_tooltipManager.Hide();
+
+				return;
+			}
+
 			Widget* hover = result.target;			
 
-			// if no popup was hovered by mouse, check layout tree
-			if (!hover)	hover = m_layoutTree.FindTopWidgetAt(p);
+			// if no overlay was hovered by mouse, check layout tree. note we're skipping only hidden widgets. disabled widgets are still considered
+			// reason is so that even disable widgets can still have tooltip shown if they have it
+			if (!hover)	hover = m_layoutTree.FindTopWidgetAt(p, Widget::SearchFlags::Visible);
 
 			// let's resolve which widget is mouse over now, if any
 			if (hover != m_mouseOver)
@@ -6919,19 +7050,19 @@ namespace TestMapEditor
 			}
 		}
 
-		bool RegisterPopup(Widget* widget, const Popup::BuildDescription& desc)
+		bool RegisterOverlay(Widget* widget, const Overlay::BuildDescription& desc)
 		{
-			return m_popupManager.Register(widget, desc);
+			return m_overlayManager.Register(widget, desc);
 		}
 
-		bool UnregisterPopup(Widget* owner)
+		bool UnregisterOverlay(Widget* owner)
 		{
-			return m_popupManager.Unregister(owner);
+			return m_overlayManager.Unregister(owner);
 		}
 
-		void TogglePopup(Widget* owner)
+		void ToggleOverlay(Widget* owner)
 		{
-			m_popupManager.Toggle(owner);
+			m_overlayManager.QueueToggle(owner);
 		}
 
 		void AddWidget(std::unique_ptr<Widget> widget)
@@ -6951,23 +7082,51 @@ namespace TestMapEditor
 				throw std::runtime_error("failed to remove a widget from root");
 			}
 		}
+
+		void Collapse()
+		{
+			m_overlayManager.QueueCollapse();
+		}
+
+		void AddOverlay(const Overlay::BuildDescription& desc)
+		{
+			m_overlayManager.QueueAdd(desc);
+		}
+
+		void Begin()
+		{
+			m_overlayManager.FlushCommands();
+		}
+
+		void End()
+		{
+			// if a overlay trigger is clicked, it might have requested to toggle its overlay. process those requests here
+			m_overlayManager.ProcessCommandRequests();
+		}
+
+		enum class OverlayPresentationMode
+		{
+			Normal,        // push on top (current popup behavior)
+			Exclusive,     // clear stack then push
+			ModalExclusive // clear + push + treated as modal root
+		};
 	};
 
-	class PopupTrigger : public Widget
+	class OverlayTrigger : public Widget
 	{
 	protected:
-		Popup::BuildDescription m_popupBuildDesc;
+		Overlay::BuildDescription m_buildDesc;
 
-		// this is fired up when this widget is added to a widget tree with a UI system. it will register its popup descriptor into the system
+		// this is fired up when this widget is added to a widget tree with a UI system. it will register its overlay descriptor into the system
 		bool RegisterToSystem() override final
 		{
 			UISystem* system = GetSystem();
 			if (system)
 			{
 				// be strict for now
-				if (!system->RegisterPopup(this, m_popupBuildDesc))
+				if (!system->RegisterOverlay(this, m_buildDesc))
 				{
-					throw std::runtime_error("failed to register popup");
+					throw std::runtime_error("failed to register overlay");
 				}
 			}
 
@@ -6977,7 +7136,7 @@ namespace TestMapEditor
 			return true;
 		}
 
-		// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its popup descriptor into the system
+		// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its overlay descriptor into the system
 		bool UnregisterToSystem() override final
 		{
 			// do internal unregister to system process like unhooking to capture, focus, hover
@@ -6987,28 +7146,28 @@ namespace TestMapEditor
 			if (system)
 			{
 				// be strict for now
-				if (!system->UnregisterPopup(this))
+				if (!system->UnregisterOverlay(this))
 				{
-					throw std::runtime_error("failed to unregister popup");
+					throw std::runtime_error("failed to unregister overlay");
 				}
 			}
 
 			return true;
 		}
 
-		// requests system to toggle this widget's popup
+		// requests system to toggle this widget's overlay
 		void Toggle()
 		{
 			UISystem* system = GetSystem();
 			if (system)
 			{
-				system->TogglePopup(this);
+				system->ToggleOverlay(this);
 			}
 		}
 
 	public:
-		PopupTrigger(const Popup::BuildDescription& popupBuildDesc) :
-			m_popupBuildDesc(popupBuildDesc)
+		OverlayTrigger(const Overlay::BuildDescription& buildDesc) :
+			m_buildDesc(buildDesc)
 		{
 			m_moveBehavior = MoveBehavior::None;
 		}
@@ -7037,15 +7196,23 @@ namespace TestMapEditor
 		if (system) system->Detach(this);
 		return true;
 	}
+
+	class Button : public Widget
+	{
+	private:
+	public:
+	};
+
 #pragma endregion
 
 #pragma region // gui scene
 	class GuiScene : public Scene
 	{
 		PositionF m_mousePos;
-		Widget* m_popupTrigger = nullptr;
-		Widget* m_multiPopupTrigger = nullptr;
+		Widget* m_overlayTrigger = nullptr;
+		Widget* m_multiOverlayTrigger = nullptr;
 		Widget* m_dialog = nullptr;
+		Widget* m_multiModalTrigger = nullptr;
 		UISystem m_ux;
 
 		std::unique_ptr<Widget> CreateWidget(const PositionF& pos, const SizeF& size)
@@ -7056,53 +7223,35 @@ namespace TestMapEditor
 			return widget;
 		}
 
-		//std::unique_ptr<Widget> CreatePopupTrigger(const PositionF& pos, const SizeF& size)
-		//{
-		//	Popup::BuildDescription cmd
-		//	{
-		//		PositionF{0, size.height},
-		//		SizeF(size)
-		//	};
-
-		//	Tooltip::BuildDescription tooltip
-		//	{
-
-		//	}
-
-		//	std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
-		//	widget->SetPosition(pos);
-		//	widget->SetSize(size);
-		//	return widget;
-		//}
 	public:
-		// this method creates a popup build description where a PopupTrigger's Popup contains another PopupTrigger
-		// this cascades multiple popups. the depth determines how many tiers of popups can exist. This is used to test 
-		// popup behavior of the UI system
-		Popup::BuildDescription CreateBuildDescWithCascadedPopups(int tier, const SizeF& size, const PositionF& position)
+		// this method creates a overlay build description where a OverlayTrigger's Overlay contains another OverlayTrigger
+		// this cascades multiple overlays. the depth determines how many tiers of overlays can exist. This is used to test 
+		// overlay behavior of the UI system
+		Overlay::BuildDescription CreateBuildDescWithCascadedOverlays(int tier, const SizeF& size, const PositionF& position)
 		{
-			Popup::BuildDescription cmd;
+			Overlay::BuildDescription cmd;
 
-			// this is the position of the popup relative to its owner PopupTrigger local space
+			// this is the position of the overlay relative to its owner OverlayTrigger local space
 			cmd.position = position;
 
-			// size of the Popup. this will also be the size of the PopupTrigger that will be child of the Popup
+			// size of the Overlay. this will also be the size of the OverlayTrigger that will be child of the Overlay
 			cmd.size = size;
 
 			// we will cascade up to given number of tier
 			if (tier > 0)
 			{
-				// this will be the build function. it will build a popup trigger which will be child to this trigger's popup
+				// this will be the build function. it will build a overlay trigger which will be child to this trigger's overlay
 				cmd.builder = [this, tier, size, position](Widget* parent)
 					{
-						std::unique_ptr<PopupTrigger> popupTrigger = std::make_unique<PopupTrigger>(CreateBuildDescWithCascadedPopups(tier - 1, size, position));
+						std::unique_ptr<OverlayTrigger> overlayTrigger = std::make_unique<OverlayTrigger>(CreateBuildDescWithCascadedOverlays(tier - 1, size, position));
 
-						// this trigger's position is at top left corner of its parent popup
-						popupTrigger->SetPosition({0,0});
+						// this trigger's position is at top left corner of its parent overlay
+						overlayTrigger->SetPosition({0,0});
 
-						// this trigger's size is same as its parent popup size so it will fill up the whole popup
-						popupTrigger->SetSize(size);
+						// this trigger's size is same as its parent overlay size so it will fill up the whole overlay
+						overlayTrigger->SetSize(size);
 
-						parent->AddChild(std::move(popupTrigger));			
+						parent->AddChild(std::move(overlayTrigger));			
 					};
 			}
 
@@ -7117,26 +7266,26 @@ namespace TestMapEditor
 
 			if (false)
 			{
-				Popup::BuildDescription cmd = CreateBuildDescWithCascadedPopups(10, {100, 50}, { 0, 50 });
+				Overlay::BuildDescription cmd = CreateBuildDescWithCascadedOverlays(10, {100, 50}, { 0, 50 });
 
 				PositionF pos{ 450, 100 };
 				SizeF size{ 100, 50 };
 
 
-				std::unique_ptr<PopupTrigger> popupTrigger = std::make_unique<PopupTrigger>(cmd);
+				std::unique_ptr<OverlayTrigger> overlayTrigger = std::make_unique<OverlayTrigger>(cmd);
 
-				// position of this popup trigger relative to its parent.
-				popupTrigger->SetPosition(pos);
-				popupTrigger->SetSize(size);
+				// position of this overlay trigger relative to its parent.
+				overlayTrigger->SetPosition(pos);
+				overlayTrigger->SetSize(size);
 
-				m_ux.AddWidget(std::move(popupTrigger));
+				m_ux.AddWidget(std::move(overlayTrigger));
 			}
 
 			if(false)
 			{
-			//	m_ux.AddWidget(CreatePopupTrigger({ 300, 100 }, { 100, 50 }));
+			//	m_ux.AddWidget(CreateOverlayTrigger({ 300, 100 }, { 100, 50 }));
 
-				Popup::BuildDescription cmd
+				Overlay::BuildDescription cmd
 				{
 					PositionF{0, 50},
 					SizeF({100, 50}),
@@ -7145,7 +7294,7 @@ namespace TestMapEditor
 
 				cmd.builder = [&](Widget* parent)
 					{
-						Popup::BuildDescription cmd
+						Overlay::BuildDescription cmd
 						{
 							PositionF{0, 50},
 							SizeF({100, 50}),
@@ -7164,7 +7313,7 @@ namespace TestMapEditor
 						PositionF pos{ 0, 0 };
 						SizeF size{ 100, 50 };
 
-						std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
+						std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
 						widget->SetPosition(pos);
 						widget->SetSize(size);
 
@@ -7174,7 +7323,7 @@ namespace TestMapEditor
 				PositionF pos{ 450, 100 };
 				SizeF size{ 100, 50 };
 
-				std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
+				std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
 				widget->SetPosition(pos);
 				widget->SetSize(size);
 
@@ -7184,8 +7333,8 @@ namespace TestMapEditor
 			//if(false)
 			//{
 			//	std::unique_ptr<Widget> dialog = CreateWidget({ 100, 250 }, { 480, 320 });
-			//	dialog->AddChild(CreatePopupTrigger({ 50, 50 }, { 100, 50 }));
-			//	dialog->AddChild(CreatePopupTrigger({ 200, 50 }, { 100, 50 }));
+			//	dialog->AddChild(CreateOverlayTrigger({ 50, 50 }, { 100, 50 }));
+			//	dialog->AddChild(CreateOverlayTrigger({ 200, 50 }, { 100, 50 }));
 
 			//	m_ux.AddWidget(std::move(dialog));
 
@@ -7199,27 +7348,6 @@ namespace TestMapEditor
 			//	std::unique_ptr<Widget> child = CreateWidget({ 200, 10 }, { 200, 200 });
 			//	child->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
 			//	dialog->AddChild(std::move(child));
-
-			//	m_ux.GetRoot().AddChild(std::move(dialog));
-			//}
-
-			//{
-			//	std::unique_ptr<Widget> dialog = CreateWidget({ 200, 200 }, { 480, 320 });
-			//	dialog->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
-			//	dialog->AddChild(std::move(CreateWidget({ 100, 50 }, { 150, 100 })));
-
-			//	std::unique_ptr<Widget> child = CreateWidget({ 200, 10 }, { 200, 200 });
-			//	child->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
-			//	child->Disable();
-			//	dialog->AddChild(std::move(child));
-
-			//	m_ux.GetRoot().AddChild(std::move(dialog));
-			//}
-
-			//{
-			//	std::unique_ptr<Widget> dialog = CreateWidget({ 300, 300 }, { 480, 256 });
-			//	dialog->AddChild(std::move(CreatePopupButton({ 25, 25 }, { 150, 40 })));
-			//	dialog->AddChild(std::move(CreatePopupButton({ 200, 25 }, { 150, 40 })));
 
 			//	m_ux.GetRoot().AddChild(std::move(dialog));
 			//}
@@ -7245,6 +7373,16 @@ namespace TestMapEditor
 			// if this button is clicked, move our focus in this position
 			if (btn == 2)
 			{
+				Overlay::BuildDescription cmd
+				{
+					m_mousePos,
+					SizeF({200, 400}),
+					nullptr,
+					Overlay::Popup
+				};
+
+				m_ux.Collapse();
+				m_ux.AddOverlay(cmd);
 			}
 		}
 
@@ -7264,30 +7402,31 @@ namespace TestMapEditor
 			case 9: // TAB
 				break;
 			case 27: // ESC
+				m_ux.Collapse();
 				break;
 			case 32: // SPACE
 				break;
 			case 49: // 1
-				if (!m_popupTrigger)
+				if (!m_overlayTrigger)
 				{
 					PositionF pos{ 350, 100 };
 					SizeF size{ 100, 50 };
 
-					Popup::BuildDescription cmd = CreateBuildDescWithCascadedPopups(10, { 100, 50 }, { 25, 25 });
-					std::unique_ptr<PopupTrigger> popupTrigger = std::make_unique<PopupTrigger>(cmd);
+					Overlay::BuildDescription cmd = CreateBuildDescWithCascadedOverlays(10, { 100, 50 }, { 25, 25 });
+					std::unique_ptr<OverlayTrigger> overlayTrigger = std::make_unique<OverlayTrigger>(cmd);
 
-					// position of this popup trigger relative to its parent.
-					popupTrigger->SetPosition(pos);
-					popupTrigger->SetSize(size);
+					// position of this overlay trigger relative to its parent.
+					overlayTrigger->SetPosition(pos);
+					overlayTrigger->SetSize(size);
 
-					m_popupTrigger = popupTrigger.get();
+					m_overlayTrigger = overlayTrigger.get();
 
-					m_ux.AddWidget(std::move(popupTrigger));
+					m_ux.AddWidget(std::move(overlayTrigger));
 				}
 				else
 				{
-					m_ux.RemoveWidget(m_popupTrigger);
-					m_popupTrigger = nullptr;
+					m_ux.RemoveWidget(m_overlayTrigger);
+					m_overlayTrigger = nullptr;
 				}
 				break;
 			case 50: // 2
@@ -7299,14 +7438,14 @@ namespace TestMapEditor
 					PositionF pos{ 25, 25 };
 					SizeF size{ 100, 50 };
 
-					Popup::BuildDescription cmd = CreateBuildDescWithCascadedPopups(5, size, pos);
-					std::unique_ptr<PopupTrigger> popupTrigger = std::make_unique<PopupTrigger>(cmd);
-					popupTrigger->SetPosition(pos);
-					popupTrigger->SetSize(size);
-					dialog->AddChild(std::move(popupTrigger));
+					Overlay::BuildDescription cmd = CreateBuildDescWithCascadedOverlays(5, size, pos);
+					std::unique_ptr<OverlayTrigger> overlayTrigger = std::make_unique<OverlayTrigger>(cmd);
+					overlayTrigger->SetPosition(pos);
+					overlayTrigger->SetSize(size);
+					dialog->AddChild(std::move(overlayTrigger));
 
 					{
-						Popup::BuildDescription cmd
+						Overlay::BuildDescription cmd
 						{
 							PositionF{0, 50},
 							SizeF({200, 200}),
@@ -7315,7 +7454,7 @@ namespace TestMapEditor
 
 						cmd.builder = [&](Widget* parent)
 							{
-								Popup::BuildDescription cmd2
+								Overlay::BuildDescription cmd2
 								{
 									PositionF{200, 0},
 									SizeF({200, 200}),
@@ -7324,7 +7463,7 @@ namespace TestMapEditor
 
 								cmd2.builder = [&](Widget* parent)
 									{
-										Popup::BuildDescription cmd3
+										Overlay::BuildDescription cmd3
 										{
 											PositionF{200, 0},
 											SizeF({200, 200}),
@@ -7334,7 +7473,7 @@ namespace TestMapEditor
 										PositionF pos{ 10, 10 };
 										SizeF size{ 180, 50 };
 
-										std::unique_ptr<PopupTrigger> trigger3 = std::make_unique<PopupTrigger>(cmd3);
+										std::unique_ptr<OverlayTrigger> trigger3 = std::make_unique<OverlayTrigger>(cmd3);
 										trigger3->SetPosition(pos);
 										trigger3->SetSize(size);
 										parent->AddChild(std::move(trigger3));
@@ -7348,12 +7487,12 @@ namespace TestMapEditor
 								PositionF pos{ 10, 10 };
 								SizeF size{ 180, 50 };
 
-								std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd2);
+								std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd2);
 								widget->SetPosition({ 10, 10 });
 								widget->SetSize({ 180, 50 });
 								parent->AddChild(std::move(widget));
 
-								widget = std::make_unique<PopupTrigger>(cmd2);
+								widget = std::make_unique<OverlayTrigger>(cmd2);
 								widget->SetPosition({ 10, 60 });
 								widget->SetSize({ 180, 50 });
 								parent->AddChild(std::move(widget));
@@ -7362,7 +7501,7 @@ namespace TestMapEditor
 						PositionF pos{ 150, 25 };
 						SizeF size{ 100, 50 };
 
-						std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
+						std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
 						widget->SetPosition(pos);
 						widget->SetSize(size);
 
@@ -7378,9 +7517,9 @@ namespace TestMapEditor
 				}
 				break;
 			case 51: // 3 
-				if (!m_multiPopupTrigger)
+				if (!m_multiOverlayTrigger)
 				{
-					Popup::BuildDescription cmd
+					Overlay::BuildDescription cmd
 					{
 						PositionF{0, 50},
 						SizeF({200, 200}),
@@ -7389,7 +7528,7 @@ namespace TestMapEditor
 
 					cmd.builder = [&](Widget* parent)
 						{
-							Popup::BuildDescription cmd
+							Overlay::BuildDescription cmd
 							{
 								PositionF{200, 0},
 								SizeF({200, 200}),
@@ -7400,7 +7539,7 @@ namespace TestMapEditor
 								PositionF pos{ 10, 10 };
 								SizeF size{ 180, 50 };
 
-								std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
+								std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
 								widget->SetPosition(pos);
 								widget->SetSize(size);
 								parent->AddChild(std::move(widget));
@@ -7410,7 +7549,7 @@ namespace TestMapEditor
 								PositionF pos{ 10, 60 };
 								SizeF size{ 180, 50 };
 
-								std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
+								std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
 								widget->SetPosition(pos);
 								widget->SetSize(size);
 								parent->AddChild(std::move(widget));
@@ -7420,8 +7559,8 @@ namespace TestMapEditor
 					PositionF pos{ 500, 100 };
 					SizeF size{ 100, 50 };
 
-					std::unique_ptr<PopupTrigger> widget = std::make_unique<PopupTrigger>(cmd);
-					m_multiPopupTrigger = widget.get();
+					std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
+					m_multiOverlayTrigger = widget.get();
 					widget->SetPosition(pos);
 					widget->SetSize(size);
 
@@ -7429,22 +7568,96 @@ namespace TestMapEditor
 				}
 				else
 				{
-					m_ux.RemoveWidget(m_multiPopupTrigger);
-					m_multiPopupTrigger = nullptr;
+					m_ux.RemoveWidget(m_multiOverlayTrigger);
+					m_multiOverlayTrigger = nullptr;
 				}
 
 				break;
 			case 52: // 4
+				if (!m_multiModalTrigger)
+				{
+					Overlay::BuildDescription cmd
+					{
+						PositionF{0, 50},
+						SizeF({200, 200}),
+						nullptr,
+						Overlay::Popup
+					};
+
+					cmd.builder = [](Widget* parent)
+						{
+							Overlay::BuildDescription cmd2
+							{
+								PositionF{200, 10},
+								SizeF({200, 200}),
+								nullptr,
+								Overlay::Modal
+							};
+
+							cmd2.builder = [](Widget* parent)
+								{
+									Overlay::BuildDescription cmd3
+									{
+										PositionF{200, 10},
+										SizeF({200, 200}),
+										nullptr,
+										Overlay::Popup
+									};
+
+									std::unique_ptr<OverlayTrigger> widget3 = std::make_unique<OverlayTrigger>(cmd3);
+									widget3->SetPosition({ 10, 10 });
+									widget3->SetSize({ 180, 50 });
+
+									parent->AddChild(std::move(widget3));
+								};
+
+							std::unique_ptr<OverlayTrigger> widget2 = std::make_unique<OverlayTrigger>(cmd2);
+							widget2->SetPosition({ 10, 10 });
+							widget2->SetSize({ 180, 50 });
+
+							parent->AddChild(std::move(widget2));
+						};
+
+					std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
+					widget->SetPosition({ 650, 100 });
+					widget->SetSize({ 100, 50 });
+
+					m_ux.AddWidget(std::move(widget));
+				}
+				else
+				{
+					m_ux.RemoveWidget(m_multiModalTrigger);
+					m_multiModalTrigger = nullptr;
+				}
 				break;
+			case 53: // 5
+			{
+				Overlay::BuildDescription cmd
+				{
+					PositionF{300, 300},
+					SizeF({300, 300}),
+					nullptr,
+					Overlay::Modal
+				};
+
+				m_ux.Collapse();
+				m_ux.AddOverlay(cmd);
+
+				break;
+			}
 			default:
 				break;
 			}
 		}
 
-
 		void OnUpdate(double dt) override
 		{
+			m_ux.Begin();
 
+			// update input to trigger input events
+			Input::Instance().Update();
+
+			m_ux.End();
 		}
 
 		void OnRender() override
@@ -7774,9 +7987,6 @@ namespace TestMapEditor
 			// call lap to get elapsed time and trigger OnLap event
 			Registry<StopWatch>::Instance().Get("stopwatch").Lap<engine::timer::milliseconds>();
 
-			// update input to trigger input events
-			Input::Instance().Update();
-
 			// get canvas and clear it with a nice color
 			ICanvas& canvas = Registry<ICanvas>::Instance().Get("canvas");
 			canvas.Clear({ 0.5f, 0.5f, 0.7f, 1.0f });
@@ -7788,33 +7998,6 @@ namespace TestMapEditor
 				renderer.Begin();
 				{
 					m_sceneManager.OnRender();
-
-					//// get map parameters
-					//SizeF tileSize = Registry<SizeF>::Instance().Get("tile_size");
-					//Size<size_t> mapSize = Registry<Size<size_t>>::Instance().Get("map_size");
-
-					//// draw tiles in order of their depth (Y) so that tiles with higher Y (lower on the screen) are drawn after 
-					//// tiles with lower Y (higher on the screen) to create proper overlapping. props will be drawn in between floor 
-					//// and edge tiles based on their tile constraint, so we draw all floor and edge tiles first, then props, 
-					//// then debug constraint indicators
-					//MapLayerRenderer& mapLayerRenderer = Registry<MapLayerRenderer>::Instance().Get("renderer");
-
-					//{
-					//	mapLayerRenderer.Clear();
-					//	TileLayer& layer = Registry<TileLayer>::Instance().Get("splash_layer");
-					//	mapLayerRenderer.QueueAllTilesForDraw(layer.tilegrid, mapSize, 1, { 3,3 });
-					//	mapLayerRenderer.Sort();
-					//	mapLayerRenderer.Draw();
-					//}
-
-					//{
-					//	mapLayerRenderer.Clear();
-					//	TileLayer& layer = Registry<TileLayer>::Instance().Get("grass_layer");
-					//	mapLayerRenderer.QueueAllTilesForDraw(layer.tilegrid, mapSize, 1, { 1,1 });
-					//	mapLayerRenderer.Sort();
-					//	mapLayerRenderer.Draw();
-					//}
-
 				}
 				renderer.End();
 			}
