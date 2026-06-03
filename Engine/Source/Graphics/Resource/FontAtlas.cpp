@@ -124,6 +124,15 @@ const float engine::graphics::resource::FontAtlas::GetWidth(const std::string& t
 	return total;
 }
 
+const engine::math::SizeF engine::graphics::resource::FontAtlas::GetSize(const std::string& text) const
+{
+	return engine::math::SizeF
+	{
+		GetWidth(text),
+		text.size() ? GetHeight(text[0]): 0.0f
+	};
+}
+
 // ISizeable methods
 float engine::graphics::resource::FontAtlas::GetWidth() const
 {

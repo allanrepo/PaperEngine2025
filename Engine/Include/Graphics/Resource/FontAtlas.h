@@ -33,6 +33,7 @@ namespace engine
 
 				// get size of a string
 				const float GetWidth(const std::string& text) const override final;
+				const engine::math::SizeF GetSize(const std::string& text) const override final;
 
 				// ISizeable methods
 				float GetWidth() const override final;

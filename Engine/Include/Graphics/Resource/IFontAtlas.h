@@ -33,6 +33,7 @@ namespace engine
 
 				// get size of a string
 				virtual const float GetWidth(const std::string& text) const = 0;
+				virtual const engine::math::SizeF GetSize(const std::string& text) const = 0;
 
 				// ISizeable methods
 				virtual float GetWidth() const = 0;

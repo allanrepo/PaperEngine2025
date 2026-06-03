@@ -5650,11 +5650,13 @@ namespace TestMapEditor
 		virtual void DrawOverlay(const class Overlay& overlay, const UIDrawContext& ctx) const = 0;
 		virtual void DrawFrame(const class Frame& frame, const UIDrawContext& ctx) const = 0;
 		virtual void DrawTooltip(const class Tooltip& tooltip, const UIDrawContext& ctx) const = 0;
+		virtual void DrawLabel(const class Label& label, const UIDrawContext& ctx) const = 0;
 	};
 
 	struct UIDrawContext
 	{
 		IRenderer& renderer;
+		UISystem& system;
 		UISkin* skin = nullptr;
 		Widget* hover = nullptr;
 		Widget* focus = nullptr;
@@ -5663,6 +5665,16 @@ namespace TestMapEditor
 
 	class Widget
 	{
+	private:
+		friend class UISystem;
+
+		bool UnregisterToSystemInternal();
+
+		bool RegisterToSystemInternal()
+		{
+			return RegisterToSystem();
+		}
+
 	protected:
 
 		enum MoveBehavior
@@ -5691,7 +5703,7 @@ namespace TestMapEditor
 		MoveBehavior m_moveBehavior = MoveBehavior::Free;
 
 		// tooltip support
-		std::function<void(Widget&)> m_tooltipBuilder;
+		std::function<void(Widget&, Widget&)> m_tooltipBuilder;
 
 		PositionF m_beginMousePosition;
 		PositionF m_beginMovePosition;
@@ -5727,10 +5739,30 @@ namespace TestMapEditor
 			return true;
 		}
 
-		virtual bool UnregisterToSystem();
+		virtual bool UnregisterToSystem()
+		{
+			return true;
+		}
+
+		virtual void OnResourceChange()
+		{
+		}
 
 	public:
 		virtual ~Widget() = default;
+
+		enum class HorizontalAlignment
+		{
+			Left,
+			Right,
+			Center
+		};
+		enum class VerticalAlignment
+		{
+			Top,
+			Bottom,
+			Center
+		};
 
 		// --------------------------------------------------------------------------------
 		// HIERARCHY
@@ -5745,7 +5777,7 @@ namespace TestMapEditor
 			// traverse through this widget's whole tree including itself and register them to system
 			c->ForEachWidget([&](Widget* widget)
 				{
-					widget->RegisterToSystem();
+					widget->RegisterToSystemInternal();
 					return true;
 				});
 		}
@@ -5766,7 +5798,7 @@ namespace TestMapEditor
 			{
 				widget->ForEachWidget([&](Widget* w)
 					{
-						w->UnregisterToSystem();
+						w->UnregisterToSystemInternal();
 						return true;
 					});
 
@@ -5781,12 +5813,17 @@ namespace TestMapEditor
 			{
 				m_children.back()->ForEachWidget([&](Widget* w)
 					{
-						w->UnregisterToSystem();
+						w->UnregisterToSystemInternal();
 						return true;
 					});
 
 				m_children.pop_back();
 			}
+		}
+
+		Widget* GetParent() const
+		{
+			return m_parent;
 		}
 
 		// remove a widget in this widget tree. this will traverse through this widget's tree to find the widget
@@ -6231,11 +6268,11 @@ namespace TestMapEditor
 		{
 			if (m_tooltipBuilder)
 			{
-				m_tooltipBuilder(tooltip);
+				m_tooltipBuilder(*this, tooltip);
 			}
 		}
 
-		void SetTooltip(std::function<void(Widget&)> builder)
+		void SetTooltip(std::function<void(Widget&, Widget&)> builder)
 		{
 			m_tooltipBuilder = std::move(builder);
 		}
@@ -6866,6 +6903,20 @@ namespace TestMapEditor
 		}
 	};
 
+	struct UIResources
+	{
+		IFontAtlas* defaultFont = nullptr;
+		IFontAtlas* highlightFont = nullptr;
+		IFontAtlas* titleFont = nullptr;
+
+		enum class FontType
+		{
+			Default,
+			Highlight,
+			Title
+		};
+	};
+
 	class UISystem
 	{
 	private:
@@ -6876,6 +6927,8 @@ namespace TestMapEditor
 		Widget* m_mouseCapture = nullptr;
 		Widget* m_mouseOver = nullptr;
 		Widget* m_focus = nullptr;
+
+		UIResources m_resources;
 
 		void SetFocus(Widget* widget)
 		{
@@ -6909,6 +6962,63 @@ namespace TestMapEditor
 		}
 
 	public:
+
+		void SetFont(IFontAtlas* font, UIResources::FontType type)
+		{
+			bool fontChanged = false;
+			switch (type)
+			{
+			case UIResources::FontType::Default:
+				if (m_resources.defaultFont != font) fontChanged = true;
+				m_resources.defaultFont = font;				
+				break;
+			case UIResources::FontType::Highlight:
+				if (m_resources.highlightFont != font) fontChanged = true;
+				m_resources.highlightFont = font;
+				break;
+			case UIResources::FontType::Title:
+				if (m_resources.titleFont != font) fontChanged = true;
+				m_resources.titleFont = font;
+				break;
+			default:
+				break;
+			}
+
+			// update all widgets if font changed as they may need to recalculate their layout based on new font
+			if (fontChanged)
+			{
+				m_layoutTree.ForEachWidget([](Widget* widget)
+					{
+						widget->OnResourceChange();
+						return true;
+					});
+
+				m_overlayManager.ForEach([](Widget* widget)
+					{
+						widget->ForEachWidget([](Widget* widget)
+							{
+								widget->OnResourceChange();
+								return true;
+							});
+					});
+			}
+		}
+
+		IFontAtlas* GetFont(UIResources::FontType type) const
+		{
+			switch (type)
+			{
+			case UIResources::FontType::Default:
+				return m_resources.defaultFont;
+			case UIResources::FontType::Highlight:
+				return m_resources.highlightFont;
+			case UIResources::FontType::Title:
+				return m_resources.titleFont;
+			default:
+				return nullptr;
+			}
+		}
+
 		UISystem() :
 			m_layoutTree(this),
 			m_overlayManager(this)
@@ -7237,19 +7347,12 @@ namespace TestMapEditor
 					throw std::runtime_error("failed to register overlay");
 				}
 			}
-
-			// do internal registry to system process...
-			Widget::RegisterToSystem();
-
 			return true;
 		}
 
 		// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its overlay descriptor into the system
 		bool UnregisterToSystem() override final
 		{
-			// do internal unregister to system process like unhooking to capture, focus, hover
-			Widget::UnregisterToSystem();
-
 			UISystem* system = GetSystem();
 			if (system)
 			{
@@ -7298,8 +7401,10 @@ namespace TestMapEditor
 		}
 	};
 
-	bool Widget::UnregisterToSystem()
+	bool Widget::UnregisterToSystemInternal()
 	{
+		UnregisterToSystem();
+
 		UISystem* system = GetSystem();
 		if (system) system->Detach(this);
 		return true;
@@ -7310,13 +7415,151 @@ namespace TestMapEditor
 	class Label : public Widget
 	{
 	private:
-	public:
+		std::string m_text;
+		UIResources::FontType m_fontType;
+		Widget::VerticalAlignment m_vAlign;
+		Widget::HorizontalAlignment m_hAlign;
+		SizeF m_textSize;
+		PositionF m_textPosition;
 
+	protected:
+		// this is fired up when this widget is added to a widget tree with a UI system. it will register its overlay descriptor into the system
+		bool RegisterToSystem() override final
+		{
+			// refresh cached information about text with new font type
+			return RefreshLayout();
+		}
+
+		// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its overlay descriptor into the system
+		bool UnregisterToSystem() override final
+		{
+			// refresh cached information about text with new font type
+			return RefreshLayout();
+		}
+
+		void OnResourceChange() override final
+		{
+			// refresh cached information about text with new font type
+			RefreshLayout();
+		}
+
+		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize)override final
+		{
+			// refresh cached information about text with new font type
+			RefreshLayout();
+		}
+
+		bool RefreshLayout()
+		{
+			UISystem* system = GetSystem();
+			if (!system)
+			{
+				m_textSize = {};
+				m_textPosition = {};
+				return false;
+			}
+
+			IFontAtlas* font = system->GetFont(m_fontType);
+			if (!font)
+			{
+				m_textSize = {};
+				m_textPosition = {};
+				return false;
+			}
+
+			m_textSize = font->GetSize(m_text);
+
+			switch (m_vAlign)
+			{
+			case Widget::VerticalAlignment::Center:
+				m_textPosition.y = (GetSize().height - m_textSize.height) / 2.0f;
+				break;
+			case Widget::VerticalAlignment::Top:
+				m_textPosition.y = 0;
+				break;
+			case Widget::VerticalAlignment::Bottom:
+				m_textPosition.y = GetSize().height - m_textSize.height;
+				break;
+			default:
+				break;
+			}
+
+			switch (m_hAlign)
+			{
+			case Widget::HorizontalAlignment::Center:
+				m_textPosition.x = (GetSize().width - m_textSize.width) / 2.0f;
+				break;
+			case Widget::HorizontalAlignment::Left:
+				m_textPosition.x = 0;
+				break;
+			case Widget::HorizontalAlignment::Right:
+				m_textPosition.x = GetSize().width - m_textSize.width;
+				break;
+			default:
+				break;
+			}
+
+			return true;
+		}
+
+	public:
+		Label(UIResources::FontType fontType = UIResources::FontType::Default) :
+			m_fontType(fontType),
+			m_vAlign(Widget::VerticalAlignment::Center),
+			m_hAlign(Widget::HorizontalAlignment::Center),
+			m_textSize({0,0}),
+			m_textPosition({0,0})
+		{
+			m_moveBehavior = MoveBehavior::None;
+		}
+
+		// bypass hit test as label is not interactive
+		bool Contains(const PositionF& position) const override final
+		{
+			return false;
+		}
+
+
+		PositionF GetTextAbsolutePosition() const
+		{
+			return GetAbsolutePosition() + m_textPosition;
+		}
+
+		void SetFontType(UIResources::FontType type)
+		{
+			m_fontType = type;
+
+			// refresh cached information about text with new font type
+			RefreshLayout();	
+		}
+
+		UIResources::FontType GetFontType() const
+		{
+			return m_fontType;
+		}
+
+		std::string Get() const
+		{
+			return m_text;
+		}
+
+		bool Set(const std::string& text)
+		{
+			m_text = text;
+
+			return RefreshLayout();
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawLabel(*this, context);
+		}
 	};
 
 	class Frame : public Widget
 	{
 	private:
+
 	public:
 		Frame()
 		{
@@ -7351,13 +7594,6 @@ namespace TestMapEditor
 		Button()
 		{
 			m_moveBehavior = MoveBehavior::None;
-
-			// set default tooltip for debug purposes. can formalize this later
-			SetTooltip([this](Widget& tooltip)
-				{
-					tooltip.SetSize({ 80,30 });
-					tooltip.SetPosition(GetAbsolutePosition() + PositionF{ GetSize().width + 5, 0 });
-				});
 		}
 
 		event::Event<> OnClick;
@@ -7394,13 +7630,13 @@ namespace TestMapEditor
 				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
 				context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
 			}
-			else if (&button == context.focus)
-			{
-				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
-				context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
-				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 0,0,0,1 }, 0);
-				context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
-			}
+			//else if (&button == context.focus)
+			//{
+			//	context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+			//	context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
+			//	context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 0,0,0,1 }, 0);
+			//	context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
+			//}
 			else if (&button == context.hover)
 			{
 				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
@@ -7413,8 +7649,6 @@ namespace TestMapEditor
 				context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
 				context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
 			}
-
-
 		}
 
 		void DrawOverlay(const class Overlay& overlay, const UIDrawContext& context) const override
@@ -7439,10 +7673,30 @@ namespace TestMapEditor
 			context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 1,1,1,1 }, 0);
 		}
 
+		void DrawLabel(const class Label& label, const UIDrawContext& context) const override
+		{
+			IFontAtlas* font = context.system.GetFont(label.GetFontType());
+			if (!font)
+			{
+				throw std::runtime_error("font does not exist");
+			}
+
+			PositionF pos = label.GetTextAbsolutePosition();
+			if (label.GetParent() && label.GetParent() == context.capture) pos += PositionF{ 1, 1 };
+
+			ColorF color = { 0.3f,0.3f,0.3f,1 };
+			if(label.GetParent() && label.GetParent() == context.focus) color = {0, 0, 0, 1};
+
+			context.renderer.Draw(*font, label.Get(), pos, color);
+		}
+
+
 		void DrawFrame(const class Frame& frame, const UIDrawContext& ctx) const override
 		{
 
 		}
+
+
 	};
 
 #pragma endregion
@@ -7533,6 +7787,8 @@ namespace TestMapEditor
 			m_ux.SetPosition({ 0,0 });
 			m_ux.SetSize({ 0,0 });
 			m_ux.Show();
+			IFontAtlas& font = AssetManager().Get<IFontAtlas>("font");
+			m_ux.SetFont(&font, UIResources::FontType::Default);
 
 			if (false)
 			{
@@ -7685,8 +7941,21 @@ namespace TestMapEditor
 					// the modal "message box" is just an overlay with a button in it. when the button in the modal is clicked, it collapses the modal again
 					std::unique_ptr<Button> button = std::make_unique<Button>();
 					button->SetPosition({ 300, 100 });
-					button->SetSize({ 100, 50 });
+					button->SetSize({ 200, 50 });
 					m_button = button.get();
+
+					// set default tooltip for debug purposes. can formalize this later
+					button->SetTooltip([&](Widget& owner, Widget& tooltip)
+						{
+							tooltip.SetSize({ 80,30 });
+							tooltip.SetPosition(owner.GetAbsolutePosition() + PositionF{ owner.GetSize().width + 5, 0 });
+						});
+
+					std::unique_ptr<Label> label = std::make_unique<Label>();
+					label->Set("Message Box");
+					label->SetPosition({ 0, 0 });
+					label->SetSize({ 200, 50 });
+					button->AddChild(std::move(label));
 
 					button->OnClick += [&]() 
 						{
@@ -7702,8 +7971,21 @@ namespace TestMapEditor
 							cmd.builder = [&](Widget* parent)
 								{
 									std::unique_ptr<Button> button = std::make_unique<Button>();
-									button->SetPosition({ 50, 80 });
-									button->SetSize({ 100, 50 });
+									button->SetPosition({ 50, 100 });
+									button->SetSize({ 100, 32 });
+
+									button->SetTooltip([&](Widget& owner, Widget& tooltip)
+										{
+											tooltip.SetSize({ 80,30 });
+											tooltip.SetPosition(owner.GetAbsolutePosition() + PositionF{ owner.GetSize().width + 5, 0 });
+										});
+
+									std::unique_ptr<Label> label = std::make_unique<Label>();
+									label->Set("Close");
+									label->SetPosition({ 0, 0 });
+									label->SetSize({ 100, 32 });
+									button->AddChild(std::move(label));
+
 
 									button->OnClick += [&]()
 										{
@@ -7964,7 +8246,7 @@ namespace TestMapEditor
 			renderer.SetClipRegion(canvas.GetViewPort());
 
 			DefaultUISkin skin;
-			UIDrawContext context{ renderer, &skin };
+			UIDrawContext context{ renderer, m_ux, &skin };
 			m_ux.Draw(context);
 		}
 
