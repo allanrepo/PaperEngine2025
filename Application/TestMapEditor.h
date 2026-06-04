@@ -5651,6 +5651,7 @@ namespace TestMapEditor
 		virtual void DrawFrame(const class Frame& frame, const UIDrawContext& ctx) const = 0;
 		virtual void DrawTooltip(const class Tooltip& tooltip, const UIDrawContext& ctx) const = 0;
 		virtual void DrawLabel(const class Label& label, const UIDrawContext& ctx) const = 0;
+		virtual void DrawImage(const class Image& image, const UIDrawContext& ctx) const = 0;
 	};
 
 	struct UIDrawContext
@@ -7412,6 +7413,128 @@ namespace TestMapEditor
 #pragma endregion
 
 #pragma region // gui controls
+	class Image : public Widget
+	{
+	private:
+		std::unique_ptr<IRenderable> m_image;
+		Widget::VerticalAlignment m_vAlign;
+		Widget::HorizontalAlignment m_hAlign;
+		PositionF m_imagePosition;
+		bool m_stretch = false;
+
+	protected:
+		// this is fired up when this widget is added to a widget tree with a UI system. it will register its overlay descriptor into the system
+		bool RegisterToSystem() override final
+		{
+			RefreshLayout();
+			return true;
+		}
+
+		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize)override final
+		{
+			// refresh cached information about text with new font type
+			RefreshLayout();
+		}
+
+		bool RefreshLayout()
+		{
+			if (!m_image)
+			{
+				m_imagePosition = {};
+				return false;
+			}
+
+			if (m_stretch)
+			{
+				m_imagePosition = { 0,0 };
+			}
+			else
+			{
+				switch (m_vAlign)
+				{
+				case Widget::VerticalAlignment::Center:
+					m_imagePosition.y = (GetSize().height - m_image->GetSprite().GetHeight()) / 2.0f;
+					break;
+				case Widget::VerticalAlignment::Top:
+					m_imagePosition.y = 0;
+					break;
+				case Widget::VerticalAlignment::Bottom:
+					m_imagePosition.y = GetSize().height - m_image->GetSprite().GetHeight();
+					break;
+				default:
+					break;
+				}
+
+				switch (m_hAlign)
+				{
+				case Widget::HorizontalAlignment::Center:
+					m_imagePosition.x = (GetSize().width - m_image->GetSprite().GetWidth()) / 2.0f;
+					break;
+				case Widget::HorizontalAlignment::Left:
+					m_imagePosition.x = 0;
+					break;
+				case Widget::HorizontalAlignment::Right:
+					m_imagePosition.x = GetSize().width - m_image->GetSprite().GetWidth();
+					break;
+				default:
+					break;
+				}
+			}
+
+			return true;
+		}
+
+	public:
+		Image(std::unique_ptr<IRenderable> renderable) :
+			m_image(std::move(renderable)),
+			m_vAlign(Widget::VerticalAlignment::Center),
+			m_hAlign(Widget::HorizontalAlignment::Center),
+			m_imagePosition({ 0,0 })
+		{
+			m_moveBehavior = MoveBehavior::None;
+			RefreshLayout();
+		}
+
+		// bypass hit test as image is not interactive
+		bool Contains(const PositionF& position) const override final
+		{
+			return false;
+		}
+
+		void EnableStretch(bool stretch)
+		{
+			m_stretch = stretch;
+			RefreshLayout();
+		}
+
+		bool IsStretched() const
+		{
+			return m_stretch;
+		}
+
+		PositionF GetImageAbsolutePosition() const
+		{
+			return GetAbsolutePosition() + m_imagePosition;
+		}
+
+		Sprite Get() const
+		{
+			return m_image->GetSprite();
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawImage(*this, context);
+		}
+
+		void SetAlignment(Widget::VerticalAlignment vAlign, Widget::HorizontalAlignment hAlign)
+		{
+			m_vAlign = vAlign;
+			m_hAlign = hAlign;
+			RefreshLayout();
+		}
+	};
+
 	class Label : public Widget
 	{
 	private:
@@ -7503,7 +7626,8 @@ namespace TestMapEditor
 		}
 
 	public:
-		Label(UIResources::FontType fontType = UIResources::FontType::Default) :
+		Label(const std::string& text, UIResources::FontType fontType = UIResources::FontType::Default) :
+			m_text(text),
 			m_fontType(fontType),
 			m_vAlign(Widget::VerticalAlignment::Center),
 			m_hAlign(Widget::HorizontalAlignment::Center),
@@ -7518,7 +7642,6 @@ namespace TestMapEditor
 		{
 			return false;
 		}
-
 
 		PositionF GetTextAbsolutePosition() const
 		{
@@ -7543,11 +7666,11 @@ namespace TestMapEditor
 			return m_text;
 		}
 
-		bool Set(const std::string& text)
+		void SetAlignment(Widget::VerticalAlignment vAlign, Widget::HorizontalAlignment hAlign)
 		{
-			m_text = text;
-
-			return RefreshLayout();
+			m_vAlign = vAlign;
+			m_hAlign = hAlign;
+			RefreshLayout();
 		}
 
 		void Draw(const UIDrawContext& context) const override
@@ -7690,12 +7813,28 @@ namespace TestMapEditor
 			context.renderer.Draw(*font, label.Get(), pos, color);
 		}
 
+		void DrawImage(const class Image& image, const UIDrawContext& ctx) const override
+		{
+			Sprite sprite = image.Get();
+
+			PositionF pivot = sprite.GetPivot();
+
+			PositionF pivotInPixels = image.IsStretched() ? PositionF{ pivot.x * image.GetWidth(), pivot.y * image.GetHeight() } : sprite.GetPivotInPixels();
+
+			PositionF pos = (image.IsStretched() ? image.GetAbsolutePosition() : image.GetImageAbsolutePosition()) + pivotInPixels;
+
+			SizeF size = image.IsStretched() ? image.GetSize() : sprite.GetSize();
+
+			ctx.renderer.Draw(image.GetImageAbsolutePosition(), image.IsStretched() ? image.GetSize() :sprite.GetSize(), { 0,1,0,0.5f }, 0);
+			ctx.renderer.Draw(image.GetAbsolutePosition(), image.GetSize(), { 0,0,0,0.5f }, 0);
+
+			ctx.renderer.Draw(sprite, pos, size, {1,1,1,1}, 0);
+		}
 
 		void DrawFrame(const class Frame& frame, const UIDrawContext& ctx) const override
 		{
 
 		}
-
 
 	};
 
@@ -7709,6 +7848,8 @@ namespace TestMapEditor
 		Widget* m_multiOverlayTrigger = nullptr;
 		Widget* m_dialog = nullptr;
 		Widget* m_multiModalTrigger = nullptr;
+		Image* m_image = nullptr;
+		int m_imageState = 0;
 		UISystem m_ux;
 		Button* m_button = nullptr;
 
@@ -7951,8 +8092,7 @@ namespace TestMapEditor
 							tooltip.SetPosition(owner.GetAbsolutePosition() + PositionF{ owner.GetSize().width + 5, 0 });
 						});
 
-					std::unique_ptr<Label> label = std::make_unique<Label>();
-					label->Set("Message Box");
+					std::unique_ptr<Label> label = std::make_unique<Label>("Message Box");
 					label->SetPosition({ 0, 0 });
 					label->SetSize({ 200, 50 });
 					button->AddChild(std::move(label));
@@ -7962,7 +8102,7 @@ namespace TestMapEditor
 							Overlay::BuildDescription cmd
 							{
 								PositionF{500, 250},
-								SizeF({200, 150}),
+								SizeF({320, 320}),
 								nullptr,
 								Overlay::Modal,
 								true
@@ -7970,8 +8110,16 @@ namespace TestMapEditor
 
 							cmd.builder = [&](Widget* parent)
 								{
+									auto& animSet = AssetManager().Get<AnimationSet<Sprite>>("birchtree_anim_set");
+									std::unique_ptr<Animated> anim = std::make_unique<Animated>(animSet, "birch_tree_idle");
+									std::unique_ptr<Image> image = std::make_unique<Image>(std::move(anim));
+									image->SetPosition({ 100, 80 });
+									image->SetSize({ 120, 120 });
+									m_image = image.get();
+									parent->AddChild(std::move(image));
+
 									std::unique_ptr<Button> button = std::make_unique<Button>();
-									button->SetPosition({ 50, 100 });
+									button->SetPosition({ 200, 270 });
 									button->SetSize({ 100, 32 });
 
 									button->SetTooltip([&](Widget& owner, Widget& tooltip)
@@ -7980,16 +8128,87 @@ namespace TestMapEditor
 											tooltip.SetPosition(owner.GetAbsolutePosition() + PositionF{ owner.GetSize().width + 5, 0 });
 										});
 
-									std::unique_ptr<Label> label = std::make_unique<Label>();
-									label->Set("Close");
+									std::unique_ptr<Label> label = std::make_unique<Label>("Close");
 									label->SetPosition({ 0, 0 });
 									label->SetSize({ 100, 32 });
 									button->AddChild(std::move(label));
 
-
 									button->OnClick += [&]()
 										{
 											m_ux.Collapse();
+										};
+
+									parent->AddChild(std::move(button));
+
+									button = std::make_unique<Button>();
+									button->SetPosition({ 20, 270 });
+									button->SetSize({ 100, 32 });
+
+									button->SetTooltip([&](Widget& owner, Widget& tooltip)
+										{
+											tooltip.SetSize({ 80,30 });
+											tooltip.SetPosition(owner.GetAbsolutePosition() + PositionF{ owner.GetSize().width + 5, 0 });
+										});
+
+									label = std::make_unique<Label>("Toggle");
+									label->SetPosition({ 0, 0 });
+									label->SetSize({ 100, 32 });
+									button->AddChild(std::move(label));
+
+									button->OnClick += [&]()
+										{
+											switch (m_imageState)
+											{
+											case 0:
+												m_image->EnableStretch(false);
+												m_image->SetAlignment(Widget::VerticalAlignment::Top, Widget::HorizontalAlignment::Left);
+												m_imageState = 1;
+												break;
+											case 1:
+												m_image->EnableStretch(false);
+												m_image->SetAlignment(Widget::VerticalAlignment::Top, Widget::HorizontalAlignment::Center);
+												m_imageState = 2;
+												break;
+											case 2:
+												m_image->EnableStretch(false);
+												m_image->SetAlignment(Widget::VerticalAlignment::Top, Widget::HorizontalAlignment::Right);
+												m_imageState = 3;
+												break;
+											case 3:
+												m_image->EnableStretch(false);
+												m_image->SetAlignment(Widget::VerticalAlignment::Center, Widget::HorizontalAlignment::Left);
+												m_imageState = 4;
+												break;
+											case 4:
+												m_image->EnableStretch(false);
+												m_image->SetAlignment(Widget::VerticalAlignment::Center, Widget::HorizontalAlignment::Center);
+												m_imageState = 5;
+												break;
+											case 5:
+												m_image->EnableStretch(false);
+												m_image->SetAlignment(Widget::VerticalAlignment::Center, Widget::HorizontalAlignment::Right);
+												m_imageState = 6;
+												break;
+											case 6:
+												m_image->EnableStretch(false);
+												m_image->SetAlignment(Widget::VerticalAlignment::Bottom, Widget::HorizontalAlignment::Left);
+												m_imageState = 7;
+												break;
+											case 7:
+												m_image->EnableStretch(false);
+												m_image->SetAlignment(Widget::VerticalAlignment::Bottom, Widget::HorizontalAlignment::Center);
+												m_imageState = 8;
+												break;
+											case 8:
+												m_image->EnableStretch(false);
+												m_image->SetAlignment(Widget::VerticalAlignment::Bottom, Widget::HorizontalAlignment::Right);
+												m_imageState = 9;
+												break;
+											case 9:
+												m_image->EnableStretch(true);
+												m_imageState = 0;
+												break;
+											}
 										};
 
 									parent->AddChild(std::move(button));
