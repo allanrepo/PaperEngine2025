@@ -5640,6 +5640,7 @@ namespace TestMapEditor
 	class Overlay;
 	class Frame;
 	class Tooltip;
+	class Draggable;
 
 	class UISkin
 	{
@@ -5652,6 +5653,7 @@ namespace TestMapEditor
 		virtual void DrawTooltip(const class Tooltip& tooltip, const UIDrawContext& ctx) const = 0;
 		virtual void DrawLabel(const class Label& label, const UIDrawContext& ctx) const = 0;
 		virtual void DrawImage(const class Image& image, const UIDrawContext& ctx) const = 0;
+		virtual void DrawDraggable(const Draggable& draggable, const UIDrawContext& context) const = 0;
 	};
 
 	struct UIDrawContext
@@ -5667,8 +5669,6 @@ namespace TestMapEditor
 	class Widget
 	{
 	private:
-		friend class UISystem;
-
 		bool UnregisterToSystemInternal();
 
 		bool RegisterToSystemInternal()
@@ -5678,12 +5678,20 @@ namespace TestMapEditor
 
 	protected:
 
+		// is just enum (not class) because it needs logical operations
 		enum MoveBehavior
 		{
 			None = 0,
 			Horizontal = 1 << 0,
 			Vertical = 1 << 1,
 			Free = Horizontal | Vertical,
+		};
+
+		enum class HitTestBehavior
+		{
+			Normal,
+			AlwaysPass,
+			AlwaysFail
 		};
 
 		// tree
@@ -5701,26 +5709,16 @@ namespace TestMapEditor
 
 		// behavior
 		bool m_focusable = true;
+		bool m_droppable = false;
 		MoveBehavior m_moveBehavior = MoveBehavior::Free;
+		HitTestBehavior m_hitTestBehavior = HitTestBehavior::Normal;
 
 		// tooltip support
 		std::function<void(Widget&, Widget&)> m_tooltipBuilder;
 
+		// widget dragging trackers
 		PositionF m_beginMousePosition;
 		PositionF m_beginMovePosition;
-
-		// --------------------------------------------------------------------------------
-		// CHANGE PARAMETER HANDLERS
-		// --------------------------------------------------------------------------------
-		virtual void OnPositionChanged(const PositionF& oldPos, const PositionF& newPos)
-		{
-			// default implementation does nothing. derived class can override this to react to position change
-		}
-
-		virtual void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize)
-		{
-			// default implementation does nothing. derived class can override this to react to size change
-		}
 
 		// --------------------------------------------------------------------------------
 		// SYSTEM 
@@ -5745,7 +5743,64 @@ namespace TestMapEditor
 			return true;
 		}
 
+		// --------------------------------------------------------------------------------
+		// CHANGE PARAMETER HANDLERS
+		// --------------------------------------------------------------------------------
+		virtual void OnPositionChanged(const PositionF& oldPos, const PositionF& newPos)
+		{
+			// default implementation does nothing. derived class can override this to react to position change
+		}
+
+		virtual void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize)
+		{
+			// default implementation does nothing. derived class can override this to react to size change
+		}
+
 		virtual void OnResourceChange()
+		{
+			// default implementation does nothing. derived class can override this to react to resource change
+		}
+
+		// --------------------------------------------------------------------------------
+		// DRAG AND DROP EVENT HANDLERS
+		// --------------------------------------------------------------------------------
+		virtual void OnDrop(Widget* dragged)
+		{
+
+		}
+
+
+		// --------------------------------------------------------------------------------
+		// INPUT HANDLERS
+		// --------------------------------------------------------------------------------
+		virtual void OnMouseDown(const PositionF& position)
+		{
+
+		}
+
+		virtual void OnMouseUp(const PositionF& position)
+		{
+
+		}
+
+		virtual void OnMouseMove(const PositionF& position)
+		{
+
+		}
+
+		virtual void OnMouseEnter()
+		{
+		}
+
+		virtual void OnMouseLeave()
+		{
+		}
+
+		virtual void OnKeyDown(int key)
+		{
+		}
+
+		virtual void OnKeyUp(int key)
 		{
 		}
 
@@ -5764,6 +5819,14 @@ namespace TestMapEditor
 			Bottom,
 			Center
 		};
+
+		// --------------------------------------------------------------------------------
+		// DRAG AND DROP
+		// --------------------------------------------------------------------------------
+		void DropAccepted(Widget* widget)
+		{
+			OnDrop(widget);
+		}
 
 		// --------------------------------------------------------------------------------
 		// HIERARCHY
@@ -5870,6 +5933,87 @@ namespace TestMapEditor
 			return true;
 		}
 
+		// checks if this widget is descendant of given widget
+		bool IsDescendantOf(const Widget* ancestor) const
+		{
+			if (!ancestor)
+			{
+				return false;
+			}
+
+			const Widget* current = m_parent;
+
+			// traverse through the parents until given widget is found or root is reached
+			while (current)
+			{
+				if (current == ancestor)
+				{
+					return true;
+				}
+
+				current = current->m_parent;
+			}
+
+			// if you reached this point, this widget is not descendant of given widget
+			return false;
+		}
+
+		bool HasChildren() const
+		{
+			return m_children.size() > 0;
+		}
+
+		void MoveChildTo(Widget* child, Widget* newParent)
+		{
+			// we're a bit strict here
+			if (!child)
+			{
+				throw std::invalid_argument("MoveChildTo() - child is null");
+			}
+
+			// we're a bit strict here
+			if (!newParent)
+			{
+				throw std::invalid_argument("MoveChildTo() - newParent is null");
+			}
+
+			// make sure child is not same as new parent
+			if (child == newParent)
+			{
+				throw std::invalid_argument("MoveChildTo() - newParent is same as child");
+			}
+
+			// be more strict. new parent cannot be descendant of child
+			if (newParent->IsDescendantOf(child))
+			{
+				throw std::invalid_argument("MoveChildTo() - newParent is descendant of child");
+			}
+
+			// child must belong to this parent
+			auto it = std::find_if(
+				m_children.begin(),
+				m_children.end(),
+				[child](const std::unique_ptr<Widget>& ptr)
+				{
+					return ptr.get() == child;
+				});
+
+			// we're a bit strict here
+			if (it == m_children.end())
+			{
+				throw std::runtime_error("MoveChildTo() - child not found");
+			}
+
+			// transfer ownership out of current parent
+			std::unique_ptr<Widget> movedChild = std::move(*it);
+
+			// remove empty slot
+			m_children.erase(it);
+
+			// add to new parent
+			newParent->AddChild(std::move(movedChild));
+		}
+
 		// --------------------------------------------------------------------------------
 		// Z ORDER
 		// --------------------------------------------------------------------------------
@@ -5945,12 +6089,19 @@ namespace TestMapEditor
 			return true;
 		}
 
+
+
 		// --------------------------------------------------------------------------------
 		// BEHAVIOR
 		// --------------------------------------------------------------------------------
 		bool IsFocusable() const
 		{
 			return m_focusable;
+		}
+
+		bool IsDroppable() const
+		{
+			return m_droppable;
 		}
 
 		// --------------------------------------------------------------------------------
@@ -5995,6 +6146,11 @@ namespace TestMapEditor
 			OnPositionChanged(oldPos, m_position);
 		}
 
+		PositionF GetPosition() const
+		{
+			return m_position;
+		}
+
 		RectF GetAbsoluteRect() const
 		{
 			PositionF absPos = GetAbsolutePosition();
@@ -6012,8 +6168,14 @@ namespace TestMapEditor
 		// HIT TEST
 		// --------------------------------------------------------------------------------
 
-		virtual bool Contains(const PositionF& position) const
+		bool Contains(const PositionF& position) const
 		{
+			// always pass 
+			if (m_hitTestBehavior == HitTestBehavior::AlwaysPass) return true;
+
+			// always fail
+			if (m_hitTestBehavior == HitTestBehavior::AlwaysFail) return false;
+
 			// translate the point (assume to be absolute position) into this widget's local space
 			PositionF local = position - GetAbsolutePosition();
 
@@ -6028,8 +6190,11 @@ namespace TestMapEditor
 		// INPUT
 		// --------------------------------------------------------------------------------
 
-		virtual void OnMouseDown(const PositionF& position)
+		void MouseDown(const PositionF& position)
 		{
+			// let derived widget handle mouse down event first
+			OnMouseDown(position);
+
 			// if not movable, bail out
 			if (m_moveBehavior == MoveBehavior::None) return;
 
@@ -6043,15 +6208,15 @@ namespace TestMapEditor
 			m_isMoving = true;
 		}
 
-		virtual void OnMouseUp(const PositionF& position)
+		void MouseUp(const PositionF& position)
 		{
-			// if not movable, bail out
-			if (m_moveBehavior == MoveBehavior::None) return;
+			if (m_moveBehavior != MoveBehavior::None) m_isMoving = false;
 
-			m_isMoving = false;
+			// now we handle mouse up event after we set its to state to NOT moving
+			OnMouseUp(position);
 		}
 
-		virtual void OnMouseMove(const PositionF& position)
+		void MouseMove(const PositionF& position)
 		{
 			if (m_isMoving)
 			{
@@ -6069,25 +6234,32 @@ namespace TestMapEditor
 					(m_moveBehavior & MoveBehavior::Vertical) ? position.y - m_beginMousePosition.y : 0.0f
 				};
 
-				// transpate widget's position based on mouse movement delta
+				// transform widget's position based on mouse movement delta
 				SetPosition(m_beginMovePosition + delta);
+
+				// handle this mouse event after this widget updates its position from mouse move
+				OnMouseMove(position);
 			}
 		}
 
-		virtual void OnMouseEnter()
+		void MouseEnter()
 		{
+			OnMouseEnter();
 		}
 
-		virtual void OnMouseLeave()
+		void MouseLeave()
 		{
+			OnMouseLeave();
 		}
 
-		virtual void OnKeyDown(int key)
+		void KeyDown(int key)
 		{
+			OnKeyDown(key);
 		}
 
-		virtual void OnKeyUp(int key)
+		void KeyUp(int key)
 		{
+			OnKeyUp(key);
 		}
 
 		// --------------------------------------------------------------------------------
@@ -6104,12 +6276,12 @@ namespace TestMapEditor
 		// --------------------------------------------------------------------------------
 		// TREE TRAVERSAL
 		// --------------------------------------------------------------------------------
-
 		enum SearchFlags
 		{
 			Visible = 1 << 0,
 			Enabled = 1 << 1,
-			Focusable = 1 << 2
+			Focusable = 1 << 2,
+			Droppable = 1 << 3,
 		};
 
 		// traverse through the tree and find the top-most widget that intersects with point
@@ -6133,6 +6305,12 @@ namespace TestMapEditor
 				return nullptr;
 			}
 
+			// if widget is not droppable, bail out
+			if (!IsDroppable() && (flag & SearchFlags::Droppable))
+			{
+				return nullptr;
+			}
+
 			// do self test first. if this widget did not intersect with point, none of the children can. bail out
 			if (!Contains(position))
 			{
@@ -6151,20 +6329,32 @@ namespace TestMapEditor
 		}
 
 		// find the top child that is visible, enabled, and intersects with given point
-		Widget* FindTopChildAt(const PositionF& position)
+		Widget* FindTopChildAt(const PositionF& position, int flag)
 		{
 			for (std::vector<std::unique_ptr<Widget>>::reverse_iterator it = m_children.rbegin(); it != m_children.rend(); it++)
 			{
-				// if widget is hidden, skip
-				if (!(*it)->IsVisible())
+				// if widget is hidden, bail out
+				if (!(*it)->IsVisible() && (flag & SearchFlags::Visible))
 				{
-					continue;
+					return nullptr;
 				}
 
-				// if widget is disable, skip
-				if (!(*it)->IsEnabled())
+				// if widget is disabled, bail out
+				if (!(*it)->IsEnabled() && (flag & SearchFlags::Enabled))
 				{
-					continue;
+					return nullptr;
+				}
+
+				// if widget is not focusable, bail out
+				if (!(*it)->IsFocusable() && (flag & SearchFlags::Focusable))
+				{
+					return nullptr;
+				}
+
+				// if widget is not droppable, bail out
+				if (!(*it)->IsDroppable() && (flag & SearchFlags::Droppable))
+				{
+					return nullptr;
 				}
 
 				// if this widget intersects with point..
@@ -6179,18 +6369,30 @@ namespace TestMapEditor
 			return nullptr;
 		}
 
-		Widget* FindAndResolveZOrderAt(const PositionF& position)
+		Widget* FindAndResolveZOrderAt(const PositionF& position, int flag)
 		{
 			Widget* widget = this;
 
-			// if widget is not visible, bail out.
-			if (!widget->IsVisible())
+			// if widget is hidden, bail out
+			if (!widget->IsVisible() && (flag & SearchFlags::Visible))
 			{
 				return nullptr;
 			}
 
-			// if widget is disabled, bail out.
-			if (!widget->IsEnabled())
+			// if widget is disabled, bail out
+			if (!widget->IsEnabled() && (flag & SearchFlags::Enabled))
+			{
+				return nullptr;
+			}
+
+			// if widget is not focusable, bail out
+			if (!widget->IsFocusable() && (flag & SearchFlags::Focusable))
+			{
+				return nullptr;
+			}
+
+			// if widget is not droppable, bail out
+			if (!widget->IsDroppable() && (flag & SearchFlags::Droppable))
 			{
 				return nullptr;
 			}
@@ -6204,7 +6406,7 @@ namespace TestMapEditor
 			while (true)
 			{
 				// returns nullptr if none of the widget's child intersects with p
-				Widget* child = widget->FindTopChildAt(position);
+				Widget* child = widget->FindTopChildAt(position, flag);
 
 				// bring the child to front is not really part of routing. this is z order handling
 				// but its convenient here. the right way architecturally is to collect route path 
@@ -6285,6 +6487,15 @@ namespace TestMapEditor
 		{
 			// default implementation does nothing. derived class can override this to draw itself
 		}
+
+		// --------------------------------------------------------------------------------
+		// RESOURCE
+		// --------------------------------------------------------------------------------
+		virtual void ResourceChange()
+		{
+			OnResourceChange();
+		}
+
 	};
 #pragma endregion
 
@@ -6502,13 +6713,13 @@ namespace TestMapEditor
 		}
 
 		// find which top-most active overlay that intersects with given point
-		Route FindRouteFromTopAt(const PositionF& position)
+		Route FindRouteFromTopAt(const PositionF& position, int flags)
 		{
 			Route result;
 
 			for (int i = (int)m_overlays.size() - 1; i >= 0; i--)
 			{
-				Widget* widget = m_overlays[i]->FindTopWidgetAt(position, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+				Widget* widget = m_overlays[i]->FindTopWidgetAt(position, flags);
 				if (widget)
 				{
 					result.target = widget;
@@ -6615,9 +6826,9 @@ namespace TestMapEditor
 		}
 
 		// find which top-most active overlay that intersects with given point
-		OverlayStack::Route FindRouteFromTopAt(const PositionF& position)
+		OverlayStack::Route FindRouteFromTopAt(const PositionF& position, int flags)
 		{
-			return m_stack.FindRouteFromTopAt(position);
+			return m_stack.FindRouteFromTopAt(position, flags);
 		}
 
 		void Collapse()
@@ -6818,8 +7029,7 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // gui
-
+#pragma region // Tooltip
 	class Tooltip : public Widget
 	{
 	private:
@@ -6857,7 +7067,7 @@ namespace TestMapEditor
 		Widget* m_owner;
 
 	public:
-		TooltipManager():
+		TooltipManager() :
 			m_owner(nullptr)
 		{
 			m_tooltip.SetPosition({ 0,0 });
@@ -6903,7 +7113,172 @@ namespace TestMapEditor
 			return &m_tooltip;
 		}
 	};
+#pragma endregion
 
+#pragma region // DragDropLayer
+	// this class is a widget layer in UI system. there should be only one of this in a UI system
+	// it's purpose is to store current widgets that are in drag/drop state.
+	// at the beginning of drag state, it adopts the dragged widget as its child and manages its movement
+	// at the end of drag state (drop), it release the dragged widget into appropriate droppable target widget
+	// if there is no appropriate droppable target widget, it returns it to original parent
+	class DragDropLayer : public Widget
+	{
+		// context to remember information about a widget being dragged
+		struct DragDropContext
+		{
+			Widget* originalParent = nullptr;
+			PositionF originalPosition;
+		};
+
+	private:
+		UISystem* m_system;
+		Dictionary<Widget*, DragDropContext> m_draggables;
+
+	protected:
+		UISystem* GetSystem() const override final
+		{
+			return m_system;
+		}
+
+	public:
+		DragDropLayer(UISystem* system):
+			m_system(system)
+		{
+			// this layer should not be movable at all. it should remain and behave like a root widget
+			m_moveBehavior = MoveBehavior::None;
+
+			// not focusable, not droppable
+			m_focusable = false;
+			m_droppable = false;
+
+			// not necessary but just making it explicit to tell that this layer is root like
+			SetPosition({ 0,0 });
+		}
+
+		// this method is called when a drag/drop state on a given widget is about to begin
+		void Begin(Widget* draggable)
+		{
+			// only reason why our draggables contain something is if we previously started dragging a draggable and has not dropped it yet.
+			// starting another drag while in this state is unacceptable. i should not happen
+			if (m_draggables.Size())
+			{
+				throw std::runtime_error("we're about to start dragging something, why are we already in dragging state?");
+			}
+
+			// just to be sure, layer should not have any children before we begin a drag. if it does, it means it is dragging something already
+			// so that is not possible. 
+			if (HasChildren())
+			{
+				throw std::runtime_error("we're about to start dragging something, why do we already dragging something?");
+			}
+
+			// it's not possible to drag an invalid draggable widget. 
+			if (!draggable)
+			{
+				throw std::runtime_error("draggable widget cannot be invalid");
+			}
+
+			// let's be strict here. if dragged widget has no parent, that is not acceptable!
+			if(!draggable->GetParent())
+			{
+				throw std::runtime_error("widget is not attached to any parent");
+			}
+
+			// save the absolute position of the drag widget. we need to translate its position once we move it to the layer 
+			PositionF pos = draggable->GetAbsolutePosition();
+
+			// save reference to original parent. in case target drop is not a valid droppable widget, this widget returns to its original parent
+			DragDropContext context{};
+			context.originalParent = draggable->GetParent();
+
+			// also save reference to drag widget's original position relative to its original parent. 
+			// in case target drop is not a valid droppable widget, drag widget remains in original parent and in original position
+			context.originalPosition = draggable->GetPosition();
+
+			// let's register this drag widget and its information so we remember later once we drop it
+			m_draggables.Register(draggable, context);
+
+			// let's now move the drag widget into the drag layer
+			draggable->GetParent()->MoveChildTo(draggable, this);
+
+			// we're policing very strictly here. may not be necessary, but good to have. also, we don't execute this every frame so i think it's ok to be strict.
+			if (draggable->GetParent() != this)
+			{
+				throw std::runtime_error("failed to move draggable into dragdrop layer");
+			}
+
+			// since the drag widget is now a child of this layer, let's translate its position from absolute to relative to this layer
+			// note that dragdrop layer is root like and its position is 0,0 so translating does not do anything. but for now we do this to be explicit
+			pos = pos - GetAbsolutePosition();
+			draggable->SetPosition(pos);
+		}
+
+		void End(Widget* draggable, Widget* newParent)
+		{
+			// we're about to end dragging but if there is no draggable, how is this possible? this cannot happen
+			if (!m_draggables.Size())
+			{
+				throw std::runtime_error("we're about to end dragging something, where are the draggables to drop?");
+			}
+
+			// our layer has no draggable to drop while trying to end a drag state? that is not possible
+			if (!HasChildren())
+			{
+				throw std::runtime_error("we're about to end dragging something, why do we not contain a draggable?");
+			}
+
+			// it's not possible to drop an invalid draggable widget. 
+			if (!draggable)
+			{
+				throw std::runtime_error("draggable widget cannot be invalid");
+			}
+
+			// if we're trying to drop a draggable that is not being dragged, something is wrong
+			if (!m_draggables.Has(draggable))
+			{
+				throw std::runtime_error("trying to drop a draggable that is not tracked");
+			}
+
+			DragDropContext& context = m_draggables.Get(draggable);
+
+			// check what's gonna be the parent - original or new?
+			Widget* parent = newParent ?	// is new parent valid?
+				newParent->IsDroppable() ?	// is new parent droppable?
+				newParent:					// new parent is valid, set it
+				context.originalParent:		// new parent is not droppable, so using the original parent
+				context.originalParent;		// new parent is invalid, so using the original parent 
+
+			// check what will be the position of the drag widget once it is dropped - is it back to original position or now in the new parent?
+			// NOTE: we calculate position here before moving child to new parent because we refer to drag widget's absolute position here prior to being moved to new parent
+			PositionF pos = newParent ?												// is new parent valid?
+				newParent->IsDroppable() ?											// is new parent droppable?
+				draggable->GetAbsolutePosition() - parent->GetAbsolutePosition() :	// new parent is valid, so position is now relative to new parent
+				context.originalPosition :												// new parent is not droppable, so using original position
+				context.originalPosition;												// new parent is invalid, so using original position
+
+			// move the drag widget to new parent. either drop it on new parent, or return it back to original parent
+			MoveChildTo(draggable, parent);
+
+			// we're policing very strictly here. may not be necessary, but good to have. also, we don't execute this every frame so i think it's ok to be strict.
+			if (draggable->GetParent() != parent)
+			{
+				throw std::runtime_error("failed to move draggable into a droppable parent");
+			}
+
+			// move position of the drag widget now relative to new parent
+			draggable->SetPosition(pos);
+
+			// TODO: for now, let's just always call this when drop happens. we don't know what use cases are for handling this yet. let's deal with it once we hit them use cases
+			// let parent invoke drop acceptance event
+			parent->DropAccepted(draggable);
+
+			// clear our draggables list
+			m_draggables.Clear();
+		}
+	};	
+#pragma endregion
+
+#pragma region // UIResources
 	struct UIResources
 	{
 		IFontAtlas* defaultFont = nullptr;
@@ -6917,13 +7292,16 @@ namespace TestMapEditor
 			Title
 		};
 	};
+#pragma endregion
 
+#pragma region // UISystem
 	class UISystem
 	{
 	private:
 		Root m_layoutTree;
 		OverlayManager m_overlayManager;
 		TooltipManager m_tooltipManager;
+		DragDropLayer	m_DragDropLayer;
 
 		Widget* m_mouseCapture = nullptr;
 		Widget* m_mouseOver = nullptr;
@@ -6990,7 +7368,7 @@ namespace TestMapEditor
 			{
 				m_layoutTree.ForEachWidget([](Widget* widget)
 					{
-						widget->OnResourceChange();
+						widget->ResourceChange();
 						return true;
 					});
 
@@ -6998,7 +7376,7 @@ namespace TestMapEditor
 					{
 						widget->ForEachWidget([](Widget* widget)
 							{
-								widget->OnResourceChange();
+								widget->ResourceChange();
 								return true;
 							});
 					});
@@ -7022,7 +7400,8 @@ namespace TestMapEditor
 
 		UISystem() :
 			m_layoutTree(this),
-			m_overlayManager(this)
+			m_overlayManager(this),
+			m_DragDropLayer(this)
 		{
 		}
 
@@ -7059,6 +7438,12 @@ namespace TestMapEditor
 
 			// draw tooltip
 			UIRenderer::Draw(context, *m_tooltipManager.Get());
+
+			// draw draggable
+			m_DragDropLayer.ForEachChild([&](Widget* widget)
+				{
+					UIRenderer::Draw(context, *widget);
+				});
 		}
 
 		// this "detaches" the widget from system. if widget is mouse capture, hover, or focus, these states will be reset to null
@@ -7130,8 +7515,8 @@ namespace TestMapEditor
 		{
 			m_overlayManager.FlushCommands();
 
-			// do hit test on all overlays starting at top to bottom
-			OverlayStack::Route result = m_overlayManager.FindRouteFromTopAt(p);
+			// do hit test on all overlays starting at top to bottom. we ignore hidden and disabled widgets
+			OverlayStack::Route result = m_overlayManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 
 			// if mouse click outside of the top overlay in the stack and down to top-most modal overlay, the route result will be "blocked by modal"
 			// this is because when one or more modal overlay exists, the top-most modal overlay and succeeding overlays on top of it are the only ones allowed to receive mouse click
@@ -7149,13 +7534,13 @@ namespace TestMapEditor
 			Widget* widget = result.target;
 
 			// if none of the active overlays (or its children) were clicked, let's find the clicked widget in layout tree instead
-			if (!widget) widget = m_layoutTree.FindAndResolveZOrderAt(p);
+			if (!widget) widget = m_layoutTree.FindAndResolveZOrderAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 
 			// but if it's a descendant of an overlay, bring it to front. if this is actually overlay, calling this does not change anything
 			else widget->BringToFront();
 
 			// propagate event here. widget here is either from layout tree or from an active overlay
-			if (widget) widget->OnMouseDown(p);
+			if (widget) widget->MouseDown(p);
 
 			// collapse the overlay stack above the clicked overlay. we do this because:
 			// - if none of the overlays were clicked, all active overlay stacks will be collapsed 
@@ -7179,7 +7564,7 @@ namespace TestMapEditor
 		void MouseUp(const PositionF& p)
 		{
 			if (!m_mouseCapture) return;
-			m_mouseCapture->OnMouseUp(p);
+			m_mouseCapture->MouseUp(p);
 			m_mouseCapture = nullptr;
 
 			// by right, tooltip of the widget (if it has tooltip) the mouse hovers now should appear... 
@@ -7191,7 +7576,7 @@ namespace TestMapEditor
 			// prioritize captured widget to handle mouse move 
 			if (m_mouseCapture)
 			{
-				m_mouseCapture->OnMouseMove(p);
+				m_mouseCapture->MouseMove(p);
 
 				// since mouse is captured, tooltip should be hidden
 				m_tooltipManager.Hide();
@@ -7200,7 +7585,7 @@ namespace TestMapEditor
 			}
 
 			// check first if mouse hovers over a overlay
-			OverlayStack::Route result = m_overlayManager.FindRouteFromTopAt(p);
+			OverlayStack::Route result = m_overlayManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 
 			// if mouse hovers outside of the top overlay in the stack and down to top-most modal overlay, the route result will be "blocked by modal"
 			// this is because when one or more modal overlay exists, the top-most modal overlay and succeeding overlays on top of it are the only ones 
@@ -7210,7 +7595,7 @@ namespace TestMapEditor
 				// just in case there is a mouse over widget somewhere, let's handle its mouse leave
 				if (m_mouseOver)
 				{
-					m_mouseOver->OnMouseLeave();
+					m_mouseOver->MouseLeave();
 					m_mouseOver = nullptr;
 				}
 
@@ -7232,21 +7617,21 @@ namespace TestMapEditor
 				// invoke mouse leave on current mouse hover widget
 				if (m_mouseOver)
 				{
-					m_mouseOver->OnMouseLeave();
+					m_mouseOver->MouseLeave();
 				}
 
 				// just in case we hover outside of root, assuming root is not desktop, hover will be nullptr
 				m_mouseOver = hover;
 				if (m_mouseOver)
 				{
-					m_mouseOver->OnMouseEnter();
+					m_mouseOver->MouseEnter();
 				}
 			}
 
 			// finally if there is a mouse over widget, let it handle mouse move event
 			if (m_mouseOver)
 			{
-				m_mouseOver->OnMouseMove(p);
+				m_mouseOver->MouseMove(p);
 			}
 
 			// if you reach this point, then mouse hovers a widget that might have a tooltip. show it.
@@ -7257,7 +7642,7 @@ namespace TestMapEditor
 		{
 			if (m_focus)
 			{
-				m_focus->OnKeyDown(key);
+				m_focus->KeyDown(key);
 			}
 		}
 
@@ -7265,7 +7650,7 @@ namespace TestMapEditor
 		{
 			if (m_focus)
 			{
-				m_focus->OnKeyUp(key);
+				m_focus->KeyUp(key);
 			}
 		}
 
@@ -7323,6 +7708,42 @@ namespace TestMapEditor
 			m_overlayManager.ProcessCommandRequests();
 		}
 
+		void BeginDrag(Widget* source)
+		{
+			// for now we just end drag immediately. we can implement this later when we have drag drop scenario
+			// but we want to have this method here as placeholder to show where drag drop manager will be used in
+			m_DragDropLayer.Begin(source);
+		}
+
+		void EndDrag(Widget* source,const PositionF& p)
+		{
+			// 1. find the top-most widget that intersects with given point
+			
+			// do hit test on all overlays starting at top to bottom. we ignore hidden and disabled widgets
+			OverlayStack::Route result = m_overlayManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+
+			// if mouse click outside of the top overlay in the stack and down to top-most modal overlay, the route result will be "blocked by modal"
+			// this is because when one or more modal overlay exists, the top-most modal overlay and succeeding overlays on top of it are the only ones allowed to receive mouse click
+			// if click did not hit any of them overlays, then click is ignored. 
+			if (result.isBlockedByModal)
+			{
+				// collapse into the top-most active modal overlay
+				m_overlayManager.CollapseAbove(result);
+
+				// in case focus, hover and capture are set to widgets that belong to overlay that collapsed, they are reset safely via UnregisterToSystem>Detach
+				return;
+			}
+
+			// check what widget got clicked if any
+			Widget* widget = result.target;
+
+			// if none of the active overlays (or its children) were clicked, let's find the clicked widget in layout tree instead
+			if (!widget) widget = m_layoutTree.FindAndResolveZOrderAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+
+			// 2. pass that widget to dragdrop layer so it will attemp to drop the widget being drag into it
+			m_DragDropLayer.End(source, widget);
+		}
+
 		enum class OverlayPresentationMode
 		{
 			Normal,        // push on top (current popup behavior)
@@ -7331,6 +7752,19 @@ namespace TestMapEditor
 		};
 	};
 
+
+
+	bool Widget::UnregisterToSystemInternal()
+	{
+		UnregisterToSystem();
+
+		UISystem* system = GetSystem();
+		if (system) system->Detach(this);
+		return true;
+	}
+#pragma endregion
+
+#pragma region // OverlayTrigger
 	class OverlayTrigger : public Widget
 	{
 	protected:
@@ -7377,16 +7811,16 @@ namespace TestMapEditor
 			}
 		}
 
+		void OnMouseDown(const PositionF& position) override final
+		{
+			Toggle();
+		}
+
 	public:
 		OverlayTrigger(const Overlay::BuildDescription& buildDesc) :
 			m_buildDesc(buildDesc)
 		{
 			m_moveBehavior = MoveBehavior::None;
-		}
-
-		virtual void OnMouseDown(const PositionF& position)
-		{
-			Toggle();
 		}
 
 		virtual bool HasTooltip() const
@@ -7401,15 +7835,52 @@ namespace TestMapEditor
 			tooltip.SetPosition(GetAbsolutePosition() + PositionF{ GetSize().width + 5, 0 });
 		}
 	};
+#pragma endregion
 
-	bool Widget::UnregisterToSystemInternal()
+#pragma region // Draggable
+	// a widget that can be dragged from one droppable widget into another
+	// it's used for inventory systems, skill bars, customizable menus, etc...
+	class Draggable : public Widget
 	{
-		UnregisterToSystem();
+	private:
+	protected:
+		// this widget is draggable via mouse move so we handle start of dragging through mouse down
+		virtual void OnMouseDown(const PositionF& position)
+		{
+			UISystem* system = GetSystem();
+			if (!system)
+			{
+				throw std::runtime_error("widget is not attached to any UISystem");
+			}
 
-		UISystem* system = GetSystem();
-		if (system) system->Detach(this);
-		return true;
-	}
+			// let system know we want to drag this widget
+			system->BeginDrag(this);
+		}
+
+		// this widget drops on mouse up
+		virtual void OnMouseUp(const PositionF& position)
+		{
+			UISystem* system = GetSystem();
+			if (!system)
+			{
+				throw std::runtime_error("widget is not attached to any UISystem");
+			}
+
+			// let system know we want this widget to drop
+			system->EndDrag(this, position);
+		}
+
+	public:
+		Draggable()
+		{
+			m_moveBehavior = Widget::MoveBehavior::Free;
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawDraggable(*this, context);
+		}
+	};
 #pragma endregion
 
 #pragma region // gui controls
@@ -7493,12 +7964,7 @@ namespace TestMapEditor
 		{
 			m_moveBehavior = MoveBehavior::None;
 			RefreshLayout();
-		}
-
-		// bypass hit test as image is not interactive
-		bool Contains(const PositionF& position) const override final
-		{
-			return false;
+			m_hitTestBehavior = HitTestBehavior::AlwaysFail;
 		}
 
 		void EnableStretch(bool stretch)
@@ -7635,12 +8101,7 @@ namespace TestMapEditor
 			m_textPosition({0,0})
 		{
 			m_moveBehavior = MoveBehavior::None;
-		}
-
-		// bypass hit test as label is not interactive
-		bool Contains(const PositionF& position) const override final
-		{
-			return false;
+			m_hitTestBehavior = HitTestBehavior::AlwaysFail;
 		}
 
 		PositionF GetTextAbsolutePosition() const
@@ -7688,21 +8149,12 @@ namespace TestMapEditor
 		{
 			m_moveBehavior = MoveBehavior::Free;
 			m_focusable = false;
+			m_droppable = true;
 		}
 
 		void Draw(const UIDrawContext& context) const override
 		{
-			PositionF pos = GetAbsolutePosition();
-			SizeF size = GetSize();
-
-			ColorF color = { 0.5f, 0.5f, 1, 1 };
-			if (this == context.hover) color = { 0, 0, 1, 1 };
-			if (this == context.focus) color = { 1, 0, 1, 1 };
-			if (this == context.capture) color = { 1, 0, 0, 1 };
-			if (!IsEnabled()) color = { 0.5f, 0.5f, 0.5f, 1 };
-
-			context.renderer.Draw(pos + PositionF{ 2, 2 }, size, { 0,0,0,1 }, 0);
-			context.renderer.Draw(pos, size, { 0.5f,0.5f,0.5f,1 }, 0);
+			if (context.skin) context.skin->DrawFrame(*this, context);
 		}
 	};
 	
@@ -7760,6 +8212,31 @@ namespace TestMapEditor
 			//	context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 0,0,0,1 }, 0);
 			//	context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
 			//}
+			else if (&button == context.hover)
+			{
+				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.55f,0.55f,0.55f,1 }, 0);
+			}
+			else
+			{
+				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
+			}
+		}
+
+		void DrawDraggable(const Draggable& button, const UIDrawContext& context) const override
+		{
+			PositionF pos = button.GetAbsolutePosition();
+			SizeF size = button.GetSize();
+
+			if (&button == context.capture)
+			{
+				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
+			}
 			else if (&button == context.hover)
 			{
 				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
@@ -7833,7 +8310,15 @@ namespace TestMapEditor
 
 		void DrawFrame(const class Frame& frame, const UIDrawContext& ctx) const override
 		{
+			PositionF pos = frame.GetAbsolutePosition();
+			SizeF size = frame.GetSize();
 
+			ctx.renderer.Draw(pos + PositionF{ 2, 2 }, size, { 0,0,0,1 }, 0);
+
+			ctx.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+
+			ColorF color = (&frame == ctx.focus) ? ColorF{ 0.6f, 0.6f, 0.6f, 1 } : ColorF{ 0.5f, 0.5f, 0.5f, 1 };
+			ctx.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, color, 0);
 		}
 
 	};
@@ -8441,6 +8926,62 @@ namespace TestMapEditor
 
 				break;
 			}
+			case 54: // 6
+			{
+				std::unique_ptr<Frame> frame = std::make_unique<Frame>();
+				frame->SetPosition({ 100, 100 });
+				frame->SetSize({ 300, 300 });
+
+				//std::unique_ptr<Button> button = std::make_unique<Button>();
+				//button->SetPosition({ 50, 50 });
+				//button->SetSize({ 120, 120 });
+				//frame->AddChild(std::move(button));
+
+				std::unique_ptr<Draggable> draggable = std::make_unique<Draggable>();
+				draggable->SetPosition({ 100, 100 });
+				draggable->SetSize({ 128, 128 });
+
+				{
+					auto& animSet = AssetManager().Get<AnimationSet<Sprite>>("birchtree_anim_set");
+					std::unique_ptr<Animated> anim = std::make_unique<Animated>(animSet, "birch_tree_idle");
+					std::unique_ptr<Image> image = std::make_unique<Image>(std::move(anim));
+					image->SetPosition({ 8, 8 });
+					image->SetSize({ 112, 112 });
+					image->EnableStretch(true);
+					m_image = image.get();
+					draggable->AddChild(std::move(image));
+				}
+
+				frame->AddChild(std::move(draggable));
+
+				m_ux.AddWidget(std::move(frame));
+
+				frame = std::make_unique<Frame>();
+				frame->SetPosition({ 300, 250 });
+				frame->SetSize({ 300, 300 });
+
+				draggable = std::make_unique<Draggable>();
+				draggable->SetPosition({ 50, 50 });
+				draggable->SetSize({ 128, 128 });
+
+				{
+					auto& animSet = AssetManager().Get<AnimationSet<Sprite>>("pinetree_anim_set");
+					std::unique_ptr<Animated> anim = std::make_unique<Animated>(animSet, "pine_tree_idle");
+					std::unique_ptr<Image> image = std::make_unique<Image>(std::move(anim));
+					image->SetPosition({ 8, 8 });
+					image->SetSize({ 112, 112 });
+					image->EnableStretch(true);
+					m_image = image.get();
+					draggable->AddChild(std::move(image));
+				}
+
+				frame->AddChild(std::move(draggable));
+
+				m_ux.AddWidget(std::move(frame));
+
+				break;
+			}
+
 			default:
 				break;
 			}
