@@ -5634,13 +5634,15 @@ namespace TestMapEditor
 	//
 	class OverlayTrigger;
 	class UISystem;
-	class OverlayStack;
+	class LayerStack;
 	class Widget;
 	struct UIDrawContext;
-	class Overlay;
+	class Layer;
 	class Frame;
 	class Tooltip;
 	class Draggable;
+	class MenuButton;
+	class MenuItem;
 
 	class UISkin
 	{
@@ -5648,12 +5650,14 @@ namespace TestMapEditor
 		virtual ~UISkin() = default;
 
 		virtual void DrawButton(const class Button& button, const UIDrawContext& ctx) const = 0;
-		virtual void DrawOverlay(const class Overlay& overlay, const UIDrawContext& ctx) const = 0;
+		virtual void DrawLayer(const class Layer& overlay, const UIDrawContext& ctx) const = 0;
 		virtual void DrawFrame(const class Frame& frame, const UIDrawContext& ctx) const = 0;
 		virtual void DrawTooltip(const class Tooltip& tooltip, const UIDrawContext& ctx) const = 0;
 		virtual void DrawLabel(const class Label& label, const UIDrawContext& ctx) const = 0;
 		virtual void DrawImage(const class Image& image, const UIDrawContext& ctx) const = 0;
 		virtual void DrawDraggable(const Draggable& draggable, const UIDrawContext& context) const = 0;
+		virtual void DrawMenuButton(const MenuButton& menuButton, const UIDrawContext& context) const = 0;
+		virtual void DrawMenuItem(const MenuItem& menuItem, const UIDrawContext& context) const = 0;
 	};
 
 	struct UIDrawContext
@@ -6281,7 +6285,6 @@ namespace TestMapEditor
 			Visible = 1 << 0,
 			Enabled = 1 << 1,
 			Focusable = 1 << 2,
-			Droppable = 1 << 3,
 		};
 
 		// traverse through the tree and find the top-most widget that intersects with point
@@ -6301,12 +6304,6 @@ namespace TestMapEditor
 
 			// if widget is not focusable, bail out
 			if (!IsFocusable() && (flag & SearchFlags::Focusable))
-			{
-				return nullptr;
-			}
-
-			// if widget is not droppable, bail out
-			if (!IsDroppable() && (flag & SearchFlags::Droppable))
 			{
 				return nullptr;
 			}
@@ -6351,12 +6348,6 @@ namespace TestMapEditor
 					return nullptr;
 				}
 
-				// if widget is not droppable, bail out
-				if (!(*it)->IsDroppable() && (flag & SearchFlags::Droppable))
-				{
-					return nullptr;
-				}
-
 				// if this widget intersects with point..
 				if ((*it)->Contains(position))
 				{
@@ -6387,12 +6378,6 @@ namespace TestMapEditor
 
 			// if widget is not focusable, bail out
 			if (!widget->IsFocusable() && (flag & SearchFlags::Focusable))
-			{
-				return nullptr;
-			}
-
-			// if widget is not droppable, bail out
-			if (!widget->IsDroppable() && (flag & SearchFlags::Droppable))
 			{
 				return nullptr;
 			}
@@ -6499,8 +6484,8 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // Overlay
-	class Overlay : public Widget
+#pragma region // Layer
+	class Layer : public Widget
 	{
 	public:
 		enum Type
@@ -6510,7 +6495,7 @@ namespace TestMapEditor
 		};
 
 	private:
-		friend class OverlayStack;
+		friend class LayerStack;
 
 		Widget* m_owner;
 		UISystem* m_system;
@@ -6532,7 +6517,7 @@ namespace TestMapEditor
 			bool movable = false;
 		};
 
-		Overlay(UISystem* system, Widget* owner, const PositionF& pos, const SizeF& size, const Type& type, bool movable) :
+		Layer(UISystem* system, Widget* owner, const PositionF& pos, const SizeF& size, const Type& type, bool movable) :
 			m_owner(owner),
 			m_system(system),
 			m_type(type)		
@@ -6555,16 +6540,16 @@ namespace TestMapEditor
 
 		void Draw(const UIDrawContext& context) const override
 		{
-			if (context.skin) context.skin->DrawOverlay(*this, context);
+			if (context.skin) context.skin->DrawLayer(*this, context);
 		}
 	};
 
 	// design consideration
 	// - enforce a policy where in finding route, search stops once a modal overlay did not intersect with input point
-	class OverlayStack
+	class LayerStack
 	{
 	private:
-		std::vector<std::unique_ptr<Overlay>> m_overlays;
+		std::vector<std::unique_ptr<Layer>> m_layers;
 
 	public:
 		struct Route
@@ -6575,13 +6560,13 @@ namespace TestMapEditor
 			bool isBlockedByModal = false;
 		};
 
-		OverlayStack()
+		LayerStack()
 		{
 		}
 
-		size_t GetSize() const
+		size_t Size() const
 		{
-			return m_overlays.size();
+			return m_layers.size();
 		}
 
 		// Collapses the overlay stack starting at the specified overlay index.
@@ -6589,22 +6574,22 @@ namespace TestMapEditor
 		// ---------------------------------------------------------------------------------
 		// DESIGN NOTES
 		// ---------------------------------------------------------------------------------
-		// Overlay collapse is always performed from a overlay downward toward the top
+		// Layer collapse is always performed from a overlay downward toward the top
 		// of the overlay stack.
 		//
 		// Example:
 		//
 		//	Stack:
-		//		[Overlay A]
-		//		[Overlay B]
-		//		[Overlay C]
+		//		[Layer A]
+		//		[Layer B]
+		//		[Layer C]
 		//
 		//	CollapseAt(B)
 		//
 		//	Result:
-		//		[Overlay A]
+		//		[Layer A]
 		//
-		// Overlay B and all overlays above it are removed.
+		// Layer B and all overlays above it are removed.
 		//
 		// ---------------------------------------------------------------------------------
 		// CASCADED OVERLAY COLLAPSE
@@ -6614,13 +6599,13 @@ namespace TestMapEditor
 		//
 		// Example:
 		//
-		//	Overlay A
+		//	Layer A
 		//		contains Trigger B
 		//
-		//	Overlay B
+		//	Layer B
 		//		contains Trigger C
 		//
-		//	Overlay C
+		//	Layer C
 		//
 		// During collapse, overlay widgets are first unregistered from the UISystem
 		// before the overlay itself is erased from the overlay stack.
@@ -6628,7 +6613,7 @@ namespace TestMapEditor
 		// While unregistering:
 		//
 		//	OverlayTrigger::UnregisterToSystem()
-		//		-> UISystem::UnregisterOverlay()
+		//		-> UISystem::UnregisterLayer()
 		//			-> CollapseByOwner()
 		//
 		// may recursively request collapse of child overlays higher in the stack.
@@ -6679,17 +6664,17 @@ namespace TestMapEditor
 			int index = result.index < 0 ? 0 : result.index;
 
 			// index can be out of bounds. if there are no active overlays, and this is called, if index = 0, then this condition is valid
-			if (index >= (int)m_overlays.size()) return;
+			if (index >= (int)m_layers.size()) return;
 
 			// since we're removing overlays, their children must unregister to system.
-			for (size_t i = index; i < m_overlays.size(); i++)
+			for (size_t i = index; i < m_layers.size(); i++)
 			{
-				m_overlays[i]->RemoveChildren();
-				m_overlays[i]->UnregisterToSystem();
+				m_layers[i]->RemoveChildren();
+				m_layers[i]->UnregisterToSystem();
 			}
 
 			// after unregistering overlays' tree, remove them 
-			m_overlays.erase(m_overlays.begin() + index, m_overlays.end());
+			m_layers.erase(m_layers.begin() + index, m_layers.end());
 		}
 
 		void CollapseAbove(const Route& route)
@@ -6707,41 +6692,9 @@ namespace TestMapEditor
 		}
 
 		// this is the only way to add a new overlay in the stack and it will always end it at the end of the stack
-		void Add(std::unique_ptr<Overlay> overlay)
+		void Add(std::unique_ptr<Layer> overlay)
 		{
-			m_overlays.push_back(std::move(overlay));
-		}
-
-		// find which top-most active overlay that intersects with given point
-		Route FindRouteFromTopAt(const PositionF& position, int flags)
-		{
-			Route result;
-
-			for (int i = (int)m_overlays.size() - 1; i >= 0; i--)
-			{
-				Widget* widget = m_overlays[i]->FindTopWidgetAt(position, flags);
-				if (widget)
-				{
-					result.target = widget;
-					result.index = i;
-					result.overlay = m_overlays[i].get();
-					result.isBlockedByModal = false;
-					break;
-				}
-				// if this overlay did not intersect with point, check if it's modal
-				else
-				{
-					// is this overlay a modal? if yes, stop right here. modal overlays when active is the only widget that can absorb user input
-					if (m_overlays[i]->IsModal())
-					{
-						result.index = i;
-						result.isBlockedByModal = true;
-						break;
-					}
-				}
-			}
-
-			return result;
+			m_layers.push_back(std::move(overlay));
 		}
 
 		Route FindRouteByOwner(Widget* owner)
@@ -6749,13 +6702,13 @@ namespace TestMapEditor
 			Route result{ nullptr, nullptr, -1 };
 
 			// check if any active overlay is owned by given owner
-			for (int i = 0; i < m_overlays.size(); i++)
+			for (int i = 0; i < m_layers.size(); i++)
 			{
 				// if this widget is an owner of existing overlay, then overlay is active. collapse overlay stack on it
-				if (m_overlays[i].get()->GetOwner() == owner)
+				if (m_layers[i].get()->GetOwner() == owner)
 				{
-					result.overlay = m_overlays[i].get();
-					result.target = m_overlays[i].get();
+					result.overlay = m_layers[i].get();
+					result.target = m_layers[i].get();
 					result.index = i;
 					break;
 				}
@@ -6779,14 +6732,67 @@ namespace TestMapEditor
 		template<typename Func>
 		void ForEach(const Func& func)
 		{
-			for (std::vector<std::unique_ptr<Overlay>>::iterator it = m_overlays.begin(); it != m_overlays.end(); it++)
+			for (std::vector<std::unique_ptr<Layer>>::iterator it = m_layers.begin(); it != m_layers.end(); it++)
 			{
 				func(it->get());
 			}
 		}
+
+		Layer& Bottom() const
+		{
+			if (m_layers.empty())
+			{
+				throw std::runtime_error("Querying an empty stack is wrong.");
+			}
+
+			return *m_layers.front().get();
+		}
+
+		Layer& Top() const
+		{
+			if (m_layers.empty())
+			{
+				throw std::runtime_error("Querying an empty stack is wrong.");
+			}
+
+			return *m_layers.back().get();
+		}
+
+		// find which top-most active overlay that intersects with given point
+		Route FindRouteFromTopAt(const PositionF& position, int flags)
+		{
+			Route result;
+
+			for (int i = (int)m_layers.size() - 1; i >= 0; i--)
+			{
+				Widget* widget = m_layers[i]->FindTopWidgetAt(position, flags);
+				if (widget)
+				{
+					result.target = widget;
+					result.index = i;
+					result.overlay = m_layers[i].get();
+					result.isBlockedByModal = false;
+					break;
+				}
+				// if this overlay did not intersect with point, check if it's modal
+				else
+				{
+					// is this overlay a modal? if yes, stop right here. modal overlays when active is the only widget that can absorb user input
+					if (m_layers[i]->IsModal())
+					{
+						result.index = i;
+						result.isBlockedByModal = true;
+						break;
+					}
+				}
+			}
+
+			return result;
+		}
+
 	};
 
-	class OverlayManager
+	class LayerManager
 	{
 	private:
 		// internal data structure to store command request 
@@ -6805,28 +6811,28 @@ namespace TestMapEditor
 			PositionF position;
 			SizeF size;
 			std::function<void(Widget*)> builder;
-			Overlay::Type type;
+			Layer::Type type;
 			bool movable;
 		};
 
-		OverlayStack m_stack;
+		LayerStack m_stack;
 		UISystem* m_system;
-		Dictionary<Widget*, Overlay::BuildDescription> m_buildDescriptions;
+		Dictionary<Widget*, Layer::BuildDescription> m_buildDescriptions;
 		std::vector<Command> m_commands;
 
 	public:
-		OverlayManager(UISystem* system) :
+		LayerManager(UISystem* system) :
 			m_system(system)
 		{
 		}
 
-		void CollapseAbove(const OverlayStack::Route& route)
+		void CollapseAbove(const LayerStack::Route& route)
 		{
 			m_stack.CollapseAbove(route);
 		}
 
-		// find which top-most active overlay that intersects with given point
-		OverlayStack::Route FindRouteFromTopAt(const PositionF& position, int flags)
+		// finds the top-most layer that intersects with given position and valid with given flags
+		LayerStack::Route FindRouteFromTopAt(const PositionF& position, int flags)
 		{
 			return m_stack.FindRouteFromTopAt(position, flags);
 		}
@@ -6850,13 +6856,13 @@ namespace TestMapEditor
 			{
 				switch (cmd.command)
 				{
-					// remove/toggle off the overlay that is owned by widget from overlay request
+				// remove/toggle off the overlay that is owned by widget from overlay request
 				case Command::Remove:
 				{
 					// we already have the index of the overlay stack that we want to collapsed at. just validate and collapse with it
-					if (cmd.index >= 0 && cmd.index < m_stack.GetSize())
+					if (cmd.index >= 0 && cmd.index < m_stack.Size())
 					{
-						OverlayStack::Route route{};
+						LayerStack::Route route{};
 						route.index = cmd.index;
 						m_stack.CollapseAt(route);
 					}
@@ -6866,7 +6872,7 @@ namespace TestMapEditor
 				case Command::Add:
 				{
 					// create the overlay
-					std::unique_ptr<Overlay> overlay = std::make_unique<Overlay>(m_system, cmd.owner, cmd.position, cmd.size, cmd.type, cmd.movable);
+					std::unique_ptr<Layer> overlay = std::make_unique<Layer>(m_system, cmd.owner, cmd.position, cmd.size, cmd.type, cmd.movable);
 
 					// if it has a payload, build it and add to overlay as child
 					if (cmd.builder)
@@ -6896,7 +6902,7 @@ namespace TestMapEditor
 		void QueueToggle(Widget* owner)
 		{
 			// check if there is an active overlay that is owned by given owner
-			OverlayStack::Route result = m_stack.FindRouteByOwner(owner);
+			LayerStack::Route result = m_stack.FindRouteByOwner(owner);
 
 			// if the owner's overlay is already active, queue it for removal/collapse
 			if (result.overlay)
@@ -6916,7 +6922,7 @@ namespace TestMapEditor
 			}
 
 			// get the popu build command 
-			Overlay::BuildDescription& desc = m_buildDescriptions.Get(owner);
+			Layer::BuildDescription& desc = m_buildDescriptions.Get(owner);
 
 			// create overlay build request
 			Command cmd{};
@@ -6931,7 +6937,7 @@ namespace TestMapEditor
 		}
 
 		// register a overlay build description owned by given widget
-		bool Register(Widget* widget, const Overlay::BuildDescription& desc)
+		bool Register(Widget* widget, const Layer::BuildDescription& desc)
 		{
 			return m_buildDescriptions.Register(widget, desc);
 		}
@@ -6954,7 +6960,7 @@ namespace TestMapEditor
 		}
 
 		// queue add overlay based on build description as this has no owner
-		void QueueAdd(const Overlay::BuildDescription& desc)
+		void QueueAdd(const Layer::BuildDescription& desc)
 		{
 			// create overlay build command on top of stack based on build description
 			Command cmd{};
@@ -6968,11 +6974,22 @@ namespace TestMapEditor
 			m_commands.push_back(cmd);
 		}
 
-		void QueueCollapse()
+		void QueueCollapse(int index = 0)
 		{
 			Command cmd{};
-			cmd.command = Command::Collapse;
+			cmd.command = Command::Remove;
+			cmd.index = index;
 			m_commands.push_back(cmd);
+		}
+
+		Layer& Bottom() const
+		{
+			if (!m_stack.Size())
+			{
+				throw std::runtime_error("stack is empty. querying for first is wrong");
+			}
+
+			return m_stack.Bottom();
 		}
 	};
 
@@ -7298,8 +7315,8 @@ namespace TestMapEditor
 	class UISystem
 	{
 	private:
-		Root m_layoutTree;
-		OverlayManager m_overlayManager;
+		//Root m_layoutTree;
+		LayerManager m_overlayManager;
 		TooltipManager m_tooltipManager;
 		DragDropLayer	m_DragDropLayer;
 
@@ -7340,8 +7357,12 @@ namespace TestMapEditor
 			m_mouseCapture = widget;
 		}
 
-	public:
+		Widget& Root() const
+		{
+			return m_overlayManager.Bottom();
+		}
 
+	public:
 		void SetFont(IFontAtlas* font, UIResources::FontType type)
 		{
 			bool fontChanged = false;
@@ -7366,12 +7387,6 @@ namespace TestMapEditor
 			// update all widgets if font changed as they may need to recalculate their layout based on new font
 			if (fontChanged)
 			{
-				m_layoutTree.ForEachWidget([](Widget* widget)
-					{
-						widget->ResourceChange();
-						return true;
-					});
-
 				m_overlayManager.ForEach([](Widget* widget)
 					{
 						widget->ForEachWidget([](Widget* widget)
@@ -7399,25 +7414,38 @@ namespace TestMapEditor
 		}
 
 		UISystem() :
-			m_layoutTree(this),
+			//m_layoutTree(this),
 			m_overlayManager(this),
 			m_DragDropLayer(this)
 		{
+			// define build for root layer and queue on layer manager
+			Layer::BuildDescription root
+			{
+				PositionF{0,0},
+				SizeF{0, 0},
+				nullptr,
+				Layer::Modal,
+				true
+			};
+			m_overlayManager.QueueAdd(root);
+
+			// build the root layer
+			m_overlayManager.ProcessCommandRequests();
 		}
 
 		void SetSize(const SizeF& size)
 		{
-			m_layoutTree.SetSize(size);
+			Root().SetSize(size);
 		}
 
 		void SetPosition(const PositionF& pos)
 		{
-			m_layoutTree.SetPosition(pos);
+			Root().SetPosition(pos);
 		}
 
 		void Show()
 		{
-			m_layoutTree.Show();
+			Root().Show();
 		}
 
 		void Draw(UIDrawContext& context)
@@ -7426,9 +7454,6 @@ namespace TestMapEditor
 			context.capture = m_mouseCapture;
 			context.hover = m_mouseOver;
 			context.focus = m_focus;
-
-			// draw layout tree
-			UIRenderer::Draw(context, m_layoutTree);
 
 			// draw overlays
 			m_overlayManager.ForEach([&](Widget* widget)
@@ -7515,49 +7540,50 @@ namespace TestMapEditor
 		{
 			m_overlayManager.FlushCommands();
 
-			// do hit test on all overlays starting at top to bottom. we ignore hidden and disabled widgets
-			OverlayStack::Route result = m_overlayManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+			// find top overlay that intersects with point. overlay must be visible and enabled
+			LayerStack::Route result = m_overlayManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 
-			// if mouse click outside of the top overlay in the stack and down to top-most modal overlay, the route result will be "blocked by modal"
-			// this is because when one or more modal overlay exists, the top-most modal overlay and succeeding overlays on top of it are the only ones allowed to receive mouse click
-			// if click did not hit any of them overlays, then click is ignored. 
+			// check if result says we're block by modal. this means that a modal layer exist and did not intersect with point and this blocks search to succeeding layer stack
 			if (result.isBlockedByModal)
 			{
-				// collapse into the top-most active modal overlay
+				// if block by modal, collapse above it. we should not collapse modals. it should only be collapsed via command
 				m_overlayManager.CollapseAbove(result);
 
 				// in case focus, hover and capture are set to widgets that belong to overlay that collapsed, they are reset safely via UnregisterToSystem>Detach
 				return;
+			}			
+
+			// if we reach this point, we should be able to find the top widget that intersects with point. simultaneously we can resolve Z order as we traverse to find the top widget
+			// since bottom layer is a modal (root), it should always exist therefore we should always expect a valid layer at this point
+			// if not, then we must throw exception as this should not happen
+			if (!result.overlay)
+			{
+				throw std::runtime_error("impossible not to find an overlay. why is this so???");
 			}
 
-			// check what widget got clicked if any
-			Widget* widget = result.target;
+			Widget* widget = result.overlay->FindAndResolveZOrderAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 
-			// if none of the active overlays (or its children) were clicked, let's find the clicked widget in layout tree instead
-			if (!widget) widget = m_layoutTree.FindAndResolveZOrderAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+			// at this point, we should have the top-most widget and Z order is resolved. it's impossible to not find top-most widget, we already have the layer.
+			if (!widget)
+			{
+				throw std::runtime_error("why no top-most widget when we already found the layer??");
+			}
 
-			// but if it's a descendant of an overlay, bring it to front. if this is actually overlay, calling this does not change anything
-			else widget->BringToFront();
-
-			// propagate event here. widget here is either from layout tree or from an active overlay
-			if (widget) widget->MouseDown(p);
+			// now we are ready to execute MouseDown event on the clicked widget, if there is one. by right there should be one by this time. 
+			widget->MouseDown(p);
 
 			// collapse the overlay stack above the clicked overlay. we do this because:
 			// - if none of the overlays were clicked, all active overlay stacks will be collapsed 
 			// - if a overlay is clicked, all active overlays on top of it will be collapsed
 			m_overlayManager.CollapseAbove(result);
 
-			//// if a overlay trigger is clicked, it might have requested to toggle its overlay. process those requests here
-			//m_overlayManager.ProcessCommandRequests();
-			
-			// set the clicked widget as capture. if no widget was clicked, this will be nullptr
+			// set capture
 			SetCapture(widget);
 
-			// resolve focusOverlayManager::BuildDescription
-			if (widget && widget->IsFocusable()) SetFocus(widget);
-			else SetFocus(nullptr);
+			// set focus
+			SetFocus(widget);
 
-			// if mouse is down, tooltip should be hidden regardless of where the mouse is clicked
+			// hide tooltip. if mouse is down, tooltip should be hidden regardless of where the mouse is clicked
 			m_tooltipManager.Hide();
 		}
 
@@ -7585,7 +7611,7 @@ namespace TestMapEditor
 			}
 
 			// check first if mouse hovers over a overlay
-			OverlayStack::Route result = m_overlayManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+			LayerStack::Route result = m_overlayManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 
 			// if mouse hovers outside of the top overlay in the stack and down to top-most modal overlay, the route result will be "blocked by modal"
 			// this is because when one or more modal overlay exists, the top-most modal overlay and succeeding overlays on top of it are the only ones 
@@ -7605,11 +7631,15 @@ namespace TestMapEditor
 				return;
 			}
 
-			Widget* hover = result.target;			
+			// if there is no overlay found yet we were not blocked by modal, something is wrong. this cannot happen
+			if (!result.overlay)
+			{
+				throw std::runtime_error("impossible not to find an overlay. why is this so???");
+			}
 
-			// if no overlay was hovered by mouse, check layout tree. note we're skipping only hidden widgets. disabled widgets are still considered
+			// find the top widget in this layer's tree that is hovered. we also include disabled widgets in hover check.
 			// reason is so that even disable widgets can still have tooltip shown if they have it
-			if (!hover)	hover = m_layoutTree.FindTopWidgetAt(p, Widget::SearchFlags::Visible);
+			Widget* hover = result.overlay->FindTopWidgetAt(p, Widget::SearchFlags::Visible);
 
 			// let's resolve which widget is mouse over now, if any
 			if (hover != m_mouseOver)
@@ -7654,24 +7684,24 @@ namespace TestMapEditor
 			}
 		}
 
-		bool RegisterOverlay(Widget* widget, const Overlay::BuildDescription& desc)
+		bool RegisterLayer(Widget* widget, const Layer::BuildDescription& desc)
 		{
 			return m_overlayManager.Register(widget, desc);
 		}
 
-		bool UnregisterOverlay(Widget* owner)
+		bool UnregisterLayer(Widget* owner)
 		{
 			return m_overlayManager.Unregister(owner);
 		}
 
-		void ToggleOverlay(Widget* owner)
+		void ToggleLayer(Widget* owner)
 		{
 			m_overlayManager.QueueToggle(owner);
 		}
 
 		void AddWidget(std::unique_ptr<Widget> widget)
 		{
-			m_layoutTree.AddChild(std::move(widget));
+			Root().AddChild(std::move(widget));
 		}
 
 		void RemoveWidget(Widget* widget)
@@ -7680,7 +7710,8 @@ namespace TestMapEditor
 			if (!widget) return;
 
 			// we can now remove this widget. this will remove the widget's whole tree. 
-			if (!m_layoutTree.Remove(widget))
+			//if (!m_layoutTree.Remove(widget))
+			if (!Root().Remove(widget))
 			{
 				// let's be strict for now to catch any silent error
 				throw std::runtime_error("failed to remove a widget from root");
@@ -7689,10 +7720,10 @@ namespace TestMapEditor
 
 		void Collapse()
 		{
-			m_overlayManager.QueueCollapse();
+			m_overlayManager.QueueCollapse(1);
 		}
 
-		void AddOverlay(const Overlay::BuildDescription& desc)
+		void AddLayer(const Layer::BuildDescription& desc)
 		{
 			m_overlayManager.QueueAdd(desc);
 		}
@@ -7715,41 +7746,31 @@ namespace TestMapEditor
 			m_DragDropLayer.Begin(source);
 		}
 
-		void EndDrag(Widget* source,const PositionF& p)
+		void EndDrag(Widget* draggable,const PositionF& p)
 		{
 			// 1. find the top-most widget that intersects with given point
-			
-			// do hit test on all overlays starting at top to bottom. we ignore hidden and disabled widgets
-			OverlayStack::Route result = m_overlayManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+			LayerStack::Route result = m_overlayManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 
-			// if mouse click outside of the top overlay in the stack and down to top-most modal overlay, the route result will be "blocked by modal"
-			// this is because when one or more modal overlay exists, the top-most modal overlay and succeeding overlays on top of it are the only ones allowed to receive mouse click
-			// if click did not hit any of them overlays, then click is ignored. 
-			if (result.isBlockedByModal)
+			// if route result is blocked by modal, it means we intersect outside of existing modal layer and there are no other widgets that can be found to drop current dragged widget
+			// but if not modal, we must have found the layer that intersects with  point
+			Widget* target = nullptr;
+			if (!result.isBlockedByModal)
 			{
-				// collapse into the top-most active modal overlay
-				m_overlayManager.CollapseAbove(result);
+				// but check first if layer is really valid. it must.
+				// if there is no overlay found yet we were not blocked by modal, something is wrong. this cannot happen
+				if (!result.overlay)
+				{
+					throw std::runtime_error("impossible not to find an overlay. why is this so???");
+				}
 
-				// in case focus, hover and capture are set to widgets that belong to overlay that collapsed, they are reset safely via UnregisterToSystem>Detach
-				return;
+				// let's now find the top widget in this layer's tree that intersects with the point
+				target = result.overlay->FindAndResolveZOrderAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 			}
 
-			// check what widget got clicked if any
-			Widget* widget = result.target;
-
-			// if none of the active overlays (or its children) were clicked, let's find the clicked widget in layout tree instead
-			if (!widget) widget = m_layoutTree.FindAndResolveZOrderAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 
 			// 2. pass that widget to dragdrop layer so it will attemp to drop the widget being drag into it
-			m_DragDropLayer.End(source, widget);
+			m_DragDropLayer.End(draggable, target);
 		}
-
-		enum class OverlayPresentationMode
-		{
-			Normal,        // push on top (current popup behavior)
-			Exclusive,     // clear stack then push
-			ModalExclusive // clear + push + treated as modal root
-		};
 	};
 
 
@@ -7768,33 +7789,33 @@ namespace TestMapEditor
 	class OverlayTrigger : public Widget
 	{
 	protected:
-		Overlay::BuildDescription m_buildDesc;
+		Layer::BuildDescription m_buildDesc;
 
-		// this is fired up when this widget is added to a widget tree with a UI system. it will register its overlay descriptor into the system
+		// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
 		bool RegisterToSystem() override final
 		{
 			UISystem* system = GetSystem();
 			if (system)
 			{
 				// be strict for now
-				if (!system->RegisterOverlay(this, m_buildDesc))
+				if (!system->RegisterLayer(this, m_buildDesc))
 				{
-					throw std::runtime_error("failed to register overlay");
+					throw std::runtime_error("failed to register layer");
 				}
 			}
 			return true;
 		}
 
-		// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its overlay descriptor into the system
+		// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its layer descriptor into the system
 		bool UnregisterToSystem() override final
 		{
 			UISystem* system = GetSystem();
 			if (system)
 			{
 				// be strict for now
-				if (!system->UnregisterOverlay(this))
+				if (!system->UnregisterLayer(this))
 				{
-					throw std::runtime_error("failed to unregister overlay");
+					throw std::runtime_error("failed to unregister layer");
 				}
 			}
 
@@ -7807,7 +7828,7 @@ namespace TestMapEditor
 			UISystem* system = GetSystem();
 			if (system)
 			{
-				system->ToggleOverlay(this);
+				system->ToggleLayer(this);
 			}
 		}
 
@@ -7817,7 +7838,7 @@ namespace TestMapEditor
 		}
 
 	public:
-		OverlayTrigger(const Overlay::BuildDescription& buildDesc) :
+		OverlayTrigger(const Layer::BuildDescription& buildDesc) :
 			m_buildDesc(buildDesc)
 		{
 			m_moveBehavior = MoveBehavior::None;
@@ -7894,7 +7915,7 @@ namespace TestMapEditor
 		bool m_stretch = false;
 
 	protected:
-		// this is fired up when this widget is added to a widget tree with a UI system. it will register its overlay descriptor into the system
+		// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
 		bool RegisterToSystem() override final
 		{
 			RefreshLayout();
@@ -8012,14 +8033,14 @@ namespace TestMapEditor
 		PositionF m_textPosition;
 
 	protected:
-		// this is fired up when this widget is added to a widget tree with a UI system. it will register its overlay descriptor into the system
+		// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
 		bool RegisterToSystem() override final
 		{
 			// refresh cached information about text with new font type
 			return RefreshLayout();
 		}
 
-		// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its overlay descriptor into the system
+		// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its layer descriptor into the system
 		bool UnregisterToSystem() override final
 		{
 			// refresh cached information about text with new font type
@@ -8145,11 +8166,11 @@ namespace TestMapEditor
 	private:
 
 	public:
-		Frame()
+		Frame(bool movable = true, bool droppable = true)
 		{
-			m_moveBehavior = MoveBehavior::Free;
+			m_moveBehavior = movable? MoveBehavior::Free : MoveBehavior::None;
+			m_droppable = droppable;
 			m_focusable = false;
-			m_droppable = true;
 		}
 
 		void Draw(const UIDrawContext& context) const override
@@ -8187,6 +8208,80 @@ namespace TestMapEditor
 			if(context.skin) context.skin->DrawButton(*this, context);
 		}
 	};
+
+	class MenuButton : public Button
+	{
+	protected:
+		Layer::BuildDescription m_buildDesc;
+
+		// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
+		bool RegisterToSystem() override final
+		{
+			UISystem* system = GetSystem();
+			if (system)
+			{
+				// be strict for now
+				if (!system->RegisterLayer(this, m_buildDesc))
+				{
+					throw std::runtime_error("failed to register layer");
+				}
+			}
+			return true;
+		}
+
+		// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its layer descriptor into the system
+		bool UnregisterToSystem() override final
+		{
+			UISystem* system = GetSystem();
+			if (system)
+			{
+				// be strict for now
+				if (!system->UnregisterLayer(this))
+				{
+					throw std::runtime_error("failed to unregister layer");
+				}
+			}
+
+			return true;
+		}
+
+		// requests system to toggle this widget's overlay
+		void Toggle()
+		{
+			UISystem* system = GetSystem();
+			if (system)
+			{
+				system->ToggleLayer(this);
+			}
+		}
+
+		void OnMouseDown(const PositionF& position) override final
+		{
+			Toggle();
+		}
+
+	public:
+		MenuButton(const Layer::BuildDescription& buildDesc) :
+			m_buildDesc(buildDesc)
+		{
+			m_moveBehavior = MoveBehavior::None;
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawMenuButton(*this, context);
+		}
+	};
+
+	class MenuItem : public Button
+	{
+	public:
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawMenuItem(*this, context);
+		}
+	};
+
 #pragma endregion
 
 #pragma region // UI theme/skin
@@ -8251,7 +8346,7 @@ namespace TestMapEditor
 			}
 		}
 
-		void DrawOverlay(const class Overlay& overlay, const UIDrawContext& context) const override
+		void DrawLayer(const class Layer& overlay, const UIDrawContext& context) const override
 		{
 			PositionF pos = overlay.GetAbsolutePosition();
 			SizeF size = overlay.GetSize();
@@ -8321,6 +8416,49 @@ namespace TestMapEditor
 			ctx.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, color, 0);
 		}
 
+		void DrawMenuButton(const MenuButton& menuButton, const UIDrawContext& context) const override
+		{
+			PositionF pos = menuButton.GetAbsolutePosition();
+			SizeF size = menuButton.GetSize();
+
+			if (&menuButton == context.capture)
+			{
+				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
+			}
+			else if (&menuButton == context.hover)
+			{
+				context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 0.6f,0.6f,0.6f,1 }, 0);
+			}
+			else
+			{
+			}
+		}
+
+		void DrawMenuItem(const MenuItem& menuItem, const UIDrawContext& context) const override
+		{
+			PositionF pos = menuItem.GetAbsolutePosition();
+			SizeF size = menuItem.GetSize();
+
+			if (&menuItem == context.capture)
+			{
+				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
+			}
+			else if (&menuItem == context.hover)
+			{
+				context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 0.6f,0.6f,0.6f,1 }, 0);
+			}
+			else
+			{
+			}
+		}
+
+
 	};
 
 #pragma endregion
@@ -8334,6 +8472,8 @@ namespace TestMapEditor
 		Widget* m_dialog = nullptr;
 		Widget* m_multiModalTrigger = nullptr;
 		Image* m_image = nullptr;
+		Widget* m_menu = nullptr;
+		Widget* m_menuBar = nullptr;
 		int m_imageState = 0;
 		UISystem m_ux;
 		Button* m_button = nullptr;
@@ -8347,17 +8487,17 @@ namespace TestMapEditor
 		}
 
 	public:
-		// this method creates a overlay build description where a OverlayTrigger's Overlay contains another OverlayTrigger
+		// this method creates a overlay build description where a OverlayTrigger's Layer contains another OverlayTrigger
 		// this cascades multiple overlays. the depth determines how many tiers of overlays can exist. This is used to test 
 		// overlay behavior of the UI system
-		Overlay::BuildDescription CreateBuildDescWithCascadedOverlays(int tier, const SizeF& size, const PositionF& position)
+		Layer::BuildDescription CreateBuildDescWithCascadedOverlays(int tier, const SizeF& size, const PositionF& position)
 		{
-			Overlay::BuildDescription cmd;
+			Layer::BuildDescription cmd;
 
 			// this is the position of the overlay relative to its owner OverlayTrigger local space
 			cmd.position = position;
 
-			// size of the Overlay. this will also be the size of the OverlayTrigger that will be child of the Overlay
+			// size of the Layer. this will also be the size of the OverlayTrigger that will be child of the Layer
 			cmd.size = size;
 
 			// we will cascade up to given number of tier
@@ -8383,12 +8523,12 @@ namespace TestMapEditor
 
 		void SpawnMessageBox(UISystem& ux, const PositionF& position)
 		{
-			Overlay::BuildDescription cmd
+			Layer::BuildDescription cmd
 			{
 				position,
 				SizeF{200, 150},
 				nullptr,
-				Overlay::Modal
+				Layer::Modal
 			};
 
 			cmd.builder = [&](Widget* parent)
@@ -8405,7 +8545,49 @@ namespace TestMapEditor
 					parent->AddChild(std::move(button));
 				};
 
-			ux.AddOverlay(cmd);
+			ux.AddLayer(cmd);
+		}
+
+		std::unique_ptr<Label> CreateLabel(
+			const PositionF& position, 
+			const SizeF& size, 
+			const std::string& text, 
+			Widget::HorizontalAlignment hAlign = Widget::HorizontalAlignment::Center, 
+			Widget::VerticalAlignment vAlign = Widget::VerticalAlignment::Center
+		)
+		{
+			std::unique_ptr<Label> label = std::make_unique<Label>(text);
+			label->SetPosition(position);
+			label->SetSize(size);
+			label->SetAlignment(vAlign, hAlign);
+			return std::move(label);
+		}
+
+		std::unique_ptr<Button> CreateButton(const PositionF& position, const SizeF& size, const std::string& label)
+		{
+			std::unique_ptr<Button> button = std::make_unique<Button>();
+			button->SetPosition(position);
+			button->SetSize(size);
+			button->AddChild(CreateLabel({ 0,0 }, size, label));
+
+			return std::move(button);
+		}
+
+		std::unique_ptr<MenuButton> CreateMenu(const PositionF& position, const SizeF& size, const std::string& label)
+		{
+			Layer::BuildDescription cmd
+			{
+				PositionF{0, 50},
+				SizeF({200, 200}),
+				nullptr,
+				Layer::Type::Popup,
+				false
+			};
+
+			std::unique_ptr<MenuButton> menuButton = std::make_unique<MenuButton>(cmd);
+			menuButton->SetPosition(position);
+			menuButton->SetSize(size);
+			menuButton->AddChild(CreateLabel({ 0,0 }, size, label));
 		}
 
 		void OnEnter() override
@@ -8416,9 +8598,147 @@ namespace TestMapEditor
 			IFontAtlas& font = AssetManager().Get<IFontAtlas>("font");
 			m_ux.SetFont(&font, UIResources::FontType::Default);
 
+
+			// let's create menu system
+			{
+				std::unique_ptr<Frame> menuBar = std::make_unique<Frame>(false, false);
+				menuBar->SetPosition({ 0,0 });
+				menuBar->SetSize({ 0, 50 });
+				m_menuBar = menuBar.get();
+
+				// add map menu
+				{
+					Layer::BuildDescription cmd
+					{
+						PositionF{0, 50},
+						SizeF({200, 140}),
+						nullptr,
+						Layer::Type::Popup,
+						false
+					};
+
+					cmd.builder = [&](Widget* parent)
+						{
+							// add "select map to load" submenu
+							{
+								Layer::BuildDescription cmd
+								{
+									PositionF{190, 0},
+									SizeF({200, 200}),
+									nullptr
+								};
+
+								std::unique_ptr<MenuButton> menuButton = std::make_unique<MenuButton>(cmd);
+								menuButton->SetPosition({ 5,5 });
+								menuButton->SetSize({ 190,40 });
+								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Load...", Widget::HorizontalAlignment::Left));
+								parent->AddChild(std::move(menuButton));
+							}
+
+							// add "save" submenu
+							{
+								std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
+								menuItem->SetPosition({ 5, 50 });
+								menuItem->SetSize({ 190,40 });
+								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Save", Widget::HorizontalAlignment::Left));
+								parent->AddChild(std::move(menuItem));
+							}
+
+							// add "clear" submenu
+							{
+								std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
+								menuItem->SetPosition({ 5, 95 });
+								menuItem->SetSize({ 190,40 });
+								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Clear", Widget::HorizontalAlignment::Left));
+								parent->AddChild(std::move(menuItem));
+							}
+						};
+
+					std::unique_ptr<MenuButton> menuButton = std::make_unique<MenuButton>(cmd);
+					menuButton->SetPosition({ 5,5 });
+					menuButton->SetSize({ 100,40 });
+					menuButton->AddChild(CreateLabel({ 0,0 }, { 100,40 }, "Map"));
+					m_menuBar->AddChild(std::move(menuButton));
+				}
+
+				// add view menu
+				{
+					Layer::BuildDescription cmd
+					{
+						PositionF{0, 50},
+						SizeF({220, 185}),
+						nullptr,
+						Layer::Type::Popup,
+						false
+					};
+
+					cmd.builder = [&](Widget* parent)
+						{
+							// add "show grids" submenu
+							{
+								Layer::BuildDescription cmd
+								{
+									PositionF{190, 0},
+									SizeF({200, 200}),
+									nullptr
+								};
+
+								std::unique_ptr<MenuButton> menuButton = std::make_unique<MenuButton>(cmd);
+								menuButton->SetPosition({ 5,5 });
+								menuButton->SetSize({ 190,40 });
+								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Grids...", Widget::HorizontalAlignment::Left));
+								parent->AddChild(std::move(menuButton));
+							}
+
+							// add "show props" submenu
+							{
+								std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
+								menuItem->SetPosition({ 5, 50 });
+								menuItem->SetSize({ 190,40 });
+								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Props", Widget::HorizontalAlignment::Left));
+								parent->AddChild(std::move(menuItem));
+							}
+
+							// add "show terrain" submenu
+							{
+								std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
+								menuItem->SetPosition({ 5, 95 });
+								menuItem->SetSize({ 190,40 });
+								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Terrain", Widget::HorizontalAlignment::Left));
+								parent->AddChild(std::move(menuItem));
+							}
+
+							// add "overlays" submenu
+							{
+								Layer::BuildDescription cmd
+								{
+									PositionF{190, 0},
+									SizeF({200, 200}),
+									nullptr
+								};
+
+								std::unique_ptr<MenuButton> menuButton = std::make_unique<MenuButton>(cmd);
+								menuButton->SetPosition({ 5, 140 });
+								menuButton->SetSize({ 190,40 });
+								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Overlays...", Widget::HorizontalAlignment::Left));
+								parent->AddChild(std::move(menuButton));
+							}
+						};
+
+					std::unique_ptr<MenuButton> menuButton = std::make_unique<MenuButton>(cmd);
+					menuButton->SetPosition({ 110, 5 });
+					menuButton->SetSize({ 100,40 });
+					menuButton->AddChild(CreateLabel({ 0,0 }, { 100,40 }, "View"));
+					m_menuBar->AddChild(std::move(menuButton));
+
+				}
+
+				m_ux.AddWidget(std::move(menuBar));
+			}
+
 			if (false)
 			{
-				Overlay::BuildDescription cmd = CreateBuildDescWithCascadedOverlays(10, {100, 50}, { 0, 50 });
+				Layer::BuildDescription cmd = CreateBuildDescWithCascadedOverlays(10, {100, 50}, { 0, 50 });
 
 				PositionF pos{ 450, 100 };
 				SizeF size{ 100, 50 };
@@ -8437,18 +8757,18 @@ namespace TestMapEditor
 			{
 			//	m_ux.AddWidget(CreateOverlayTrigger({ 300, 100 }, { 100, 50 }));
 
-				Overlay::BuildDescription cmd
+				Layer::BuildDescription cmd
 				{
 					PositionF{0, 50},
 					SizeF({100, 50}),
 					nullptr
 				};
 
-				cmd.type = Overlay::Popup;
+				cmd.type = Layer::Popup;
 
 				cmd.builder = [&](Widget* parent)
 					{
-						Overlay::BuildDescription cmd
+						Layer::BuildDescription cmd
 						{
 							PositionF{0, 50},
 							SizeF({100, 50}),
@@ -8483,28 +8803,6 @@ namespace TestMapEditor
 
 				m_ux.AddWidget(std::move(widget));
 			}
-
-			//if(false)
-			//{
-			//	std::unique_ptr<Widget> dialog = CreateWidget({ 100, 250 }, { 480, 320 });
-			//	dialog->AddChild(CreateOverlayTrigger({ 50, 50 }, { 100, 50 }));
-			//	dialog->AddChild(CreateOverlayTrigger({ 200, 50 }, { 100, 50 }));
-
-			//	m_ux.AddWidget(std::move(dialog));
-
-			//}
-
-			//{
-			//	std::unique_ptr<Widget> dialog = CreateWidget({ 100, 100 }, { 480, 320 });
-			//	dialog->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
-			//	dialog->AddChild(std::move(CreateWidget({ 50, 50 }, { 100, 40 })));
-
-			//	std::unique_ptr<Widget> child = CreateWidget({ 200, 10 }, { 200, 200 });
-			//	child->AddChild(std::move(CreateWidget({ 25, 25 }, { 100, 40 })));
-			//	dialog->AddChild(std::move(child));
-
-			//	m_ux.GetRoot().AddChild(std::move(dialog));
-			//}
 		}
 
 		void OnMouseMove(int x, int y) override
@@ -8527,16 +8825,16 @@ namespace TestMapEditor
 			// if this button is clicked, move our focus in this position
 			if (btn == 2)
 			{
-				Overlay::BuildDescription cmd
+				Layer::BuildDescription cmd
 				{
 					m_mousePos,
 					SizeF({200, 400}),
 					nullptr,
-					Overlay::Popup
+					Layer::Popup
 				};
 
 				m_ux.Collapse();
-				m_ux.AddOverlay(cmd);
+				m_ux.AddLayer(cmd);
 			}
 		}
 
@@ -8584,12 +8882,12 @@ namespace TestMapEditor
 
 					button->OnClick += [&]() 
 						{
-							Overlay::BuildDescription cmd
+							Layer::BuildDescription cmd
 							{
 								PositionF{500, 250},
 								SizeF({320, 320}),
 								nullptr,
-								Overlay::Modal,
+								Layer::Modal,
 								true
 							};
 
@@ -8699,7 +8997,7 @@ namespace TestMapEditor
 									parent->AddChild(std::move(button));
 								};
 
-							m_ux.AddOverlay(cmd);
+							m_ux.AddLayer(cmd);
 						};
 
 					m_ux.AddWidget(std::move(button));
@@ -8711,96 +9009,19 @@ namespace TestMapEditor
 				}
 				break;
 			case 50: // 2
-				if (!m_dialog)
+				if (!m_menu)
 				{
-					std::unique_ptr<Widget> dialog = CreateWidget({ 100, 250 }, { 320, 240 });
-					m_dialog = dialog.get();
-
-					PositionF pos{ 25, 25 };
-					SizeF size{ 100, 50 };
-
-					Overlay::BuildDescription cmd = CreateBuildDescWithCascadedOverlays(5, size, pos);
-					std::unique_ptr<OverlayTrigger> overlayTrigger = std::make_unique<OverlayTrigger>(cmd);
-					overlayTrigger->SetPosition(pos);
-					overlayTrigger->SetSize(size);
-					dialog->AddChild(std::move(overlayTrigger));
-
-					{
-						Overlay::BuildDescription cmd
-						{
-							PositionF{0, 50},
-							SizeF({200, 200}),
-							nullptr
-						};
-
-						cmd.builder = [&](Widget* parent)
-							{
-								Overlay::BuildDescription cmd2
-								{
-									PositionF{200, 0},
-									SizeF({200, 200}),
-									nullptr
-								};
-
-								cmd2.builder = [&](Widget* parent)
-									{
-										Overlay::BuildDescription cmd3
-										{
-											PositionF{200, 0},
-											SizeF({200, 200}),
-											nullptr
-										};
-
-										PositionF pos{ 10, 10 };
-										SizeF size{ 180, 50 };
-
-										std::unique_ptr<OverlayTrigger> trigger3 = std::make_unique<OverlayTrigger>(cmd3);
-										trigger3->SetPosition(pos);
-										trigger3->SetSize(size);
-										parent->AddChild(std::move(trigger3));
-
-										std::unique_ptr<Widget> widget3 = std::make_unique<Widget>();
-										widget3->SetPosition({ 10, 60 });
-										widget3->SetSize({ 100, 50 });
-										parent->AddChild(std::move(widget3));
-									};
-
-								PositionF pos{ 10, 10 };
-								SizeF size{ 180, 50 };
-
-								std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd2);
-								widget->SetPosition({ 10, 10 });
-								widget->SetSize({ 180, 50 });
-								parent->AddChild(std::move(widget));
-
-								widget = std::make_unique<OverlayTrigger>(cmd2);
-								widget->SetPosition({ 10, 60 });
-								widget->SetSize({ 180, 50 });
-								parent->AddChild(std::move(widget));
-							};
-
-						PositionF pos{ 150, 25 };
-						SizeF size{ 100, 50 };
-
-						std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
-						widget->SetPosition(pos);
-						widget->SetSize(size);
-
-						dialog->AddChild(std::move(widget));
-					}
-
-					m_ux.AddWidget(std::move(dialog));
 				}
 				else
 				{
-					m_ux.RemoveWidget(m_dialog);
-					m_dialog = nullptr;
+					m_ux.RemoveWidget(m_menu);
+					m_menu = nullptr;
 				}
 				break;
 			case 51: // 3 
 				if (!m_multiOverlayTrigger)
 				{
-					Overlay::BuildDescription cmd
+					Layer::BuildDescription cmd
 					{
 						PositionF{0, 50},
 						SizeF({200, 200}),
@@ -8809,7 +9030,7 @@ namespace TestMapEditor
 
 					cmd.builder = [&](Widget* parent)
 						{
-							Overlay::BuildDescription cmd
+							Layer::BuildDescription cmd
 							{
 								PositionF{200, 0},
 								SizeF({200, 200}),
@@ -8857,32 +9078,32 @@ namespace TestMapEditor
 			case 52: // 4
 				if (!m_multiModalTrigger)
 				{
-					Overlay::BuildDescription cmd
+					Layer::BuildDescription cmd
 					{
 						PositionF{0, 50},
 						SizeF({200, 200}),
 						nullptr,
-						Overlay::Popup
+						Layer::Popup
 					};
 
 					cmd.builder = [](Widget* parent)
 						{
-							Overlay::BuildDescription cmd2
+							Layer::BuildDescription cmd2
 							{
 								PositionF{200, 10},
 								SizeF({200, 200}),
 								nullptr,
-								Overlay::Modal
+								Layer::Modal
 							};
 
 							cmd2.builder = [](Widget* parent)
 								{
-									Overlay::BuildDescription cmd3
+									Layer::BuildDescription cmd3
 									{
 										PositionF{200, 10},
 										SizeF({200, 200}),
 										nullptr,
-										Overlay::Popup
+										Layer::Popup
 									};
 
 									std::unique_ptr<OverlayTrigger> widget3 = std::make_unique<OverlayTrigger>(cmd3);
@@ -8913,16 +9134,16 @@ namespace TestMapEditor
 				break;
 			case 53: // 5
 			{
-				Overlay::BuildDescription cmd
+				Layer::BuildDescription cmd
 				{
 					PositionF{300, 300},
 					SizeF({300, 300}),
 					nullptr,
-					Overlay::Modal
+					Layer::Modal
 				};
 
 				m_ux.Collapse();
-				m_ux.AddOverlay(cmd);
+				m_ux.AddLayer(cmd);
 
 				break;
 			}
@@ -9013,6 +9234,7 @@ namespace TestMapEditor
 		void OnResize(size_t width, size_t height) override
 		{
 			m_ux.SetSize({ static_cast<float>(width), static_cast<float>(height) });
+			m_menuBar->SetSize({ static_cast<float>(width), m_menuBar->GetSize().height });
 		}
 
 
