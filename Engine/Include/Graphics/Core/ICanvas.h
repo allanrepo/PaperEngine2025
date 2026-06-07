@@ -24,6 +24,9 @@ namespace engine::graphics
         virtual void SetViewPort() = 0;
 		virtual engine::math::RectF GetViewPort() const = 0;
 
+        virtual bool SetFullscreen(bool fullscreen) = 0;
+        virtual bool IsFullScreen() const = 0;
+
         virtual std::string GetTypeName() const = 0;
     };
 }

@@ -7372,7 +7372,6 @@ namespace TestMapEditor
 	class UISystem
 	{
 	private:
-		//Root m_layoutTree;
 		LayerManager m_layerManager;
 		TooltipManager m_tooltipManager;
 		DragDropLayer	m_DragDropLayer;
@@ -7482,7 +7481,7 @@ namespace TestMapEditor
 				SizeF{0, 0},
 				nullptr,
 				Layer::Modal,
-				true
+				false
 			};
 			m_layerManager.QueueAdd(root);
 
@@ -9082,6 +9081,7 @@ namespace TestMapEditor
 		int m_imageState = 0;
 		UISystem m_ux;
 		Button* m_button = nullptr;
+		bool m_fullscreen = false;
 
 		bool m_showProp = false;
 		bool m_showTerrain = false;
@@ -9480,7 +9480,19 @@ namespace TestMapEditor
 				m_ux.Collapse();
 				break;
 			case 32: // SPACE
+			{
+				AssetManager assets;
+				ICanvas& canvas = assets.Get<ICanvas>("canvas");
+				IWindow& window = assets.Get<IWindow>("window");
+
+				bool fullscreen = canvas.IsFullScreen() && window.IsFullScreen();
+
+				window.SetFullscreen(!fullscreen);
+				canvas.SetFullscreen(!fullscreen);
+
 				break;
+
+			}
 			case 49: // 1
 				if (!m_button)
 				{

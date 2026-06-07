@@ -50,6 +50,16 @@ engine::math::RectF engine::graphics::Canvas::GetViewPort() const
 	return impl->GetViewPort();
 }
 
+bool engine::graphics::Canvas::SetFullscreen(bool fullscreen)
+{
+    return impl->SetFullscreen(fullscreen);
+}
+
+bool engine::graphics::Canvas::IsFullScreen() const
+{
+    return impl->IsFullScreen();
+}
+
 std::string engine::graphics::Canvas::GetTypeName() const
 {
     return impl->GetTypeName();

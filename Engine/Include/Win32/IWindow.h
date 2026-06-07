@@ -19,6 +19,8 @@ namespace engine::win32
 		virtual void GetClientSize(int& width, int& height) const = 0;
 
 		virtual void SetFullscreen(bool fullscreen) = 0;
+		virtual bool IsFullScreen() const = 0;
+
 
 		virtual void ShowCursor(bool show) = 0;
 	};

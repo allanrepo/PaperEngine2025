@@ -153,6 +153,13 @@ void engine::win32::WindowBase::SetFullscreen(bool fullscreen)
 	}
 }
 
+bool engine::win32::WindowBase::IsFullScreen() const
+{
+	LONG style = GetWindowLong(m_hWnd, GWL_STYLE);
+	bool isBorderless = (style & WS_POPUP) && !(style & WS_OVERLAPPEDWINDOW);
+	return isBorderless;
+}
+
 
 LRESULT CALLBACK engine::win32::WindowBase::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {

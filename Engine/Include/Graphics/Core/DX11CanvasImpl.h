@@ -63,6 +63,9 @@ namespace engine::graphics::dx11
 		// Retrieves the current viewport rectangle
         engine::math::RectF GetViewPort() const override final;
 
+        bool SetFullscreen(bool fullscreen) override final;
+        bool IsFullScreen() const override final;
+
         // this class means it is implemented with directx 11
         static constexpr const char* TypeName = "DirectX11";
         virtual std::string GetTypeName() const override

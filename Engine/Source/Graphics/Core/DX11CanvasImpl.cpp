@@ -219,3 +219,20 @@ engine::math::RectF engine::graphics::dx11::DX11CanvasImpl::GetViewPort() const
 		viewport.TopLeftY + viewport.Height
     };
 }
+
+bool engine::graphics::dx11::DX11CanvasImpl::SetFullscreen(bool fullscreen)
+{
+    if (!swapChain) return false;
+    HRESULT hr = swapChain->SetFullscreenState(fullscreen, nullptr);
+    return SUCCEEDED(hr);
+}
+
+bool engine::graphics::dx11::DX11CanvasImpl::IsFullScreen() const
+{
+    BOOL isFullscreen = FALSE;
+    if (swapChain)
+    {
+        swapChain->GetFullscreenState(&isFullscreen, nullptr);
+    };
+    return isFullscreen;
+}
