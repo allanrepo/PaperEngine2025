@@ -65,6 +65,8 @@ namespace TestMapEditor
 	class MenuItem;
 	class Thumb;
 	class Slider;
+	class CheckBox;
+	class RadioButton;
 #pragma endregion
 
 #pragma region // namespaces
@@ -5644,6 +5646,8 @@ namespace TestMapEditor
 		virtual void DrawSubMenuButton(const SubMenuButton& subMenuButton, const UIDrawContext& context) const = 0;
 		virtual void DrawSlider(const Slider& slider, const UIDrawContext& context) const = 0;
 		virtual void DrawThumb(const Thumb& thumb, const UIDrawContext& context) const = 0;
+		virtual void DrawCheckBox(const CheckBox& checkbox, const UIDrawContext& context) const = 0;
+		virtual void DrawRadioButton(const RadioButton& radiobutton, const UIDrawContext& context) const = 0;
 	};
 #pragma endregion
 
@@ -7960,6 +7964,60 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
+#pragma region // BoundRef
+
+	template<typename T>
+	class BoundRef
+	{
+	private:
+		T m_internal{};   // fallback storage
+		T* m_ptr = nullptr; // external binding
+
+	public:
+		void Bind(T& external)
+		{
+			m_ptr = &external;
+		}
+
+		void Unbind()
+		{
+			m_ptr = nullptr;
+		}
+
+		T Get() const
+		{
+			return m_ptr ? *m_ptr : m_internal;
+		}
+
+		void Set(const T& value)
+		{
+			if (m_ptr)
+				*m_ptr = value;
+			else
+				m_internal = value;
+		}
+
+		bool IsBound() const { return m_ptr != nullptr; }
+
+		void operator = (const T& v)
+		{
+			Set(v);
+		}
+
+		operator T() const
+		{
+			return Get();
+		}
+
+		BoundRef& operator = (const BoundRef& other)
+		{
+			Set(other.Get());
+			return *this;
+		}
+
+	};
+#pragma endregion
+
 #pragma region // gui controls
 	class Image : public Widget
 	{
@@ -8242,10 +8300,6 @@ namespace TestMapEditor
 		}
 	};
 	
-	// design consideration:
-	// - has tooltip
-	// - cannot be dragged or moved
-	// - responds to mouse click 
 	class Button : public Widget
 	{
 	private:
@@ -8637,6 +8691,88 @@ namespace TestMapEditor
 		}
 	};
 
+	class Switch: public Widget
+	{
+	private:
+		BoundRef<bool> m_checked;
+		bool m_pressed;
+
+	public:
+		Switch():
+			m_pressed(false)
+		{
+			m_moveBehavior = MoveBehavior::None;
+		}
+
+		event::Event<bool> OnClick;
+
+		void Bind(bool& checked)
+		{
+			m_checked.Bind(checked);
+		}
+
+		void Toggle()
+		{
+			m_checked = !m_checked;
+		}
+
+		void OnMouseDown(const PositionF& position) override
+		{
+			m_pressed = true;
+		}
+
+		bool IsOn() const
+		{
+			return m_checked;
+		}
+
+		void OnMouseUp(const PositionF& position) override
+		{
+			if (!m_pressed) return;
+
+			m_pressed = false;
+
+			// did the mouse release occur over this button? if not, then this mouse up is not for us. ignore
+			if (!Contains(position)) return;
+
+			Toggle();
+
+			// handle click event
+			OnClick(m_checked);
+		}
+	};
+
+	class CheckBox : public Switch
+	{
+	private:
+
+	public:
+		CheckBox()
+		{
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawCheckBox(*this, context);
+		}
+	};
+
+	class RadioButton : public Switch
+	{
+	private:
+
+	public:
+		RadioButton()
+		{
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawRadioButton(*this, context);
+		}
+	};
+
+
 #pragma endregion
 
 #pragma region // UI theme/skin
@@ -8908,8 +9044,25 @@ namespace TestMapEditor
 			}
 		}
 
+		void DrawCheckBox(const CheckBox& checkbox, const UIDrawContext& context) const override
+		{
 
+		}
 
+		void DrawRadioButton(const RadioButton& radiobutton, const UIDrawContext& context) const override
+		{
+			PositionF pos = radiobutton.GetAbsolutePosition();
+			SizeF size = radiobutton.GetSize();
+
+			context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+			context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 0.5f,0.5f,0.5f,1 }, 0);
+
+			if (radiobutton.IsOn())
+			{
+				context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 6, 6 }, { 0,0,0,1 }, 0);
+			}
+			
+		}
 	};
 
 #pragma endregion
@@ -8929,6 +9082,11 @@ namespace TestMapEditor
 		int m_imageState = 0;
 		UISystem m_ux;
 		Button* m_button = nullptr;
+
+		bool m_showProp = false;
+		bool m_showTerrain = false;
+		bool m_showFineGrid = false;
+		bool m_showTileGrid = false;
 
 		Widget* m_controlDialog = nullptr;
 		Widget* m_testDialog = nullptr;
@@ -9135,11 +9293,59 @@ namespace TestMapEditor
 								Layer::BuildDescription cmd
 								{
 									PositionF{190, 0},
-									SizeF({200, 200}),
+									SizeF({200, 95}),
 									nullptr,
 									Layer::Type::Menu,
 									false
 								};
+
+								cmd.builder = [&](Widget* parent)
+									{
+										// add show tile grid menuitem
+										{
+											std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
+											menuItem->SetPosition({ 5, 5 });
+											menuItem->SetSize({ 190,40 });
+											menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Tile", Widget::HorizontalAlignment::Left));
+
+											std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
+											radioButton->SetPosition({ 10, 10 });
+											radioButton->SetSize({ 20, 20 });
+											radioButton->Bind(m_showTileGrid);
+											RadioButton* rb = radioButton.get();
+
+											menuItem->OnClick += [&, rb]()
+												{
+													rb->Toggle();
+												};
+
+											menuItem->AddChild(std::move(radioButton));
+											parent->AddChild(std::move(menuItem));
+										}
+
+										// add show fine grid menuitem
+										{
+											std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
+											menuItem->SetPosition({ 5, 50 });
+											menuItem->SetSize({ 190,40 });
+											menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Fine", Widget::HorizontalAlignment::Left));
+
+											std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
+											radioButton->SetPosition({ 10, 10 });
+											radioButton->SetSize({ 20, 20 });
+											radioButton->Bind(m_showFineGrid);
+											RadioButton* rb = radioButton.get();
+
+											menuItem->OnClick += [&, rb]()
+												{
+													rb->Toggle();
+												};
+
+											menuItem->AddChild(std::move(radioButton));
+											parent->AddChild(std::move(menuItem));
+										}
+									};
+		
 
 								std::unique_ptr<SubMenuButton> menuButton = std::make_unique<SubMenuButton>(cmd);
 								menuButton->SetPosition({ 5,5 });
@@ -9154,6 +9360,19 @@ namespace TestMapEditor
 								menuItem->SetPosition({ 5, 50 });
 								menuItem->SetSize({ 190,40 });
 								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Props", Widget::HorizontalAlignment::Left));
+
+								std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
+								radioButton->SetPosition({ 10, 10 });
+								radioButton->SetSize({ 20, 20 });
+								radioButton->Bind(m_showProp);
+								RadioButton* rb = radioButton.get();
+
+								menuItem->OnClick += [&, rb]()
+									{
+										rb->Toggle();
+									};
+
+								menuItem->AddChild(std::move(radioButton));
 								parent->AddChild(std::move(menuItem));
 							}
 
@@ -9163,6 +9382,19 @@ namespace TestMapEditor
 								menuItem->SetPosition({ 5, 95 });
 								menuItem->SetSize({ 190,40 });
 								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Terrain", Widget::HorizontalAlignment::Left));
+
+								std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
+								radioButton->SetPosition({ 10, 10 });
+								radioButton->SetSize({ 20, 20 });
+								radioButton->Bind(m_showTerrain);
+								RadioButton* rb = radioButton.get();
+
+								menuItem->OnClick += [&, rb]()
+									{
+										rb->Toggle();
+									};
+
+								menuItem->AddChild(std::move(radioButton));
 								parent->AddChild(std::move(menuItem));
 							}
 

@@ -34,6 +34,8 @@ namespace engine::win32
 		virtual void SetClientSize(int width, int height) override final;
 		virtual void GetClientSize(int& width, int& height) const override final;
 
+		void SetFullscreen(bool fullscreen) override final;
+
 		void ShowCursor(bool show) override final;
 	};
 

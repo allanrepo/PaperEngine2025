@@ -141,6 +141,18 @@ void engine::win32::WindowBase::GetClientSize(int& width, int& height) const
 	}
 }
 
+void engine::win32::WindowBase::SetFullscreen(bool fullscreen)
+{
+	if (fullscreen)
+	{
+		SetWindowLong(m_hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+	}
+	else
+	{
+		SetWindowLong(m_hWnd, GWL_STYLE, WS_OVERLAPPEDWINDOW | WS_VISIBLE);
+	}
+}
+
 
 LRESULT CALLBACK engine::win32::WindowBase::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
