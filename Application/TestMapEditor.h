@@ -7972,10 +7972,23 @@ namespace TestMapEditor
 		T m_internal{};   // fallback storage
 		T* m_ptr = nullptr; // external binding
 
+		std::function<T()> m_getter;
+		std::function<void(const T&)> m_setter;
+
 	public:
 		void Bind(T& external)
 		{
 			m_ptr = &external;
+		}
+
+		void Bind(
+			std::function<T()> getter,
+			std::function<void(const T&)> setter
+		)
+		{
+			m_ptr = nullptr;
+			m_getter = std::move(getter);
+			m_setter = std::move(setter);
 		}
 
 		void Unbind()
@@ -7985,15 +7998,28 @@ namespace TestMapEditor
 
 		T Get() const
 		{
-			return m_ptr ? *m_ptr : m_internal;
+			if (m_ptr) return *m_ptr;
+
+			if (m_getter) return m_getter();
+
+			return m_internal;
 		}
 
 		void Set(const T& value)
 		{
 			if (m_ptr)
+			{
 				*m_ptr = value;
-			else
-				m_internal = value;
+				return;
+			}
+
+			if (m_setter)
+			{
+				m_setter(value);
+				return;
+			}
+
+			m_internal = value;
 		}
 
 		bool IsBound() const { return m_ptr != nullptr; }
@@ -8710,9 +8736,27 @@ namespace TestMapEditor
 			m_checked.Bind(checked);
 		}
 
+		void Bind(
+			std::function<bool()> getter,
+			std::function<void(const bool&)> setter
+		)
+		{
+			m_checked.Bind(getter, setter);
+		}
+
 		void Toggle()
 		{
 			m_checked = !m_checked;
+		}
+
+		void TurnOn()
+		{
+			if (!m_checked) m_checked = true;
+		}
+
+		void TurnOff()
+		{
+			if (m_checked) m_checked = false;
 		}
 
 		void OnMouseDown(const PositionF& position) override
@@ -8770,8 +8814,6 @@ namespace TestMapEditor
 			if (context.skin) context.skin->DrawRadioButton(*this, context);
 		}
 	};
-
-
 #pragma endregion
 
 #pragma region // UI theme/skin
@@ -9015,7 +9057,6 @@ namespace TestMapEditor
 
 			context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
 			context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 0.5f,0.5f,0.5f,1 }, 0);
-
 		}
 
 		void DrawThumb(const Thumb& thumb, const UIDrawContext& context) const override
@@ -9424,6 +9465,150 @@ namespace TestMapEditor
 					m_menuBar->AddChild(std::move(menuButton));
 				}
 
+				// add settings view
+				{
+					Layer::BuildDescription cmd
+					{
+						PositionF{0, 40},
+						SizeF({220, 185}),
+						nullptr,
+						Layer::Type::Menu,
+						false
+					};
+
+					cmd.builder = [&](Widget* parent)
+						{
+							// add "Display" submenu
+							{
+								Layer::BuildDescription cmd
+								{
+									PositionF{190, 0},
+									SizeF({250, 140}),
+									nullptr,
+									Layer::Type::Menu,
+									false
+								};
+
+								cmd.builder = [&](Widget* parent)
+									{
+										AssetManager assets;
+										ICanvas& canvas = assets.Get<ICanvas>("canvas");
+										IWindow& window = assets.Get<IWindow>("window");
+
+										// add show full screen menuitem
+										{
+											std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
+											menuItem->SetPosition({ 5, 5 });
+											menuItem->SetSize({ 225,40 });
+											menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Full Screen", Widget::HorizontalAlignment::Left));
+
+											std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
+											radioButton->SetPosition({ 10, 10 });
+											radioButton->SetSize({ 20, 20 });
+											RadioButton* rb = radioButton.get();
+											radioButton->Bind([&]()
+												{
+													// both window and canvas is full screen
+													return canvas.IsFullScreen() && window.IsFullScreen();
+												},
+												[&](const bool& state)
+												{
+													// set both window and canvas as full screen
+													window.SetFullscreen(state);
+													canvas.SetFullscreen(state);
+												});
+
+											menuItem->OnClick += [&, rb]()
+												{
+													rb->TurnOn();
+												};
+
+											menuItem->AddChild(std::move(radioButton));
+											parent->AddChild(std::move(menuItem));
+										}
+
+										// add show borderless window menuitem
+										{
+											std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
+											menuItem->SetPosition({ 5, 50 });
+											menuItem->SetSize({ 225,40 });
+											menuItem->AddChild(CreateLabel({ 50,0 }, { 180,40 }, "Borderless Window", Widget::HorizontalAlignment::Left));
+
+											std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
+											radioButton->SetPosition({ 10, 10 });
+											radioButton->SetSize({ 20, 20 });
+											RadioButton* rb = radioButton.get();
+											radioButton->Bind([&]()
+												{
+													// window is full screen but canvas is not
+													return !canvas.IsFullScreen() && window.IsFullScreen();
+												},
+												[&](const bool& state)
+												{
+													// set both window and canvas as full screen
+													window.SetFullscreen(state);
+													canvas.SetFullscreen(!state);
+												});
+
+											menuItem->OnClick += [&, rb]()
+												{
+													rb->TurnOn();
+												};
+
+											menuItem->AddChild(std::move(radioButton));
+											parent->AddChild(std::move(menuItem));
+										}
+
+
+										// add show fine grid menuitem
+										{
+											std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
+											menuItem->SetPosition({ 5, 95 });
+											menuItem->SetSize({ 225,40 });
+											menuItem->AddChild(CreateLabel({ 50,0 }, { 180,40 }, "Windowed", Widget::HorizontalAlignment::Left));
+
+											std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
+											radioButton->SetPosition({ 10, 10 });
+											radioButton->SetSize({ 20, 20 });
+											RadioButton* rb = radioButton.get();
+											radioButton->Bind([&]()
+												{
+													// both window and canvas not full screen
+													return !canvas.IsFullScreen() && !window.IsFullScreen();
+												},
+												[&](const bool& state)
+												{
+													// set both window and canvas as full screen
+													window.SetFullscreen(!state);
+													canvas.SetFullscreen(!state);
+												});
+
+											menuItem->OnClick += [&, rb]()
+												{
+													rb->TurnOn();
+												};
+
+											menuItem->AddChild(std::move(radioButton));
+											parent->AddChild(std::move(menuItem));
+										}
+									};
+
+
+								std::unique_ptr<SubMenuButton> menuButton = std::make_unique<SubMenuButton>(cmd);
+								menuButton->SetPosition({ 5,5 });
+								menuButton->SetSize({ 190,40 });
+								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Display...", Widget::HorizontalAlignment::Left));
+								parent->AddChild(std::move(menuButton));
+							}
+						};
+
+					std::unique_ptr<MenuButton> menuButton = std::make_unique<MenuButton>(cmd);
+					menuButton->SetPosition({ 220, 5 });
+					menuButton->SetSize({ 100,40 });
+					menuButton->AddChild(CreateLabel({ 0,0 }, { 100,40 }, "Settings"));
+					m_menuBar->AddChild(std::move(menuButton));
+				}
+
 				m_ux.AddWidget(std::move(menuBar));
 			}
 		}
@@ -9485,13 +9670,15 @@ namespace TestMapEditor
 				ICanvas& canvas = assets.Get<ICanvas>("canvas");
 				IWindow& window = assets.Get<IWindow>("window");
 
+				bool _fullscreen = canvas.IsFullScreen();
+				bool windowFullScreen = window.IsFullScreen();
+
 				bool fullscreen = canvas.IsFullScreen() && window.IsFullScreen();
 
 				window.SetFullscreen(!fullscreen);
 				canvas.SetFullscreen(!fullscreen);
 
 				break;
-
 			}
 			case 49: // 1
 				if (!m_button)

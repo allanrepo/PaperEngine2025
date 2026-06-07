@@ -145,6 +145,19 @@ void engine::win32::WindowBase::SetFullscreen(bool fullscreen)
 {
 	if (fullscreen)
 	{
+		MONITORINFO mi = { sizeof(mi) };
+		GetMonitorInfo(MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTOPRIMARY), &mi);
+
+		SetWindowPos(
+			m_hWnd,
+			HWND_TOP,
+			mi.rcMonitor.left,
+			mi.rcMonitor.top,
+			mi.rcMonitor.right - mi.rcMonitor.left,
+			mi.rcMonitor.bottom - mi.rcMonitor.top,
+			SWP_FRAMECHANGED | SWP_SHOWWINDOW
+		);
+
 		SetWindowLong(m_hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
 	}
 	else
@@ -155,9 +168,18 @@ void engine::win32::WindowBase::SetFullscreen(bool fullscreen)
 
 bool engine::win32::WindowBase::IsFullScreen() const
 {
+	// check window style to determine if it's borderless or not
 	LONG style = GetWindowLong(m_hWnd, GWL_STYLE);
 	bool isBorderless = (style & WS_POPUP) && !(style & WS_OVERLAPPEDWINDOW);
-	return isBorderless;
+
+	// check if application fill the whole monitor or not
+	RECT windowRect;
+	GetWindowRect(m_hWnd, &windowRect);
+	MONITORINFO mi = { sizeof(mi) };
+	GetMonitorInfo(MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTOPRIMARY), &mi);
+	bool coversMonitor = EqualRect(&windowRect, &mi.rcMonitor);
+
+	return coversMonitor && isBorderless;
 }
 
 
