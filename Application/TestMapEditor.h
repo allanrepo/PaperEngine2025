@@ -50,6 +50,21 @@ namespace TestMapEditor
 	class PropPlacementTool;
 	class PropMap;
 	class WorldMap;
+
+	class OverlayTrigger;
+	class UISystem;
+	class LayerStack;
+	class Widget;
+	struct UIDrawContext;
+	class Layer;
+	class Frame;
+	class Tooltip;
+	class Draggable;
+	class MenuButton;
+	class SubMenuButton;
+	class MenuItem;
+	class Thumb;
+	class Slider;
 #pragma endregion
 
 #pragma region // namespaces
@@ -5611,39 +5626,7 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#pragma region // Widget
-	// features
-	//	- widget tree system
-	//  - z order management
-	//	- mouse routing
-	//	- get top child
-	//	- bring child to front
-	//  - absolute position
-	//	- intersect check
-	//	- child iteration
-	// 
-	// states
-	//	- visibility
-	//	- movability
-	// 
-	// behavior
-	//	- focusable
-	//	- movable
-	//	- mouse capturable
-	// 
-	//
-	class OverlayTrigger;
-	class UISystem;
-	class LayerStack;
-	class Widget;
-	struct UIDrawContext;
-	class Layer;
-	class Frame;
-	class Tooltip;
-	class Draggable;
-	class MenuButton;
-	class MenuItem;
-
+#pragma region // UISkin
 	class UISkin
 	{
 	public:
@@ -5658,8 +5641,13 @@ namespace TestMapEditor
 		virtual void DrawDraggable(const Draggable& draggable, const UIDrawContext& context) const = 0;
 		virtual void DrawMenuButton(const MenuButton& menuButton, const UIDrawContext& context) const = 0;
 		virtual void DrawMenuItem(const MenuItem& menuItem, const UIDrawContext& context) const = 0;
+		virtual void DrawSubMenuButton(const SubMenuButton& subMenuButton, const UIDrawContext& context) const = 0;
+		virtual void DrawSlider(const Slider& slider, const UIDrawContext& context) const = 0;
+		virtual void DrawThumb(const Thumb& thumb, const UIDrawContext& context) const = 0;
 	};
+#pragma endregion
 
+#pragma region // UIDrawContext
 	struct UIDrawContext
 	{
 		IRenderer& renderer;
@@ -5669,10 +5657,68 @@ namespace TestMapEditor
 		Widget* focus = nullptr;
 		Widget* capture = nullptr;
 	};
+#pragma endregion
 
+#pragma region // Widget
 	class Widget
 	{
 	private:
+#pragma region // DragController
+		// --------------------------------------------------------------------------------
+		// DRAG MANAGEMENT
+		// --------------------------------------------------------------------------------
+		friend class DragHandler;
+		class DragHandler
+		{
+		private:
+			// widget dragging trackers
+			PositionF m_beginMousePosition;
+			PositionF m_beginMovePosition;
+			bool m_isMoving = false;
+
+		public:
+			void Begin(const PositionF& position, Widget* widget)
+			{
+				// if not movable, bail out
+				if (widget->m_moveBehavior == MoveBehavior::None) return;
+
+				// remember this mouse position. this will be the pivot position as this widget gets dragged around by mouse
+				m_beginMousePosition = position;
+
+				// remember the widget's position now. this will be the reference position as it gets dragged around by mouse
+				m_beginMovePosition = widget->GetPosition();
+
+				// this widget is now moving
+				m_isMoving = true;
+			}
+
+			void Update(const PositionF& position, Widget* widget)
+			{
+				if (m_isMoving)
+				{
+					// calculate the mouse movement delta between its position at start of mouse drag and its position now
+					// factor in the move state - free? horizontal? vertical?
+					VecF delta =
+					{
+						// if we can move horizontally, use the mouse position. otherwise, use begin position
+						(widget->m_moveBehavior & MoveBehavior::Horizontal) ? position.x - m_beginMousePosition.x : 0.0f,
+
+						// if we can move vertically, use the mouse position. otherwise, use begin position
+						(widget->m_moveBehavior & MoveBehavior::Vertical) ? position.y - m_beginMousePosition.y : 0.0f
+					};
+
+					// transform widget's position based on mouse movement delta
+					widget->SetPosition(m_beginMovePosition + delta);
+				}
+			}
+
+			void End(const PositionF& position, Widget* widget)
+			{
+				m_isMoving = false;
+			}
+		};
+#pragma endregion
+
 		bool UnregisterToSystemInternal();
 
 		bool RegisterToSystemInternal()
@@ -5709,7 +5755,6 @@ namespace TestMapEditor
 		// states
 		bool m_visible = true;
 		bool m_enabled = true;
-		bool m_isMoving = false;
 
 		// behavior
 		bool m_focusable = true;
@@ -5720,9 +5765,8 @@ namespace TestMapEditor
 		// tooltip support
 		std::function<void(Widget&, Widget&)> m_tooltipBuilder;
 
-		// widget dragging trackers
-		PositionF m_beginMousePosition;
-		PositionF m_beginMovePosition;
+		// widget dragging tracker
+		DragHandler m_dragHandler;
 
 		// --------------------------------------------------------------------------------
 		// SYSTEM 
@@ -6199,22 +6243,12 @@ namespace TestMapEditor
 			// let derived widget handle mouse down event first
 			OnMouseDown(position);
 
-			// if not movable, bail out
-			if (m_moveBehavior == MoveBehavior::None) return;
-
-			// remember this mouse position. this will be the pivot position as this widget gets dragged around by mouse
-			m_beginMousePosition = position;
-
-			// remember the widget's position now. this will be the reference position as it gets dragged around by mouse
-			m_beginMovePosition = m_position;
-
-			// this widget is now moving
-			m_isMoving = true;
+			m_dragHandler.Begin(position, this);
 		}
 
 		void MouseUp(const PositionF& position)
 		{
-			if (m_moveBehavior != MoveBehavior::None) m_isMoving = false;
+			m_dragHandler.End(position, this);
 
 			// now we handle mouse up event after we set its to state to NOT moving
 			OnMouseUp(position);
@@ -6222,28 +6256,10 @@ namespace TestMapEditor
 
 		void MouseMove(const PositionF& position)
 		{
-			if (m_isMoving)
-			{
-				// if not movable, bail out
-				if (m_moveBehavior == MoveBehavior::None) return;
+			m_dragHandler.Update(position, this);
 
-				// calculate the mouse movement delta between its position at start of mouse drag and its position now
-				// factor in the move state - free? horizontal? vertical?
-				VecF delta =
-				{
-					// if we can move horizontally, use the mouse position. otherwise, use begin position
-					(m_moveBehavior & MoveBehavior::Horizontal) ? position.x - m_beginMousePosition.x : 0.0f,
-
-					// if we can move vertically, use the mouse position. otherwise, use begin position
-					(m_moveBehavior & MoveBehavior::Vertical) ? position.y - m_beginMousePosition.y : 0.0f
-				};
-
-				// transform widget's position based on mouse movement delta
-				SetPosition(m_beginMovePosition + delta);
-
-				// handle this mouse event after this widget updates its position from mouse move
-				OnMouseMove(position);
-			}
+			// handle this mouse event after this widget updates its position from mouse move
+			OnMouseMove(position);
 		}
 
 		void MouseEnter()
@@ -6491,7 +6507,9 @@ namespace TestMapEditor
 		enum Type
 		{
 			Popup,
-			Modal
+			Modal,
+			Menu,
+			SubMenu
 		};
 
 	private:
@@ -6536,6 +6554,21 @@ namespace TestMapEditor
 		bool IsModal() const
 		{
 			return m_type == Type::Modal;
+		}
+
+		bool IsMenu() const
+		{
+			return m_type == Type::Menu;
+		}
+
+		bool IsPopup() const
+		{
+			return m_type == Type::Popup;
+		}
+
+		Type GetType() const
+		{
+			return m_type;
 		}
 
 		void Draw(const UIDrawContext& context) const override
@@ -6790,6 +6823,21 @@ namespace TestMapEditor
 			return result;
 		}
 
+		bool IsExpanded(const Widget* owner) const
+		{
+			// check if any active overlay is owned by given owner
+			for (int i = 0; i < m_layers.size(); i++)
+			{
+				// if this widget is an owner of existing overlay, then overlay is active. 
+				if (m_layers[i].get()->GetOwner() == owner)
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
 	};
 
 	class LayerManager
@@ -6990,6 +7038,11 @@ namespace TestMapEditor
 			}
 
 			return m_stack.Bottom();
+		}
+
+		bool IsExpanded(const Widget* owner) const
+		{
+			return m_stack.IsExpanded(owner);
 		}
 	};
 
@@ -7316,7 +7369,7 @@ namespace TestMapEditor
 	{
 	private:
 		//Root m_layoutTree;
-		LayerManager m_overlayManager;
+		LayerManager m_layerManager;
 		TooltipManager m_tooltipManager;
 		DragDropLayer	m_DragDropLayer;
 
@@ -7359,7 +7412,7 @@ namespace TestMapEditor
 
 		Widget& Root() const
 		{
-			return m_overlayManager.Bottom();
+			return m_layerManager.Bottom();
 		}
 
 	public:
@@ -7387,7 +7440,7 @@ namespace TestMapEditor
 			// update all widgets if font changed as they may need to recalculate their layout based on new font
 			if (fontChanged)
 			{
-				m_overlayManager.ForEach([](Widget* widget)
+				m_layerManager.ForEach([](Widget* widget)
 					{
 						widget->ForEachWidget([](Widget* widget)
 							{
@@ -7415,7 +7468,7 @@ namespace TestMapEditor
 
 		UISystem() :
 			//m_layoutTree(this),
-			m_overlayManager(this),
+			m_layerManager(this),
 			m_DragDropLayer(this)
 		{
 			// define build for root layer and queue on layer manager
@@ -7427,10 +7480,10 @@ namespace TestMapEditor
 				Layer::Modal,
 				true
 			};
-			m_overlayManager.QueueAdd(root);
+			m_layerManager.QueueAdd(root);
 
 			// build the root layer
-			m_overlayManager.ProcessCommandRequests();
+			m_layerManager.ProcessCommandRequests();
 		}
 
 		void SetSize(const SizeF& size)
@@ -7456,7 +7509,7 @@ namespace TestMapEditor
 			context.focus = m_focus;
 
 			// draw overlays
-			m_overlayManager.ForEach([&](Widget* widget)
+			m_layerManager.ForEach([&](Widget* widget)
 				{
 					UIRenderer::Draw(context, *widget);
 				});
@@ -7538,16 +7591,16 @@ namespace TestMapEditor
 		//
 		void MouseDown(const PositionF& p)
 		{
-			m_overlayManager.FlushCommands();
+			m_layerManager.FlushCommands();
 
 			// find top overlay that intersects with point. overlay must be visible and enabled
-			LayerStack::Route result = m_overlayManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+			LayerStack::Route result = m_layerManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 
 			// check if result says we're block by modal. this means that a modal layer exist and did not intersect with point and this blocks search to succeeding layer stack
 			if (result.isBlockedByModal)
 			{
 				// if block by modal, collapse above it. we should not collapse modals. it should only be collapsed via command
-				m_overlayManager.CollapseAbove(result);
+				m_layerManager.CollapseAbove(result);
 
 				// in case focus, hover and capture are set to widgets that belong to overlay that collapsed, they are reset safely via UnregisterToSystem>Detach
 				return;
@@ -7575,7 +7628,7 @@ namespace TestMapEditor
 			// collapse the overlay stack above the clicked overlay. we do this because:
 			// - if none of the overlays were clicked, all active overlay stacks will be collapsed 
 			// - if a overlay is clicked, all active overlays on top of it will be collapsed
-			m_overlayManager.CollapseAbove(result);
+			m_layerManager.CollapseAbove(result);
 
 			// set capture
 			SetCapture(widget);
@@ -7611,7 +7664,7 @@ namespace TestMapEditor
 			}
 
 			// check first if mouse hovers over a overlay
-			LayerStack::Route result = m_overlayManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+			LayerStack::Route result = m_layerManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 
 			// if mouse hovers outside of the top overlay in the stack and down to top-most modal overlay, the route result will be "blocked by modal"
 			// this is because when one or more modal overlay exists, the top-most modal overlay and succeeding overlays on top of it are the only ones 
@@ -7686,17 +7739,17 @@ namespace TestMapEditor
 
 		bool RegisterLayer(Widget* widget, const Layer::BuildDescription& desc)
 		{
-			return m_overlayManager.Register(widget, desc);
+			return m_layerManager.Register(widget, desc);
 		}
 
 		bool UnregisterLayer(Widget* owner)
 		{
-			return m_overlayManager.Unregister(owner);
+			return m_layerManager.Unregister(owner);
 		}
 
 		void ToggleLayer(Widget* owner)
 		{
-			m_overlayManager.QueueToggle(owner);
+			m_layerManager.QueueToggle(owner);
 		}
 
 		void AddWidget(std::unique_ptr<Widget> widget)
@@ -7720,23 +7773,28 @@ namespace TestMapEditor
 
 		void Collapse()
 		{
-			m_overlayManager.QueueCollapse(1);
+			m_layerManager.QueueCollapse(1);
 		}
 
 		void AddLayer(const Layer::BuildDescription& desc)
 		{
-			m_overlayManager.QueueAdd(desc);
+			m_layerManager.QueueAdd(desc);
+		}
+
+		bool IsLayerExpanded(const Widget* owner) const
+		{
+			return m_layerManager.IsExpanded(owner);
 		}
 
 		void Begin()
 		{
-			m_overlayManager.FlushCommands();
+			m_layerManager.FlushCommands();
 		}
 
 		void End()
 		{
 			// if a overlay trigger is clicked, it might have requested to toggle its overlay. process those requests here
-			m_overlayManager.ProcessCommandRequests();
+			m_layerManager.ProcessCommandRequests();
 		}
 
 		void BeginDrag(Widget* source)
@@ -7749,7 +7807,7 @@ namespace TestMapEditor
 		void EndDrag(Widget* draggable,const PositionF& p)
 		{
 			// 1. find the top-most widget that intersects with given point
-			LayerStack::Route result = m_overlayManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+			LayerStack::Route result = m_layerManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 
 			// if route result is blocked by modal, it means we intersect outside of existing modal layer and there are no other widgets that can be found to drop current dragged widget
 			// but if not modal, we must have found the layer that intersects with  point
@@ -7772,8 +7830,6 @@ namespace TestMapEditor
 			m_DragDropLayer.End(draggable, target);
 		}
 	};
-
-
 
 	bool Widget::UnregisterToSystemInternal()
 	{
@@ -8148,6 +8204,13 @@ namespace TestMapEditor
 			return m_text;
 		}
 
+		void Set(const std::string& text)
+		{
+			m_text = text;
+
+			RefreshLayout();
+		}
+
 		void SetAlignment(Widget::VerticalAlignment vAlign, Widget::HorizontalAlignment hAlign)
 		{
 			m_vAlign = vAlign;
@@ -8265,11 +8328,28 @@ namespace TestMapEditor
 			m_buildDesc(buildDesc)
 		{
 			m_moveBehavior = MoveBehavior::None;
+			m_buildDesc.type = Layer::Menu;
 		}
 
 		void Draw(const UIDrawContext& context) const override
 		{
 			if (context.skin) context.skin->DrawMenuButton(*this, context);
+		}
+	};
+
+	class SubMenuButton : public MenuButton
+	{
+	protected:
+	public:
+		SubMenuButton(const Layer::BuildDescription& buildDesc) :
+			MenuButton(buildDesc)
+		{
+			m_buildDesc.type = Layer::SubMenu;
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawSubMenuButton(*this, context);
 		}
 	};
 
@@ -8279,6 +8359,281 @@ namespace TestMapEditor
 		void Draw(const UIDrawContext& context) const override
 		{
 			if (context.skin) context.skin->DrawMenuItem(*this, context);
+		}
+	};
+
+	class Thumb : public Widget
+	{
+	private:
+	public:
+		Thumb()
+		{
+			m_moveBehavior = MoveBehavior::None;
+			m_hitTestBehavior = HitTestBehavior::AlwaysFail; // non interactive
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawThumb(*this, context);
+		}
+	};
+
+	class Slider: public Widget
+	{
+	private:
+		float m_min;
+		float m_max;
+		float m_value;
+
+		bool m_horizontal;
+		Widget* m_thumb;
+		float m_thumbLength;
+		bool m_isDragging;
+		int m_steps;
+
+	protected:
+		virtual void OnMouseDown(const PositionF& position)
+		{
+			m_isDragging = true;
+			UpdateValueFromPosition(position);
+		}
+
+		void OnMouseUp(const PositionF& position) override
+		{
+			m_isDragging = false;
+		}
+
+		void OnMouseMove(const PositionF& position) override
+		{
+			if (m_isDragging)
+			{
+				UpdateValueFromPosition(position);
+			}
+		}
+
+		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
+		{
+			UpdateThumbSize();
+
+			UpdateThumbPosition();
+		}
+
+		void UpdateThumbPosition()
+		{
+			// value is in range between min and max. normalize it. if max < min, set normalize value to 0
+			float range = m_max - m_min;
+			float nvalue = range > 0.0f ? (m_value - m_min) / range : 0.0f;
+
+			SizeF thumbSize = m_thumb->GetSize();
+
+			// horizontal orientation
+			if (m_horizontal)
+			{
+				float x = (GetSize().width - thumbSize.width) * nvalue;
+				m_thumb->SetPosition({ x, 0 });
+			}
+			// vertical orientation
+			else
+			{
+				float y = (GetSize().height - thumbSize.height) * nvalue;
+				m_thumb->SetPosition({ 0, y });
+			}
+		}
+
+		void UpdateThumbSize()
+		{
+			// if horizontal orientation, get slider height. otherwise, get width
+			float thickness = m_horizontal ? GetHeight() : GetWidth();
+
+			// get the slider length. 
+			float sliderLength = m_horizontal ? GetWidth() : GetHeight();
+
+			// if clamp thumb length within slider length, if needed
+			float length = m_thumbLength < sliderLength ? m_thumbLength : sliderLength;
+
+			SizeF thumbSize
+			{
+				m_horizontal? length : thickness,
+				m_horizontal ? thickness : length,
+			};
+
+			m_thumb->SetSize(thumbSize);
+		}
+
+		void UpdateValueFromPosition(const PositionF& position)
+		{
+			// translate the clicked position (world position) to slider's local coordinate
+			PositionF local = position - GetAbsolutePosition();
+
+			float thumbLength = m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height;
+
+			// get length of the slider. this is the length it can move, so subtract thumb length
+			float length = m_horizontal ? GetSize().width - m_thumb->GetSize().width : GetSize().height - m_thumb->GetSize().height;
+
+			// normalize the value of the position based on slider length
+			float nvalue = length <= 0.0f ? 0.0f : (m_horizontal? local.x - thumbLength / 2.0f : local.y - thumbLength / 2.0f) / length;
+
+			// if in case position is outside slider extents, clamp it
+			nvalue = std::clamp<float>(nvalue, 0.0f, 1.0f);
+
+			// convert it into value based on range 
+			float value = m_min + (m_max - m_min) * nvalue;
+
+			value = Snap(value);
+
+			// finally we set value
+			Value(value);
+		}
+
+		float Snap(float value) const
+		{
+			if (m_steps <= 1) return m_min;
+
+			int steps = m_steps - 1;
+
+			float stepSize = (m_max - m_min) / steps;	
+
+			value = std::round((value - m_min) / stepSize);
+			value *= stepSize;
+			value += m_min;
+
+			return value;
+		}
+
+	public:
+		engine::event::Event<float> OnChange;
+
+		Slider(float min, float max, float thumbLength) :
+			m_min(min),
+			m_max(max),
+			m_thumbLength(thumbLength),
+			m_value(min),
+			m_horizontal(true),
+			m_isDragging(false),
+			m_steps(0)
+		{
+			m_moveBehavior = MoveBehavior::None;
+
+			std::unique_ptr<Thumb> thumb = std::make_unique<Thumb>();
+			m_thumb = thumb.get();
+
+			AddChild(std::move(thumb));
+
+		}
+
+		void Horizontal(bool enable)
+		{
+			if (m_horizontal != enable)
+			{
+				m_horizontal = enable;
+
+				UpdateThumbSize();
+
+				UpdateThumbPosition();
+			}
+		}
+		
+		bool Horizontal() const
+		{
+			return m_horizontal;
+		}
+
+		void SetThumbLength(float length)
+		{
+			m_thumbLength = length;
+
+			UpdateThumbSize();
+
+			UpdateThumbPosition();
+		}
+
+		void Min(float min)
+		{
+			m_min = min;
+
+			// range changed, we might need to update value if it gets clamped
+			Value(m_value);
+
+			// value might not have changed, but thumb position might change with new range
+			UpdateThumbPosition();
+		}
+
+		void Max(float max)
+		{
+			m_max = max;
+
+			// range changed, we might need to update value if it gets clamped
+			Value(m_value);
+
+			// value might not have changed, but thumb position might change with new range
+			UpdateThumbPosition();
+		}
+
+		float Min() const
+		{
+			return m_min;
+		}
+
+		float Max() const
+		{
+			return m_max;
+		}
+
+		void Value(float value)
+		{
+			// always clamp to min if min happens to be larger than max
+			if (m_min > m_max)
+			{
+				value = m_min;
+			}
+			// otherwise make sure to clamp within range
+			else
+			{
+				value = std::clamp<float>(value, m_min, m_max);
+			}
+
+			// if new value same as current, no change, no update, no notification needed
+			if (m_value == value)
+			{
+				return;
+			}
+
+			// we're ready to set new value
+			m_value = value;
+
+			// update thumb position
+			UpdateThumbPosition();
+
+			// fire up event
+			OnChange(m_value);
+		}
+
+		float Value() const
+		{
+			return m_value;
+		}		
+
+		void SetStepSize(float size)
+		{
+			m_steps = size > 0 ?
+				static_cast<int>(std::round((m_max - m_min) / size)) + 1 :
+				1;
+
+			// snap the current value and update value. this will also possibly update thumb position if needed
+			Value(Snap(m_value));
+		}
+
+		void SetStepCount(int count)
+		{
+			m_steps = count;
+
+			// snap the current value and update value. this will also possibly update thumb position if needed
+			Value(Snap(m_value));
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawSlider(*this, context);
 		}
 	};
 
@@ -8357,6 +8712,20 @@ namespace TestMapEditor
 
 			ColorF color = (&overlay == context.focus)? ColorF{0.6f, 0.6f, 0.6f, 1} : ColorF{0.5f, 0.5f, 0.5f, 1};
 			context.renderer.Draw(pos + PositionF{1, 1}, size - SizeF{2,2}, color, 0);
+
+			if (overlay.IsMenu())
+			{
+				PositionF ownerPos = overlay.GetOwner()->GetAbsolutePosition();
+				SizeF ownerSize = overlay.GetOwner()->GetSize();
+
+				context.renderer.Draw(pos + PositionF{ 1, 0 }, SizeF{ ownerSize.width - 2, 1 }, color, 0);
+			}
+			else if (overlay.GetType() == Layer::SubMenu)
+			{
+				SizeF ownerSize = overlay.GetOwner()->GetSize();
+
+				context.renderer.Draw(pos + PositionF{ 0, 1 }, SizeF{ 1, ownerSize.height - 2 }, color, 0);
+			}
 		}
 
 		void DrawTooltip(const class Tooltip& tooltip, const UIDrawContext& context) const override
@@ -8420,20 +8789,66 @@ namespace TestMapEditor
 		{
 			PositionF pos = menuButton.GetAbsolutePosition();
 			SizeF size = menuButton.GetSize();
+			bool isExpanded = context.system.IsLayerExpanded(&menuButton);
 
 			if (&menuButton == context.capture)
 			{
-				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
-				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
-				context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
+				ColorF color = isExpanded ? ColorF{ 0.5f, 0.5f, 0.5f, 1 } : ColorF{ 0.6f, 0.6f, 0.6f, 1 };
+				context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+
+				if (isExpanded)
+				{
+					context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,1 }, color, 0);
+				}
+				else
+				{
+					context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, color, 0);
+				}
 			}
 			else if (&menuButton == context.hover)
 			{
+				ColorF color = isExpanded ? ColorF{ 0.5f, 0.5f, 0.5f, 1 } : ColorF{ 0.6f, 0.6f, 0.6f, 1 };
 				context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
-				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 0.6f,0.6f,0.6f,1 }, 0);
+
+				if (isExpanded)
+				{
+					context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,1 }, { 0.5f,0.5f,0.5f,1 }, 0);
+				}
+				else
+				{
+					context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, color, 0);
+				}
 			}
 			else
 			{
+				if (isExpanded)
+				{
+					context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+					context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,1 }, { 0.5f,0.5f,0.5f,1 }, 0);
+				}
+			}
+		}
+
+		void DrawSubMenuButton(const SubMenuButton& subMenuButton, const UIDrawContext& context) const override
+		{
+			PositionF pos = subMenuButton.GetAbsolutePosition();
+			SizeF size = subMenuButton.GetSize();
+			bool isExpanded = context.system.IsLayerExpanded(&subMenuButton);
+			ColorF color = isExpanded ? ColorF{ 0.5f, 0.5f, 0.5f, 1 } : ColorF{ 0.6f, 0.6f, 0.6f, 1 };
+
+
+			if (&subMenuButton == context.capture || &subMenuButton == context.hover)
+			{
+				context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - (isExpanded? SizeF{ 1,2 }: SizeF{ 2,2 }), color, 0);
+			}
+			else
+			{
+				if (isExpanded)
+				{
+					context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+					context.renderer.Draw(pos + PositionF{ 1, 1 }, size - (isExpanded ? SizeF{ 1,2 } : SizeF{ 2,2 }), color, 0);
+				}
 			}
 		}
 
@@ -8458,6 +8873,42 @@ namespace TestMapEditor
 			}
 		}
 
+		void DrawSlider(const Slider& slider, const UIDrawContext& context) const override
+		{
+			PositionF pos = slider.GetAbsolutePosition();
+			SizeF size = slider.GetSize();
+
+			context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+			context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 0.5f,0.5f,0.5f,1 }, 0);
+
+		}
+
+		void DrawThumb(const Thumb& thumb, const UIDrawContext& context) const override
+		{
+			PositionF pos = thumb.GetAbsolutePosition();
+			SizeF size = thumb.GetSize();
+
+			if (&thumb == context.capture)
+			{
+				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
+			}
+			else if (&thumb == context.hover)
+			{
+				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.55f,0.55f,0.55f,1 }, 0);
+			}
+			else
+			{
+				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
+				context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
+			}
+		}
+
+
 
 	};
 
@@ -8474,9 +8925,13 @@ namespace TestMapEditor
 		Image* m_image = nullptr;
 		Widget* m_menu = nullptr;
 		Widget* m_menuBar = nullptr;
+		Slider* m_slider = nullptr;
 		int m_imageState = 0;
 		UISystem m_ux;
 		Button* m_button = nullptr;
+
+		Widget* m_controlDialog = nullptr;
+		Widget* m_testDialog = nullptr;
 
 		std::unique_ptr<Widget> CreateWidget(const PositionF& pos, const SizeF& size)
 		{
@@ -8598,7 +9053,6 @@ namespace TestMapEditor
 			IFontAtlas& font = AssetManager().Get<IFontAtlas>("font");
 			m_ux.SetFont(&font, UIResources::FontType::Default);
 
-
 			// let's create menu system
 			{
 				std::unique_ptr<Frame> menuBar = std::make_unique<Frame>(false, false);
@@ -8610,10 +9064,10 @@ namespace TestMapEditor
 				{
 					Layer::BuildDescription cmd
 					{
-						PositionF{0, 50},
+						PositionF{0, 40},
 						SizeF({200, 140}),
 						nullptr,
-						Layer::Type::Popup,
+						Layer::Type::Menu,
 						false
 					};
 
@@ -8625,17 +9079,19 @@ namespace TestMapEditor
 								{
 									PositionF{190, 0},
 									SizeF({200, 200}),
-									nullptr
+									nullptr,
+									Layer::Type::Menu,
+									false
 								};
 
-								std::unique_ptr<MenuButton> menuButton = std::make_unique<MenuButton>(cmd);
+								std::unique_ptr<SubMenuButton> menuButton = std::make_unique<SubMenuButton>(cmd);
 								menuButton->SetPosition({ 5,5 });
 								menuButton->SetSize({ 190,40 });
 								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Load...", Widget::HorizontalAlignment::Left));
 								parent->AddChild(std::move(menuButton));
 							}
 
-							// add "save" submenu
+							// add "save" menuitem
 							{
 								std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
 								menuItem->SetPosition({ 5, 50 });
@@ -8644,7 +9100,7 @@ namespace TestMapEditor
 								parent->AddChild(std::move(menuItem));
 							}
 
-							// add "clear" submenu
+							// add "clear" menuitem
 							{
 								std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
 								menuItem->SetPosition({ 5, 95 });
@@ -8665,10 +9121,10 @@ namespace TestMapEditor
 				{
 					Layer::BuildDescription cmd
 					{
-						PositionF{0, 50},
+						PositionF{0, 40},
 						SizeF({220, 185}),
 						nullptr,
-						Layer::Type::Popup,
+						Layer::Type::Menu,
 						false
 					};
 
@@ -8680,17 +9136,19 @@ namespace TestMapEditor
 								{
 									PositionF{190, 0},
 									SizeF({200, 200}),
-									nullptr
+									nullptr,
+									Layer::Type::Menu,
+									false
 								};
 
-								std::unique_ptr<MenuButton> menuButton = std::make_unique<MenuButton>(cmd);
+								std::unique_ptr<SubMenuButton> menuButton = std::make_unique<SubMenuButton>(cmd);
 								menuButton->SetPosition({ 5,5 });
 								menuButton->SetSize({ 190,40 });
 								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Grids...", Widget::HorizontalAlignment::Left));
 								parent->AddChild(std::move(menuButton));
 							}
 
-							// add "show props" submenu
+							// add "show props" menuitem
 							{
 								std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
 								menuItem->SetPosition({ 5, 50 });
@@ -8699,7 +9157,7 @@ namespace TestMapEditor
 								parent->AddChild(std::move(menuItem));
 							}
 
-							// add "show terrain" submenu
+							// add "show terrain" menuitem
 							{
 								std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
 								menuItem->SetPosition({ 5, 95 });
@@ -8714,10 +9172,12 @@ namespace TestMapEditor
 								{
 									PositionF{190, 0},
 									SizeF({200, 200}),
-									nullptr
+									nullptr,
+									Layer::Type::Menu,
+									false
 								};
 
-								std::unique_ptr<MenuButton> menuButton = std::make_unique<MenuButton>(cmd);
+								std::unique_ptr<SubMenuButton> menuButton = std::make_unique<SubMenuButton>(cmd);
 								menuButton->SetPosition({ 5, 140 });
 								menuButton->SetSize({ 190,40 });
 								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Overlays...", Widget::HorizontalAlignment::Left));
@@ -8730,78 +9190,9 @@ namespace TestMapEditor
 					menuButton->SetSize({ 100,40 });
 					menuButton->AddChild(CreateLabel({ 0,0 }, { 100,40 }, "View"));
 					m_menuBar->AddChild(std::move(menuButton));
-
 				}
 
 				m_ux.AddWidget(std::move(menuBar));
-			}
-
-			if (false)
-			{
-				Layer::BuildDescription cmd = CreateBuildDescWithCascadedOverlays(10, {100, 50}, { 0, 50 });
-
-				PositionF pos{ 450, 100 };
-				SizeF size{ 100, 50 };
-
-
-				std::unique_ptr<OverlayTrigger> overlayTrigger = std::make_unique<OverlayTrigger>(cmd);
-
-				// position of this overlay trigger relative to its parent.
-				overlayTrigger->SetPosition(pos);
-				overlayTrigger->SetSize(size);
-
-				m_ux.AddWidget(std::move(overlayTrigger));
-			}
-
-			if(false)
-			{
-			//	m_ux.AddWidget(CreateOverlayTrigger({ 300, 100 }, { 100, 50 }));
-
-				Layer::BuildDescription cmd
-				{
-					PositionF{0, 50},
-					SizeF({100, 50}),
-					nullptr
-				};
-
-				cmd.type = Layer::Popup;
-
-				cmd.builder = [&](Widget* parent)
-					{
-						Layer::BuildDescription cmd
-						{
-							PositionF{0, 50},
-							SizeF({100, 50}),
-							nullptr
-						};
-
-						cmd.builder = [](Widget* parent)
-							{
-								std::unique_ptr<Widget> widget = std::make_unique<Widget>();
-								widget->SetPosition({ 0, 0 });
-								widget->SetSize({ 100, 50 });
-
-								parent->AddChild(std::move(widget));
-							};
-
-						PositionF pos{ 0, 0 };
-						SizeF size{ 100, 50 };
-
-						std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
-						widget->SetPosition(pos);
-						widget->SetSize(size);
-
-						parent->AddChild(std::move(widget));
-					};
-
-				PositionF pos{ 450, 100 };
-				SizeF size{ 100, 50 };
-
-				std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
-				widget->SetPosition(pos);
-				widget->SetSize(size);
-
-				m_ux.AddWidget(std::move(widget));
 			}
 		}
 
@@ -9009,70 +9400,85 @@ namespace TestMapEditor
 				}
 				break;
 			case 50: // 2
-				if (!m_menu)
+				if (!m_controlDialog)
 				{
+					std::unique_ptr<Frame> dialog = std::make_unique<Frame>();
+					dialog->SetPosition({ 700, 100 });
+					dialog->SetSize({ 320, 480 });
+					m_controlDialog = dialog.get();
+
+					{
+						std::unique_ptr<Slider> slider = std::make_unique<Slider>(0.0f, 100.0f, 50.0f);
+						slider->SetPosition({ 10, 10 });
+						slider->SetSize({ 200, 32 });
+						slider->Min(-1.0f);
+						slider->Max(200.0f);
+						slider->Value(100.0f);
+						slider->SetStepCount(1000);
+
+						slider->OnChange += [&](float value)
+							{
+								m_slider->SetStepCount((int)value);
+							};
+
+						m_controlDialog->AddChild(std::move(slider));
+					}
+
+					{
+						std::unique_ptr<Slider> slider = std::make_unique<Slider>(0.0f, 100.0f, 50.0f);
+						slider->SetPosition({ 10, 45 });
+						slider->SetSize({ 200, 32 });
+						slider->Min(-100.0f);
+						slider->Max(100.0f);
+						slider->Value(0.0f);
+						slider->SetStepCount(1000);
+
+						slider->OnChange += [&](float value)
+							{
+
+							};
+
+						m_controlDialog->AddChild(std::move(slider));
+					}
+
+					m_ux.AddWidget(std::move(dialog));
 				}
 				else
 				{
-					m_ux.RemoveWidget(m_menu);
-					m_menu = nullptr;
+					m_ux.RemoveWidget(m_controlDialog);
+					m_controlDialog = nullptr;
+				}
+
+				if (!m_testDialog)
+				{
+					std::unique_ptr<Frame> dialog = std::make_unique<Frame>();
+					dialog->SetPosition({ 50, 100 });
+					dialog->SetSize({ 640, 480 });
+					m_testDialog = dialog.get();
+
+					std::unique_ptr<Slider> slider = std::make_unique<Slider>(0.0f, 100.0f, 50.0f);
+					slider->SetPosition({ 25, 25 });
+					slider->SetSize({ 300, 50 });
+					slider->Min(-1.0f);
+					slider->Max(1.0f);
+					slider->Value(0.0f);
+					slider->SetStepCount(3);
+					m_slider = slider.get();
+					m_testDialog->AddChild(std::move(slider));
+
+					m_ux.AddWidget(std::move(dialog));
+				}
+				else
+				{
+					m_ux.RemoveWidget(m_testDialog);
+					m_testDialog = nullptr;
 				}
 				break;
 			case 51: // 3 
-				if (!m_multiOverlayTrigger)
-				{
-					Layer::BuildDescription cmd
-					{
-						PositionF{0, 50},
-						SizeF({200, 200}),
-						nullptr
-					};
+				m_slider->Horizontal(!m_slider->Horizontal());
 
-					cmd.builder = [&](Widget* parent)
-						{
-							Layer::BuildDescription cmd
-							{
-								PositionF{200, 0},
-								SizeF({200, 200}),
-								nullptr
-							};
+				//m_slider->SetThumbLength(1000.0f);
 
-							{
-								PositionF pos{ 10, 10 };
-								SizeF size{ 180, 50 };
-
-								std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
-								widget->SetPosition(pos);
-								widget->SetSize(size);
-								parent->AddChild(std::move(widget));
-							}
-
-							{
-								PositionF pos{ 10, 60 };
-								SizeF size{ 180, 50 };
-
-								std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
-								widget->SetPosition(pos);
-								widget->SetSize(size);
-								parent->AddChild(std::move(widget));
-							}
-						};
-
-					PositionF pos{ 500, 100 };
-					SizeF size{ 100, 50 };
-
-					std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
-					m_multiOverlayTrigger = widget.get();
-					widget->SetPosition(pos);
-					widget->SetSize(size);
-
-					m_ux.AddWidget(std::move(widget));
-				}
-				else
-				{
-					m_ux.RemoveWidget(m_multiOverlayTrigger);
-					m_multiOverlayTrigger = nullptr;
-				}
 
 				break;
 			case 52: // 4
@@ -9229,7 +9635,9 @@ namespace TestMapEditor
 			DefaultUISkin skin;
 			UIDrawContext context{ renderer, m_ux, &skin };
 			m_ux.Draw(context);
-		}
+
+			IFontAtlas& font = AssetManager().Get<IFontAtlas>("font");
+			if(m_slider) renderer.Draw(font, std::to_string(m_slider->Value()), { 350, 100 }, { 1,1,1,1 });		}
 
 		void OnResize(size_t width, size_t height) override
 		{
