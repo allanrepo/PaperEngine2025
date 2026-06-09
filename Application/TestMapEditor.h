@@ -6190,14 +6190,11 @@ namespace TestMapEditor
 			return m_size;
 		}
 
-		engine::event::Event<const SizeF&> OnResize;
 		void SetSize(const SizeF& size)
 		{
 			SizeF oldSize = m_size;
 			m_size = size;
-
 			OnSizeChanged(oldSize, size);
-			OnResize(m_size);
 		}
 
 		PositionF GetAbsolutePosition() const
@@ -6210,14 +6207,11 @@ namespace TestMapEditor
 			return position;
 		}
 
-		engine::event::Event<const PositionF&> OnMove;
 		void SetPosition(const PositionF& pos)
 		{
 			PositionF oldPos = m_position;
 			m_position = pos;
-
 			OnPositionChanged(oldPos, m_position);
-			OnMove(m_position);
 		}
 
 		PositionF GetPosition() const
