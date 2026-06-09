@@ -67,6 +67,9 @@ namespace TestMapEditor
 	class Slider;
 	class CheckBox;
 	class RadioButton;
+	class ScrollBar;
+	class ResizeableFrame;
+	class Grip;
 #pragma endregion
 
 #pragma region // namespaces
@@ -5645,9 +5648,12 @@ namespace TestMapEditor
 		virtual void DrawMenuItem(const MenuItem& menuItem, const UIDrawContext& context) const = 0;
 		virtual void DrawSubMenuButton(const SubMenuButton& subMenuButton, const UIDrawContext& context) const = 0;
 		virtual void DrawSlider(const Slider& slider, const UIDrawContext& context) const = 0;
+		virtual void DrawScrollBar(const ScrollBar& scrollbar, const UIDrawContext& context) const = 0;
 		virtual void DrawThumb(const Thumb& thumb, const UIDrawContext& context) const = 0;
 		virtual void DrawCheckBox(const CheckBox& checkbox, const UIDrawContext& context) const = 0;
 		virtual void DrawRadioButton(const RadioButton& radiobutton, const UIDrawContext& context) const = 0;
+		virtual void DrawGrip(const Grip& radiobutton, const UIDrawContext& context) const = 0;
+		virtual void DrawResizeableFrame(const ResizeableFrame& radiobutton, const UIDrawContext& context) const = 0;
 	};
 #pragma endregion
 
@@ -5720,14 +5726,24 @@ namespace TestMapEditor
 			{
 				m_isMoving = false;
 			}
+
+			bool IsDragging() const
+			{
+				return m_isMoving;
+			}
+
+			PositionF GetBeginPosition() const
+			{
+				return m_beginMousePosition;
+			}
 		};
 #pragma endregion
 
-		bool UnregisterToSystemInternal();
+		bool UnregisterToSystem();
 
-		bool RegisterToSystemInternal()
+		bool RegisterToSystem()
 		{
-			return RegisterToSystem();
+			return OnRegisterToSystem();
 		}
 
 	protected:
@@ -5785,12 +5801,12 @@ namespace TestMapEditor
 			return nullptr;
 		}
 
-		virtual bool RegisterToSystem()
+		virtual bool OnRegisterToSystem()
 		{
 			return true;
 		}
 
-		virtual bool UnregisterToSystem()
+		virtual bool OnUnregisterToSystem()
 		{
 			return true;
 		}
@@ -5893,7 +5909,7 @@ namespace TestMapEditor
 			// traverse through this widget's whole tree including itself and register them to system
 			c->ForEachWidget([&](Widget* widget)
 				{
-					widget->RegisterToSystemInternal();
+					widget->RegisterToSystem();
 					return true;
 				});
 		}
@@ -5914,7 +5930,7 @@ namespace TestMapEditor
 			{
 				widget->ForEachWidget([&](Widget* w)
 					{
-						w->UnregisterToSystemInternal();
+						w->UnregisterToSystem();
 						return true;
 					});
 
@@ -5929,7 +5945,7 @@ namespace TestMapEditor
 			{
 				m_children.back()->ForEachWidget([&](Widget* w)
 					{
-						w->UnregisterToSystemInternal();
+						w->UnregisterToSystem();
 						return true;
 					});
 
@@ -6174,11 +6190,14 @@ namespace TestMapEditor
 			return m_size;
 		}
 
+		engine::event::Event<const SizeF&> OnResize;
 		void SetSize(const SizeF& size)
 		{
 			SizeF oldSize = m_size;
 			m_size = size;
+
 			OnSizeChanged(oldSize, size);
+			OnResize(m_size);
 		}
 
 		PositionF GetAbsolutePosition() const
@@ -6191,11 +6210,14 @@ namespace TestMapEditor
 			return position;
 		}
 
+		engine::event::Event<const PositionF&> OnMove;
 		void SetPosition(const PositionF& pos)
 		{
 			PositionF oldPos = m_position;
 			m_position = pos;
+
 			OnPositionChanged(oldPos, m_position);
+			OnMove(m_position);
 		}
 
 		PositionF GetPosition() const
@@ -6649,7 +6671,7 @@ namespace TestMapEditor
 		//
 		// While unregistering:
 		//
-		//	OverlayTrigger::UnregisterToSystem()
+		//	OverlayTrigger::OnUnregisterToSystem()
 		//		-> UISystem::UnregisterLayer()
 		//			-> CollapseByOwner()
 		//
@@ -6707,7 +6729,7 @@ namespace TestMapEditor
 			for (size_t i = index; i < m_layers.size(); i++)
 			{
 				m_layers[i]->RemoveChildren();
-				m_layers[i]->UnregisterToSystem();
+				m_layers[i]->OnUnregisterToSystem();
 			}
 
 			// after unregistering overlays' tree, remove them 
@@ -7080,25 +7102,6 @@ namespace TestMapEditor
 
 			// restore previous clip region after drawing this widget's tree
 			context.renderer.SetClipRegion(orig);
-		}
-	};
-#pragma endregion
-
-#pragma region // Root
-	class Root : public Widget
-	{
-	protected:
-		UISystem* m_system;
-
-		UISystem* GetSystem() const override final
-		{
-			return m_system;
-		}
-
-	public:
-		Root(UISystem* system) :
-			m_system(system)
-		{
 		}
 	};
 #pragma endregion
@@ -7834,9 +7837,9 @@ namespace TestMapEditor
 		}
 	};
 
-	bool Widget::UnregisterToSystemInternal()
+	bool Widget::UnregisterToSystem()
 	{
-		UnregisterToSystem();
+		OnUnregisterToSystem();
 
 		UISystem* system = GetSystem();
 		if (system) system->Detach(this);
@@ -7851,7 +7854,7 @@ namespace TestMapEditor
 		Layer::BuildDescription m_buildDesc;
 
 		// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
-		bool RegisterToSystem() override final
+		bool OnRegisterToSystem() override final
 		{
 			UISystem* system = GetSystem();
 			if (system)
@@ -7866,7 +7869,7 @@ namespace TestMapEditor
 		}
 
 		// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its layer descriptor into the system
-		bool UnregisterToSystem() override final
+		bool OnUnregisterToSystem() override final
 		{
 			UISystem* system = GetSystem();
 			if (system)
@@ -8055,7 +8058,7 @@ namespace TestMapEditor
 
 	protected:
 		// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
-		bool RegisterToSystem() override final
+		bool OnRegisterToSystem() override final
 		{
 			RefreshLayout();
 			return true;
@@ -8173,14 +8176,14 @@ namespace TestMapEditor
 
 	protected:
 		// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
-		bool RegisterToSystem() override final
+		bool OnRegisterToSystem() override final
 		{
 			// refresh cached information about text with new font type
 			return RefreshLayout();
 		}
 
 		// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its layer descriptor into the system
-		bool UnregisterToSystem() override final
+		bool OnUnregisterToSystem() override final
 		{
 			// refresh cached information about text with new font type
 			return RefreshLayout();
@@ -8357,7 +8360,7 @@ namespace TestMapEditor
 		Layer::BuildDescription m_buildDesc;
 
 		// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
-		bool RegisterToSystem() override final
+		bool OnRegisterToSystem() override final
 		{
 			UISystem* system = GetSystem();
 			if (system)
@@ -8372,7 +8375,7 @@ namespace TestMapEditor
 		}
 
 		// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its layer descriptor into the system
-		bool UnregisterToSystem() override final
+		bool OnUnregisterToSystem() override final
 		{
 			UISystem* system = GetSystem();
 			if (system)
@@ -8814,7 +8817,511 @@ namespace TestMapEditor
 			if (context.skin) context.skin->DrawRadioButton(*this, context);
 		}
 	};
-#pragma endregion
+
+	class ScrollBar : public Widget
+	{
+	private:
+		float m_contentLength;
+		float m_viewportLength;
+		float m_offset; // current scroll position
+		bool m_horizontal;
+		Widget* m_thumb;
+		bool m_isDragging;
+
+	protected:
+		void OnMouseDown(const PositionF& pos) override
+		{
+			m_isDragging = true;
+			UpdateOffsetFromPosition(pos);
+		}
+
+		void OnMouseUp(const PositionF&) override { m_isDragging = false; }
+
+		void OnMouseMove(const PositionF& pos) override
+		{
+			if (m_isDragging) UpdateOffsetFromPosition(pos);
+		}
+
+		void OnSizeChanged(const SizeF&, const SizeF&) override
+		{
+			UpdateThumbSize();
+			UpdateThumbPosition();
+		}
+
+		void UpdateThumbSize()
+		{
+			float trackLength = m_horizontal ? GetWidth() : GetHeight();
+			float thickness = m_horizontal ? GetHeight() : GetWidth();
+
+			float ratio = m_contentLength > 0 ? m_viewportLength / m_contentLength : 1.0f;
+			float length = std::clamp(ratio * trackLength, 10.0f, trackLength); // clamp min size
+
+			SizeF thumbSize{
+				m_horizontal ? length : thickness,
+				m_horizontal ? thickness : length
+			};
+			m_thumb->SetSize(thumbSize);
+		}
+
+		void UpdateThumbPosition()
+		{
+			float trackLength = m_horizontal ? GetWidth() : GetHeight();
+			float thumbLength = m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height;
+			float maxOffset = std::max<float>(0.0f, m_contentLength - m_viewportLength);
+
+			float nvalue = maxOffset > 0 ? m_offset / maxOffset : 0.0f;
+			float pos = nvalue * (trackLength - thumbLength);
+
+			if (m_horizontal) m_thumb->SetPosition({ pos, 0 });
+			else              m_thumb->SetPosition({ 0, pos });
+		}
+
+		void UpdateOffsetFromPosition(const PositionF& pos)
+		{
+			PositionF local = pos - GetAbsolutePosition();
+			float trackLength = m_horizontal ? GetWidth() : GetHeight();
+			float thumbLength = m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height;
+			float length = trackLength - thumbLength;
+
+			float nvalue = length > 0 ? (m_horizontal ? local.x - thumbLength / 2 : local.y - thumbLength / 2) / length : 0;
+			nvalue = std::clamp(nvalue, 0.0f, 1.0f);
+
+			float maxOffset = std::max<float>(0.0f, m_contentLength - m_viewportLength);
+			float newOffset = nvalue * maxOffset;
+
+			SetOffset(newOffset);
+		}
+
+		void ClampOffset()
+		{
+			float maxOffset = std::max<float>(0.0f, m_contentLength - m_viewportLength);
+			m_offset = std::clamp(m_offset, 0.0f, maxOffset);
+		}
+
+	public:
+		engine::event::Event<float> OnScroll;
+
+		ScrollBar(float contentLength, float viewportLength): 
+			m_contentLength(contentLength), 
+			m_viewportLength(viewportLength),
+			m_offset(0), 
+			m_horizontal(true), 
+			m_isDragging(false)
+		{
+			m_moveBehavior = MoveBehavior::None;
+
+			std::unique_ptr<Thumb> thumb = std::make_unique<Thumb>();
+			m_thumb = thumb.get();
+			AddChild(std::move(thumb));
+		}
+
+		void SetOffset(float offset)
+		{
+			offset = std::clamp(offset, 0.0f, std::max<float>(0.0f, m_contentLength - m_viewportLength));
+			if (m_offset == offset) return;
+			m_offset = offset;
+			UpdateThumbPosition();
+			OnScroll(m_offset);
+		}
+
+		float Offset() const { return m_offset; }
+
+		void SetContentLength(float length)
+		{
+			m_contentLength = std::max<float>(0.0f, length);
+			ClampOffset();
+			UpdateThumbSize();
+			UpdateThumbPosition();
+		}
+
+		void SetViewportLength(float length)
+		{
+			m_viewportLength = std::max<float>(0.0f, length);
+			ClampOffset();
+			UpdateThumbSize();
+			UpdateThumbPosition();
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawScrollBar(*this, context);
+		}
+
+
+	};
+
+	class Grip : public Widget
+	{
+	public:
+		struct EventArgs
+		{
+			PositionF beginPosition;
+			PositionF currentPosition;
+
+			VecF Delta() const
+			{
+				return currentPosition - beginPosition;
+			}
+		};
+	private:
+
+	protected:
+		void OnMouseDown(const PositionF& position) override
+		{
+			EventArgs args
+			{
+				m_dragHandler.GetBeginPosition(),
+				position
+			};
+
+			OnDragBegin(args);
+		}
+
+		void OnMouseUp(const PositionF& position) override
+		{
+			EventArgs args
+			{
+				m_dragHandler.GetBeginPosition(),
+				position
+			};
+
+			OnDragEnd(args);
+		}
+
+		void OnMouseMove(const PositionF& position) override
+		{
+			if (m_dragHandler.IsDragging())
+			{
+				EventArgs args
+				{
+					m_dragHandler.GetBeginPosition(),
+					position
+				};
+
+				OnDragMove(args);
+			}
+		}
+
+	public:
+		Grip(bool MoveHorizontal, bool MoveVertical)
+		{
+			m_moveBehavior = (MoveHorizontal && MoveVertical) ? MoveBehavior::Free :
+				(MoveHorizontal && !MoveVertical) ? MoveBehavior::Horizontal :
+				(!MoveHorizontal && MoveVertical) ? MoveBehavior::Vertical :
+				MoveBehavior::None;
+
+			m_droppable = false;
+			m_focusable = false;
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawGrip(*this, context);
+		}
+
+		engine::event::Event<const EventArgs&> OnDragBegin;
+		engine::event::Event<const EventArgs&> OnDragMove;
+		engine::event::Event<const EventArgs&> OnDragEnd;
+
+	};
+
+	// a frame the can be resized when dragging its edge/corner grips
+	// it has a min size that clamps to it when resizing the frame via grips
+	class ResizeableFrame : public Widget
+	{
+	private:
+		// resize grip components
+		Grip* m_leftResizeGrip = nullptr;
+		Grip* m_rightResizeGrip = nullptr;
+		Grip* m_topResizeGrip = nullptr;
+		Grip* m_bottomResizeGrip = nullptr;
+		Grip* m_topLeftResizeGrip = nullptr;
+		Grip* m_topRightResizeGrip = nullptr;
+		Grip* m_bottomLeftResizeGrip = nullptr;
+		Grip* m_bottomRightResizeGrip = nullptr;
+
+		// resize grip thickness
+		float m_borderSize;
+
+		// min size when resizing through grips
+		SizeF m_minResize;
+
+		// resizing trackers
+		PositionF m_beginPosition;
+		SizeF m_beginSize;
+
+	protected:
+		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
+		{
+			// resize and reposition right grip control to occupy right edge of the frame with border size as thickness
+			m_rightResizeGrip->SetPosition({ m_size.width - m_borderSize, m_borderSize });
+			m_rightResizeGrip->SetSize({ m_borderSize, m_size.height - m_borderSize * 2 });
+
+			// resize and reposition right grip control to occupy left edge of the frame with border size as thickness
+			m_leftResizeGrip->SetPosition({ 0, m_borderSize });
+			m_leftResizeGrip->SetSize({ m_borderSize, m_size.height - m_borderSize * 2 });
+
+			// resize and reposition right grip control to occupy bottom edge of the frame with border size as thickness
+			m_bottomResizeGrip->SetPosition({ m_borderSize, m_size.height - m_borderSize });
+			m_bottomResizeGrip->SetSize({ m_size.width - m_borderSize * 2, m_borderSize });
+
+			// resize and reposition right grip control to occupy top edge of the frame with border size as thickness
+			m_topResizeGrip->SetPosition({ m_borderSize, 0 });
+			m_topResizeGrip->SetSize({ m_size.width - m_borderSize * 2, m_borderSize });
+
+			// resize and reposition right grip control to occupy top-left corner of the frame with border size as thickness
+			m_topLeftResizeGrip->SetPosition({ 0, 0 });
+			m_topLeftResizeGrip->SetSize({ m_borderSize, m_borderSize });	
+
+			// resize and reposition right grip control to occupy top-right corner of the frame with border size as thickness
+			m_topRightResizeGrip->SetPosition({ m_size.width - m_borderSize, 0 });
+			m_topRightResizeGrip->SetSize({ m_borderSize, m_borderSize });
+
+			// resize and reposition right grip control to occupy bottom-left corner of the frame with border size as thickness
+			m_bottomLeftResizeGrip->SetPosition({ 0, m_size.height - m_borderSize });
+			m_bottomLeftResizeGrip->SetSize({ m_borderSize, m_borderSize });
+
+			// resize and reposition right grip control to occupy bottom-right corner of the frame with border size as thickness
+			m_bottomRightResizeGrip->SetPosition({ m_size.width - m_borderSize, m_size.height - m_borderSize });
+			m_bottomRightResizeGrip->SetSize({ m_borderSize, m_borderSize });	
+		}
+
+		SizeF ClampSize(const SizeF& size) const
+		{
+			return
+			{
+				std::max<float>(size.width,  m_minResize.width),
+				std::max<float>(size.height, m_minResize.height)
+			};
+		}
+
+	public:
+		ResizeableFrame(float borderSize, const SizeF& minSize = {200, 200}) :
+			m_borderSize(borderSize),
+			m_minResize(minSize)
+		{
+			// left grip
+			std::unique_ptr<Grip> widget = std::make_unique<Grip>(true, false);
+			m_leftResizeGrip = widget.get();
+			AddChild(std::move(widget));
+
+			// right grip
+			widget = std::make_unique<Grip>(true, false);
+			m_rightResizeGrip = widget.get();
+			AddChild(std::move(widget));
+
+			// top grip
+			widget = std::make_unique<Grip>(false, true);
+			m_topResizeGrip = widget.get();
+			AddChild(std::move(widget));
+
+			// bottom grip
+			widget = std::make_unique<Grip>(false, true);
+			m_bottomResizeGrip = widget.get();
+			AddChild(std::move(widget));
+
+			// top-left grip
+			widget = std::make_unique<Grip>(true, true);
+			m_topLeftResizeGrip = widget.get();
+			AddChild(std::move(widget));
+
+			// top-right grip
+			widget = std::make_unique<Grip>(true, true);
+			m_topRightResizeGrip = widget.get();
+			AddChild(std::move(widget));
+
+			// bottom-left grip
+			widget = std::make_unique<Grip>(true, true);
+			m_bottomLeftResizeGrip = widget.get();
+			AddChild(std::move(widget));
+
+			// bottom-right grip
+			widget = std::make_unique<Grip>(true, true);
+			m_bottomRightResizeGrip = widget.get();
+			AddChild(std::move(widget));
+
+			// begin drag lambda is same for all grips, so we define one here and assign to all grips
+			auto capture = [&](const Grip::EventArgs&)
+				{
+					m_beginPosition = GetPosition();
+					m_beginSize = GetSize();
+				};
+			m_bottomRightResizeGrip->OnDragBegin += capture;
+			m_topLeftResizeGrip->OnDragBegin += capture;
+			m_bottomResizeGrip->OnDragBegin += capture;
+			m_bottomLeftResizeGrip->OnDragBegin += capture;
+			m_topRightResizeGrip->OnDragBegin += capture;
+			m_topResizeGrip->OnDragBegin += capture;
+			m_leftResizeGrip->OnDragBegin += capture;
+			m_rightResizeGrip->OnDragBegin += capture;
+
+			//  bottom-right grip handlers
+			m_bottomRightResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+				{
+					VecF delta = args.Delta();
+
+					SetSize(ClampSize(
+						{
+							m_beginSize.width + delta.x,
+							m_beginSize.height + delta.y
+						}));
+				};
+
+			//  top-left grip handlers
+			m_topLeftResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+				{
+					VecF delta = args.Delta();
+
+					// when dragging left grip, if moving towards right, we are reducing the width of the frame. we might hit min size
+					// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
+					float maxDeltaX = m_beginSize.width - m_minResize.width;
+
+					// the delta width will be clamped to max allowed width
+					delta.x = std::min<float>(delta.x, maxDeltaX);
+
+					// when dragging top grip, if moving downwards, we are reducing the height of the frame. we might hit min size
+					// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
+					float maxDeltaY = m_beginSize.height - m_minResize.height;
+
+					// the delta width will be clamped to max allowed width
+					delta.y = std::min<float>(delta.y, maxDeltaY);
+
+					SetPosition(m_beginPosition + delta);
+
+					SetSize(
+						{
+							m_beginSize.width - delta.x,
+							m_beginSize.height - delta.y,
+						});
+				};
+
+			//  bottom-left grip handlers
+			m_bottomLeftResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+				{
+					VecF delta = args.Delta();
+
+					// when dragging left grip, if moving towards right, we are reducing the width of the frame. we might hit min size
+					// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
+					float maxDeltaX = m_beginSize.width - m_minResize.width;
+
+					// the delta width will be clamped to max allowed width
+					delta.x = std::min<float>(delta.x, maxDeltaX);
+
+					SetPosition(
+						{
+							m_beginPosition.x + delta.x,
+							m_beginPosition.y
+						});
+
+					SetSize(ClampSize(
+						{
+							m_beginSize.width - delta.x,
+							m_beginSize.height + delta.y,
+						}));
+				};
+
+			//  top-right grip handlers
+			m_topRightResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+				{
+					SetPosition(
+						{
+							m_beginPosition.x,
+							m_beginPosition.y + args.Delta().y
+						});
+
+					SetSize(
+						{
+							m_beginSize.width + args.Delta().x,
+							m_beginSize.height - args.Delta().y,
+						});
+				};
+
+			//  top grip handlers
+			m_topResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+				{
+					VecF delta = args.Delta();
+
+					// when dragging top grip, if moving downwards, we are reducing the height of the frame. we might hit min size
+					// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
+					float maxDeltaY = m_beginSize.height - m_minResize.height;
+
+					// the delta width will be clamped to max allowed width
+					delta.y = std::min<float>(delta.y, maxDeltaY);
+
+					SetPosition(
+						{
+							m_beginPosition.x,
+							m_beginPosition.y + delta.y
+						});
+
+					SetSize(
+						{
+							m_beginSize.width,
+							m_beginSize.height - delta.y,
+						});
+				};
+
+			//  left grip handlers
+			m_leftResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+				{
+					VecF delta = args.Delta();
+
+					// when dragging left grip, if moving towards right, we are reducing the width of the frame. we might hit min size
+					// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
+					float maxDeltaX = m_beginSize.width - m_minResize.width;
+
+					// the delta width will be clamped to max allowed width
+					delta.x = std::min<float>(delta.x, maxDeltaX);
+
+					SetPosition(
+						{
+							m_beginPosition.x + delta.x,
+							m_beginPosition.y
+						});
+
+					SetSize(
+						{
+							m_beginSize.width - delta.x,
+							m_beginSize.height,
+						});
+				};
+
+			//  right grip handlers
+			m_rightResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+				{
+					SetSize(ClampSize(
+						{
+							m_beginSize.width + args.Delta().x,
+							m_beginSize.height,
+						}));
+				};
+
+			//  bottom grip handlers
+			m_bottomResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+				{
+					SetSize(ClampSize(
+						{
+							m_beginSize.width,
+							m_beginSize.height + args.Delta().y,
+						}));
+				};
+		}
+
+		void SetMinResize(const SizeF& size)
+		{
+			m_minResize = size;
+		}
+
+		void SetBorderSize(float size)
+		{
+			m_borderSize = size;
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawResizeableFrame(*this, context);
+		}
+	};
 
 #pragma region // UI theme/skin
 
@@ -9064,24 +9571,12 @@ namespace TestMapEditor
 			PositionF pos = thumb.GetAbsolutePosition();
 			SizeF size = thumb.GetSize();
 
-			if (&thumb == context.capture)
-			{
-				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
-				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
-				context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
-			}
-			else if (&thumb == context.hover)
-			{
-				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
-				context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
-				context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.55f,0.55f,0.55f,1 }, 0);
-			}
-			else
-			{
-				context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
-				context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
-				context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
-			}
+			ColorF color = (&thumb == context.hover)? ColorF{ 0.6f, 0.6f, 0.6f, 1 } : ColorF{ 0.5f, 0.5f, 0.5f, 1 };
+
+			context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
+			context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 6,6 }, { 0.5f,0.5f,0.5f,1 }, 0);
+
+
 		}
 
 		void DrawCheckBox(const CheckBox& checkbox, const UIDrawContext& context) const override
@@ -9100,9 +9595,41 @@ namespace TestMapEditor
 			if (radiobutton.IsOn())
 			{
 				context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 6, 6 }, { 0,0,0,1 }, 0);
-			}
-			
+			}			
 		}
+
+		void DrawScrollBar(const ScrollBar& scrollbar, const UIDrawContext& context) const override
+		{
+			PositionF pos = scrollbar.GetAbsolutePosition();
+			SizeF size = scrollbar.GetSize();
+
+			context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+			context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 0.5f,0.5f,0.5f,1 }, 0);
+		}
+
+		void DrawGrip(const Grip& grip, const UIDrawContext& context) const override
+		{
+			PositionF pos = grip.GetAbsolutePosition();
+			SizeF size = grip.GetSize();
+
+			ColorF color = (&grip == context.hover) ? ColorF{ 0.5f,0,0,0.4f } : ColorF{ 0.5f,0,0,0.2f };
+			context.renderer.Draw(pos, size, color, 0);
+
+		}
+
+		void DrawResizeableFrame(const ResizeableFrame& frame, const UIDrawContext& context) const override
+		{
+			PositionF pos = frame.GetAbsolutePosition();
+			SizeF size = frame.GetSize();
+
+			context.renderer.Draw(pos + PositionF{ 2, 2 }, size, { 0,0,0,1 }, 0);
+
+			context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+
+			ColorF color = (&frame == context.focus) ? ColorF{ 0.6f, 0.6f, 0.6f, 1 } : ColorF{ 0.5f, 0.5f, 0.5f, 1 };
+			context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, color, 0);
+		}
+
 	};
 
 #pragma endregion
@@ -9251,6 +9778,16 @@ namespace TestMapEditor
 			m_ux.Show();
 			IFontAtlas& font = AssetManager().Get<IFontAtlas>("font");
 			m_ux.SetFont(&font, UIResources::FontType::Default);
+
+			std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(500.0f, 350.0f);
+			scrollbar->SetPosition({ 300,300 });
+			scrollbar->SetSize({ 300, 50 });
+			m_ux.AddWidget(std::move(scrollbar));
+
+			std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
+			resizeableframe->SetPosition({ 300,400 });
+			resizeableframe->SetSize({ 300, 300 });
+			m_ux.AddWidget(std::move(resizeableframe));
 
 			// let's create menu system
 			{
