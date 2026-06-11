@@ -70,6 +70,8 @@ namespace TestMapEditor
 	class ScrollBar;
 	class ResizeableFrame;
 	class Grip;
+	class ViewPort;
+	class Content;
 #pragma endregion
 
 #pragma region // namespaces
@@ -5654,6 +5656,9 @@ namespace TestMapEditor
 		virtual void DrawRadioButton(const RadioButton& radiobutton, const UIDrawContext& context) const = 0;
 		virtual void DrawGrip(const Grip& radiobutton, const UIDrawContext& context) const = 0;
 		virtual void DrawResizeableFrame(const ResizeableFrame& radiobutton, const UIDrawContext& context) const = 0;
+		virtual void DrawViewPort(const ViewPort& vp, const UIDrawContext& context) const = 0;
+		virtual void DrawContent(const Content& content, const UIDrawContext& context) const = 0;
+
 	};
 #pragma endregion
 
@@ -5700,6 +5705,8 @@ namespace TestMapEditor
 
 				// this widget is now moving
 				m_isMoving = true;
+
+				widget->OnDragBegin(DragEventArgs{ GetBeginPosition(), position });
 			}
 
 			void Update(const PositionF& position, Widget* widget)
@@ -5719,12 +5726,16 @@ namespace TestMapEditor
 
 					// transform widget's position based on mouse movement delta
 					widget->SetPosition(m_beginMovePosition + delta);
+
+					widget->OnDragMove(DragEventArgs{ GetBeginPosition(), position });
 				}
 			}
 
 			void End(const PositionF& position, Widget* widget)
 			{
 				m_isMoving = false;
+
+				widget->OnDragEnd(DragEventArgs{ GetBeginPosition(), position });
 			}
 
 			bool IsDragging() const
@@ -5747,7 +5758,6 @@ namespace TestMapEditor
 		}
 
 	protected:
-
 		// is just enum (not class) because it needs logical operations
 		enum MoveBehavior
 		{
@@ -5873,6 +5883,17 @@ namespace TestMapEditor
 		}
 
 	public:
+		struct DragEventArgs
+		{
+			PositionF beginPosition;
+			PositionF currentPosition;
+
+			VecF Delta() const
+			{
+				return currentPosition - beginPosition;
+			}
+		};
+
 		virtual ~Widget() = default;
 
 		enum class HorizontalAlignment
@@ -6190,10 +6211,13 @@ namespace TestMapEditor
 			return m_size;
 		}
 
+		engine::event::Event<const SizeF&> OnResize;
+
 		void SetSize(const SizeF& size)
 		{
 			SizeF oldSize = m_size;
 			m_size = size;
+			OnResize(size);
 			OnSizeChanged(oldSize, size);
 		}
 
@@ -6207,10 +6231,12 @@ namespace TestMapEditor
 			return position;
 		}
 
+		engine::event::Event<const PositionF&> OnMove;
 		void SetPosition(const PositionF& pos)
 		{
 			PositionF oldPos = m_position;
 			m_position = pos;
+			OnMove(pos);
 			OnPositionChanged(oldPos, m_position);
 		}
 
@@ -6258,12 +6284,17 @@ namespace TestMapEditor
 		// INPUT
 		// --------------------------------------------------------------------------------
 
+		engine::event::Event<const DragEventArgs&> OnDragBegin;
+		engine::event::Event<const DragEventArgs&> OnDragMove;
+		engine::event::Event<const DragEventArgs&> OnDragEnd;
+
 		void MouseDown(const PositionF& position)
 		{
 			// let derived widget handle mouse down event first
 			OnMouseDown(position);
 
 			m_dragHandler.Begin(position, this);
+
 		}
 
 		void MouseUp(const PositionF& position)
@@ -8944,57 +8975,26 @@ namespace TestMapEditor
 
 	};
 
+	class Content : public Widget
+	{
+	private:
+	public:
+		Content()
+		{
+			m_moveBehavior = MoveBehavior::Free;
+			m_droppable = false;
+			m_focusable = false;
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawContent(*this, context);
+		}
+	};
+
 	class Grip : public Widget
 	{
-	public:
-		struct EventArgs
-		{
-			PositionF beginPosition;
-			PositionF currentPosition;
-
-			VecF Delta() const
-			{
-				return currentPosition - beginPosition;
-			}
-		};
-	private:
-
-	protected:
-		void OnMouseDown(const PositionF& position) override
-		{
-			EventArgs args
-			{
-				m_dragHandler.GetBeginPosition(),
-				position
-			};
-
-			OnDragBegin(args);
-		}
-
-		void OnMouseUp(const PositionF& position) override
-		{
-			EventArgs args
-			{
-				m_dragHandler.GetBeginPosition(),
-				position
-			};
-
-			OnDragEnd(args);
-		}
-
-		void OnMouseMove(const PositionF& position) override
-		{
-			if (m_dragHandler.IsDragging())
-			{
-				EventArgs args
-				{
-					m_dragHandler.GetBeginPosition(),
-					position
-				};
-
-				OnDragMove(args);
-			}
-		}
+	protected: 
 
 	public:
 		Grip(bool MoveHorizontal, bool MoveVertical)
@@ -9010,13 +9010,8 @@ namespace TestMapEditor
 
 		void Draw(const UIDrawContext& context) const override
 		{
-			if (context.skin) context.skin->DrawGrip(*this, context);
+		//	if (context.skin) context.skin->DrawGrip(*this, context);
 		}
-
-		engine::event::Event<const EventArgs&> OnDragBegin;
-		engine::event::Event<const EventArgs&> OnDragMove;
-		engine::event::Event<const EventArgs&> OnDragEnd;
-
 	};
 
 	// a frame the can be resized when dragging its edge/corner grips
@@ -9034,6 +9029,8 @@ namespace TestMapEditor
 		Grip* m_bottomLeftResizeGrip = nullptr;
 		Grip* m_bottomRightResizeGrip = nullptr;
 
+		Widget* m_content = nullptr;
+
 		// resize grip thickness
 		float m_borderSize;
 
@@ -9046,6 +9043,11 @@ namespace TestMapEditor
 
 	protected:
 		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
+		{
+			UpdateLayout();
+		}
+
+		void UpdateLayout()
 		{
 			// resize and reposition right grip control to occupy right edge of the frame with border size as thickness
 			m_rightResizeGrip->SetPosition({ m_size.width - m_borderSize, m_borderSize });
@@ -9065,7 +9067,7 @@ namespace TestMapEditor
 
 			// resize and reposition right grip control to occupy top-left corner of the frame with border size as thickness
 			m_topLeftResizeGrip->SetPosition({ 0, 0 });
-			m_topLeftResizeGrip->SetSize({ m_borderSize, m_borderSize });	
+			m_topLeftResizeGrip->SetSize({ m_borderSize, m_borderSize });
 
 			// resize and reposition right grip control to occupy top-right corner of the frame with border size as thickness
 			m_topRightResizeGrip->SetPosition({ m_size.width - m_borderSize, 0 });
@@ -9077,7 +9079,12 @@ namespace TestMapEditor
 
 			// resize and reposition right grip control to occupy bottom-right corner of the frame with border size as thickness
 			m_bottomRightResizeGrip->SetPosition({ m_size.width - m_borderSize, m_size.height - m_borderSize });
-			m_bottomRightResizeGrip->SetSize({ m_borderSize, m_borderSize });	
+			m_bottomRightResizeGrip->SetSize({ m_borderSize, m_borderSize });
+
+			m_content->SetPosition({ m_borderSize, m_borderSize });
+			m_content->SetSize({ GetSize().width - m_borderSize * 2, GetSize().height - m_borderSize * 2 });
+
+			OnContentAreaChanged(m_content->GetSize());
 		}
 
 		SizeF ClampSize(const SizeF& size) const
@@ -9090,7 +9097,7 @@ namespace TestMapEditor
 		}
 
 	public:
-		ResizeableFrame(float borderSize, const SizeF& minSize = {200, 200}) :
+		ResizeableFrame(float borderSize = 20.0f, const SizeF& minSize = {200, 200}) :
 			m_borderSize(borderSize),
 			m_minResize(minSize)
 		{
@@ -9134,8 +9141,12 @@ namespace TestMapEditor
 			m_bottomRightResizeGrip = widget.get();
 			AddChild(std::move(widget));
 
+			std::unique_ptr<Widget> client = std::make_unique<Content>();
+			m_content = client.get();
+			AddChild(std::move(client));
+
 			// begin drag lambda is same for all grips, so we define one here and assign to all grips
-			auto capture = [&](const Grip::EventArgs&)
+			auto capture = [&](const Widget::DragEventArgs&)
 				{
 					m_beginPosition = GetPosition();
 					m_beginSize = GetSize();
@@ -9149,8 +9160,19 @@ namespace TestMapEditor
 			m_leftResizeGrip->OnDragBegin += capture;
 			m_rightResizeGrip->OnDragBegin += capture;
 
+			// we also track content drag in case content is draggable, we bubble up movement to the frame and make content stationary
+			m_content->OnDragBegin += capture;
+			m_content->OnDragMove += [&](const Widget::DragEventArgs& args)
+				{
+					VecF delta = args.Delta();
+
+					SetPosition(m_beginPosition + delta);
+
+					UpdateLayout();
+				};
+
 			//  bottom-right grip handlers
-			m_bottomRightResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+			m_bottomRightResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
 				{
 					VecF delta = args.Delta();
 
@@ -9162,7 +9184,7 @@ namespace TestMapEditor
 				};
 
 			//  top-left grip handlers
-			m_topLeftResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+			m_topLeftResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
 				{
 					VecF delta = args.Delta();
 
@@ -9190,7 +9212,7 @@ namespace TestMapEditor
 				};
 
 			//  bottom-left grip handlers
-			m_bottomLeftResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+			m_bottomLeftResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
 				{
 					VecF delta = args.Delta();
 
@@ -9215,7 +9237,7 @@ namespace TestMapEditor
 				};
 
 			//  top-right grip handlers
-			m_topRightResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+			m_topRightResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
 				{
 					SetPosition(
 						{
@@ -9231,7 +9253,7 @@ namespace TestMapEditor
 				};
 
 			//  top grip handlers
-			m_topResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+			m_topResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
 				{
 					VecF delta = args.Delta();
 
@@ -9256,7 +9278,7 @@ namespace TestMapEditor
 				};
 
 			//  left grip handlers
-			m_leftResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+			m_leftResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
 				{
 					VecF delta = args.Delta();
 
@@ -9281,7 +9303,7 @@ namespace TestMapEditor
 				};
 
 			//  right grip handlers
-			m_rightResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+			m_rightResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
 				{
 					SetSize(ClampSize(
 						{
@@ -9291,7 +9313,7 @@ namespace TestMapEditor
 				};
 
 			//  bottom grip handlers
-			m_bottomResizeGrip->OnDragMove += [&](const Grip::EventArgs& args)
+			m_bottomResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
 				{
 					SetSize(ClampSize(
 						{
@@ -9311,9 +9333,97 @@ namespace TestMapEditor
 			m_borderSize = size;
 		}
 
+		engine::event::Event<const SizeF&> OnContentAreaChanged;	
+
 		void Draw(const UIDrawContext& context) const override
 		{
 			if (context.skin) context.skin->DrawResizeableFrame(*this, context);
+		}
+
+		void AddContent(std::unique_ptr<Widget> widget)
+		{
+			m_content->AddChild(std::move(widget));
+		}
+	};
+
+	class ViewPort: public Widget
+	{
+	private:
+		Widget* m_content;
+
+	protected:
+
+		void UpdateLayout()
+		{
+			// if content's position is > 0,0 then move it back to 0, 0
+			PositionF position = m_content->GetPosition();
+			SizeF size = m_content->GetSize();
+
+			bool updatePos = false;
+
+			if (position.x + size.width < GetSize().width)
+			{
+				position.x = GetSize().width - size.width;
+				updatePos = true;
+			}
+			if (position.y + size.height < GetSize().height)
+			{
+				position.y = GetSize().height - size.height;
+				updatePos = true;
+			}
+
+			if (position.x > 0.0f)
+			{
+				position.x = 0.0f;
+				updatePos = true;
+			}
+			if (position.y > 0.0f)
+			{
+				position.y = 0.0f;
+				updatePos = true;
+			}
+			if (updatePos)
+			{
+				m_content->SetPosition(position);
+			}
+		}
+
+		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
+		{
+			UpdateLayout();
+		}
+
+	public:
+		ViewPort()
+		{		
+			m_moveBehavior = MoveBehavior::None;
+			m_droppable = false;
+			m_focusable = false;
+
+			std::unique_ptr<Widget> content = std::make_unique<Content>();
+			m_content = content.get();
+
+			AddChild(std::move(content));
+
+			m_content->OnDragMove += [&](const Widget::DragEventArgs& args)
+				{
+					UpdateLayout();
+				};
+
+			m_content->OnResize += [&](const SizeF& size)
+				{
+					UpdateLayout();
+				};
+		}
+
+		void SetContentSize(const SizeF& size)
+		{
+			m_content->SetSize(size);
+		}
+			
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawViewPort(*this, context);
 		}
 	};
 
@@ -9624,6 +9734,21 @@ namespace TestMapEditor
 			context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, color, 0);
 		}
 
+		void DrawViewPort(const ViewPort& vp, const UIDrawContext& context) const override
+		{
+			PositionF pos = vp.GetAbsolutePosition();
+			SizeF size = vp.GetSize();
+
+			context.renderer.Draw(pos, size, { 0,0,0,0.3f }, 0);
+		}
+		void DrawContent(const Content& content, const UIDrawContext& context) const override
+		{
+			PositionF pos = content.GetAbsolutePosition();
+			SizeF size = content.GetSize();
+
+			context.renderer.Draw(pos, size, { 0,0,0,0.3f }, 0);
+		}
+
 	};
 
 #pragma endregion
@@ -9640,6 +9765,7 @@ namespace TestMapEditor
 		Widget* m_menu = nullptr;
 		Widget* m_menuBar = nullptr;
 		Slider* m_slider = nullptr;
+		ViewPort* m_viewport = nullptr;
 		int m_imageState = 0;
 		UISystem m_ux;
 		Button* m_button = nullptr;
@@ -9779,8 +9905,21 @@ namespace TestMapEditor
 			m_ux.AddWidget(std::move(scrollbar));
 
 			std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
-			resizeableframe->SetPosition({ 300,400 });
-			resizeableframe->SetSize({ 300, 300 });
+			resizeableframe->SetPosition({ 300,300 });
+			resizeableframe->SetSize({ 600, 600 });
+
+			std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
+			viewport->SetPosition({ 0, 0 });
+			viewport->SetSize({ 0, 0 });
+			viewport->SetContentSize({ 500, 500 });
+			m_viewport = viewport.get();
+			resizeableframe->OnContentAreaChanged += [&](const SizeF& size)
+				{
+					m_viewport->SetPosition({ 0,0 });
+					m_viewport->SetSize(size);
+				};
+			resizeableframe->AddContent(std::move(viewport));
+
 			m_ux.AddWidget(std::move(resizeableframe));
 
 			// let's create menu system
@@ -10591,7 +10730,7 @@ namespace TestMapEditor
 			AssetManager assets;
 			ICanvas& canvas = assets.Get<ICanvas>("canvas");
 			IRenderer& renderer = assets.Get<IRenderer>("renderer");
-			renderer.EnableClipping(true);
+			renderer.EnableClipping(false);
 			renderer.SetClipRegion(canvas.GetViewPort());
 
 			DefaultUISkin skin;
