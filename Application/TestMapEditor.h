@@ -72,6 +72,7 @@ namespace TestMapEditor
 	class Grip;
 	class ViewPort;
 	class Content;
+	class ScrollView;
 #pragma endregion
 
 #pragma region // namespaces
@@ -5658,6 +5659,7 @@ namespace TestMapEditor
 		virtual void DrawResizeableFrame(const ResizeableFrame& radiobutton, const UIDrawContext& context) const = 0;
 		virtual void DrawViewPort(const ViewPort& vp, const UIDrawContext& context) const = 0;
 		virtual void DrawContent(const Content& content, const UIDrawContext& context) const = 0;
+		virtual void DrawScrollView(const ScrollView& scrollview, const UIDrawContext& context) const = 0;
 
 	};
 #pragma endregion
@@ -5723,6 +5725,10 @@ namespace TestMapEditor
 						// if we can move vertically, use the mouse position. otherwise, use begin position
 						(widget->m_moveBehavior & MoveBehavior::Vertical) ? position.y - m_beginMousePosition.y : 0.0f
 					};
+
+					// we only drag the widget if new position after this drag is different from current position
+					PositionF dragpos = m_beginMovePosition + delta;
+					if (dragpos == widget->GetPosition()) return;
 
 					// transform widget's position based on mouse movement delta
 					widget->SetPosition(m_beginMovePosition + delta);
@@ -5846,7 +5852,6 @@ namespace TestMapEditor
 		{
 
 		}
-
 
 		// --------------------------------------------------------------------------------
 		// INPUT HANDLERS
@@ -6215,6 +6220,10 @@ namespace TestMapEditor
 
 		void SetSize(const SizeF& size)
 		{
+			// if size did not change, no need to update and invoke events
+			// commenting this out coz there seems to be a bug related to scrolling viewport
+			if (m_size == size) return;
+
 			SizeF oldSize = m_size;
 			m_size = size;
 			OnResize(size);
@@ -6234,6 +6243,10 @@ namespace TestMapEditor
 		engine::event::Event<const PositionF&> OnMove;
 		void SetPosition(const PositionF& pos)
 		{
+			// if position did not change, no need to update and invoke events
+			// commenting this out coz there seems to be a bug related to scrolling viewport
+			if (m_position == pos) return;
+
 			PositionF oldPos = m_position;
 			m_position = pos;
 			OnMove(pos);
@@ -8852,10 +8865,19 @@ namespace TestMapEditor
 		bool m_horizontal;
 		Widget* m_thumb;
 		bool m_isDragging;
+		float m_minThumbLength;
 
 	protected:
+		bool CanScroll() const
+		{
+			return m_contentLength > m_viewportLength;
+		}
+
 		void OnMouseDown(const PositionF& pos) override
 		{
+			// if cannot scroll e.g. content smaller than viewport, no need to drag
+			if (!CanScroll()) return;
+
 			m_isDragging = true;
 			UpdateOffsetFromPosition(pos);
 		}
@@ -8878,8 +8900,12 @@ namespace TestMapEditor
 			float trackLength = m_horizontal ? GetWidth() : GetHeight();
 			float thickness = m_horizontal ? GetHeight() : GetWidth();
 
+			// get ratio between viewport and content length. this is basically the normalized length of the thumb. 
+			// this can be > 1 if content is smaller than viewport
 			float ratio = m_contentLength > 0 ? m_viewportLength / m_contentLength : 1.0f;
-			float length = std::clamp(ratio * trackLength, 10.0f, trackLength); // clamp min size
+
+			// here when calculating the actual length of the thumb, we clamp to tracklength so even if ratio > 1, we don't end up with thumb bigger than scroll bar
+			float length = std::clamp(ratio * trackLength, m_minThumbLength, trackLength); // clamp min size
 
 			SizeF thumbSize{
 				m_horizontal ? length : thickness,
@@ -8906,9 +8932,9 @@ namespace TestMapEditor
 			PositionF local = pos - GetAbsolutePosition();
 			float trackLength = m_horizontal ? GetWidth() : GetHeight();
 			float thumbLength = m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height;
-			float length = trackLength - thumbLength;
+			float scrollLength = trackLength - thumbLength;
 
-			float nvalue = length > 0 ? (m_horizontal ? local.x - thumbLength / 2 : local.y - thumbLength / 2) / length : 0;
+			float nvalue = scrollLength > 0 ? (m_horizontal ? local.x - thumbLength / 2 : local.y - thumbLength / 2) / scrollLength : 0;
 			nvalue = std::clamp(nvalue, 0.0f, 1.0f);
 
 			float maxOffset = std::max<float>(0.0f, m_contentLength - m_viewportLength);
@@ -8926,12 +8952,13 @@ namespace TestMapEditor
 	public:
 		engine::event::Event<float> OnScroll;
 
-		ScrollBar(float contentLength, float viewportLength): 
+		ScrollBar(float contentLength, float viewportLength, bool isHorizontal): 
 			m_contentLength(contentLength), 
 			m_viewportLength(viewportLength),
 			m_offset(0), 
-			m_horizontal(true), 
-			m_isDragging(false)
+			m_horizontal(isHorizontal),
+			m_isDragging(false),
+			m_minThumbLength(10.0f)
 		{
 			m_moveBehavior = MoveBehavior::None;
 
@@ -8943,7 +8970,10 @@ namespace TestMapEditor
 		void SetOffset(float offset)
 		{
 			offset = std::clamp(offset, 0.0f, std::max<float>(0.0f, m_contentLength - m_viewportLength));
+
+			// if thumb position did not change, no need to update and invoke scroll events
 			if (m_offset == offset) return;
+
 			m_offset = offset;
 			UpdateThumbPosition();
 			OnScroll(m_offset);
@@ -8971,8 +9001,6 @@ namespace TestMapEditor
 		{
 			if (context.skin) context.skin->DrawScrollBar(*this, context);
 		}
-
-
 	};
 
 	class Content : public Widget
@@ -8982,6 +9010,13 @@ namespace TestMapEditor
 		Content()
 		{
 			m_moveBehavior = MoveBehavior::Free;
+			m_droppable = false;
+			m_focusable = false;
+		}
+
+		Content(bool movable)
+		{
+			m_moveBehavior = movable? MoveBehavior::Free : MoveBehavior::None;
 			m_droppable = false;
 			m_focusable = false;
 		}
@@ -9084,7 +9119,7 @@ namespace TestMapEditor
 			m_content->SetPosition({ m_borderSize, m_borderSize });
 			m_content->SetSize({ GetSize().width - m_borderSize * 2, GetSize().height - m_borderSize * 2 });
 
-			OnContentAreaChanged(m_content->GetSize());
+			OnContentSizeChanged(m_content->GetSize());
 		}
 
 		SizeF ClampSize(const SizeF& size) const
@@ -9161,15 +9196,23 @@ namespace TestMapEditor
 			m_rightResizeGrip->OnDragBegin += capture;
 
 			// we also track content drag in case content is draggable, we bubble up movement to the frame and make content stationary
-			m_content->OnDragBegin += capture;
+			m_content->OnDragBegin += [&](const Widget::DragEventArgs& args) 
+				{
+					MouseDown(args.currentPosition);
+				};
+
 			m_content->OnDragMove += [&](const Widget::DragEventArgs& args)
 				{
-					VecF delta = args.Delta();
-
-					SetPosition(m_beginPosition + delta);
+					MouseMove(args.currentPosition);
 
 					UpdateLayout();
 				};
+
+			m_content->OnDragEnd += [&](const Widget::DragEventArgs& args)
+				{
+					MouseUp(args.currentPosition);
+				};
+
 
 			//  bottom-right grip handlers
 			m_bottomRightResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
@@ -9300,6 +9343,7 @@ namespace TestMapEditor
 							m_beginSize.width - delta.x,
 							m_beginSize.height,
 						});
+
 				};
 
 			//  right grip handlers
@@ -9333,7 +9377,7 @@ namespace TestMapEditor
 			m_borderSize = size;
 		}
 
-		engine::event::Event<const SizeF&> OnContentAreaChanged;	
+		engine::event::Event<const SizeF&> OnContentSizeChanged;	
 
 		void Draw(const UIDrawContext& context) const override
 		{
@@ -9344,6 +9388,11 @@ namespace TestMapEditor
 		{
 			m_content->AddChild(std::move(widget));
 		}
+
+		SizeF GetContentsize() const
+		{
+			return m_content->GetSize();
+		}
 	};
 
 	class ViewPort: public Widget
@@ -9352,8 +9401,7 @@ namespace TestMapEditor
 		Widget* m_content;
 
 	protected:
-
-		void UpdateLayout()
+		void UpdateContentPosition()
 		{
 			// if content's position is > 0,0 then move it back to 0, 0
 			PositionF position = m_content->GetPosition();
@@ -9390,10 +9438,13 @@ namespace TestMapEditor
 
 		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
 		{
-			UpdateLayout();
+			UpdateContentPosition();
 		}
 
 	public:
+		engine::event::Event<const VecF&> OnScroll;
+		engine::event::Event<const SizeF&> OnContentSizeChange;
+
 		ViewPort()
 		{		
 			m_moveBehavior = MoveBehavior::None;
@@ -9405,14 +9456,26 @@ namespace TestMapEditor
 
 			AddChild(std::move(content));
 
-			m_content->OnDragMove += [&](const Widget::DragEventArgs& args)
-				{
-					UpdateLayout();
-				};
-
 			m_content->OnResize += [&](const SizeF& size)
 				{
-					UpdateLayout();
+					// this event only fires up if content size really changed. so we can safely assume the content size actually changed when we reach this point
+					UpdateContentPosition();
+					OnContentSizeChange(size);
+				};
+
+			m_content->OnMove += [&](const PositionF pos)
+				{
+					// When content moves, ensure it remains within the viewport bounds.
+					// 
+					// OnMove is only raised when content's position really changed.
+					// Update the viewport's layout to ensure content stays within the bounds of viewport's area.
+					// Updating the layout may result in setting content's position again which will result in raising OnMove.
+					// As OnMove will only be raised  when content's position really changed, this will not result in recursive loop
+					//
+					// also note that since we are monitoring content's move event, we don't need to monitor its drag event as dragging will 
+					// also eventually set position of content and will raise OnMove
+					UpdateContentPosition();
+					OnScroll(GetOffset());
 				};
 		}
 
@@ -9420,12 +9483,243 @@ namespace TestMapEditor
 		{
 			m_content->SetSize(size);
 		}
+
+		SizeF GetContentSize() const
+		{
+			return m_content->GetSize();
+		}
+
+		VecF GetOffset() const
+		{
+			return PositionF{ 0,0 } - m_content->GetPosition();
+		}
+
+		void SetOffset(const VecF& offset)
+		{
+			// Setting the viewport offset is done by moving the content in the
+			// opposite direction relative to the viewport.
+			//
+			// This ultimately calls m_content->SetPosition().
+			//
+			// If the position actually changes, Widget::SetPosition() will fire
+			// the content's OnMove event. ViewPort listens to that event and
+			// performs UpdateLayout() to enforce viewport bounds and any other
+			// scrolling rules.
+			//
+			// Widget::SetPosition() is guarded against assigning the same value,
+			// preventing redundant notifications and avoiding recursive update
+			// loops when UpdateLayout() performs corrective repositioning.
+			PositionF pos = PositionF{ 0,0 } - offset;
+			m_content->SetPosition(pos);
+		}
 			
 		void Draw(const UIDrawContext& context) const override
 		{
 			if (context.skin) context.skin->DrawViewPort(*this, context);
 		}
 	};
+
+	class ScrollView: public Widget
+	{
+	private:
+		ViewPort* m_viewport;
+		ScrollBar* m_hScrollBar;
+		ScrollBar* m_vScrollBar;
+		bool m_autoHideScrollBars;
+
+		float m_scrollSize;
+		float m_borderSize;
+
+	protected:
+
+		// this will update thumb positions of the scroll bars
+		void UpdateThumbPositions()
+		{
+			VecF offset = m_viewport->GetOffset();
+			m_hScrollBar->SetOffset(offset.x);
+			m_vScrollBar->SetOffset(offset.y);
+		}
+
+		// this will update the content size of scroll bars. scroll bars then will refresh its thumb size and thumb position internally
+		void UpdateScrollBarContentSize()
+		{
+			SizeF contentSize = m_viewport->GetContentSize();
+
+			m_hScrollBar->SetContentLength(contentSize.width);
+			m_vScrollBar->SetContentLength(contentSize.height);
+		}
+
+		// this will update the viewport size of scroll bars.  scroll bars then will refresh its thumb size and thumb position internally
+		void UpdateScrollBarViewportSize()
+		{
+			SizeF viewportSize = m_viewport->GetSize();
+
+			m_hScrollBar->SetViewportLength(viewportSize.width);
+			m_vScrollBar->SetViewportLength(viewportSize.height);
+		}
+
+		void UpdateLayout()
+		{
+			if (m_autoHideScrollBars)
+			{
+				// let's assume scroll bars are not needed first
+				bool hScrollBarVisible = false;
+				bool vScrollBarVisible = false;
+
+				// since we assume there are no scrollbars so we also assume viewport occupies the whole scrollview
+				SizeF viewportSize = GetSize();
+
+				// if content.size < viewport.size, no need to do anything
+				SizeF contentSize = m_viewport->GetContentSize();
+
+				// we need to do a few passes to check if either or both scrollbars are needed
+				while (
+					(contentSize.height > viewportSize.height && !vScrollBarVisible) ||
+					(contentSize.height <= viewportSize.height && vScrollBarVisible) ||
+					(contentSize.width > viewportSize.width && !hScrollBarVisible) ||
+					(contentSize.width <= viewportSize.width && hScrollBarVisible)
+					)
+				{
+					if (contentSize.width > viewportSize.width)
+					{
+						hScrollBarVisible = true;
+						viewportSize.height = GetSize().height - m_borderSize - m_scrollSize;
+					}
+					else
+					{
+						hScrollBarVisible = false;
+						viewportSize.height = GetSize().height;
+					}
+
+
+					if (contentSize.height > viewportSize.height)
+					{
+						vScrollBarVisible = true;
+						viewportSize.width = GetSize().width - m_borderSize - m_scrollSize;
+					}
+					else
+					{
+						vScrollBarVisible = false;
+						viewportSize.width = GetSize().width;
+					}
+				}
+
+				// now let's hide or show vertical scrollbar 
+				if (vScrollBarVisible) m_vScrollBar->Show();
+				else m_vScrollBar->Hide();
+
+				// now let's hide or show horizontal scrollbar 
+				if (hScrollBarVisible) m_hScrollBar->Show();
+				else m_hScrollBar->Hide();
+
+				// update viewport size and position
+				m_viewport->SetPosition({ 0,0 });
+				m_viewport->SetSize(viewportSize);
+			}
+			else
+			{
+				// if scrollbars are always visible...
+				m_vScrollBar->Show();
+				m_hScrollBar->Show();
+
+				m_viewport->SetPosition({ 0,0 });
+				m_viewport->SetSize({
+						GetSize().width - m_borderSize - m_scrollSize,
+						GetSize().height - m_borderSize - m_scrollSize
+					});
+			}
+
+			// update horizontal scrollbar size and position
+			m_hScrollBar->SetPosition({ 0, GetSize().height - m_scrollSize});
+			m_hScrollBar->SetSize(
+				{
+					GetSize().width - (m_vScrollBar->IsVisible() ? m_scrollSize : 0.0f),
+					m_scrollSize,
+				}
+			);
+						
+			// update vertical scrollbar size and position
+			m_vScrollBar->SetPosition({ GetSize().width - m_scrollSize, 0 });
+			m_vScrollBar->SetSize(
+				{
+					m_scrollSize,
+					GetSize().height - (m_hScrollBar->IsVisible() ? m_scrollSize : 0.0f),
+				}
+			);
+
+			UpdateScrollBarContentSize();
+			UpdateScrollBarViewportSize();
+		}
+
+		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
+		{
+			UpdateLayout();
+		}
+
+	public:
+		ScrollView(bool autoHideScrollBars = true, float scrollSize = 20.0f, float borderSize = 2.0f)
+			: m_scrollSize(scrollSize)
+			, m_borderSize(borderSize)
+			, m_viewport(nullptr)
+			, m_hScrollBar(nullptr)
+			, m_vScrollBar(nullptr)
+			, m_autoHideScrollBars(autoHideScrollBars)
+		{
+			std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
+			m_viewport = viewport.get();
+			AddChild(std::move(viewport));
+
+			std::unique_ptr<ScrollBar> hScrollBar = std::make_unique<ScrollBar>(0.0f,0.0f, true);
+			m_hScrollBar = hScrollBar.get();
+			AddChild(std::move(hScrollBar));
+
+			std::unique_ptr<ScrollBar> vScrollBar = std::make_unique<ScrollBar>(0.f,0.0f, false);
+			m_vScrollBar = vScrollBar.get();
+			AddChild(std::move(vScrollBar));
+
+			// listen to viewport's scroll event. when viewport's content moves or scrolls, we need to update our scrollbar's thumb positions
+			m_viewport->OnScroll += [&](const VecF& offset)
+				{
+					// this will update thumb positions of the scroll bars
+					UpdateThumbPositions();
+				};
+
+			m_viewport->OnContentSizeChange += [&](const SizeF& size)
+				{
+					// this will update the content size of scroll bars. scroll bars then will refresh its thumb size and thumb position internally
+					UpdateScrollBarContentSize();
+					UpdateLayout();
+				};
+
+			// handler for when horizontal scrollbar scrolls. only viewport's content position changes here. layout remains the same.
+			m_hScrollBar->OnScroll += [&](float offset)
+				{
+					VecF currOffset = m_viewport->GetOffset();
+					currOffset.x = offset;
+					m_viewport->SetOffset(currOffset);
+				};
+
+			// handler for when vertical	 scrollbar scrolls. only viewport's content position changes here. layout remains the same.
+			m_vScrollBar->OnScroll += [&](float offset)
+				{
+					VecF currOffset = m_viewport->GetOffset();
+					currOffset.y = offset;
+					m_viewport->SetOffset(currOffset);
+				};
+		}
+
+		void SetContentSize(const SizeF& size)
+		{
+			m_viewport->SetContentSize(size);
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin) context.skin->DrawScrollView(*this, context);
+		}
+
+	};
+#pragma endregion
 
 #pragma region // UI theme/skin
 
@@ -9726,12 +10020,15 @@ namespace TestMapEditor
 			PositionF pos = frame.GetAbsolutePosition();
 			SizeF size = frame.GetSize();
 
-			context.renderer.Draw(pos + PositionF{ 2, 2 }, size, { 0,0,0,1 }, 0);
+			//context.renderer.Draw(pos + PositionF{ 2, 2 }, size, { 0,0,0,1 }, 0);
 
-			context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
+			//context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
 
-			ColorF color = (&frame == context.focus) ? ColorF{ 0.6f, 0.6f, 0.6f, 1 } : ColorF{ 0.5f, 0.5f, 0.5f, 1 };
-			context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, color, 0);
+			//ColorF color = (&frame == context.focus) ? ColorF{ 0.6f, 0.6f, 0.6f, 1 } : ColorF{ 0.5f, 0.5f, 0.5f, 1 };
+			//context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, color, 0);
+
+			context.renderer.Draw(pos, size, { 0,0.5f,0,0.5f }, 0);
+
 		}
 
 		void DrawViewPort(const ViewPort& vp, const UIDrawContext& context) const override
@@ -9739,15 +10036,25 @@ namespace TestMapEditor
 			PositionF pos = vp.GetAbsolutePosition();
 			SizeF size = vp.GetSize();
 
-			context.renderer.Draw(pos, size, { 0,0,0,0.3f }, 0);
+			context.renderer.Draw(pos, size, { 0,0,1,0.3f }, 0);
 		}
+
 		void DrawContent(const Content& content, const UIDrawContext& context) const override
 		{
 			PositionF pos = content.GetAbsolutePosition();
 			SizeF size = content.GetSize();
 
-			context.renderer.Draw(pos, size, { 0,0,0,0.3f }, 0);
+			context.renderer.Draw(pos, size, { 0,0.5f,0,0.3f }, 0);
 		}
+
+		void DrawScrollView(const ScrollView& scrollview, const UIDrawContext& context) const override
+		{
+			PositionF pos = scrollview.GetAbsolutePosition();
+			SizeF size = scrollview.GetSize();
+
+			context.renderer.Draw(pos, size, { 1,0,0,0.3f }, 0);
+		}
+
 
 	};
 
@@ -9766,6 +10073,7 @@ namespace TestMapEditor
 		Widget* m_menuBar = nullptr;
 		Slider* m_slider = nullptr;
 		ViewPort* m_viewport = nullptr;
+		ScrollView* m_scrollview = nullptr;
 		int m_imageState = 0;
 		UISystem m_ux;
 		Button* m_button = nullptr;
@@ -9895,32 +10203,89 @@ namespace TestMapEditor
 		{
 			m_ux.SetPosition({ 0,0 });
 			m_ux.SetSize({ 0,0 });
-			m_ux.Show();
+			m_ux.Show(); 
 			IFontAtlas& font = AssetManager().Get<IFontAtlas>("font");
 			m_ux.SetFont(&font, UIResources::FontType::Default);
 
-			std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(500.0f, 350.0f);
-			scrollbar->SetPosition({ 300,300 });
-			scrollbar->SetSize({ 300, 50 });
-			m_ux.AddWidget(std::move(scrollbar));
+			if(false)
+			{
+				std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(500.0f, 350.0f, true);
+				scrollbar->SetPosition({ 300,300 });
+				scrollbar->SetSize({ 300, 50 });
+				m_ux.AddWidget(std::move(scrollbar));
 
-			std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
-			resizeableframe->SetPosition({ 300,300 });
-			resizeableframe->SetSize({ 600, 600 });
+			}
 
-			std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
-			viewport->SetPosition({ 0, 0 });
-			viewport->SetSize({ 0, 0 });
-			viewport->SetContentSize({ 500, 500 });
-			m_viewport = viewport.get();
-			resizeableframe->OnContentAreaChanged += [&](const SizeF& size)
-				{
-					m_viewport->SetPosition({ 0,0 });
-					m_viewport->SetSize(size);
-				};
-			resizeableframe->AddContent(std::move(viewport));
+			if(false)
+			{
+				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
+				resizeableframe->SetPosition({ 300,300 });
+				resizeableframe->SetSize({ 600, 600 });
 
-			m_ux.AddWidget(std::move(resizeableframe));
+				std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
+				viewport->SetPosition({ 0, 0 });
+				viewport->SetSize(resizeableframe->GetContentsize());
+				viewport->SetContentSize({ 500, 500 });
+				m_viewport = viewport.get();
+				resizeableframe->OnContentSizeChanged += [&](const SizeF& size)
+					{
+						m_viewport->SetPosition({ 0,0 });
+						m_viewport->SetSize(size);
+					};
+				resizeableframe->AddContent(std::move(viewport));
+
+				m_ux.AddWidget(std::move(resizeableframe));
+			}
+
+
+			if (false)
+			{
+
+				std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
+				viewport->SetPosition({ 250, 250 });
+				viewport->SetSize({ 300,300 });
+				viewport->SetContentSize({ 500, 500 });
+				m_viewport = viewport.get();
+				m_ux.AddWidget(std::move(viewport));
+
+			}
+
+			if (true)
+			{
+				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
+				resizeableframe->SetPosition({ 200,200 });
+				resizeableframe->SetSize({ 300, 300 });
+
+				std::unique_ptr<ScrollView> scrollview = std::make_unique<ScrollView>();
+				scrollview->SetPosition({ 0, 0 });
+				scrollview->SetSize(resizeableframe->GetContentsize());
+				scrollview->SetContentSize({ 500, 500 });
+				m_scrollview = scrollview.get();
+				resizeableframe->OnContentSizeChanged += [&](const SizeF& size)
+					{
+						m_scrollview->SetPosition({ 0,0 });
+						m_scrollview->SetSize(size);
+					};
+				resizeableframe->AddContent(std::move(scrollview));
+
+				m_ux.AddWidget(std::move(resizeableframe));
+			}
+
+			if(false)
+			{
+				std::unique_ptr<Frame> frame = std::make_unique<Frame>();
+				frame->SetPosition({ 50,50 });
+				frame->SetSize({ 640, 480 });
+
+				std::unique_ptr<ScrollView> scrollview = std::make_unique<ScrollView>();
+				scrollview->SetPosition({ 50,50 });
+				scrollview->SetSize({ 300, 300 });
+				scrollview->SetContentSize({ 500,500 });
+				frame->AddChild(std::move(scrollview));
+				m_ux.AddWidget(std::move(frame));
+			}
+
+
 
 			// let's create menu system
 			{
