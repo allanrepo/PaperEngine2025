@@ -73,6 +73,7 @@ namespace TestMapEditor
 	class ViewPort;
 	class Content;
 	class ScrollView;
+	class UniformGrid;
 #pragma endregion
 
 #pragma region // namespaces
@@ -5660,7 +5661,9 @@ namespace TestMapEditor
 		virtual void DrawViewPort(const ViewPort& vp, const UIDrawContext& context) const = 0;
 		virtual void DrawContent(const Content& content, const UIDrawContext& context) const = 0;
 		virtual void DrawScrollView(const ScrollView& scrollview, const UIDrawContext& context) const = 0;
+		virtual void DrawUniformGrid(const UniformGrid& grid, const UIDrawContext& context) const = 0;
 
+		
 	};
 #pragma endregion
 
@@ -9719,6 +9722,195 @@ namespace TestMapEditor
 		}
 
 	};
+
+	class UniformGrid : public Widget
+	{
+	private:
+		engine::container::Grid<Widget*> m_cells;
+		float m_borderSize;
+
+	protected:
+		void OnSizeChanged(const SizeF&, const SizeF&) override
+		{
+			UpdateLayout();
+		}
+
+		void UpdateCellLayout(int row, int col, Widget* widget)
+		{
+			if (!widget) return;
+
+			SizeF cellsize = GetCellSize();
+
+			PositionF pos
+			{
+				col * cellsize.width + m_borderSize * col,
+				row * cellsize.height + m_borderSize * row
+			};
+
+			widget->SetPosition(pos);
+			widget->SetSize(cellsize);
+		}
+
+		void UpdateLayout()
+		{
+			if (m_cells.GetWidth() == 0 || m_cells.GetHeight() == 0)
+			{
+				throw std::runtime_error("why is size < 1? this is impossible");
+			}
+
+			//float cellWidth = (GetWidth() - m_borderSize * (m_cells.GetWidth() - 1)) / static_cast<float>(m_cells.GetWidth());
+			//float cellHeight = (GetHeight() - m_borderSize * (m_cells.GetHeight() - 1)) / static_cast<float>(m_cells.GetHeight());
+
+			for (int row = 0; row < m_cells.GetHeight(); ++row)
+			{
+				//float currRow = row * cellHeight + m_borderSize * row;
+
+				for (int col = 0; col < m_cells.GetWidth(); ++col)
+				{
+					Widget* widget = Get(row, col);
+
+					UpdateCellLayout(row, col, widget);
+
+					//float currCol = col * cellWidth + m_borderSize * col;
+
+					//if (!widget) continue;
+
+					//widget->SetPosition(
+					//	{
+					//		currCol,
+					//		currRow
+					//	});
+
+					//widget->SetSize(
+					//	{
+					//		cellWidth,
+					//		cellHeight
+					//	});
+				}
+			}
+		}
+
+		virtual void OnSet(int row, int col, Widget* widget)
+		{
+		}
+
+	public:
+		UniformGrid(size_t rows = 1, size_t cols = 1, float borderSize = 2.0f)
+			: m_borderSize(borderSize)
+		{
+			SetGridSize(rows, cols);
+
+			m_moveBehavior = MoveBehavior::None;
+			m_droppable = false;
+			m_focusable = false;
+		}
+
+		void SetGridSize(size_t rows, size_t cols)
+		{
+			// brute force for now. just clear the grid before resizing
+			RemoveChildren();
+			m_cells.Clear();
+
+			// clamp to 1. min size is always 1x1
+			if (rows < 1) rows = 1;
+			if (cols < 1) cols = 1;
+
+			m_cells.SetWidth(cols);
+			m_cells.Reserve({ cols, rows });
+
+			for (size_t i = 0; i < rows * cols; ++i)
+			{
+				m_cells.Add(nullptr);
+			}
+
+			UpdateLayout();
+		}
+
+		Size<size_t> GetGridSize() const
+		{
+			return m_cells.GetSize();
+		}
+
+		SizeF GetCellSize() const
+		{
+			return SizeF
+			{
+				(GetWidth() - m_borderSize * (m_cells.GetWidth() - 1)) / static_cast<float>(m_cells.GetWidth()),
+				(GetHeight() - m_borderSize * (m_cells.GetHeight() - 1)) / static_cast<float>(m_cells.GetHeight())
+			};
+		}
+
+		float GetBorderSize() const
+		{
+			return m_borderSize;
+		}
+
+		Widget* Get(int row, int col) const
+		{
+			return m_cells.Get(row, col);
+		}
+
+		void Set(int row, int col, 	std::unique_ptr<Widget> widget)
+		{
+			if (!m_cells.IsInBounds(row, col))
+			{
+				throw std::runtime_error("out of bounds when setting widget");
+			}
+
+			Widget* curr = m_cells.Get(row, col);
+			if (curr != nullptr)
+			{
+				RemoveChild(curr);
+				m_cells.Set(row, col, nullptr);
+			}
+
+			Widget* ptr = widget.get();
+
+			AddChild(std::move(widget));
+
+			m_cells.Set(row, col, ptr);
+
+			UpdateCellLayout(row, col, ptr);
+
+			OnSet(row, col, ptr);
+
+			//ptr->OnMove += [&](const PositionF& pos)
+			//	{
+			//		// TODO: this is overkill. we just need to update this widget, not the whole grid
+			//		//UpdateLayout();
+			//	};
+
+			//ptr->OnResize += [&](const SizeF& size)
+			//	{
+			//		// TODO: this is overkill. we just need to update this widget, not the whole grid
+			//		//UpdateLayout();
+			//	};
+		}
+
+		void Remove(int row, int col)
+		{
+			if (!m_cells.IsInBounds(row, col))
+			{
+				throw std::runtime_error("out of bounds when setting widget");
+			}
+
+			Widget* widget = Get(row, col);
+
+			if (!widget) return;
+
+			RemoveChild(widget);
+
+			m_cells.Set(row, col, nullptr);
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin)
+			{
+				context.skin->DrawUniformGrid(*this, context);
+			}
+		}
+	};
 #pragma endregion
 
 #pragma region // UI theme/skin
@@ -10055,6 +10247,29 @@ namespace TestMapEditor
 			context.renderer.Draw(pos, size, { 1,0,0,0.3f }, 0);
 		}
 
+		void DrawUniformGrid(const UniformGrid& grid, const UIDrawContext& context) const override
+		{
+			PositionF pos = grid.GetAbsolutePosition();
+			SizeF size = grid.GetSize();
+
+			Size<size_t> gridSize = grid.GetGridSize();
+			float borderSize = grid.GetBorderSize();
+			SizeF cellSize = grid.GetCellSize();
+
+			for (int row = 0; row < gridSize.height; row++)
+			{
+				PositionF cellPos = pos;
+				cellPos.y += (row * cellSize.height + borderSize * row);
+
+				for (int col = 0; col < gridSize.width; col++)
+				{
+					cellPos.x = pos.x + (col * cellSize.width + borderSize * col);
+
+					context.renderer.Draw(cellPos, cellSize, { 0.5f, 0.5f,0.5f, 1 }, 0.0f);
+				}
+			}
+		}
+
 
 	};
 
@@ -10074,6 +10289,7 @@ namespace TestMapEditor
 		Slider* m_slider = nullptr;
 		ViewPort* m_viewport = nullptr;
 		ScrollView* m_scrollview = nullptr;
+		UniformGrid* m_uniformGrid = nullptr;
 		int m_imageState = 0;
 		UISystem m_ux;
 		Button* m_button = nullptr;
@@ -10251,6 +10467,30 @@ namespace TestMapEditor
 			}
 
 			if (true)
+			{
+				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
+				resizeableframe->SetPosition({ 200,200 });
+				resizeableframe->SetSize({ 300, 300 }); 
+
+				std::unique_ptr<UniformGrid> uniformGrid = std::make_unique<UniformGrid>(7, 7, 8.0f); 
+				uniformGrid->SetPosition({ 0, 0 });
+				uniformGrid->SetSize(resizeableframe->GetContentsize());
+				m_uniformGrid = uniformGrid.get();
+				resizeableframe->OnContentSizeChanged += [&](const SizeF& size)
+					{
+						m_uniformGrid->SetPosition({ 0,0 });
+						m_uniformGrid->SetSize(size);
+					};
+
+				std::unique_ptr<Frame> content = std::make_unique<Frame>();
+				m_uniformGrid->Set(2, 2, std::move(content));
+
+				resizeableframe->AddContent(std::move(uniformGrid));
+
+				m_ux.AddWidget(std::move(resizeableframe));
+			}
+
+			if (false)
 			{
 				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
 				resizeableframe->SetPosition({ 200,200 });
