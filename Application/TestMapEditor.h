@@ -74,6 +74,9 @@ namespace TestMapEditor
 	class Content;
 	class ScrollView;
 	class UniformGrid;
+	class Stack;
+	class TextListBox;
+	class TextList;
 #pragma endregion
 
 #pragma region // namespaces
@@ -5662,6 +5665,9 @@ namespace TestMapEditor
 		virtual void DrawContent(const Content& content, const UIDrawContext& context) const = 0;
 		virtual void DrawScrollView(const ScrollView& scrollview, const UIDrawContext& context) const = 0;
 		virtual void DrawUniformGrid(const UniformGrid& grid, const UIDrawContext& context) const = 0;
+		virtual void DrawStack(const Stack& stack, const UIDrawContext& context) const = 0;
+		virtual void DrawTextListBox(const TextListBox& box, const UIDrawContext& context) const = 0;
+		virtual void DrawTextList(const TextList& text, const UIDrawContext& context) const = 0;
 
 		
 	};
@@ -9048,7 +9054,7 @@ namespace TestMapEditor
 
 		void Draw(const UIDrawContext& context) const override
 		{
-		//	if (context.skin) context.skin->DrawGrip(*this, context);
+			if (context.skin) context.skin->DrawGrip(*this, context);
 		}
 	};
 
@@ -9087,42 +9093,80 @@ namespace TestMapEditor
 
 		void UpdateLayout()
 		{
-			// resize and reposition right grip control to occupy right edge of the frame with border size as thickness
-			m_rightResizeGrip->SetPosition({ m_size.width - m_borderSize, m_borderSize });
-			m_rightResizeGrip->SetSize({ m_borderSize, m_size.height - m_borderSize * 2 });
+			UpdateRightGripLayout();
+			UpdateLeftGripLayout();
+			UpdateBottomGripLayout();
+			UpdateTopGripLayout();
+			UpdateTopLeftGripLayout();
+			UpdateTopRightGripLayout();
+			UpdateBottomLeftGripLayout();
+			UpdateBottomRightGripLayout();
 
-			// resize and reposition right grip control to occupy left edge of the frame with border size as thickness
-			m_leftResizeGrip->SetPosition({ 0, m_borderSize });
-			m_leftResizeGrip->SetSize({ m_borderSize, m_size.height - m_borderSize * 2 });
+			UpdateContentLayout();
 
-			// resize and reposition right grip control to occupy bottom edge of the frame with border size as thickness
-			m_bottomResizeGrip->SetPosition({ m_borderSize, m_size.height - m_borderSize });
-			m_bottomResizeGrip->SetSize({ m_size.width - m_borderSize * 2, m_borderSize });
+			OnContentSizeChanged(m_content->GetSize());
+		}
 
-			// resize and reposition right grip control to occupy top edge of the frame with border size as thickness
-			m_topResizeGrip->SetPosition({ m_borderSize, 0 });
-			m_topResizeGrip->SetSize({ m_size.width - m_borderSize * 2, m_borderSize });
+		void UpdateContentLayout()
+		{
+			m_content->SetPosition({ m_borderSize, m_borderSize });
+			m_content->SetSize({ GetSize().width - m_borderSize * 2, GetSize().height - m_borderSize * 2 });
+		}
 
-			// resize and reposition right grip control to occupy top-left corner of the frame with border size as thickness
-			m_topLeftResizeGrip->SetPosition({ 0, 0 });
-			m_topLeftResizeGrip->SetSize({ m_borderSize, m_borderSize });
-
+		void UpdateTopRightGripLayout()
+		{
 			// resize and reposition right grip control to occupy top-right corner of the frame with border size as thickness
 			m_topRightResizeGrip->SetPosition({ m_size.width - m_borderSize, 0 });
 			m_topRightResizeGrip->SetSize({ m_borderSize, m_borderSize });
+		}
 
-			// resize and reposition right grip control to occupy bottom-left corner of the frame with border size as thickness
-			m_bottomLeftResizeGrip->SetPosition({ 0, m_size.height - m_borderSize });
-			m_bottomLeftResizeGrip->SetSize({ m_borderSize, m_borderSize });
+		void UpdateTopGripLayout()
+		{
+			// resize and reposition right grip control to occupy top edge of the frame with border size as thickness
+			m_topResizeGrip->SetPosition({ m_borderSize, 0 });
+			m_topResizeGrip->SetSize({ m_size.width - m_borderSize * 2, m_borderSize });
+		}
 
+		void UpdateRightGripLayout()
+		{
+			// resize and reposition right grip control to occupy right edge of the frame with border size as thickness
+			m_rightResizeGrip->SetPosition({ m_size.width - m_borderSize, m_borderSize });
+			m_rightResizeGrip->SetSize({ m_borderSize, m_size.height - m_borderSize * 2 });
+		}
+
+		void UpdateTopLeftGripLayout()
+		{
+			// resize and reposition right grip control to occupy top-left corner of the frame with border size as thickness
+			m_topLeftResizeGrip->SetPosition({ 0, 0 });
+			m_topLeftResizeGrip->SetSize({ m_borderSize, m_borderSize });
+		}
+
+		void UpdateLeftGripLayout()
+		{
+			// resize and reposition right grip control to occupy left edge of the frame with border size as thickness
+			m_leftResizeGrip->SetPosition({ 0, m_borderSize });
+			m_leftResizeGrip->SetSize({ m_borderSize, m_size.height - m_borderSize * 2 });
+		}
+
+		void UpdateBottomRightGripLayout()
+		{
 			// resize and reposition right grip control to occupy bottom-right corner of the frame with border size as thickness
 			m_bottomRightResizeGrip->SetPosition({ m_size.width - m_borderSize, m_size.height - m_borderSize });
 			m_bottomRightResizeGrip->SetSize({ m_borderSize, m_borderSize });
+		}
 
-			m_content->SetPosition({ m_borderSize, m_borderSize });
-			m_content->SetSize({ GetSize().width - m_borderSize * 2, GetSize().height - m_borderSize * 2 });
+		void UpdateBottomGripLayout()
+		{
+			// resize and reposition right grip control to occupy bottom edge of the frame with border size as thickness
+			m_bottomResizeGrip->SetPosition({ m_borderSize, m_size.height - m_borderSize });
+			m_bottomResizeGrip->SetSize({ m_size.width - m_borderSize * 2, m_borderSize });
+		}
 
-			OnContentSizeChanged(m_content->GetSize());
+		void UpdateBottomLeftGripLayout()
+		{
+			// resize and reposition right grip control to occupy bottom-left corner of the frame with border size as thickness
+			m_bottomLeftResizeGrip->SetPosition({ 0, m_size.height - m_borderSize });
+			m_bottomLeftResizeGrip->SetSize({ m_borderSize, m_borderSize });
 		}
 
 		SizeF ClampSize(const SizeF& size) const
@@ -9135,240 +9179,277 @@ namespace TestMapEditor
 		}
 
 	public:
+
 		ResizeableFrame(float borderSize = 20.0f, const SizeF& minSize = {200, 200}) :
 			m_borderSize(borderSize),
 			m_minResize(minSize)
 		{
-			// left grip
-			std::unique_ptr<Grip> widget = std::make_unique<Grip>(true, false);
-			m_leftResizeGrip = widget.get();
-			AddChild(std::move(widget));
+			// create our grip widgets
+			{
+				// left grip
+				std::unique_ptr<Grip> widget = std::make_unique<Grip>(true, false);
+				m_leftResizeGrip = widget.get();
+				AddChild(std::move(widget));
 
-			// right grip
-			widget = std::make_unique<Grip>(true, false);
-			m_rightResizeGrip = widget.get();
-			AddChild(std::move(widget));
+				// right grip
+				widget = std::make_unique<Grip>(true, false);
+				m_rightResizeGrip = widget.get();
+				AddChild(std::move(widget));
 
-			// top grip
-			widget = std::make_unique<Grip>(false, true);
-			m_topResizeGrip = widget.get();
-			AddChild(std::move(widget));
+				// top grip
+				widget = std::make_unique<Grip>(false, true);
+				m_topResizeGrip = widget.get();
+				AddChild(std::move(widget));
 
-			// bottom grip
-			widget = std::make_unique<Grip>(false, true);
-			m_bottomResizeGrip = widget.get();
-			AddChild(std::move(widget));
+				// bottom grip
+				widget = std::make_unique<Grip>(false, true);
+				m_bottomResizeGrip = widget.get();
+				AddChild(std::move(widget));
 
-			// top-left grip
-			widget = std::make_unique<Grip>(true, true);
-			m_topLeftResizeGrip = widget.get();
-			AddChild(std::move(widget));
+				// top-left grip
+				widget = std::make_unique<Grip>(true, true);
+				m_topLeftResizeGrip = widget.get();
+				AddChild(std::move(widget));
 
-			// top-right grip
-			widget = std::make_unique<Grip>(true, true);
-			m_topRightResizeGrip = widget.get();
-			AddChild(std::move(widget));
+				// top-right grip
+				widget = std::make_unique<Grip>(true, true);
+				m_topRightResizeGrip = widget.get();
+				AddChild(std::move(widget));
 
-			// bottom-left grip
-			widget = std::make_unique<Grip>(true, true);
-			m_bottomLeftResizeGrip = widget.get();
-			AddChild(std::move(widget));
+				// bottom-left grip
+				widget = std::make_unique<Grip>(true, true);
+				m_bottomLeftResizeGrip = widget.get();
+				AddChild(std::move(widget));
 
-			// bottom-right grip
-			widget = std::make_unique<Grip>(true, true);
-			m_bottomRightResizeGrip = widget.get();
-			AddChild(std::move(widget));
+				// bottom-right grip
+				widget = std::make_unique<Grip>(true, true);
+				m_bottomRightResizeGrip = widget.get();
+				AddChild(std::move(widget));
 
-			std::unique_ptr<Widget> client = std::make_unique<Content>();
-			m_content = client.get();
-			AddChild(std::move(client));
+				std::unique_ptr<Widget> client = std::make_unique<Content>();
+				m_content = client.get();
+				AddChild(std::move(client));
+			}		
 
 			// begin drag lambda is same for all grips, so we define one here and assign to all grips
-			auto capture = [&](const Widget::DragEventArgs&)
-				{
-					m_beginPosition = GetPosition();
-					m_beginSize = GetSize();
-				};
-			m_bottomRightResizeGrip->OnDragBegin += capture;
-			m_topLeftResizeGrip->OnDragBegin += capture;
-			m_bottomResizeGrip->OnDragBegin += capture;
-			m_bottomLeftResizeGrip->OnDragBegin += capture;
-			m_topRightResizeGrip->OnDragBegin += capture;
-			m_topResizeGrip->OnDragBegin += capture;
-			m_leftResizeGrip->OnDragBegin += capture;
-			m_rightResizeGrip->OnDragBegin += capture;
+			{
+				auto capture = [&](const Widget::DragEventArgs&)
+					{
+						m_beginPosition = GetPosition();
+						m_beginSize = GetSize();
+					};
+				m_bottomRightResizeGrip->OnDragBegin += capture;
+				m_topLeftResizeGrip->OnDragBegin += capture;
+				m_bottomResizeGrip->OnDragBegin += capture;
+				m_bottomLeftResizeGrip->OnDragBegin += capture;
+				m_topRightResizeGrip->OnDragBegin += capture;
+				m_topResizeGrip->OnDragBegin += capture;
+				m_leftResizeGrip->OnDragBegin += capture;
+				m_rightResizeGrip->OnDragBegin += capture;
+			}
+
+			// everytime grip moves, we make sure it always stay at the position relative to frame all the time.
+			// sometimes when you drag a grip, and the drag change is same as before, resizeable frame size does not change. 
+			// this will not trigger resizeableframe's OnSizeChange and therefore will not exacute LayoutUpdate. the grip will then be out of position.
+			// repositioning it here ensures that everytime grip moves, it will be repositioned back to its supposed location relative to resizeableframe
+			// the impact though is that it can reposition the grip multiple times per move. if it so happens resizeableframe is resized, it will
+			// execute LayoutUpdate which will reposition the grip. then this handle will again reposition it. it won't cause recursive chain since
+			// SetPosition() is guarded. but it costs CPU execution time as grip's SetPosition() can be called more than once.
+			{
+				m_topRightResizeGrip->OnMove += [&](const PositionF& pos) { UpdateTopRightGripLayout(); };
+				m_topResizeGrip->OnMove += [&](const PositionF& pos) { UpdateTopGripLayout(); };
+				m_topLeftResizeGrip->OnMove += [&](const PositionF& pos) { UpdateTopLeftGripLayout(); };
+				m_rightResizeGrip->OnMove += [&](const PositionF& pos) { UpdateRightGripLayout(); };
+				m_leftResizeGrip->OnMove += [&](const PositionF& pos) { UpdateLeftGripLayout(); };
+				m_bottomRightResizeGrip->OnMove += [&](const PositionF& pos) { UpdateBottomRightGripLayout(); };
+				m_bottomResizeGrip->OnMove += [&](const PositionF& pos) { UpdateBottomGripLayout(); };
+				m_bottomLeftResizeGrip->OnMove += [&](const PositionF& pos) { UpdateBottomLeftGripLayout(); };
+			}
 
 			// we also track content drag in case content is draggable, we bubble up movement to the frame and make content stationary
-			m_content->OnDragBegin += [&](const Widget::DragEventArgs& args) 
-				{
-					MouseDown(args.currentPosition);
-				};
+			{
+				m_content->OnDragBegin += [&](const Widget::DragEventArgs& args)
+					{
+						MouseDown(args.currentPosition);
+					};
 
-			m_content->OnDragMove += [&](const Widget::DragEventArgs& args)
-				{
-					MouseMove(args.currentPosition);
+				m_content->OnDragMove += [&](const Widget::DragEventArgs& args)
+					{
+						MouseMove(args.currentPosition);
+						UpdateLayout();
+					};
 
-					UpdateLayout();
-				};
+				m_content->OnDragEnd += [&](const Widget::DragEventArgs& args)
+					{
+						MouseUp(args.currentPosition);
+					};
+			}
 
-			m_content->OnDragEnd += [&](const Widget::DragEventArgs& args)
-				{
-					MouseUp(args.currentPosition);
-				};
+			// we track grips' drag. we update resizeableframe's position and size depending on grip's drag movement
+			{
+				// bottom-right grip handlers
+				m_bottomRightResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					{
+						VecF delta = args.Delta();
 
+						SetSize(ClampSize(
+							{
+								m_beginSize.width + delta.x,
+								m_beginSize.height + delta.y
+							}));
+					};
 
-			//  bottom-right grip handlers
-			m_bottomRightResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
-				{
-					VecF delta = args.Delta();
+				//  top-left grip handlers
+				m_topLeftResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					{
+						VecF delta = args.Delta();
 
-					SetSize(ClampSize(
-						{
-							m_beginSize.width + delta.x,
-							m_beginSize.height + delta.y
-						}));
-				};
+						// when dragging left grip, if moving towards right, we are reducing the width of the frame. we might hit min size
+						// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
+						float maxDeltaX = m_beginSize.width - m_minResize.width;
 
-			//  top-left grip handlers
-			m_topLeftResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
-				{
-					VecF delta = args.Delta();
+						// the delta width will be clamped to max allowed width
+						delta.x = std::min<float>(delta.x, maxDeltaX);
 
-					// when dragging left grip, if moving towards right, we are reducing the width of the frame. we might hit min size
-					// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
-					float maxDeltaX = m_beginSize.width - m_minResize.width;
+						// when dragging top grip, if moving downwards, we are reducing the height of the frame. we might hit min size
+						// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
+						float maxDeltaY = m_beginSize.height - m_minResize.height;
 
-					// the delta width will be clamped to max allowed width
-					delta.x = std::min<float>(delta.x, maxDeltaX);
+						// the delta width will be clamped to max allowed width
+						delta.y = std::min<float>(delta.y, maxDeltaY);
 
-					// when dragging top grip, if moving downwards, we are reducing the height of the frame. we might hit min size
-					// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
-					float maxDeltaY = m_beginSize.height - m_minResize.height;
+						SetPosition(m_beginPosition + delta);
 
-					// the delta width will be clamped to max allowed width
-					delta.y = std::min<float>(delta.y, maxDeltaY);
+						SetSize(
+							{
+								m_beginSize.width - delta.x,
+								m_beginSize.height - delta.y,
+							});
+					};
 
-					SetPosition(m_beginPosition + delta);
+				//  bottom-left grip handlers
+				m_bottomLeftResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					{
+						VecF delta = args.Delta();
 
-					SetSize(
-						{
-							m_beginSize.width - delta.x,
-							m_beginSize.height - delta.y,
-						});
-				};
+						// when dragging left grip, if moving towards right, we are reducing the width of the frame. we might hit min size
+						// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
+						float maxDeltaX = m_beginSize.width - m_minResize.width;
 
-			//  bottom-left grip handlers
-			m_bottomLeftResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
-				{
-					VecF delta = args.Delta();
+						// the delta width will be clamped to max allowed width
+						delta.x = std::min<float>(delta.x, maxDeltaX);
 
-					// when dragging left grip, if moving towards right, we are reducing the width of the frame. we might hit min size
-					// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
-					float maxDeltaX = m_beginSize.width - m_minResize.width;
+						SetPosition(
+							{
+								m_beginPosition.x + delta.x,
+								m_beginPosition.y
+							});
 
-					// the delta width will be clamped to max allowed width
-					delta.x = std::min<float>(delta.x, maxDeltaX);
+						SetSize(ClampSize(
+							{
+								m_beginSize.width - delta.x,
+								m_beginSize.height + delta.y,
+							}));
+					};
 
-					SetPosition(
-						{
-							m_beginPosition.x + delta.x,
-							m_beginPosition.y
-						});
+				//  top-right grip handlers
+				m_topRightResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					{
+						VecF delta = args.Delta();
 
-					SetSize(ClampSize(
-						{
-							m_beginSize.width - delta.x,
-							m_beginSize.height + delta.y,
-						}));
-				};
+						// when dragging top-right grip, if moving downwards, we are reducing the height of the frame. we might hit min size
+						// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
+						float maxDeltaY = m_beginSize.height - m_minResize.height;
 
-			//  top-right grip handlers
-			m_topRightResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
-				{
-					SetPosition(
-						{
-							m_beginPosition.x,
-							m_beginPosition.y + args.Delta().y
-						});
+						// the delta height will be clamped to max allowed height
+						delta.y = std::min<float>(delta.y, maxDeltaY);
 
-					SetSize(
-						{
-							m_beginSize.width + args.Delta().x,
-							m_beginSize.height - args.Delta().y,
-						});
-				};
+						SetPosition(
+							{
+								m_beginPosition.x,
+								m_beginPosition.y + delta.y
+							});
 
-			//  top grip handlers
-			m_topResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
-				{
-					VecF delta = args.Delta();
+						SetSize(ClampSize(
+							{
+								m_beginSize.width + delta.x,
+								m_beginSize.height - delta.y,
+							}));
+					};
 
-					// when dragging top grip, if moving downwards, we are reducing the height of the frame. we might hit min size
-					// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
-					float maxDeltaY = m_beginSize.height - m_minResize.height;
+				//  top grip handlers
+				m_topResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					{
+						VecF delta = args.Delta();
 
-					// the delta width will be clamped to max allowed width
-					delta.y = std::min<float>(delta.y, maxDeltaY);
+						// when dragging top grip, if moving downwards, we are reducing the height of the frame. we might hit min size
+						// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
+						float maxDeltaY = m_beginSize.height - m_minResize.height;
 
-					SetPosition(
-						{
-							m_beginPosition.x,
-							m_beginPosition.y + delta.y
-						});
+						// the delta width will be clamped to max allowed width
+						delta.y = std::min<float>(delta.y, maxDeltaY);
 
-					SetSize(
-						{
-							m_beginSize.width,
-							m_beginSize.height - delta.y,
-						});
-				};
+						SetPosition(
+							{
+								m_beginPosition.x,
+								m_beginPosition.y + delta.y
+							});
 
-			//  left grip handlers
-			m_leftResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
-				{
-					VecF delta = args.Delta();
+						SetSize(
+							{
+								m_beginSize.width,
+								m_beginSize.height - delta.y,
+							});
+					};
 
-					// when dragging left grip, if moving towards right, we are reducing the width of the frame. we might hit min size
-					// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
-					float maxDeltaX = m_beginSize.width - m_minResize.width;
+				//  left grip handlers
+				m_leftResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					{
+						VecF delta = args.Delta();
 
-					// the delta width will be clamped to max allowed width
-					delta.x = std::min<float>(delta.x, maxDeltaX);
+						// when dragging left grip, if moving towards right, we are reducing the width of the frame. we might hit min size
+						// so the larger the delta, the likely we hit min size. so we calculate max delta allowed before hitting min size
+						float maxDeltaX = m_beginSize.width - m_minResize.width;
 
-					SetPosition(
-						{
-							m_beginPosition.x + delta.x,
-							m_beginPosition.y
-						});
+						// the delta width will be clamped to max allowed width
+						delta.x = std::min<float>(delta.x, maxDeltaX);
 
-					SetSize(
-						{
-							m_beginSize.width - delta.x,
-							m_beginSize.height,
-						});
+						SetPosition(
+							{
+								m_beginPosition.x + delta.x,
+								m_beginPosition.y
+							});
 
-				};
+						SetSize(
+							{
+								m_beginSize.width - delta.x,
+								m_beginSize.height,
+							});
+					};
 
-			//  right grip handlers
-			m_rightResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
-				{
-					SetSize(ClampSize(
-						{
-							m_beginSize.width + args.Delta().x,
-							m_beginSize.height,
-						}));
-				};
+				//  right grip handlers
+				m_rightResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					{
+						SetSize(ClampSize(
+							{
+								m_beginSize.width + args.Delta().x,
+								m_beginSize.height,
+							}));
+					};
 
-			//  bottom grip handlers
-			m_bottomResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
-				{
-					SetSize(ClampSize(
-						{
-							m_beginSize.width,
-							m_beginSize.height + args.Delta().y,
-						}));
-				};
+				//  bottom grip handlers
+				m_bottomResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					{
+						SetSize(ClampSize(
+							{
+								m_beginSize.width,
+								m_beginSize.height + args.Delta().y,
+							}));
+					};
+			}
 		}
+
+
 
 		void SetMinResize(const SizeF& size)
 		{
@@ -9520,11 +9601,16 @@ namespace TestMapEditor
 		{
 			if (context.skin) context.skin->DrawViewPort(*this, context);
 		}
+
+		void AddContent(std::unique_ptr<Widget> content)
+		{
+			m_content->AddChild(std::move(content));
+		}
 	};
 
 	class ScrollView: public Widget
 	{
-	private:
+	protected:
 		ViewPort* m_viewport;
 		ScrollBar* m_hScrollBar;
 		ScrollBar* m_vScrollBar;
@@ -9723,6 +9809,76 @@ namespace TestMapEditor
 
 	};
 
+	class Stack : public Widget
+	{
+	protected:
+		bool m_vertical;
+		float m_borderSize;
+
+		void UpdateLayout()
+		{
+			SizeF size;
+			float accumulatedPos = 0.0f;
+			bool first = true;
+			ForEachChild([&](Widget* widget)
+				{
+					PositionF pos
+					{
+						m_vertical ? 0.0f : (accumulatedPos + (first ? 0.0f : m_borderSize)),
+						m_vertical ? (accumulatedPos + (first ? 0.0f : m_borderSize)) : 0.0f
+					};
+					widget->SetPosition(pos);
+
+					accumulatedPos += (m_vertical ? widget->GetHeight() : widget->GetWidth());
+					accumulatedPos += (first ? 0.0f : m_borderSize);
+
+					if (m_vertical)
+					{
+						size.width = size.width < widget->GetWidth() ? widget->GetWidth() : size.width;
+						size.height = accumulatedPos;
+					}
+					else
+					{
+						size.height = size.height < widget->GetHeight() ? widget->GetHeight() : size.height;
+						size.width = accumulatedPos;
+					}
+
+					if (first) first = false;
+
+				});
+
+			SetSize(size);
+		}
+
+		void OnSizeChanged(const SizeF&, const SizeF&) override
+		{
+			UpdateLayout();
+		}
+
+	public:
+		Stack(bool vertical = true, float borderSize = 2.0f)
+			: m_vertical(vertical)
+			, m_borderSize(borderSize)
+		{
+			m_borderSize = 7.0f;
+		}
+
+		void Add(std::unique_ptr<Widget> widget)
+		{
+			AddChild(std::move(widget));
+
+			UpdateLayout();
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin)
+			{
+				context.skin->DrawStack(*this, context);
+			}
+		}
+	};
+
 	class UniformGrid : public Widget
 	{
 	private:
@@ -9758,34 +9914,13 @@ namespace TestMapEditor
 				throw std::runtime_error("why is size < 1? this is impossible");
 			}
 
-			//float cellWidth = (GetWidth() - m_borderSize * (m_cells.GetWidth() - 1)) / static_cast<float>(m_cells.GetWidth());
-			//float cellHeight = (GetHeight() - m_borderSize * (m_cells.GetHeight() - 1)) / static_cast<float>(m_cells.GetHeight());
-
 			for (int row = 0; row < m_cells.GetHeight(); ++row)
 			{
-				//float currRow = row * cellHeight + m_borderSize * row;
-
 				for (int col = 0; col < m_cells.GetWidth(); ++col)
 				{
 					Widget* widget = Get(row, col);
 
 					UpdateCellLayout(row, col, widget);
-
-					//float currCol = col * cellWidth + m_borderSize * col;
-
-					//if (!widget) continue;
-
-					//widget->SetPosition(
-					//	{
-					//		currCol,
-					//		currRow
-					//	});
-
-					//widget->SetSize(
-					//	{
-					//		cellWidth,
-					//		cellHeight
-					//	});
 				}
 			}
 		}
@@ -9850,7 +9985,7 @@ namespace TestMapEditor
 			return m_cells.Get(row, col);
 		}
 
-		void Set(int row, int col, 	std::unique_ptr<Widget> widget)
+		void Set(int row, int col, std::unique_ptr<Widget> widget)
 		{
 			if (!m_cells.IsInBounds(row, col))
 			{
@@ -9908,6 +10043,198 @@ namespace TestMapEditor
 			if (context.skin)
 			{
 				context.skin->DrawUniformGrid(*this, context);
+			}
+		}
+	};
+
+	class TextList : public ViewPort
+	{
+	private:
+		std::vector<Widget*> m_texts;
+		SizeF m_itemSize;
+
+	protected:
+		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
+		{
+			UpdateLayout();
+		}
+
+		void UpdateLayout()
+		{
+			float width = GetSize().width;
+			float height = 32;
+			SizeF contentSize;
+			contentSize.width = width;
+
+			for (size_t i = 0; i < m_texts.size(); i++)
+			{
+				m_texts[i]->SetSize(
+					{
+						width,
+						height
+					}
+				);
+
+				m_texts[i]->SetPosition(
+					{
+						0.0f,
+						height * i
+					}
+				);
+
+				contentSize.height += height;
+			}
+
+			SetContentSize(contentSize);
+		}
+
+	public:
+		TextList(float borderSize = 2.0f)
+		{
+			m_itemSize = {200.0f, 40.0f};
+		}
+
+		void Clear()
+		{
+
+		}
+
+		void SetWidth(float width)
+		{
+			SetSize({ width, 0.0f });
+		}
+
+		void SetItemSize(const SizeF& size)
+		{
+			m_itemSize = size;
+			UpdateLayout();
+		}
+
+		void Add(const std::string& text)
+		{
+
+			//std::unique_ptr<Label> label = std::make_unique<Label>(text);
+			//m_texts.push_back(label.get());
+			//AddContent(std::move(label));
+
+			std::unique_ptr<Button> label = std::make_unique<Button>();
+			m_texts.push_back(label.get());
+			AddContent(std::move(label));
+
+			UpdateLayout();
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin)
+			{
+				context.skin->DrawTextList(*this, context);
+			}
+		}
+
+	};
+
+
+	class TextListBox : public ScrollView
+	{
+	protected:
+		std::vector<Widget*> m_texts;
+
+		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
+		{
+			UpdateLayout();
+
+			//SizeF contentSize = m_viewport->GetContentSize();
+
+			//contentSize.width = m_viewport->GetSize().width;
+
+			//m_viewport->SetContentSize(contentSize);
+
+			//ScrollView::OnSizeChanged(oldSize, newSize);
+		}
+
+		void UpdateLayout()
+		{
+			float width = m_viewport->GetSize().width;
+			float height = 32;
+			SizeF contentSize;
+			contentSize.width = width;
+
+			for (size_t i = 0; i < m_texts.size(); i++)
+			{
+				m_texts[i]->SetSize(
+					{
+						width,
+						height
+					}
+				);
+
+				m_texts[i]->SetPosition(
+					{
+						0.0f,
+						height * i
+					}
+				);
+
+				contentSize.height += height;
+			}
+
+			m_viewport->SetContentSize(contentSize);
+
+
+
+			//ForEachChild([&](Widget* widget)
+			//	{
+			//		PositionF pos
+			//		{
+			//			m_vertical ? 0.0f : (accumulatedPos + (first ? 0.0f : m_borderSize)),
+			//			m_vertical ? (accumulatedPos + (first ? 0.0f : m_borderSize)) : 0.0f
+			//		};
+			//		widget->SetPosition(pos);
+
+			//		accumulatedPos += (m_vertical ? widget->GetHeight() : widget->GetWidth());
+			//		accumulatedPos += (first ? 0.0f : m_borderSize);
+
+			//		if (m_vertical)
+			//		{
+			//			size.width = size.width < widget->GetWidth() ? widget->GetWidth() : size.width;
+			//			size.height = accumulatedPos;
+			//		}
+			//		else
+			//		{
+			//			size.height = size.height < widget->GetHeight() ? widget->GetHeight() : size.height;
+			//			size.width = accumulatedPos;
+			//		}
+
+			//		if (first) first = false;
+
+			//	});
+		}
+
+	public:
+		TextListBox()
+		{
+		}
+
+		void Add(const std::string& text)
+		{
+
+			//std::unique_ptr<Label> label = std::make_unique<Label>(text);
+			//m_texts.push_back(label.get());
+			//m_viewport->AddContent(std::move(label));
+
+			std::unique_ptr<Frame> label = std::make_unique<Frame>();
+			m_texts.push_back(label.get());
+			m_viewport->AddContent(std::move(label));
+
+			UpdateLayout();
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin)
+			{
+				context.skin->DrawTextListBox(*this, context);
 			}
 		}
 	};
@@ -10270,6 +10597,29 @@ namespace TestMapEditor
 			}
 		}
 
+		void DrawStack(const Stack& stack, const UIDrawContext& context) const override
+		{
+			PositionF pos = stack.GetAbsolutePosition();
+			SizeF size = stack.GetSize();
+
+			context.renderer.Draw(pos, size, { 0.1f, 0.1f,0.1f, 1 }, 0.0f);
+		}
+
+		void DrawTextListBox(const TextListBox& box, const UIDrawContext& context) const override
+		{
+			PositionF pos = box.GetAbsolutePosition();
+			SizeF size = box.GetSize();
+
+			context.renderer.Draw(pos, size, { 1,0,0,0.3f }, 0);
+		}
+
+		void DrawTextList(const TextList& text, const UIDrawContext& context) const override
+		{
+			PositionF pos = text.GetAbsolutePosition();
+			SizeF size = text.GetSize();
+
+			context.renderer.Draw(pos, size, { 1,0,1,0.3f }, 0);
+		}
 
 	};
 
@@ -10290,6 +10640,8 @@ namespace TestMapEditor
 		ViewPort* m_viewport = nullptr;
 		ScrollView* m_scrollview = nullptr;
 		UniformGrid* m_uniformGrid = nullptr;
+		TextListBox* m_textListBox = nullptr;
+		TextList* m_textList = nullptr;
 		int m_imageState = 0;
 		UISystem m_ux;
 		Button* m_button = nullptr;
@@ -10466,7 +10818,83 @@ namespace TestMapEditor
 
 			}
 
+			// TextList
 			if (true)
+			{
+				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
+				resizeableframe->SetPosition({ 200,200 });
+				resizeableframe->SetSize({ 300, 300 });
+
+				std::unique_ptr<TextList> textListBox = std::make_unique<TextList>();
+				textListBox->SetPosition({ 0, 0 });
+				textListBox->SetSize(resizeableframe->GetContentsize());
+				//textListBox->Add("hello");
+				//textListBox->Add("world");
+				//textListBox->Add("hello");
+				//textListBox->Add("world");
+				//textListBox->Add("hello");
+				//textListBox->Add("world");
+				//textListBox->Add("hello");
+				//textListBox->Add("world");
+
+				m_textList = textListBox.get();
+				resizeableframe->OnContentSizeChanged += [&](const SizeF& size)
+					{
+						m_textList->SetPosition({ 0,0 });
+						m_textList->SetSize(size);
+					};
+				resizeableframe->AddContent(std::move(textListBox));
+
+				m_ux.AddWidget(std::move(resizeableframe));
+			}
+
+			// TextListBox
+			if (false)
+			{
+				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
+				resizeableframe->SetPosition({ 200,200 });
+				resizeableframe->SetSize({ 300, 300 });
+
+				std::unique_ptr<TextListBox> textListBox = std::make_unique<TextListBox>();
+				textListBox->SetPosition({ 0, 0 });
+				textListBox->SetSize(resizeableframe->GetContentsize());
+				textListBox->Add("hello");
+				textListBox->Add("world");
+
+				m_textListBox = textListBox.get();
+				resizeableframe->OnContentSizeChanged += [&](const SizeF& size)
+					{
+						m_textListBox->SetPosition({ 0,0 });
+						m_textListBox->SetSize(size);
+					};
+				resizeableframe->AddContent(std::move(textListBox));
+
+				m_ux.AddWidget(std::move(resizeableframe));
+			}
+
+			// Stack
+			if (false)
+			{
+				std::unique_ptr<Stack> stack = std::make_unique<Stack>(true, 10.0f);
+				stack->SetPosition({ 200,200 });
+
+				std::unique_ptr<Content> content = std::make_unique<Content>();
+				content->SetSize({ 200.0f, 40.0f });
+				stack->Add(std::move(content));
+
+				content = std::make_unique<Content>();
+				content->SetSize({ 250.0f, 50.0f });
+				stack->Add(std::move(content));
+
+				content = std::make_unique<Content>();
+				content->SetSize({ 170.0f, 60.0f });
+				stack->Add(std::move(content));
+
+				m_ux.AddWidget(std::move(stack));
+			}
+
+			// UniformGrid
+			if (false)
 			{
 				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
 				resizeableframe->SetPosition({ 200,200 });
@@ -10490,6 +10918,7 @@ namespace TestMapEditor
 				m_ux.AddWidget(std::move(resizeableframe));
 			}
 
+			//ScrollView
 			if (false)
 			{
 				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
