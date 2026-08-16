@@ -355,9 +355,6 @@
     <ClInclude Include="Animation.h">
       <Filter>Graphics\Animation</Filter>
     </ClInclude>
-    <ClInclude Include="SpriteAnimationFactory.h">
-      <Filter>Graphics\Factory</Filter>
-    </ClInclude>
     <ClInclude Include="State.h">
       <Filter>States</Filter>
     </ClInclude>
@@ -459,6 +456,9 @@
     </ClInclude>
     <ClInclude Include="TestGridScaling.h">
       <Filter>Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="AnimationFactory.h">
+      <Filter>Commons</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

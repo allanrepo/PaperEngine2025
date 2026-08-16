@@ -2,6 +2,8 @@
 #include <functional>
 #include <iostream>
 #include <random>
+#include <type_traits>
+#include <algorithm>
 
 namespace engine::utilities
 {
@@ -31,15 +33,38 @@ namespace engine::utilities
         }
 	};
 
-    // TODO: test this on different types like int
+    //// TODO: test this on different types like int
+    //template<typename T = float>
+    //float Random(T min = 0, T max = 1)
+    //{
+    //    static std::random_device rd;  // seeds once
+    //    static std::mt19937 gen(rd()); // Mersenne Twister engine
+    //    std::uniform_real_distribution<T> dist(min, max);
+    //    return dist(gen);
+    //}	
+
     template<typename T = float>
-    float Random(T min = 0, T max = 1)
+    T Random(T min = T{ 0 }, T max = T{ 1 })
     {
-        static std::random_device rd;  // seeds once
-        static std::mt19937 gen(rd()); // Mersenne Twister engine
-        std::uniform_real_distribution<T> dist(min, max);
-        return dist(gen);
-    }	
+        if (min > max)
+        {
+            std::swap(min, max);
+        }
+
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+
+        if constexpr (std::is_integral_v<T>)
+        {
+            std::uniform_int_distribution<T> dist(min, max);
+            return dist(gen);
+        }
+        else if constexpr (std::is_floating_point_v<T>)
+        {
+            std::uniform_real_distribution<T> dist(min, max);
+            return dist(gen);
+        }
+    }
 
     //struct Text
     //{

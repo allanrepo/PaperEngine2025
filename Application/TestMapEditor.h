@@ -6192,8 +6192,6 @@ namespace TestMapEditor
 			return true;
 		}
 
-
-
 		// --------------------------------------------------------------------------------
 		// BEHAVIOR
 		// --------------------------------------------------------------------------------
@@ -6253,7 +6251,6 @@ namespace TestMapEditor
 		void SetPosition(const PositionF& pos)
 		{
 			// if position did not change, no need to update and invoke events
-			// commenting this out coz there seems to be a bug related to scrolling viewport
 			if (m_position == pos) return;
 
 			PositionF oldPos = m_position;
@@ -6422,19 +6419,19 @@ namespace TestMapEditor
 				// if widget is hidden, bail out
 				if (!(*it)->IsVisible() && (flag & SearchFlags::Visible))
 				{
-					return nullptr;
+					continue;
 				}
 
 				// if widget is disabled, bail out
 				if (!(*it)->IsEnabled() && (flag & SearchFlags::Enabled))
 				{
-					return nullptr;
+					continue;
 				}
 
 				// if widget is not focusable, bail out
 				if (!(*it)->IsFocusable() && (flag & SearchFlags::Focusable))
 				{
-					return nullptr;
+					continue;
 				}
 
 				// if this widget intersects with point..
@@ -8301,6 +8298,12 @@ namespace TestMapEditor
 			return true;
 		}
 
+		// NOTE: THIS IS FOR DEBUG ONLY. REMOVE THIS LATER. THIS IS NOT A GOOD IDEA TO LOG ON MOUSE DOWN
+		void OnMouseDown(const PositionF& position) override
+		{
+			LOG("label");
+		}
+
 	public:
 		Label(const std::string& text, UIResources::FontType fontType = UIResources::FontType::Default) :
 			m_text(text),
@@ -8384,7 +8387,7 @@ namespace TestMapEditor
 			m_moveBehavior = MoveBehavior::None;
 		}
 
-		event::Event<> OnClick;
+		event::Event<> Click;
 
 		void OnMouseUp(const PositionF& position) override
 		{
@@ -8392,7 +8395,7 @@ namespace TestMapEditor
 			if (!Contains(position)) return;
 
 			// handle click event
-			OnClick();
+			Click();
 		}
 
 		void Draw(const UIDrawContext& context) const override
@@ -8498,6 +8501,12 @@ namespace TestMapEditor
 		Thumb()
 		{
 			m_moveBehavior = MoveBehavior::None;
+			m_hitTestBehavior = HitTestBehavior::AlwaysFail; // non interactive
+		}
+
+		Thumb(bool isHorizontal)
+		{
+			m_moveBehavior = isHorizontal ? MoveBehavior::Horizontal : MoveBehavior::Vertical;
 			m_hitTestBehavior = HitTestBehavior::AlwaysFail; // non interactive
 		}
 
@@ -8779,7 +8788,7 @@ namespace TestMapEditor
 			m_moveBehavior = MoveBehavior::None;
 		}
 
-		event::Event<bool> OnClick;
+		event::Event<bool> Click;
 
 		void Bind(bool& checked)
 		{
@@ -8831,7 +8840,7 @@ namespace TestMapEditor
 			Toggle();
 
 			// handle click event
-			OnClick(m_checked);
+			Click(m_checked);
 		}
 	};
 
@@ -8887,21 +8896,30 @@ namespace TestMapEditor
 			// if cannot scroll e.g. content smaller than viewport, no need to drag
 			if (!CanScroll()) return;
 
+			// did we clicked on thumb or track?
+			float lpos = (m_horizontal ? pos.x : pos.y) - (m_horizontal ? GetAbsolutePosition().x : GetAbsolutePosition().y);
+			float thumbSize = m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height;
+			float thumbPos = m_horizontal ? m_thumb->GetPosition().x : m_thumb->GetPosition().y;
+
+			// if click on track, move thumb to that position, and start dragging
+			if (lpos < thumbPos || lpos > thumbPos + thumbSize)
+			{
+				float newThumbPos = lpos - thumbSize / 2.0f;
+				m_thumb->SetPosition(m_horizontal ? PositionF{ newThumbPos,  m_thumb->GetPosition().y } : PositionF{ m_thumb->GetPosition().x, newThumbPos });
+			}
+
 			m_isDragging = true;
-			UpdateOffsetFromPosition(pos);
+			m_thumb->MouseDown(pos);
 		}
 
 		void OnMouseUp(const PositionF&) override { m_isDragging = false; }
 
 		void OnMouseMove(const PositionF& pos) override
 		{
-			if (m_isDragging) UpdateOffsetFromPosition(pos);
-		}
-
-		void OnSizeChanged(const SizeF&, const SizeF&) override
-		{
-			UpdateThumbSize();
-			UpdateThumbPosition();
+			if (m_isDragging)
+			{
+				m_thumb->MouseMove(pos);
+			}
 		}
 
 		void UpdateThumbSize()
@@ -8911,10 +8929,16 @@ namespace TestMapEditor
 
 			// get ratio between viewport and content length. this is basically the normalized length of the thumb. 
 			// this can be > 1 if content is smaller than viewport
-			float ratio = m_contentLength > 0 ? m_viewportLength / m_contentLength : 1.0f;
+			// if either content or viewport is 0, set ratio to 1.0f so that thumb will be full length of scrollbar, no scrolling needed
+			float ratio = m_contentLength > 0 ? m_viewportLength > 0 ? m_viewportLength / m_contentLength : 1.0f : 1.0f;
 
 			// here when calculating the actual length of the thumb, we clamp to tracklength so even if ratio > 1, we don't end up with thumb bigger than scroll bar
-			float length = std::clamp(ratio * trackLength, m_minThumbLength, trackLength); // clamp min size
+			float length = std::clamp(ratio * trackLength,
+				// we're comparing value between m_minThumbLength and trackLength. between m_minThumbLength and trackLength, use smaller for min value and bigger for max value. 
+				// this is a must because if min value is bigger than max value, std::clamp will throw an exception
+				m_minThumbLength > trackLength ? trackLength : m_minThumbLength,
+				trackLength > m_minThumbLength ? trackLength : m_minThumbLength
+			); // clamp min size
 
 			SizeF thumbSize{
 				m_horizontal ? length : thickness,
@@ -8925,41 +8949,32 @@ namespace TestMapEditor
 
 		void UpdateThumbPosition()
 		{
-			float trackLength = m_horizontal ? GetWidth() : GetHeight();
-			float thumbLength = m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height;
-			float maxOffset = std::max<float>(0.0f, m_contentLength - m_viewportLength);
+			// tracklength is the length of the scrollbar in pixels. it will be used to calculate the index size
+			float trackLength = m_horizontal ? GetSize().width : GetSize().height;
 
-			float nvalue = maxOffset > 0 ? m_offset / maxOffset : 0.0f;
-			float pos = nvalue * (trackLength - thumbLength);
+			// how much pixels in tracklength does each content occupies? that is index size
+			// if content is less than viewport, set it to 0 as we doin't need to scroll
+			// if content is 0, then there is nothing to scroll. handle this because if viewport is negative and content is 0, the previous condition might pass a content being 0
+			// if viewport is 0, it could mean content is infinitely large compared to viewport, so we don't need to scroll either. set it to 0
+			float indexSize =
+				m_viewportLength == 0.0f ? 0 :
+				m_contentLength == 0.0f ? 0 :
+				m_contentLength <= m_viewportLength ? 0 :
+				trackLength / m_contentLength;
 
-			if (m_horizontal) m_thumb->SetPosition({ pos, 0 });
-			else              m_thumb->SetPosition({ 0, pos });
+			// now let's calculate the thumb position to snap it to the index.
+			float thumbPos = m_offset * indexSize;
+			m_thumb->SetPosition(m_horizontal ? PositionF{ thumbPos, 0 } : PositionF{ 0, thumbPos });
 		}
 
-		void UpdateOffsetFromPosition(const PositionF& pos)
+		void OnSizeChanged(const SizeF&, const SizeF&) override
 		{
-			PositionF local = pos - GetAbsolutePosition();
-			float trackLength = m_horizontal ? GetWidth() : GetHeight();
-			float thumbLength = m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height;
-			float scrollLength = trackLength - thumbLength;
-
-			float nvalue = scrollLength > 0 ? (m_horizontal ? local.x - thumbLength / 2 : local.y - thumbLength / 2) / scrollLength : 0;
-			nvalue = std::clamp(nvalue, 0.0f, 1.0f);
-
-			float maxOffset = std::max<float>(0.0f, m_contentLength - m_viewportLength);
-			float newOffset = nvalue * maxOffset;
-
-			SetOffset(newOffset);
-		}
-
-		void ClampOffset()
-		{
-			float maxOffset = std::max<float>(0.0f, m_contentLength - m_viewportLength);
-			m_offset = std::clamp(m_offset, 0.0f, maxOffset);
+			UpdateThumbSize();
+			UpdateThumbPosition();
 		}
 
 	public:
-		engine::event::Event<float> OnScroll;
+		engine::event::Event<float> Scroll;
 
 		ScrollBar(float contentLength, float viewportLength, bool isHorizontal): 
 			m_contentLength(contentLength), 
@@ -8967,17 +8982,57 @@ namespace TestMapEditor
 			m_offset(0), 
 			m_horizontal(isHorizontal),
 			m_isDragging(false),
-			m_minThumbLength(10.0f)
+			m_minThumbLength(16.0f)
 		{
+			// this scrollbar is not movable. it is a static widget that can only be moved by dragging the thumb
 			m_moveBehavior = MoveBehavior::None;
 
-			std::unique_ptr<Thumb> thumb = std::make_unique<Thumb>();
+			// create thumb and add it as child. we will use this thumb to handle dragging and scrolling
+			std::unique_ptr<Thumb> thumb = std::make_unique<Thumb>(m_horizontal);
 			m_thumb = thumb.get();
 			AddChild(std::move(thumb));
+
+			// handle thumb movement. when thumb is moved, we will calculate the new offset based on thumb position and content length, viewport length, and scrollbar length
+			m_thumb->OnMove += [this](const PositionF& newPos)
+				{
+					// trackLength is the length scrollbar can move. so this must be length of scrollbar minus length of thumb. this is used to calculate the index size
+					float trackLength = (m_horizontal ? GetSize().width : GetSize().height) - (m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height);
+
+					// scroll size is the min/max range of value that scrollbar can scroll. content is the total range, while viewport is the viewable range
+					// content is the size of the data that can be viewed. viewport is the size of the data that is viewable.
+					// if viewport is smaller than content, then scrolling is required 
+					float scrollSize = m_contentLength - m_viewportLength;
+
+					// given trackLength which is the actual scroll range of scrollbar in pixel, and scrollSize which is the range it can scroll,
+					// scrollIndexSize is the size in pixel per every value the scrollbar can scroll
+					// if scrollsize is 0 or negative, then scrolling should not happen
+					float scrollIndexSize = scrollSize > 0? trackLength / scrollSize: 0;
+
+					// get thumb position. this is based on thumb widget's position and the scrollbar's orientation
+					float thumbPos = m_horizontal ? newPos.x : newPos.y;
+
+					// if scroll index size is 0, then scrolling should not happen
+					float index = scrollIndexSize == 0 ? 0 : std::floor(thumbPos / scrollIndexSize + 0.5f);
+
+					// clamp index such that its value can only be between 0 and (m_contentLength - m_viewportLength)
+					index = std::clamp<float>(index, 0.0f, std::max<float>(0.0f, m_contentLength - m_viewportLength));
+
+					// now let's calculate the thumb position to snap it to the index.
+					thumbPos = index * scrollIndexSize;
+					m_thumb->SetPosition(m_horizontal ? PositionF{ thumbPos, 0 } : PositionF{ 0, thumbPos });
+
+					// finally, if the calculated index is same as current offset, we don't have to do anything
+					// note that offset is just another name for index.
+					LOG(std::to_string(index));
+					if (m_offset == index) return;
+					m_offset = index;
+					Scroll(m_offset);
+				};
 		}
 
 		void SetOffset(float offset)
 		{
+			// clamp offset to be within 0 and (contentLength - viewportLength). if content is smaller than viewport, set offset to 0
 			offset = std::clamp(offset, 0.0f, std::max<float>(0.0f, m_contentLength - m_viewportLength));
 
 			// if thumb position did not change, no need to update and invoke scroll events
@@ -8985,26 +9040,39 @@ namespace TestMapEditor
 
 			m_offset = offset;
 			UpdateThumbPosition();
-			OnScroll(m_offset);
+			Scroll(m_offset);
 		}
 
 		float Offset() const { return m_offset; }
 
 		void SetContentLength(float length)
 		{
+			// cannot be negative content length. if negative, set to 0
 			m_contentLength = std::max<float>(0.0f, length);
-			ClampOffset();
+
+			// refresh offset in case it is out of range now due to content length change. if content is smaller than viewport, set offset to 0
+			m_offset = std::clamp(m_offset, 0.0f, std::max<float>(0.0f, m_contentLength - m_viewportLength));
+
+			// update thumb size and position based on possibly new content length and offset
 			UpdateThumbSize();
 			UpdateThumbPosition();
 		}
 
 		void SetViewportLength(float length)
 		{
+			// cannot be negative viewport length. if negative, set to 0
 			m_viewportLength = std::max<float>(0.0f, length);
-			ClampOffset();
+
+			// refresh offset in case it is out of range now due to content length change. if content is smaller than viewport, set offset to 0
+			m_offset = std::clamp(m_offset, 0.0f, std::max<float>(0.0f, m_contentLength - m_viewportLength));
+
+			// update thumb size and position based on possibly new content length and offset
 			UpdateThumbSize();
 			UpdateThumbPosition();
 		}
+
+		float GetContentLength() const { return m_contentLength; }
+		float GetViewportLength() const { return m_viewportLength; }
 
 		void Draw(const UIDrawContext& context) const override
 		{
@@ -9015,6 +9083,13 @@ namespace TestMapEditor
 	class Content : public Widget
 	{
 	private:
+	protected:
+		// NOTE: THIS IS FOR DEBUG ONLY. REMOVE THIS LATER. THIS IS NOT A GOOD IDEA TO LOG ON MOUSE DOWN
+		void OnMouseDown(const PositionF& position) override
+		{
+			LOG("content");
+		}
+
 	public:
 		Content()
 		{
@@ -9104,7 +9179,7 @@ namespace TestMapEditor
 
 			UpdateContentLayout();
 
-			OnContentSizeChanged(m_content->GetSize());
+			ContentAreaSizeChanged(m_content->GetSize());
 		}
 
 		void UpdateContentLayout()
@@ -9450,7 +9525,6 @@ namespace TestMapEditor
 		}
 
 
-
 		void SetMinResize(const SizeF& size)
 		{
 			m_minResize = size;
@@ -9461,7 +9535,7 @@ namespace TestMapEditor
 			m_borderSize = size;
 		}
 
-		engine::event::Event<const SizeF&> OnContentSizeChanged;	
+		engine::event::Event<const SizeF&> ContentAreaSizeChanged;
 
 		void Draw(const UIDrawContext& context) const override
 		{
@@ -9477,14 +9551,20 @@ namespace TestMapEditor
 		{
 			return m_content->GetSize();
 		}
+
+		SizeF GetContentAreaSize() const
+		{
+			return SizeF{ GetSize().width - m_borderSize * 2, GetSize().height - m_borderSize * 2 };
+		}
 	};
 
 	class ViewPort: public Widget
 	{
-	private:
+	protected:
 		Widget* m_content;
 
-	protected:
+		// this method ensures that content's position is always within the viewport's bounds. 
+		// if content's position is outside the viewport, it will be moved back to the nearest position within the viewport
 		void UpdateContentPosition()
 		{
 			// if content's position is > 0,0 then move it back to 0, 0
@@ -9493,74 +9573,113 @@ namespace TestMapEditor
 
 			bool updatePos = false;
 
-			if (position.x + size.width < GetSize().width)
+			// calculate the min position of content when it is dragged to the left and up. 
+			// content must not be dragged left and up beyond 0,0 while its bottom-right edge are already inside teh viewport
+			float minX = std::min<float>(0.0f, GetSize().width - size.width);
+			float minY = std::min<float>(0.0f, GetSize().height - size.height);
+
+			// Clamp X: position must stay between minX and 0.0f
+			float clampedX = std::clamp(position.x, minX, 0.0f);
+			if (position.x != clampedX)
 			{
-				position.x = GetSize().width - size.width;
-				updatePos = true;
-			}
-			if (position.y + size.height < GetSize().height)
-			{
-				position.y = GetSize().height - size.height;
+				position.x = clampedX;
 				updatePos = true;
 			}
 
-			if (position.x > 0.0f)
+			// Clamp Y: position must stay between minY and 0.0f
+			float clampedY = std::clamp(position.y, minY, 0.0f);
+			if (position.y != clampedY)
 			{
-				position.x = 0.0f;
+				position.y = clampedY;
 				updatePos = true;
 			}
-			if (position.y > 0.0f)
-			{
-				position.y = 0.0f;
-				updatePos = true;
-			}
+			 
 			if (updatePos)
 			{
 				m_content->SetPosition(position);
 			}
 		}
 
+		// handler for when viewport's size changes. we need to ensure that content's position is still within the viewport's bounds
 		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
 		{
 			UpdateContentPosition();
 		}
 
+		// event handler for when content's size changes. we need to ensure that content's position is still within the viewport's bounds
+		void OnContentSizeChanged(const SizeF& size)
+		{
+			UpdateContentPosition();
+
+			// bubble up the event to notify that content's size has changed. this is useful for scroll bars to update their thumb size and position
+			ContentSizeChanged(size);
+		}
+
+		void OnContentMove(const PositionF& pos)
+		{
+			// When content moves, ensure it remains within the viewport bounds.
+			// 
+			// OnMove is only raised when content's position really changed.
+			// Update the viewport's layout to ensure content stays within the bounds of viewport's area.
+			// Updating the layout may result in setting content's position again which will result in raising OnMove.
+			// As OnMove will only be raised  when content's position really changed, this will not result in recursive loop
+			//
+			// also note that since we are monitoring content's move event, we don't need to monitor its drag event as dragging will 
+			// also eventually set position of content and will raise OnMove
+			UpdateContentPosition();
+			
+			// fire scroll event to notify that content has moved and viewport's offset has changed
+			Scroll(GetOffset());
+		}
+
 	public:
-		engine::event::Event<const VecF&> OnScroll;
-		engine::event::Event<const SizeF&> OnContentSizeChange;
+		engine::event::Event<const VecF&> Scroll;
+		engine::event::Event<const SizeF&> ContentSizeChanged;
+		engine::event::Event<Widget*> ContentChanged;
 
 		ViewPort()
+			:m_content(nullptr)
 		{		
+			// this widget should not be movable. it also should not be focusable because it is a container for a content that is the actual widget this represents
 			m_moveBehavior = MoveBehavior::None;
 			m_droppable = false;
 			m_focusable = false;
 
-			std::unique_ptr<Widget> content = std::make_unique<Content>();
-			m_content = content.get();
+			// create a default content widget and set it as the viewport's content
+			std::unique_ptr<Widget> content = std::make_unique<Widget>();
+			SetContent(std::move(content));
+		}
 
+		void SetContent(std::unique_ptr<Widget> content)
+		{
+			// ensure content is not null. we don't allow null content as viewport must always have a content widget
+			if (!content) throw std::invalid_argument("content cannot be null");
+
+			// if we have an existing content, we need to remove it and unsubscribe from its events before setting the new content
+			if (m_content)
+			{
+				// let's unsubscribe from current content's events before removing it.
+				m_content->OnResize -= engine::event::Handler(this, &ViewPort::OnContentSizeChanged);
+				m_content->OnMove -= engine::event::Handler(this, &ViewPort::OnContentMove);
+
+				// this will destroy the content widget and all its children. so beware, this is permanent
+				RemoveChild(m_content);
+				m_content = nullptr;
+			}
+
+			// set new content
+			m_content = content.get();
 			AddChild(std::move(content));
 
-			m_content->OnResize += [&](const SizeF& size)
-				{
-					// this event only fires up if content size really changed. so we can safely assume the content size actually changed when we reach this point
-					UpdateContentPosition();
-					OnContentSizeChange(size);
-				};
+			// subscribe to new content's events
+			m_content->OnResize += engine::event::Handler(this, &ViewPort::OnContentSizeChanged);
+			m_content->OnMove += engine::event::Handler(this, &ViewPort::OnContentMove);
 
-			m_content->OnMove += [&](const PositionF pos)
-				{
-					// When content moves, ensure it remains within the viewport bounds.
-					// 
-					// OnMove is only raised when content's position really changed.
-					// Update the viewport's layout to ensure content stays within the bounds of viewport's area.
-					// Updating the layout may result in setting content's position again which will result in raising OnMove.
-					// As OnMove will only be raised  when content's position really changed, this will not result in recursive loop
-					//
-					// also note that since we are monitoring content's move event, we don't need to monitor its drag event as dragging will 
-					// also eventually set position of content and will raise OnMove
-					UpdateContentPosition();
-					OnScroll(GetOffset());
-				};
+			// we don't know what is the new content's size and position, so we need to ensure that it is within the viewport's bounds
+			UpdateContentPosition();
+
+			// fire event to notify that content has changed
+			ContentChanged(m_content);
 		}
 
 		void SetContentSize(const SizeF& size)
@@ -9745,7 +9864,20 @@ namespace TestMapEditor
 			UpdateLayout();
 		}
 
+		// NOTE: THIS IS FOR DEBUG ONLY. REMOVE THIS LATER. THIS IS NOT A GOOD IDEA TO LOG ON MOUSE DOWN
+		void OnMouseDown(const PositionF& position) override
+		{
+			m_viewport;
+
+			LOG("ScrollView");
+		}
+
 	public:
+
+		engine::event::Event<const VecF&> Scroll;
+		engine::event::Event<Widget*> ContentChanged;
+		engine::event::Event<const SizeF&> ViewPortResized;
+
 		ScrollView(bool autoHideScrollBars = true, float scrollSize = 20.0f, float borderSize = 2.0f)
 			: m_scrollSize(scrollSize)
 			, m_borderSize(borderSize)
@@ -9754,6 +9886,8 @@ namespace TestMapEditor
 			, m_vScrollBar(nullptr)
 			, m_autoHideScrollBars(autoHideScrollBars)
 		{
+			m_moveBehavior = MoveBehavior::None;
+
 			std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
 			m_viewport = viewport.get();
 			AddChild(std::move(viewport));
@@ -9767,39 +9901,75 @@ namespace TestMapEditor
 			AddChild(std::move(vScrollBar));
 
 			// listen to viewport's scroll event. when viewport's content moves or scrolls, we need to update our scrollbar's thumb positions
-			m_viewport->OnScroll += [&](const VecF& offset)
+			m_viewport->Scroll += [&](const VecF& offset)
 				{
 					// this will update thumb positions of the scroll bars
 					UpdateThumbPositions();
+
+					Scroll(offset);
 				};
 
-			m_viewport->OnContentSizeChange += [&](const SizeF& size)
+			m_viewport->ContentSizeChanged += [&](const SizeF& size)
 				{
 					// this will update the content size of scroll bars. scroll bars then will refresh its thumb size and thumb position internally
 					UpdateScrollBarContentSize();
 					UpdateLayout();
 				};
 
+			m_viewport->ContentChanged += [&](Widget* content)
+				{
+					// this will update the content size of scroll bars. scroll bars then will refresh its thumb size and thumb position internally
+					UpdateScrollBarContentSize();
+					UpdateLayout();
+
+					// bubble up the event to our own OnContentChange event
+					ContentChanged(content);
+				};
+
+			// bubble up viewport's resize event to our own OnViewPortResize event. 
+			// this is useful for external content that needs to resize itself when viewport resizes.
+			m_viewport->OnResize += [&](const SizeF& size)
+				{
+					ViewPortResized(size);
+				};
+
 			// handler for when horizontal scrollbar scrolls. only viewport's content position changes here. layout remains the same.
-			m_hScrollBar->OnScroll += [&](float offset)
+			m_hScrollBar->Scroll += [&](float offset)
 				{
 					VecF currOffset = m_viewport->GetOffset();
 					currOffset.x = offset;
 					m_viewport->SetOffset(currOffset);
 				};
 
-			// handler for when vertical	 scrollbar scrolls. only viewport's content position changes here. layout remains the same.
-			m_vScrollBar->OnScroll += [&](float offset)
+			// handler for when vertical scrollbar scrolls. only viewport's content position changes here. layout remains the same.
+			m_vScrollBar->Scroll += [&](float offset)
 				{
 					VecF currOffset = m_viewport->GetOffset();
 					currOffset.y = offset;
 					m_viewport->SetOffset(currOffset);
 				};
+
 		}
 
 		void SetContentSize(const SizeF& size)
 		{
 			m_viewport->SetContentSize(size);
+		}
+
+		void SetContent(std::unique_ptr<Widget> content)
+		{
+			m_viewport->SetContent(std::move(content));
+		}
+
+		// should this be called View? or Client? what's the best name for this?
+		SizeF GetViewPortSize() const
+		{
+			return m_viewport->GetSize();
+		}
+
+		VecF GetViewPortOffset() const
+		{
+			return m_viewport->GetOffset();
 		}
 
 		void Draw(const UIDrawContext& context) const override
@@ -10047,81 +10217,407 @@ namespace TestMapEditor
 		}
 	};
 
-	class TextList : public ViewPort
+	// this widget is used to display a single line of text, just like a label but is focusable, clickable, selectable like a button.
+	// it is used as a single item in widgets like TextList 
+	class TextItem : public Widget
+	{
+	protected:
+		// reference to the label widget that displays the text. this will be this widget's child
+		Label* m_label;
+
+		// when this widget resizes, we need to resize the label to fill the whole area of this widget
+		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
+		{
+			m_label->SetPosition({ 0.0f, 0.0f });
+			m_label->SetSize(newSize);
+		}
+
+	public:
+		TextItem(const std::string& text)
+			: m_label(nullptr)
+		{
+			// create a label widget to display the text. this label will be a child of this widget
+			std::unique_ptr<Label> label = std::make_unique<Label>(text);
+			m_label = label.get();
+			AddChild(std::move(label));
+
+			// this widget is focusable and selectable like a button, but it does not move like a button. it is just a static text item that can be selected
+			m_focusable = true;
+			m_moveBehavior = MoveBehavior::None;
+		}
+
+		// set the text
+		void Set(const std::string& text)
+		{
+			m_label->Set(text);
+		}
+
+		void Draw(const UIDrawContext& context) const override
+		{
+			if (context.skin)
+			{
+				// TODO: we don't have implementation for drawing TextItem yet...
+				// context.skin->DrawTextItem(*this, context);
+			}
+		}
+	};
+
+	// This is a model interface for a list of text items. 
+	// It defines the basic operations that any text list model should support, such as getting the size of the list, retrieving an item by index, clearing the list, and adding new items. 
+	// It also includes an event that is triggered whenever the model changes, allowing any observers (like a UI component) to react to changes in the data.
+	class ITextListModel
+	{
+	public:
+		virtual ~ITextListModel() = default;
+
+		// returns the number of text in the list
+		virtual size_t Size() const = 0;
+
+		// returns the text at the given index
+		virtual const std::string& Get(size_t index) const = 0;
+
+		// clears the list of text
+		virtual void Clear() = 0;
+
+		// event that is triggered whenever the model changes (e.g., when an item is added or removed)
+		engine::event::Event<> Changed;
+
+		// remove methods
+		virtual void RemoveLast() = 0;
+		virtual void RemoveFirst() = 0;
+		virtual void RemoveAt(size_t index) = 0;
+
+		// append methods
+		virtual void Append(const std::vector<std::string>& texts) = 0;
+		virtual void Append(const std::string& text) = 0;
+
+		// insert
+		virtual void Insert(size_t index, const std::string& text) = 0;
+
+		// set
+		virtual void Set(size_t index, const std::string& text) = 0;
+	};
+
+	// This is a concrete implementation of the ITextListModel interface that uses a std::vector to store the list of text items.
+	class VectorTextListModel : public ITextListModel
 	{
 	private:
-		std::vector<Widget*> m_texts;
-		SizeF m_itemSize;
+		std::vector<std::string> m_items;
+
+	public:
+		// returns the number of text in the list
+		size_t Size() const override
+		{
+			return m_items.size();
+		}
+
+		// returns the text at the given index
+		const std::string& Get(size_t index) const override
+		{
+			return m_items[index];
+		}
+
+		// removes the text at the given index and triggers the Changed event
+		void RemoveAt(size_t index) override
+		{
+			assert(index < m_items.size());
+
+			m_items.erase(m_items.begin() + index);
+			Changed();
+		}
+
+		// inserts text before the given index and triggers the Changed event
+		void Insert(size_t index, const std::string& text) override
+		{
+			index = std::min<size_t>(index, m_items.size());
+
+			m_items.insert(m_items.begin() + index, text);
+			Changed();
+		}
+
+		// appends multiple texts to the end of the list and triggers the Changed event
+		void Append(const std::vector<std::string>& texts) override
+		{
+			if (texts.empty())
+			{
+				return;
+			}
+
+			m_items.insert(m_items.end(), texts.begin(), texts.end());
+			Changed();
+		}
+
+		// appends text to the end of the list and triggers the Changed event
+		void Append(const std::string& text) override
+		{
+			m_items.push_back(text);
+			Changed();
+		}
+
+		// replaces the text at the given index and triggers the Changed event
+		void Set(size_t index, const std::string& text) override
+		{
+			assert(index < m_items.size());
+
+			m_items[index] = text;
+			Changed();
+		}
+
+		// clears the list of text and triggers the Changed event
+		void Clear() override
+		{
+			if (m_items.empty())
+			{
+				return;
+			}
+
+			m_items.clear();
+			Changed();
+		}
+
+		// remove the last text in the list and triggers the Changed event
+		void RemoveLast() override
+		{
+			if (m_items.empty())
+			{
+				return;
+			}
+
+			m_items.pop_back();
+			Changed();
+		}
+
+		// remove the first text in the list and triggers the Changed event
+		void RemoveFirst() override
+		{
+			if (m_items.empty())
+			{
+				return;
+			}
+
+			m_items.erase(m_items.begin());
+			Changed();
+		}
+	};
+	
+	// This is a widget that displays a list of text items.
+	// It can contain as many text items as needed, but only a subset of them are realized (i.e., created and displayed) based on the current min/max range of visible items.
+	// The widget uses a text list model (ITextListModel) to manage the underlying data, and it can be bound to any implementation of that interface.
+	class TextList : public Widget
+	{
+	private:
+		// collection of TextItem widgets that are currently realized (i.e., created and displayed) based on the current min/max range of visible items.
+		std::vector<TextItem*> m_realizedItems;
+
+		// height of each item in the list. this is used to calculate the position of each item based on its index in the list.
+		float m_itemHeight;
+
+		// default internal text list model that is used if no external model is provided. this allows the TextList to manage its own data if needed.
+		VectorTextListModel m_internalTextListModel;
+
+		// pointer to the current text list model that is being used by the TextList. this can be either the internal model or an external model provided by the user.
+		ITextListModel* m_textListModel;
+
+		// the current minimum and maximum indices of the visible items in the list. these are used to determine which items should be realized and displayed.
+		int m_min;
+		int m_max;
 
 	protected:
+		// update the layout of the realized items when the size of the TextList changes.
 		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
 		{
 			UpdateLayout();
 		}
 
-		void UpdateLayout()
+		// synchronizes the size of realized items with the number of visible items based on the current min/max range.
+		// this does not refresh the text or position of the realized items, it only ensures that the number of realized items matches the number of visible items.
+		void UpdateRealizedItems()
 		{
-			float width = GetSize().width;
-			float height = 32;
-			SizeF contentSize;
-			contentSize.width = width;
+			// current min/max might be out of bounds of the list model. we need to clamp them to valid range
+			int size = static_cast<int>(m_textListModel->Size());
+			int max = std::min<int>(m_max, size - 1);
+			int min = std::min<int>(m_min, size);
 
-			for (size_t i = 0; i < m_texts.size(); i++)
+			// calculate number of visible items
+			int numVisible = max - min + 1;
+			numVisible = numVisible < 0 ? 0 : numVisible;
+
+			// do we have more visible labels than supposed to?
+			while (m_realizedItems.size() > numVisible)
 			{
-				m_texts[i]->SetSize(
-					{
-						width,
-						height
-					}
-				);
-
-				m_texts[i]->SetPosition(
-					{
-						0.0f,
-						height * i
-					}
-				);
-
-				contentSize.height += height;
+				RemoveChild(m_realizedItems.back());
+				m_realizedItems.pop_back();
 			}
 
-			SetContentSize(contentSize);
+			// or is our visible labels not enough?
+			while (m_realizedItems.size() < numVisible)
+			{
+				std::unique_ptr<TextItem> textItem = std::make_unique<TextItem>("");
+				m_realizedItems.push_back(textItem.get());
+				AddChild(std::move(textItem));
+			}
+		}
+
+		// updates the layout of the realized items, including their position, size, and text
+		void UpdateLayout()
+		{
+			// first let's update the list of realized items to match the number of visible items
+			UpdateRealizedItems();
+
+			// now let's set the text for the visible items
+			int currItem = 0;
+			for (int i = m_min; i <= m_max; i++)
+			{
+				if (i >= m_textListModel->Size()) break;
+
+				// be assertive. if we are here, then we must have a realized item for this visible item
+				assert(currItem < m_realizedItems.size());
+
+				// set the text for this visible item
+				m_realizedItems[currItem]->Set(m_textListModel->Get(i));
+
+				// since we are here, we might as well set this visible label's position
+				m_realizedItems[currItem]->SetPosition(
+				{
+					0.0f,
+					m_itemHeight * i
+				});
+
+				// we set the size as well
+				m_realizedItems[currItem]->SetSize(
+				{
+					GetSize().width,
+					m_itemHeight
+				});
+
+				// move to next visible item
+				currItem++;
+			}
+
+			// and finally we set the size of this widget. 
+			// this forces the this widget to have a height that can accommodate all the items in the list, even if they are not all visible at once.
+			SetSize(
+				{
+					GetSize().width,
+					m_itemHeight * m_textListModel->Size()
+				});
+		}
+
+		// handler for when the text list model changes. this will trigger an update of the layout to reflect the changes in the underlying data.
+		void OnChangeTextListModel()
+		{
+			UpdateLayout();
+
+			// bubble up the event to notify that the text list has changed. this allows any observers (like a UI component) to react to changes in the data.
+			Changed();
 		}
 
 	public:
-		TextList(float borderSize = 2.0f)
+
+		// event that is triggered whenever the text list changes (e.g., when a text is added or removed)
+		engine::event::Event<> Changed;
+
+		TextList(float itemHeight = 40.0f)
+			: m_itemHeight(itemHeight)
+			, m_min(0)
+			, m_max(-1)
+			, m_textListModel(nullptr)
 		{
-			m_itemSize = {200.0f, 40.0f};
+			// it's ok for this widget to be movable. on its own it cannot be dragged because it resizes to fit its content which are the realized items. 
+			// realized items are TextItem widgets and they are not movable
+			m_moveBehavior = MoveBehavior::Free;
+
+			// by default, we will use the internal text list model. this allows the TextList to manage its own data if needed.
+			m_textListModel = &m_internalTextListModel;
+			m_textListModel->Changed += engine::event::Handler(this, &TextList::OnChangeTextListModel);
 		}
 
+		~TextList()
+		{
+			// unsubscribe from the text list model's OnChanged event to avoid dangling references and potential crashes when the TextList is destroyed.
+			if (m_textListModel)
+			{
+				m_textListModel->Changed -= engine::event::Handler(this, &TextList::OnChangeTextListModel);
+			}
+		}
+
+		// bind this TextList to a new text list model. if no model is provided, it will use the internal model.
+		void Bind(ITextListModel* model = nullptr)
+		{
+			m_textListModel->Changed -= engine::event::Handler(this, &TextList::OnChangeTextListModel);
+
+			m_textListModel = model? model : &m_internalTextListModel;
+
+			m_textListModel->Changed += engine::event::Handler(this, &TextList::OnChangeTextListModel);
+
+			// when we bind to a new model, we need to update the layout to reflect the changes in the underlying data.
+			UpdateLayout();
+		}
+
+		// remove all items and clear the list
 		void Clear()
 		{
+			// set min/max to default values. this will ensure that no items are visible and the realized items will be cleared.
+			m_min = 0;
+			m_max = -1;
 
+			// remove all items from the list and clear the realized items as well as TextList is subscribed to the OnChanged event of the model 
+			// which will call UpdateLayout() to clear the realized items and reset the size of the TextList to accommodate the empty list.
+			m_textListModel->Clear();
 		}
 
-		void SetWidth(float width)
+		void SetItemHeight(float itemHeight)
 		{
-			SetSize({ width, 0.0f });
-		}
-
-		void SetItemSize(const SizeF& size)
-		{
-			m_itemSize = size;
+			m_itemHeight = itemHeight;
 			UpdateLayout();
 		}
 
-		void Add(const std::string& text)
+		float GetItemHeight() const
 		{
+			return m_itemHeight;
+		}
 
-			//std::unique_ptr<Label> label = std::make_unique<Label>(text);
-			//m_texts.push_back(label.get());
-			//AddContent(std::move(label));
-
-			std::unique_ptr<Button> label = std::make_unique<Button>();
-			m_texts.push_back(label.get());
-			AddContent(std::move(label));
-
+		void SetMin(int min)
+		{
+			m_min = min;
 			UpdateLayout();
+		}
+
+		void SetMax(int max)
+		{
+			m_max = max;
+			UpdateLayout();
+		}
+
+		void Append(const std::string& text)
+		{
+			// since we are subscribed to the OnChanged event of the model, adding an item will automatically trigger an update of the layout to reflect the changes in the underlying data.
+			m_textListModel->Append(text);
+		}
+
+		void RemoveLast()
+		{
+			m_textListModel->RemoveLast();
+		}
+
+		void RemoveFirst()
+		{
+			m_textListModel->RemoveFirst();
+		}
+
+		void RemoveAt(size_t index)
+		{
+			m_textListModel->RemoveAt(index);
+		}
+
+		void Insert(size_t index, const std::string& text)
+		{
+			m_textListModel->Insert(index, text);
+		}
+
+		void Set(size_t index, const std::string& text)
+		{
+			m_textListModel->Set(index, text);
 		}
 
 		void Draw(const UIDrawContext& context) const override
@@ -10131,111 +10627,131 @@ namespace TestMapEditor
 				context.skin->DrawTextList(*this, context);
 			}
 		}
-
 	};
 
-
-	class TextListBox : public ScrollView
+	class TextListBox : public Widget
 	{
 	protected:
-		std::vector<Widget*> m_texts;
+		ScrollView* m_scrollView;
+		TextList* m_textList;
 
+		// handle size changes of this widget.
 		void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
 		{
+			// update the layout of all widgets dependent on this widget's size. 
 			UpdateLayout();
-
-			//SizeF contentSize = m_viewport->GetContentSize();
-
-			//contentSize.width = m_viewport->GetSize().width;
-
-			//m_viewport->SetContentSize(contentSize);
-
-			//ScrollView::OnSizeChanged(oldSize, newSize);
 		}
 
+		// updates the extents and positions of child widgets 
 		void UpdateLayout()
 		{
-			float width = m_viewport->GetSize().width;
-			float height = 32;
-			SizeF contentSize;
-			contentSize.width = width;
+			// the child scrollview will occupy the whole area of this widget so we always resize it to match our size
 
-			for (size_t i = 0; i < m_texts.size(); i++)
-			{
-				m_texts[i]->SetSize(
-					{
-						width,
-						height
-					}
-				);
-
-				m_texts[i]->SetPosition(
-					{
-						0.0f,
-						height * i
-					}
-				);
-
-				contentSize.height += height;
-			}
-
-			m_viewport->SetContentSize(contentSize);
-
-
-
-			//ForEachChild([&](Widget* widget)
-			//	{
-			//		PositionF pos
-			//		{
-			//			m_vertical ? 0.0f : (accumulatedPos + (first ? 0.0f : m_borderSize)),
-			//			m_vertical ? (accumulatedPos + (first ? 0.0f : m_borderSize)) : 0.0f
-			//		};
-			//		widget->SetPosition(pos);
-
-			//		accumulatedPos += (m_vertical ? widget->GetHeight() : widget->GetWidth());
-			//		accumulatedPos += (first ? 0.0f : m_borderSize);
-
-			//		if (m_vertical)
-			//		{
-			//			size.width = size.width < widget->GetWidth() ? widget->GetWidth() : size.width;
-			//			size.height = accumulatedPos;
-			//		}
-			//		else
-			//		{
-			//			size.height = size.height < widget->GetHeight() ? widget->GetHeight() : size.height;
-			//			size.width = accumulatedPos;
-			//		}
-
-			//		if (first) first = false;
-
-			//	});
+			// it's guaranteed by design that we have a scrollview child. so we can safely assume m_scrollView is not null
+			m_scrollView->SetPosition({ 0.0f, 0.0f });
+			m_scrollView->SetSize(GetSize());
 		}
 
 	public:
 		TextListBox()
+			: m_scrollView(nullptr)
+			, m_textList(nullptr)	
 		{
+			// create a scroll view and add it as a child
+			std::unique_ptr<ScrollView> scrollview = std::make_unique<ScrollView>();
+			scrollview->SetPosition({ 0, 0 });
+			m_scrollView = scrollview.get();
+			AddChild(std::move(scrollview));
+
+			// subscribe to scrollview's viewport resize event. 
+			m_scrollView->ViewPortResized += [&](const SizeF& size)
+				{
+					// when scrollview's size change, adjust content's width to match scrollview's width. height will be determined by content's own size
+					m_textList->SetSize({ size.width, m_textList->GetSize().height });
+
+					// recalculate the textlist's min/max visible items based on the new viewport size, item height, and current viewport offset
+					float textListItemHeight = m_textList->GetItemHeight();
+					VecF offset = m_scrollView->GetViewPortOffset();
+					int min = static_cast<int>(offset.y / textListItemHeight);
+					int max = static_cast<int>((offset.y + m_scrollView->GetViewPortSize().height) / textListItemHeight);
+
+					m_textList->SetMin(min);
+					m_textList->SetMax(max);
+				};
+
+			// subscribe to scrollview's content change event
+			m_scrollView->ContentChanged += [&](Widget* content)
+				{
+					// when scrollview's content changes, adjust content's width to match scrollview's width. height will be determined by content's own size
+					content->SetSize({ m_scrollView->GetViewPortSize().width, content->GetSize().height });
+
+					// recalculate the textlist's min/max visible items based on the new viewport size, item height, and current viewport offset
+					float textListItemHeight = m_textList->GetItemHeight();
+					VecF offset = m_scrollView->GetViewPortOffset();
+					int min = static_cast<int>(offset.y / textListItemHeight);
+					int max = static_cast<int>((offset.y + m_scrollView->GetViewPortSize().height) / textListItemHeight);
+
+					m_textList->SetMin(min);
+					m_textList->SetMax(max);
+				};
+
+			// subscribe to scrollview's scroll event. 
+			// when scrollview's content moves or scrolls, we need to update our textlist's min/max visible items based on the new viewport offset and item height
+			m_scrollView->Scroll += [&](const VecF& offset)
+				{
+					// recalculate the textlist's min/max visible items based on the new viewport size, item height, and current viewport offset
+					float textListItemHeight = m_textList->GetItemHeight();
+					int min = static_cast<int>(offset.y / textListItemHeight);
+					int max = static_cast<int>((offset.y + m_scrollView->GetViewPortSize().height) / textListItemHeight);
+
+					m_textList->SetMin(min);
+					m_textList->SetMax(max);
+				};
+
+			// create a textlist and add it as the content of the scrollview and add it as content of the scrollview. 
+			// this will allow the textlist to be scrolled within the scrollview.
+			std::unique_ptr<TextList> textList = std::make_unique<TextList>();
+			textList->SetPosition({ 0, 0 });
+			m_textList = textList.get();
+			m_scrollView->SetContent(std::move(textList));
+
+			// subscribe to textlist's change event. when a text is added or removed, 
+			// we need to recalculate the textlist's min/max visible items based on the new viewport size, item height, and current viewport offset
+			m_textList->Changed += [&]()
+				{
+					// recalculate the textlist's min/max visible items based on the new viewport size, item height, and current viewport offset
+					float textListItemHeight = m_textList->GetItemHeight();
+					VecF offset = m_scrollView->GetViewPortOffset();
+					int min = static_cast<int>(offset.y / textListItemHeight);
+					int max = static_cast<int>((offset.y + m_scrollView->GetViewPortSize().height) / textListItemHeight);
+
+					m_textList->SetMin(min);
+					m_textList->SetMax(max);
+				};
 		}
 
-		void Add(const std::string& text)
+		void Append(const std::string& text)
 		{
+			// add to TextList. 
+			m_textList->Append(text);
+		}
 
-			//std::unique_ptr<Label> label = std::make_unique<Label>(text);
-			//m_texts.push_back(label.get());
-			//m_viewport->AddContent(std::move(label));
-
-			std::unique_ptr<Frame> label = std::make_unique<Frame>();
-			m_texts.push_back(label.get());
-			m_viewport->AddContent(std::move(label));
-
-			UpdateLayout();
+		void RemoveLast()
+		{
+			m_textList->RemoveLast();
 		}
 
 		void Draw(const UIDrawContext& context) const override
 		{
 			if (context.skin)
 			{
-				context.skin->DrawTextListBox(*this, context);
+			//	context.skin->DrawTextListBox(*this, context);
 			}
+		}
+
+		void Clear()
+		{
+			m_textList->Clear();
 		}
 	};
 #pragma endregion
@@ -10642,6 +11158,7 @@ namespace TestMapEditor
 		UniformGrid* m_uniformGrid = nullptr;
 		TextListBox* m_textListBox = nullptr;
 		TextList* m_textList = nullptr;
+		ScrollBar* m_scrollbar = nullptr;
 		int m_imageState = 0;
 		UISystem m_ux;
 		Button* m_button = nullptr;
@@ -10654,6 +11171,7 @@ namespace TestMapEditor
 
 		Widget* m_controlDialog = nullptr;
 		Widget* m_testDialog = nullptr;
+		std::vector<std::string> m_randomTexts;
 
 		std::unique_ptr<Widget> CreateWidget(const PositionF& pos, const SizeF& size)
 		{
@@ -10714,7 +11232,7 @@ namespace TestMapEditor
 					button->SetPosition({ 50, 80 });
 					button->SetSize({ 100, 50 });
 
-					button->OnClick += [&ux]()
+					button->Click += [&ux]()
 						{
 							ux.Collapse();
 						};
@@ -10775,13 +11293,66 @@ namespace TestMapEditor
 			IFontAtlas& font = AssetManager().Get<IFontAtlas>("font");
 			m_ux.SetFont(&font, UIResources::FontType::Default);
 
-			if(false)
+			// setup our random text list resource
 			{
-				std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(500.0f, 350.0f, true);
+				m_randomTexts.push_back("Cat");
+				m_randomTexts.push_back("Dog");
+				m_randomTexts.push_back("Mouse");
+				m_randomTexts.push_back("Elephant");
+				m_randomTexts.push_back("Lion");
+				m_randomTexts.push_back("Tiger");
+				m_randomTexts.push_back("Bear");
+				m_randomTexts.push_back("Giraffe");
+				m_randomTexts.push_back("Zebra");
+				m_randomTexts.push_back("Monkey");
+				m_randomTexts.push_back("Kangaroo");
+				m_randomTexts.push_back("Panda");
+				m_randomTexts.push_back("Hello");
+				m_randomTexts.push_back("World");
+				m_randomTexts.push_back("Lorem");
+				m_randomTexts.push_back("Ipsum");
+				m_randomTexts.push_back("Dolor");
+				m_randomTexts.push_back("Sit");
+				m_randomTexts.push_back("Amet");
+			}
+
+			// ScrollBar
+			if(true)
+			{
+				std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(4000.0f, 100.0f, true);
 				scrollbar->SetPosition({ 300,300 });
-				scrollbar->SetSize({ 300, 50 });
+				scrollbar->SetSize({ 600, 50 });
+				m_scrollbar = scrollbar.get();
 				m_ux.AddWidget(std::move(scrollbar));
 
+				// content adjuster
+				if(1)
+				{
+					std::unique_ptr<ScrollBar> contentScroll = std::make_unique<ScrollBar>(12.0f, 2.0f, true);
+					contentScroll->SetPosition({ 300,400 });
+					contentScroll->SetSize({ 400, 25 });
+					contentScroll->Scroll += [&](float value)
+						{
+							m_scrollbar->SetContentLength(value);
+						};
+					//contentScroll->SetOffset(10.0f);
+					m_ux.AddWidget(std::move(contentScroll));
+				}
+
+				// viewport adjuster
+				if(1)
+				{
+					std::unique_ptr<ScrollBar> viewportScroll = std::make_unique<ScrollBar>(12.0f, 2.0f, true);
+					viewportScroll->SetPosition({ 300,450 });
+					viewportScroll->SetSize({ 400, 25 });
+					viewportScroll->Scroll += [&](float value)
+						{
+							m_scrollbar->SetViewportLength(value);
+						};
+
+					//viewportScroll->SetOffset(7.0f);
+					m_ux.AddWidget(std::move(viewportScroll));
+				}
 			}
 
 			if(false)
@@ -10790,36 +11361,36 @@ namespace TestMapEditor
 				resizeableframe->SetPosition({ 300,300 });
 				resizeableframe->SetSize({ 600, 600 });
 
-				std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
-				viewport->SetPosition({ 0, 0 });
-				viewport->SetSize(resizeableframe->GetContentsize());
-				viewport->SetContentSize({ 500, 500 });
-				m_viewport = viewport.get();
-				resizeableframe->OnContentSizeChanged += [&](const SizeF& size)
-					{
-						m_viewport->SetPosition({ 0,0 });
-						m_viewport->SetSize(size);
-					};
-				resizeableframe->AddContent(std::move(viewport));
+				//std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
+				//viewport->SetPosition({ 0, 0 });
+				//viewport->SetSize(resizeableframe->GetContentsize());
+				//viewport->SetContentSize({ 500, 500 });
+				//m_viewport = viewport.get();
+				//resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
+				//	{
+				//		m_viewport->SetPosition({ 0,0 });
+				//		m_viewport->SetSize(size);
+				//	};
+				//resizeableframe->AddContent(std::move(viewport));
 
 				m_ux.AddWidget(std::move(resizeableframe));
 			}
 
-
+			// ViewPort
 			if (false)
 			{
-
 				std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
 				viewport->SetPosition({ 250, 250 });
 				viewport->SetSize({ 300,300 });
+
+				viewport->SetContent(std::make_unique<Content>());
 				viewport->SetContentSize({ 500, 500 });
 				m_viewport = viewport.get();
 				m_ux.AddWidget(std::move(viewport));
-
 			}
 
 			// TextList
-			if (true)
+			if (false)
 			{
 				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
 				resizeableframe->SetPosition({ 200,200 });
@@ -10828,46 +11399,33 @@ namespace TestMapEditor
 				std::unique_ptr<TextList> textListBox = std::make_unique<TextList>();
 				textListBox->SetPosition({ 0, 0 });
 				textListBox->SetSize(resizeableframe->GetContentsize());
-				//textListBox->Add("hello");
-				//textListBox->Add("world");
-				//textListBox->Add("hello");
-				//textListBox->Add("world");
-				//textListBox->Add("hello");
-				//textListBox->Add("world");
-				//textListBox->Add("hello");
-				//textListBox->Add("world");
+				textListBox->Append("hello");
+				textListBox->Append("world");
+				textListBox->Append("hello");
+				textListBox->Append("world");
+				textListBox->Append("hello");
+				textListBox->Append("world");
+				textListBox->Append("hello");
+				textListBox->Append("world");
+				textListBox->Append("hello");
+				textListBox->Append("world");
+				textListBox->Append("hello");
+				textListBox->Append("world");
+				textListBox->Append("hello");
+				textListBox->Append("world");
+
+				textListBox->SetMin(4);
+				textListBox->SetMax(7);
 
 				m_textList = textListBox.get();
-				resizeableframe->OnContentSizeChanged += [&](const SizeF& size)
+				resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
 					{
 						m_textList->SetPosition({ 0,0 });
 						m_textList->SetSize(size);
 					};
 				resizeableframe->AddContent(std::move(textListBox));
 
-				m_ux.AddWidget(std::move(resizeableframe));
-			}
 
-			// TextListBox
-			if (false)
-			{
-				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
-				resizeableframe->SetPosition({ 200,200 });
-				resizeableframe->SetSize({ 300, 300 });
-
-				std::unique_ptr<TextListBox> textListBox = std::make_unique<TextListBox>();
-				textListBox->SetPosition({ 0, 0 });
-				textListBox->SetSize(resizeableframe->GetContentsize());
-				textListBox->Add("hello");
-				textListBox->Add("world");
-
-				m_textListBox = textListBox.get();
-				resizeableframe->OnContentSizeChanged += [&](const SizeF& size)
-					{
-						m_textListBox->SetPosition({ 0,0 });
-						m_textListBox->SetSize(size);
-					};
-				resizeableframe->AddContent(std::move(textListBox));
 
 				m_ux.AddWidget(std::move(resizeableframe));
 			}
@@ -10904,7 +11462,7 @@ namespace TestMapEditor
 				uniformGrid->SetPosition({ 0, 0 });
 				uniformGrid->SetSize(resizeableframe->GetContentsize());
 				m_uniformGrid = uniformGrid.get();
-				resizeableframe->OnContentSizeChanged += [&](const SizeF& size)
+				resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
 					{
 						m_uniformGrid->SetPosition({ 0,0 });
 						m_uniformGrid->SetSize(size);
@@ -10928,9 +11486,10 @@ namespace TestMapEditor
 				std::unique_ptr<ScrollView> scrollview = std::make_unique<ScrollView>();
 				scrollview->SetPosition({ 0, 0 });
 				scrollview->SetSize(resizeableframe->GetContentsize());
-				scrollview->SetContentSize({ 500, 500 });
+				scrollview->SetContent(std::make_unique<Content>());
+				scrollview->SetContentSize({ 5000, 5000 });
 				m_scrollview = scrollview.get();
-				resizeableframe->OnContentSizeChanged += [&](const SizeF& size)
+				resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
 					{
 						m_scrollview->SetPosition({ 0,0 });
 						m_scrollview->SetSize(size);
@@ -10940,21 +11499,267 @@ namespace TestMapEditor
 				m_ux.AddWidget(std::move(resizeableframe));
 			}
 
+			// ScrollView with TextList as content
 			if(false)
 			{
-				std::unique_ptr<Frame> frame = std::make_unique<Frame>();
-				frame->SetPosition({ 50,50 });
-				frame->SetSize({ 640, 480 });
+				// create our resizeable frame. 
+				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
+				resizeableframe->SetPosition({ 700,200 });
+				resizeableframe->SetSize({ 300, 300 });
 
+				// create our scrollview. this will be the content of the resizeable frame
 				std::unique_ptr<ScrollView> scrollview = std::make_unique<ScrollView>();
-				scrollview->SetPosition({ 50,50 });
-				scrollview->SetSize({ 300, 300 });
-				scrollview->SetContentSize({ 500,500 });
-				frame->AddChild(std::move(scrollview));
-				m_ux.AddWidget(std::move(frame));
+				scrollview->SetPosition({ 0, 0 });
+				//scrollview->SetSize(resizeableframe->GetContentsize());
+				//scrollview->SetContentSize({ 500, 500 });
+				m_scrollview = scrollview.get();
+
+				// when the resizeable frame's content size changes, we need to update the scrollview's size to match the new content size of the resizeable frame
+				// so it will always fill the resizeable frame's content area
+				resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
+					{
+						m_scrollview->SetPosition({ 0,0 });
+						m_scrollview->SetSize(size);
+					};
+
+				m_scrollview->ViewPortResized += [&](const SizeF& size)
+					{
+						// when scrollview's size change, adjust content's width to match scrollview's width. height will be determined by content's own size
+						m_textList->SetSize({ size.width, m_textList->GetSize().height });
+
+						// get position of textlist relative to viewport's content area. this is the offset of the textlist's position relative to the viewport's content area
+						float textListItemHeight = m_textList->GetItemHeight();
+						VecF offset = m_scrollview->GetViewPortOffset();
+						int min = static_cast<int>(offset.y / textListItemHeight);
+						int max = static_cast<int>((offset.y + m_scrollview->GetViewPortSize().height) / textListItemHeight);
+
+						m_textList->SetMin(min);
+						m_textList->SetMax(max);
+					};
+
+				m_scrollview->ContentChanged += [&](Widget* content)
+					{
+						// when scrollview's content changes, adjust content's width to match scrollview's width. height will be determined by content's own size
+						content->SetSize({ m_scrollview->GetViewPortSize().width, content->GetSize().height});
+
+						// get position of textlist relative to viewport's content area. this is the offset of the textlist's position relative to the viewport's content area
+						float textListItemHeight = m_textList->GetItemHeight();
+						VecF offset = m_scrollview->GetViewPortOffset();
+						int min = static_cast<int>(offset.y / textListItemHeight);
+						int max = static_cast<int>((offset.y + m_scrollview->GetViewPortSize().height) / textListItemHeight);
+
+						m_textList->SetMin(min);
+						m_textList->SetMax(max);
+					};
+
+				m_scrollview->Scroll += [&](const VecF& offset)
+					{
+						// get position of textlist relative to viewport's content area. this is the offset of the textlist's position relative to the viewport's content area
+						float textListItemHeight = m_textList->GetItemHeight();
+						int min = static_cast<int>(offset.y / textListItemHeight);
+						int max = static_cast<int>((offset.y + m_scrollview->GetViewPortSize().height) / textListItemHeight);
+
+						m_textList->SetMin(min);
+						m_textList->SetMax(max);
+					};
+
+				// create our TextList. fill its contents
+				{
+					std::unique_ptr<TextList> textList = std::make_unique<TextList>();
+					textList->SetPosition({ 0, 0 });
+					//textList->SetSize({ 500, 500 });
+					textList->Append("hello");
+					textList->Append("world");
+					textList->Append("hello1");
+					textList->Append("world1");
+					textList->Append("hello2");
+					textList->Append("world2");
+					textList->Append("hello3");
+					textList->Append("world3");
+					textList->Append("hello4");
+					textList->Append("hello5");
+					textList->Append("world4");
+					textList->Append("hello6");
+					textList->Append("world5");
+
+					textList->SetMin(4);
+					textList->SetMax(7);
+
+					// add TextList as ScrollView's content
+					m_textList = textList.get();
+					m_scrollview->SetContent(std::move(textList));
+
+					//std::unique_ptr<Content> content = std::make_unique<Content>();
+					//content->SetSize({ 500, 500 });
+
+					//std::unique_ptr<TextItem> textitem = std::make_unique<TextItem>("");
+					//textitem->SetPosition({ 0, 0 });
+					//textitem->Set("Hello World");
+					//content->AddChild(std::move(textitem));
+
+					//m_scrollview->SetContent(std::move(content));
+
+				}
+
+				// resize scrollview to match resizeable frame's content area size. resizeableframe won't automatically resize its content
+				scrollview->SetSize(resizeableframe->GetContentAreaSize());
+
+				// add the scrollview to the resizeable frame's content
+				resizeableframe->AddContent(std::move(scrollview));
+
+
+				// add our resizeable frame to the ux system
+				m_ux.AddWidget(std::move(resizeableframe));
 			}
 
+			// TextListBox
+			if (false)
+			{
+				// create our resizeable frame. 
+				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
+				resizeableframe->SetPosition({ 250,200 });
+				resizeableframe->SetSize({ 300, 300 });
 
+				// create our TextListBox. this will be the content of the resizeable frame
+				std::unique_ptr<TextListBox> textListBox = std::make_unique<TextListBox>();
+				textListBox->SetPosition({ 0, 0 });
+				textListBox->SetSize(resizeableframe->GetContentsize());
+				m_textListBox = textListBox.get();
+
+				// add the TextListBox to the resizeable frame's content
+				resizeableframe->AddContent(std::move(textListBox));
+
+				// when the resizeable frame's content size changes, we need to update the TextListBox's size to match the new content size of the resizeable frame
+				// so it will always fill the resizeable frame's content area
+				resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
+					{
+						m_textListBox->SetPosition({ 0,0 });
+						m_textListBox->SetSize(size);
+					};
+
+				// add our resizeable frame to the ux system
+				m_ux.AddWidget(std::move(resizeableframe));
+
+				std::unique_ptr<Button> addButton = CreateButton({ 50, 200 }, { 150, 50 }, "Append");
+				addButton->Click += [this]()
+					{
+						// add a random text from m_randomTexts to the TextListBox
+						if (m_textListBox)
+						{
+							size_t index = engine::utilities::Random<size_t>(0, m_randomTexts.size() - 1);
+							m_textListBox->Append(m_randomTexts[index]);
+						}
+					};
+				m_ux.AddWidget(std::move(addButton));	
+
+				std::unique_ptr<Button> removeButton = CreateButton({ 50, 280 }, { 150, 50 }, "Remove Last");
+				removeButton->Click += [this]()
+					{
+						// remove the last item from the TextListBox
+						if (m_textListBox)
+						{
+							m_textListBox->RemoveLast();
+						}
+					};
+				m_ux.AddWidget(std::move(removeButton));
+
+				std::unique_ptr<Button> clearButton = CreateButton({ 50, 360 }, { 150, 50 }, "Clear");
+				clearButton->Click += [this]()
+					{
+						// clear all items from the TextListBox
+						if (m_textListBox)
+						{
+							m_textListBox->Clear();
+						}
+					};
+				m_ux.AddWidget(std::move(clearButton));
+
+			}
+
+			// ViewPort
+			if (false)
+			{
+				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
+				resizeableframe->SetPosition({ 200,200 });
+				resizeableframe->SetSize({ 300, 300 });
+
+				std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
+				viewport->SetPosition({ 0, 0 });
+				viewport->SetSize(resizeableframe->GetContentsize());
+
+				// create content for the viewport. this will be a TextList with many items and a min/max number of items to display
+				{
+					std::unique_ptr<TextList> textList = std::make_unique<TextList>();
+					textList->SetPosition({ 0, 0 });
+					textList->SetSize({ 500, 500 });
+					textList->Append("hello");
+					textList->Append("world");
+					textList->Append("hello");
+					textList->Append("world");
+					textList->Append("hello");
+					textList->Append("world");
+					textList->Append("hello");
+					textList->Append("world");
+					textList->Append("hello");
+					textList->Append("hello");
+					textList->Append("world");
+					textList->Append("hello");
+					textList->Append("world");
+
+					textList->SetMin(4);
+					textList->SetMax(7);
+
+					textList->SetPosition({ 0, -100.0f });
+
+					viewport->Scroll += [&](const PositionF& offset)
+						{
+							// get position of textlist relative to viewport's content area. this is the offset of the textlist's position relative to the viewport's content area
+							PositionF textListOffset = m_viewport->GetOffset();
+							float textListItemHeight = m_textList->GetItemHeight();
+							int min = static_cast<int>(m_viewport->GetOffset().y / textListItemHeight);
+							int max = static_cast<int>((m_viewport->GetOffset().y + m_viewport->GetSize().height) / textListItemHeight);
+
+							m_textList->SetMin(min);		
+							m_textList->SetMax(max);
+							
+						};
+
+					viewport->OnResize += [&](const SizeF& size)
+						{
+							// when viewport's size change, adjust content's width to match viewport's width. height will be determined by content's own size
+							m_textList->SetSize({size.width, m_textList->GetSize().height});
+
+							// get position of textlist relative to viewport's content area. this is the offset of the textlist's position relative to the viewport's content area
+							PositionF textListOffset = m_viewport->GetOffset();
+							float textListItemHeight = m_textList->GetItemHeight();
+							int min = static_cast<int>(m_viewport->GetOffset().y / textListItemHeight);
+							int max = static_cast<int>((m_viewport->GetOffset().y + m_viewport->GetSize().height) / textListItemHeight);
+
+							m_textList->SetMin(min);
+							m_textList->SetMax(max);
+						};
+
+					viewport->ContentChanged += [&](Widget* content)
+						{
+							// when viewport's content changes, adjust content's width to match viewport's width. height will be determined by content's own size
+							content->SetSize({ viewport->GetSize().width, content->GetSize().height });
+						};
+
+					m_textList = textList.get();
+					viewport->SetContent(std::move(textList));
+				}
+
+				m_viewport = viewport.get();
+				resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
+					{
+						m_viewport->SetPosition({ 0,0 });
+						m_viewport->SetSize(size);
+					};
+				resizeableframe->AddContent(std::move(viewport));
+
+				m_ux.AddWidget(std::move(resizeableframe));
+
+			}
 
 			// let's create menu system
 			{
@@ -11059,7 +11864,7 @@ namespace TestMapEditor
 											radioButton->Bind(m_showTileGrid);
 											RadioButton* rb = radioButton.get();
 
-											menuItem->OnClick += [&, rb]()
+											menuItem->Click += [&, rb]()
 												{
 													rb->Toggle();
 												};
@@ -11081,7 +11886,7 @@ namespace TestMapEditor
 											radioButton->Bind(m_showFineGrid);
 											RadioButton* rb = radioButton.get();
 
-											menuItem->OnClick += [&, rb]()
+											menuItem->Click += [&, rb]()
 												{
 													rb->Toggle();
 												};
@@ -11112,7 +11917,7 @@ namespace TestMapEditor
 								radioButton->Bind(m_showProp);
 								RadioButton* rb = radioButton.get();
 
-								menuItem->OnClick += [&, rb]()
+								menuItem->Click += [&, rb]()
 									{
 										rb->Toggle();
 									};
@@ -11134,7 +11939,7 @@ namespace TestMapEditor
 								radioButton->Bind(m_showTerrain);
 								RadioButton* rb = radioButton.get();
 
-								menuItem->OnClick += [&, rb]()
+								menuItem->Click += [&, rb]()
 									{
 										rb->Toggle();
 									};
@@ -11222,7 +12027,7 @@ namespace TestMapEditor
 													canvas.SetFullscreen(state);
 												});
 
-											menuItem->OnClick += [&, rb]()
+											menuItem->Click += [&, rb]()
 												{
 													rb->TurnOn();
 												};
@@ -11254,7 +12059,7 @@ namespace TestMapEditor
 													canvas.SetFullscreen(!state);
 												});
 
-											menuItem->OnClick += [&, rb]()
+											menuItem->Click += [&, rb]()
 												{
 													rb->TurnOn();
 												};
@@ -11287,7 +12092,7 @@ namespace TestMapEditor
 													canvas.SetFullscreen(!state);
 												});
 
-											menuItem->OnClick += [&, rb]()
+											menuItem->Click += [&, rb]()
 												{
 													rb->TurnOn();
 												};
@@ -11406,7 +12211,7 @@ namespace TestMapEditor
 					label->SetSize({ 200, 50 });
 					button->AddChild(std::move(label));
 
-					button->OnClick += [&]() 
+					button->Click += [&]() 
 						{
 							Layer::BuildDescription cmd
 							{
@@ -11442,7 +12247,7 @@ namespace TestMapEditor
 									label->SetSize({ 100, 32 });
 									button->AddChild(std::move(label));
 
-									button->OnClick += [&]()
+									button->Click += [&]()
 										{
 											m_ux.Collapse();
 										};
@@ -11464,7 +12269,7 @@ namespace TestMapEditor
 									label->SetSize({ 100, 32 });
 									button->AddChild(std::move(label));
 
-									button->OnClick += [&]()
+									button->Click += [&]()
 										{
 											switch (m_imageState)
 											{

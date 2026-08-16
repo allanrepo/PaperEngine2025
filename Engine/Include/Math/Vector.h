@@ -11,7 +11,11 @@ namespace engine
 		struct Vector
 		{
 			//public:
-			static constexpr float Epsilon = 1e-6f;
+			static constexpr T Epsilon = []() {
+				if constexpr (std::is_same_v<T, double>)      return 1e-5;
+				else if constexpr (std::is_same_v<T, float>)  return 1e-4f;
+				else                                          return T{ 0 };
+				}();
 
 			T x;
 			T y;
@@ -36,13 +40,22 @@ namespace engine
 			friend Vector operator * (T scalar, Vector rhs) { return rhs *= scalar; }
 			friend Vector operator / (Vector lhs, T scalar) { return lhs /= scalar; }
 
-			// TODO: test this
 			// unary minus operator. negates the vector
 			Vector operator-() const { return Vector(-x, -y); }
 
-			// TODO: test this
 			// comparison operators 
-			bool operator == (const Vector& rhs) const { return x == rhs.x && y == rhs.y; }
+			bool operator == (const Vector& rhs) const 
+			{ 
+				if constexpr (std::is_floating_point_v<T>)
+				{
+					return std::abs(x - rhs.x) <= static_cast<T>(Epsilon) &&
+						std::abs(y - rhs.y) <= static_cast<T>(Epsilon);
+				}
+				else
+				{
+					return x == rhs.x && y == rhs.y;
+				}
+			}
 			bool operator != (const Vector& rhs) const { return !(*this == rhs); }
 
 			// Vector operations
