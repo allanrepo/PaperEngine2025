@@ -41,6 +41,8 @@
 #include <Spatial/SpatialOccupancyGrid.h>
 #include <Scene/Scene.h>
 #include <Spatial/Camera.h>
+#include <GUI/gui.h>	
+
 
 namespace TestMapEditor
 {
@@ -77,6 +79,8 @@ namespace TestMapEditor
 	class Stack;
 	class TextListBox;
 	class TextList;
+	class ButtonHandle;
+	class Dialog;
 #pragma endregion
 
 #pragma region // namespaces
@@ -9864,14 +9868,6 @@ namespace TestMapEditor
 			UpdateLayout();
 		}
 
-		// NOTE: THIS IS FOR DEBUG ONLY. REMOVE THIS LATER. THIS IS NOT A GOOD IDEA TO LOG ON MOUSE DOWN
-		void OnMouseDown(const PositionF& position) override
-		{
-			m_viewport;
-
-			LOG("ScrollView");
-		}
-
 	public:
 
 		engine::event::Event<const VecF&> Scroll;
@@ -10755,6 +10751,78 @@ namespace TestMapEditor
 		}
 	};
 #pragma endregion
+
+
+#if 0
+#pragma region // dialog
+	class Dialog
+	{
+	public:
+		Dialog(UISystem& system)
+			: m_system(system)
+			, m_widget(nullptr)
+		{
+			// create the dialog widget. for now. simple draggable widget will suffice
+			std::unique_ptr<Widget> dialog = std::make_unique<Content>();
+			m_widget = dialog.get();
+
+			m_system.AddWidget(std::move(dialog));
+		}
+
+		void Show()
+		{
+			m_widget->Show();
+		}
+
+		void Hide()
+		{
+			m_widget->Hide();
+		}
+
+		void Close()
+		{
+
+		}
+
+		ButtonHandle CreateButton(const PositionF& pos, const SizeF& size)
+		{
+			std::unique_ptr<Button> button = std::make_unique<Button>();
+			button->SetPosition(pos);
+			button->SetSize(size);
+			ButtonHandle buttonHandle(button.get());
+			m_widget->AddChild(std::move(button));
+			return buttonHandle;
+		}
+
+	private:
+		UISystem& m_system;
+		Widget* m_widget;
+	};
+#pragma endregion
+
+#pragma region // ButtonHandle
+	class ButtonHandle
+	{
+	private:
+		friend class Dialog;
+
+		Button* m_button;
+
+		ButtonHandle(Button* button) :
+			m_button(button)
+		{
+		}
+
+	public:
+		virtual ~ButtonHandle() = default;
+
+		inline bool IsValid() const
+		{
+			return m_button != nullptr;
+		}
+	};
+#pragma endregion
+#endif
 
 #pragma region // UI theme/skin
 
@@ -12589,6 +12657,157 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
+#pragma region // another gui scene
+	class AnotherGuiScene : public Scene
+	{
+		PositionF m_mousePos;
+		engine::gui::UISystem m_ux;
+		engine::gui::TextListBox* m_textListBox;
+
+	public:
+		void OnEnter() override
+		{
+			m_ux.SetPosition({ 0,0 });
+			m_ux.SetSize({ 0,0 });
+			m_ux.Show();
+			IFontAtlas& font = AssetManager().Get<IFontAtlas>("font");
+			m_ux.SetFont(&font, engine::gui::UIResources::FontType::Default);
+
+
+			// TextListBox
+			if (true)
+			{
+				// create our resizeable frame. 
+				std::unique_ptr<engine::gui::ResizeableFrame> resizeableframe = std::make_unique<engine::gui::ResizeableFrame>(20.0f);
+				resizeableframe->SetPosition({ 250,200 });
+				resizeableframe->SetSize({ 300, 300 });
+
+				// create our TextListBox. this will be the content of the resizeable frame
+				std::unique_ptr<engine::gui::TextListBox> textListBox = std::make_unique<engine::gui::TextListBox>();
+				textListBox->SetPosition({ 0, 0 });
+				textListBox->SetSize(resizeableframe->GetContentsize());
+				m_textListBox = textListBox.get();
+
+				// add the TextListBox to the resizeable frame's content
+				resizeableframe->AddContent(std::move(textListBox));
+
+				m_textListBox->Append("hello");
+				m_textListBox->Append("world");
+				m_textListBox->Append("dog");
+				m_textListBox->Append("cat");
+				m_textListBox->Append("rabbit");
+				m_textListBox->Append("hamster");
+				m_textListBox->Append("parrot");
+				m_textListBox->Append("pig");
+				m_textListBox->Append("duck");
+				m_textListBox->Append("chicken");
+				m_textListBox->Append("deer");
+				m_textListBox->Append("cow");
+
+				// when the resizeable frame's content size changes, we need to update the TextListBox's size to match the new content size of the resizeable frame
+				// so it will always fill the resizeable frame's content area
+				resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
+					{
+						m_textListBox->SetPosition({ 0,0 });
+						m_textListBox->SetSize(size);
+					};
+
+				// add our resizeable frame to the ux system
+				m_ux.AddWidget(std::move(resizeableframe));	
+			}
+		}
+
+		void OnMouseMove(int x, int y) override
+		{
+			m_mousePos = PositionF((float)x, (float)y);
+
+			m_ux.MouseMove(m_mousePos);
+		}
+
+		void OnMouseDown(int btn, int x, int y)
+		{
+			m_mousePos = PositionF((float)x, (float)y);
+
+			if (btn == 1)
+			{
+				m_ux.MouseDown(m_mousePos);
+			}
+		}
+
+		void OnMouseUp(int btn, int x, int y)
+		{
+			m_mousePos = PositionF((float)x, (float)y);
+
+			m_ux.MouseUp(m_mousePos);
+		}
+
+		void OnKeyDown(int key) override
+		{
+			m_ux.KeyDown(key);
+
+			switch (key)
+			{
+			case 9: // TAB
+				break;
+			case 27: // ESC
+				m_ux.Collapse();
+				break;
+			case 32: // SPACE
+			{
+				break;
+			}
+			case 49: // 1
+				break;
+			case 50: // 2
+				break;
+			case 51: // 3 
+				break;
+			case 52: // 4
+				break;
+			case 53: // 5
+			{
+				break;
+			}
+			case 54: // 6
+			{
+				break;
+			}
+
+			default:
+				break;
+			}
+		}
+
+		void OnUpdate(double dt) override
+		{
+			m_ux.Begin();
+
+			// update input to trigger input events
+			Input::Instance().Update();
+
+			m_ux.End();
+		}
+
+		void OnRender() override
+		{
+			AssetManager assets;
+			ICanvas& canvas = assets.Get<ICanvas>("canvas");
+			IRenderer& renderer = assets.Get<IRenderer>("renderer");
+			renderer.EnableClipping(false);
+			renderer.SetClipRegion(canvas.GetViewPort());
+
+			engine::gui::DefaultUISkin skin;
+			engine::gui::UIDrawContext context{ renderer, m_ux, &skin };
+			m_ux.Draw(context);
+		}
+
+		void OnResize(size_t width, size_t height) override
+		{
+			m_ux.SetSize({ static_cast<float>(width), static_cast<float>(height) });
+		}
+	};
+#pragma endregion
+	
 	class Test
 	{
 	private:
@@ -12850,7 +13069,8 @@ namespace TestMapEditor
 				m_sceneManager.CreateScene<EditWorldCameraScene>("Edit");
 				m_sceneManager.CreateScene<LoadSaveWorldScene>("Save");
 				m_sceneManager.CreateScene<GuiScene>("ux");
-				m_sceneManager.SetActive("ux");
+				m_sceneManager.CreateScene<AnotherGuiScene>("aux");
+				m_sceneManager.SetActive("aux");
 			}
 
 			// create draw command for drawing sorted sprites. we will use this for drawing the base layer tiles.

@@ -100,6 +100,9 @@
     <Filter Include="Components\Prop">
       <UniqueIdentifier>{218b5fd3-174b-4f18-bd18-71f6f5fae93c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GUI">
+      <UniqueIdentifier>{f098f6d2-287b-4eec-a301-2f7be7723d6a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Core\Event.h">
@@ -399,6 +402,9 @@
     <ClInclude Include="Include\Math\Size.h">
       <Filter>Math</Filter>
     </ClInclude>
+    <ClInclude Include="Include\GUI\gui.h">
+      <Filter>GUI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">
@@ -511,6 +517,9 @@
     </ClCompile>
     <ClCompile Include="Source\Graphics\Core\Sprite.cpp">
       <Filter>Graphics\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\GUI\gui.cpp">
+      <Filter>GUI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

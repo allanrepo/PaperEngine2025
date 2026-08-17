@@ -85,6 +85,7 @@
     <ClInclude Include="Include\Graphics\Resource\ITextureImpl.h" />
     <ClInclude Include="Include\Graphics\Resource\SpriteAtlas.h" />
     <ClInclude Include="Include\Graphics\Resource\Texture.h" />
+    <ClInclude Include="Include\GUI\gui.h" />
     <ClInclude Include="Include\IO\ASyncFileReader.h" />
     <ClInclude Include="Include\IO\CSVFileParser.h" />
     <ClInclude Include="Include\Job\IJob.h" />
@@ -146,6 +147,7 @@
     <ClCompile Include="Source\Graphics\Resource\FontAtlas.cpp" />
     <ClCompile Include="Source\Graphics\Resource\SpriteAtlas.cpp" />
     <ClCompile Include="Source\Graphics\Resource\Texture.cpp" />
+    <ClCompile Include="Source\GUI\gui.cpp" />
     <ClCompile Include="Source\IO\ASyncFileReader.cpp" />
     <ClCompile Include="Source\Job\Job.cpp" />
     <ClCompile Include="Source\Performance\FrameRateMonitor.cpp" />
