@@ -1850,6 +1850,7 @@ namespace engine
 			Widget* m_mouseCapture = nullptr;
 			Widget* m_mouseOver = nullptr;
 			Widget* m_focus = nullptr;
+			std::vector<Widget*> m_queueForRemoval;
 
 			UIResources m_resources;
 
@@ -2302,6 +2303,21 @@ namespace engine
 
 				// 2. pass that widget to dragdrop layer so it will attemp to drop the widget being drag into it
 				m_DragDropLayer.End(draggable, target);
+			}
+
+			void Flush()
+			{
+				for (Widget* widget : m_queueForRemoval)
+				{
+					widget->GetParent()->RemoveChild(widget);
+				}
+
+				m_queueForRemoval.clear();
+			}
+
+			void QueueForRemoval(Widget* widget)
+			{
+				m_queueForRemoval.push_back(widget);
 			}
 		};
 
