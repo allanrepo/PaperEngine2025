@@ -12,6 +12,346 @@
 #include <algorithm>
 #include <Containers/Grid.h>
 
+#include <Spatial/Position.h>
+#include <Math/Size.h>	
+#include <Core/Event.h>
+#include <Math/Rect.h>
+
+#include <vector>
+#include <memory>
+#include <functional>
+
+namespace engine
+{
+	namespace gui
+	{
+#pragma region // forward declarations
+		using PositionF = spatial::PositionF;
+		using SizeF = math::SizeF;
+		using VecF = math::VecF;
+		using RectF = math::RectF;
+
+		class UISystem;
+		struct UIDrawContext;
+#pragma endregion
+
+#pragma region // Widget
+		class Widget
+		{
+		private:
+#pragma region // friends
+			friend class UISystem;
+#pragma endregion
+
+#pragma region // DragHandler - private helper class that manages widget's drag operation
+			friend class DragHandler;
+			class DragHandler
+			{
+			private:
+				// widget dragging trackers
+				PositionF m_beginMousePosition;
+				PositionF m_beginMovePosition;
+				bool m_isMoving = false;
+				Widget* m_widget;
+
+			public:
+				DragHandler(Widget* widget);
+
+				// call when widget is about to be dragged, e.g. OnMouseDown
+				void Begin(const PositionF& position);
+
+				// call when widget is being dragged, e.g. OnMouseMove
+				void Update(const PositionF& position);
+
+				// call when widget ends dragging, e.g. OnMouseUp
+				void End(const PositionF& position);
+
+				// getters
+				bool IsDragging() const;
+				PositionF GetBeginPosition() const;
+			};
+#pragma endregion
+
+#pragma region // system registration - internal methods called when widget is added to or removed from UI tree
+			bool UnregisterToSystem();
+			bool RegisterToSystem();
+#pragma endregion
+
+		protected:
+#pragma region // internal property enums
+			// flags for widget's move behavior. this is used to determine if widget can be moved horizontally, vertically, or both
+			enum MoveBehavior
+			{
+				None = 0,
+				Horizontal = 1 << 0,
+				Vertical = 1 << 1,
+				Free = Horizontal | Vertical,
+			};
+
+			// flags for widget's hit test behavior. this is used to determine how widget responds to hit tests
+			// Normal: widget responds to hit tests normally, i.e. it will be hit if point is inside its bounds
+			// AlwaysPass: widget will always be hit, regardless of point being inside its bounds or not
+			// AlwaysFail: widget will never be hit, regardless of point being inside its bounds or not
+			enum class HitTestBehavior
+			{
+				Normal,
+				AlwaysPass,
+				AlwaysFail
+			};
+#pragma endregion
+
+#pragma region // member variables
+			// tree
+			Widget* m_parent = nullptr;
+			std::vector<std::unique_ptr<Widget>> m_children;
+
+			// transform
+			PositionF m_position;
+			SizeF m_size;
+
+			// states
+			bool m_visible = true;
+			bool m_enabled = true;
+
+			// behavior
+			bool m_focusable = true;
+			bool m_droppable = false;
+			MoveBehavior m_moveBehavior = MoveBehavior::Free;
+			HitTestBehavior m_hitTestBehavior = HitTestBehavior::Normal;
+
+			// tooltip support. 
+			// this is a function pointer that is called when tooltip is requested. 
+			// it takes two parameters: the widget that is requesting the tooltip, and the widget that will be used to display the tooltip. 
+			// derived classes can override this function to provide custom tooltip content
+			std::function<void(Widget&, Widget&)> m_tooltipBuilder;
+
+			// widget dragging tracker
+			DragHandler m_dragHandler;
+#pragma endregion
+
+#pragma region // system reference
+			// get system reference from the root of UI tree this widget belongs to. if this widget is not attached to any tree, it will return nullptr
+			virtual UISystem* GetSystem() const
+			{
+				if (m_parent)
+				{
+					return m_parent->GetSystem();
+				}
+
+				return nullptr;
+			}
+#pragma endregion
+
+#pragma region // hooks/callbacks for all actions that widget performs
+			virtual bool OnRegisterToSystem();
+			virtual bool OnUnregisterToSystem();
+			virtual void OnPositionChanged(const PositionF& oldPos, const PositionF& newPos);
+			virtual void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize);
+			virtual void OnResourceChange();
+			virtual void OnMouseDown(const PositionF& position);
+			virtual void OnMouseUp(const PositionF& position);
+			virtual void OnMouseMove(const PositionF& position);
+			virtual void OnMouseEnter();
+			virtual void OnMouseLeave();
+			virtual void OnKeyDown(int key);
+			virtual void OnKeyUp(int key);
+			virtual void OnGotFocus();
+			virtual void OnLostFocus();
+
+#pragma endregion
+
+#pragma region // internal methods for tree traversal and z order
+			// internal enum for search flags. this is used to determine which widgets to consider when searching for top-most widget at given point
+			enum SearchFlags
+			{
+				Visible = 1 << 0,
+				Enabled = 1 << 1,
+				Focusable = 1 << 2,
+			};
+
+			Widget* FindTopWidgetAt(const PositionF& position, unsigned int flag);
+			Widget* FindTopChildAt(const PositionF& position, int flag);
+			Widget* FindAndResolveZOrderAt(const PositionF& position, int flag);
+			bool IsDescendantOf(const Widget* ancestor) const;
+			void BringChildToFront(Widget* child);
+			void BringToFront();
+#pragma endregion
+
+#pragma region // hit test
+			bool Contains(const PositionF& position) const;
+#pragma endregion
+
+#pragma region // drag event 
+			// event args for drag events. this is used to pass information about the drag operation to the event handlers
+			struct DragEventArgs
+			{
+				PositionF beginPosition;
+				PositionF currentPosition;
+
+				VecF Delta() const
+				{
+					return currentPosition - beginPosition;
+				}
+			};
+
+			// these are fired when widget is being dragged. derived classes can subscribe to these events to react to drag operations
+			engine::event::Event<const DragEventArgs&> DragBegin;
+
+			// these are fired when widget is being dragged. derived classes can subscribe to these events to react to drag operations
+			engine::event::Event<const DragEventArgs&> DragMove;
+
+			// these are fired when widget is being dragged. derived classes can subscribe to these events to react to drag operations
+			engine::event::Event<const DragEventArgs&> DragEnd;
+#pragma endregion
+
+#pragma region // resource management. can be called when a resource the widget depends on has changed. derived classes can override the corresponding callback for resource change
+			void ResourceChange();
+#pragma endregion
+
+#pragma region // input handlers. these are called by the UI system when input events are received.
+			void MouseDown(const PositionF& position);
+			void MouseUp(const PositionF& position);
+			void MouseMove(const PositionF& position);
+			void MouseEnter();
+			void MouseLeave();
+			void KeyDown(int key);
+			void KeyUp(int key);
+#pragma endregion
+
+		public:
+#pragma region // RAII
+			Widget()
+				: m_dragHandler(this)
+			{
+			}
+
+			virtual ~Widget() = default;
+#pragma endregion
+
+#pragma region // parameter that determines the horizontal and vertical alignment of the widget's content within its extent
+			enum class HorizontalAlignment
+			{
+				Left,
+				Right,
+				Center
+			};
+
+			enum class VerticalAlignment
+			{
+				Top,
+				Bottom,
+				Center
+			};
+#pragma endregion
+
+#pragma region // heirarchy management
+			void AddChild(std::unique_ptr<Widget> child);
+			void RemoveChild(Widget* widget);
+			void RemoveChildren();
+			Widget* GetParent() const;
+			bool HasChildren() const;
+
+			// remove a widget in this widget tree. this will traverse through this widget's tree to find the widget
+			// if found, removes it as well as its tree. returns true if successfully found and removed
+			bool Remove(Widget* widget);
+
+			// move a child widget to a new parent. this will remove the child from its current parent and add it to the new parent
+			void MoveChildTo(Widget* child, Widget* newParent);
+#pragma endregion
+
+#pragma region // state management
+			// visible widget is rendered and can receive input events. hidden widget is not rendered and cannot receive input events
+			void Show();
+			void Hide();
+			bool IsVisible() const;
+
+			// enabled widget can receive input events. disabled widget cannot receive input events
+			void Enable();
+			void Disable();
+			bool IsEnabled() const;
+#pragma endregion
+
+#pragma region // behavior properties
+			bool IsFocusable() const;
+			bool IsDroppable() const;
+#pragma endregion
+
+#pragma region // transform and extent properties
+			float GetWidth() const;
+			float GetHeight() const;
+			SizeF GetSize() const;
+			engine::event::Event<const SizeF&> Resized;
+			void SetSize(const SizeF& size);
+
+			PositionF GetAbsolutePosition() const;
+			engine::event::Event<const PositionF&> Moved;
+			void SetPosition(const PositionF& pos);
+			PositionF GetPosition() const;
+			RectF GetAbsoluteRect() const;
+#pragma endregion
+
+#pragma region // tree iteration and traversal
+			// iterate through all children of this widget and call the provided function on each child. the function should take a Widget* as parameter
+			template<typename Func>
+			void ForEachChild(const Func& func)
+			{
+				for (const std::unique_ptr<Widget>& child : m_children)
+				{
+					func(child.get());
+				}
+			}
+
+			// iterate through all children of this widget and call the provided function on each child. the function should take a const Widget* as parameter
+			template<typename Func>
+			void ForEachChild(const Func& func) const
+			{
+				for (const std::unique_ptr<Widget>& child : m_children)
+				{
+					func(child.get());
+				}
+			}
+
+			// iterate through all widgets in this widget's tree including itself and call the provided function on each widget. 
+			// the function must return a bool indicating whether to continue iterating or not. if the function returns false, the iteration will stop.
+			// the function should take a Widget* as parameter
+			template<typename Func>
+			bool ForEachWidget(const Func& func)
+			{
+				if (!func(this)) return false;
+
+				for (const std::unique_ptr<Widget>& child : m_children)
+				{
+					if (!child->ForEachWidget(func)) return false;
+				}
+
+				return true;
+			}
+#pragma endregion
+
+#pragma region // tooltip support
+			bool HasTooltip() const;
+			void BuildTooltip(Widget& tooltip);
+			void SetTooltip(std::function<void(Widget&, Widget&)> builder);
+#pragma endregion
+
+#pragma region // rendering
+			virtual void Draw(const UIDrawContext& context) const
+			{
+				// default implementation does nothing. derived class can override this to draw itself
+			}
+#pragma endregion
+		};
+#pragma endregion
+	}
+}
+
+namespace engine
+{
+	namespace gui
+	{
+	}
+}
+
 namespace engine
 {
 	namespace gui
@@ -109,900 +449,26 @@ namespace engine
 		};
 #pragma endregion
 
-#pragma region // Widget
-		class Widget
-		{
-		private:
-#pragma region // DragController
-			// --------------------------------------------------------------------------------
-			// DRAG MANAGEMENT
-			// --------------------------------------------------------------------------------
-			friend class DragHandler;
-			class DragHandler
-			{
-			private:
-				// widget dragging trackers
-				PositionF m_beginMousePosition;
-				PositionF m_beginMovePosition;
-				bool m_isMoving = false;
-
-			public:
-				void Begin(const PositionF& position, Widget* widget)
-				{
-					// if not movable, bail out
-					if (widget->m_moveBehavior == MoveBehavior::None) return;
-
-					// remember this mouse position. this will be the pivot position as this widget gets dragged around by mouse
-					m_beginMousePosition = position;
-
-					// remember the widget's position now. this will be the reference position as it gets dragged around by mouse
-					m_beginMovePosition = widget->GetPosition();
-
-					// this widget is now moving
-					m_isMoving = true;
-
-					widget->OnDragBegin(DragEventArgs{ GetBeginPosition(), position });
-				}
-
-				void Update(const PositionF& position, Widget* widget)
-				{
-					if (m_isMoving)
-					{
-						// calculate the mouse movement delta between its position at start of mouse drag and its position now
-						// factor in the move state - free? horizontal? vertical?
-						VecF delta =
-						{
-							// if we can move horizontally, use the mouse position. otherwise, use begin position
-							(widget->m_moveBehavior & MoveBehavior::Horizontal) ? position.x - m_beginMousePosition.x : 0.0f,
-
-							// if we can move vertically, use the mouse position. otherwise, use begin position
-							(widget->m_moveBehavior & MoveBehavior::Vertical) ? position.y - m_beginMousePosition.y : 0.0f
-						};
-
-						// we only drag the widget if new position after this drag is different from current position
-						PositionF dragpos = m_beginMovePosition + delta;
-						if (dragpos == widget->GetPosition()) return;
-
-						// transform widget's position based on mouse movement delta
-						widget->SetPosition(m_beginMovePosition + delta);
-
-						widget->OnDragMove(DragEventArgs{ GetBeginPosition(), position });
-					}
-				}
-
-				void End(const PositionF& position, Widget* widget)
-				{
-					m_isMoving = false;
-
-					widget->OnDragEnd(DragEventArgs{ GetBeginPosition(), position });
-				}
-
-				bool IsDragging() const
-				{
-					return m_isMoving;
-				}
-
-				PositionF GetBeginPosition() const
-				{
-					return m_beginMousePosition;
-				}
-			};
-#pragma endregion
-
-			bool UnregisterToSystem();
-
-			bool RegisterToSystem()
-			{
-				return OnRegisterToSystem();
-			}
-
-		protected:
-			// is just enum (not class) because it needs logical operations
-			enum MoveBehavior
-			{
-				None = 0,
-				Horizontal = 1 << 0,
-				Vertical = 1 << 1,
-				Free = Horizontal | Vertical,
-			};
-
-			enum class HitTestBehavior
-			{
-				Normal,
-				AlwaysPass,
-				AlwaysFail
-			};
-
-			// tree
-			Widget* m_parent = nullptr;
-			std::vector<std::unique_ptr<Widget>> m_children;
-
-			// transform
-			PositionF m_position;
-			SizeF m_size;
-
-			// states
-			bool m_visible = true;
-			bool m_enabled = true;
-
-			// behavior
-			bool m_focusable = true;
-			bool m_droppable = false;
-			MoveBehavior m_moveBehavior = MoveBehavior::Free;
-			HitTestBehavior m_hitTestBehavior = HitTestBehavior::Normal;
-
-			// tooltip support
-			std::function<void(Widget&, Widget&)> m_tooltipBuilder;
-
-			// widget dragging tracker
-			DragHandler m_dragHandler;
-
-			// --------------------------------------------------------------------------------
-			// SYSTEM 
-			// --------------------------------------------------------------------------------
-			virtual UISystem* GetSystem() const
-			{
-				if (m_parent)
-				{
-					return m_parent->GetSystem();
-				}
-
-				return nullptr;
-			}
-
-			virtual bool OnRegisterToSystem()
-			{
-				return true;
-			}
-
-			virtual bool OnUnregisterToSystem()
-			{
-				return true;
-			}
-
-			// --------------------------------------------------------------------------------
-			// CHANGE PARAMETER HANDLERS
-			// --------------------------------------------------------------------------------
-			virtual void OnPositionChanged(const PositionF& oldPos, const PositionF& newPos)
-			{
-				// default implementation does nothing. derived class can override this to react to position change
-			}
-
-			virtual void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize)
-			{
-				// default implementation does nothing. derived class can override this to react to size change
-			}
-
-			virtual void OnResourceChange()
-			{
-				// default implementation does nothing. derived class can override this to react to resource change
-			}
-
-			// --------------------------------------------------------------------------------
-			// DRAG AND DROP EVENT HANDLERS
-			// --------------------------------------------------------------------------------
-			virtual void OnDrop(Widget* dragged)
-			{
-
-			}
-
-			// --------------------------------------------------------------------------------
-			// INPUT HANDLERS
-			// --------------------------------------------------------------------------------
-			virtual void OnMouseDown(const PositionF& position)
-			{
-
-			}
-
-			virtual void OnMouseUp(const PositionF& position)
-			{
-
-			}
-
-			virtual void OnMouseMove(const PositionF& position)
-			{
-
-			}
-
-			virtual void OnMouseEnter()
-			{
-			}
-
-			virtual void OnMouseLeave()
-			{
-			}
-
-			virtual void OnKeyDown(int key)
-			{
-			}
-
-			virtual void OnKeyUp(int key)
-			{
-			}
-
-		public:
-			struct DragEventArgs
-			{
-				PositionF beginPosition;
-				PositionF currentPosition;
-
-				VecF Delta() const
-				{
-					return currentPosition - beginPosition;
-				}
-			};
-
-			virtual ~Widget() = default;
-
-			enum class HorizontalAlignment
-			{
-				Left,
-				Right,
-				Center
-			};
-			enum class VerticalAlignment
-			{
-				Top,
-				Bottom,
-				Center
-			};
-
-			// --------------------------------------------------------------------------------
-			// DRAG AND DROP
-			// --------------------------------------------------------------------------------
-			void DropAccepted(Widget* widget)
-			{
-				OnDrop(widget);
-			}
-
-			// --------------------------------------------------------------------------------
-			// HIERARCHY
-			// --------------------------------------------------------------------------------
-			void AddChild(std::unique_ptr<Widget> child)
-			{
-				child->m_parent = this;
-
-				Widget* c = child.get();
-				m_children.push_back(std::move(child));
-
-				// traverse through this widget's whole tree including itself and register them to system
-				c->ForEachWidget([&](Widget* widget)
-					{
-						widget->RegisterToSystem();
-						return true;
-					});
-			}
-
-			void RemoveChild(Widget* widget)
-			{
-				// is this widget our child?
-				auto it = std::find_if(
-					m_children.begin(),
-					m_children.end(),
-					[&](const auto& ptr)
-					{
-						return ptr.get() == widget;
-					});
-
-				// unregister this widget's whole tree including itself. then remove this widget
-				if (it != m_children.end())
-				{
-					widget->ForEachWidget([&](Widget* w)
-						{
-							w->UnregisterToSystem();
-							return true;
-						});
-
-					m_children.erase(it);
-				}
-			}
-
-			void RemoveChildren()
-			{
-				// remove all children and unregister their trees from system
-				while (m_children.size())
-				{
-					m_children.back()->ForEachWidget([&](Widget* w)
-						{
-							w->UnregisterToSystem();
-							return true;
-						});
-
-					m_children.pop_back();
-				}
-			}
-
-			Widget* GetParent() const
-			{
-				return m_parent;
-			}
-
-			// remove a widget in this widget tree. this will traverse through this widget's tree to find the widget
-			// if found, removes it as well as its tree. returns true if successfully found and removed
-			bool Remove(Widget* widget)
-			{
-				Widget* found = nullptr;
-
-				//bool result = false;
-				// do not remove self, so just start searching from children onwards
-				for (const std::unique_ptr<Widget>& child : m_children)
-				{
-					// no need to continue searching children if we already found the widget we're looking for
-					if (found) break;
-
-					child->ForEachWidget([&](Widget* w)
-						{
-							if (w == widget)
-							{
-								// found the widget we're looking for
-								found = w;
-
-								// return false to tell foreach to stop traversing now
-								return false;
-							}
-
-							// tell foreach to continue traversing
-							return true;
-						});
-				}
-
-				// if we didn't find widget...
-				if (!found) return false;
-
-				// be strict here. ensure this widget has parent so we can remove it
-				if (!found->m_parent)
-				{
-					throw std::runtime_error("how come this widget has no parent and is getting remove?");
-				}
-
-				// time to safely remove the widget
-				found->m_parent->RemoveChild(found);
-				return true;
-			}
-
-			// checks if this widget is descendant of given widget
-			bool IsDescendantOf(const Widget* ancestor) const
-			{
-				if (!ancestor)
-				{
-					return false;
-				}
-
-				const Widget* current = m_parent;
-
-				// traverse through the parents until given widget is found or root is reached
-				while (current)
-				{
-					if (current == ancestor)
-					{
-						return true;
-					}
-
-					current = current->m_parent;
-				}
-
-				// if you reached this point, this widget is not descendant of given widget
-				return false;
-			}
-
-			bool HasChildren() const
-			{
-				return m_children.size() > 0;
-			}
-
-			void MoveChildTo(Widget* child, Widget* newParent)
-			{
-				// we're a bit strict here
-				if (!child)
-				{
-					throw std::invalid_argument("MoveChildTo() - child is null");
-				}
-
-				// we're a bit strict here
-				if (!newParent)
-				{
-					throw std::invalid_argument("MoveChildTo() - newParent is null");
-				}
-
-				// make sure child is not same as new parent
-				if (child == newParent)
-				{
-					throw std::invalid_argument("MoveChildTo() - newParent is same as child");
-				}
-
-				// be more strict. new parent cannot be descendant of child
-				if (newParent->IsDescendantOf(child))
-				{
-					throw std::invalid_argument("MoveChildTo() - newParent is descendant of child");
-				}
-
-				// child must belong to this parent
-				auto it = std::find_if(
-					m_children.begin(),
-					m_children.end(),
-					[child](const std::unique_ptr<Widget>& ptr)
-					{
-						return ptr.get() == child;
-					});
-
-				// we're a bit strict here
-				if (it == m_children.end())
-				{
-					throw std::runtime_error("MoveChildTo() - child not found");
-				}
-
-				// transfer ownership out of current parent
-				std::unique_ptr<Widget> movedChild = std::move(*it);
-
-				// remove empty slot
-				m_children.erase(it);
-
-				// add to new parent
-				newParent->AddChild(std::move(movedChild));
-			}
-
-			// --------------------------------------------------------------------------------
-			// Z ORDER
-			// --------------------------------------------------------------------------------
-			void BringChildToFront(Widget* child)
-			{
-				// use find_if better than for loop because you iterator on erase()
-				auto it = std::find_if(
-					m_children.begin(),
-					m_children.end(),
-					[&](const auto& ptr)
-					{
-						return ptr.get() == child;
-					});
-
-				// no child? bail out
-				if (it == m_children.end())
-					return;
-
-				// move this widget out of the children's list
-				std::unique_ptr<Widget> node = std::move(*it);
-				m_children.erase(it);
-
-				// put it back at the end of the children's list so it will be at the front
-				m_children.push_back(std::move(node));
-			}
-
-			void BringToFront()
-			{
-				// if this has no parent, then it has no siblings. then it does not have z order
-				if (!m_parent) return;
-
-				m_parent->BringChildToFront(this);
-			}
-
-			// --------------------------------------------------------------------------------
-			// STATE
-			// --------------------------------------------------------------------------------
-			void Show()
-			{
-				m_visible = true;
-			}
-
-			void Hide()
-			{
-				m_visible = false;
-			}
-
-			bool IsVisible() const
-			{
-				return m_visible;
-			}
-
-			void Enable()
-			{
-				m_enabled = true;
-			}
-
-			void Disable()
-			{
-				m_enabled = false;
-			}
-
-			bool IsEnabled() const
-			{
-				// if this widget is disabled, can return now
-				if (!m_enabled) return false;
-
-				// widgets has dependency on their parents/ascendants when it comes to enable state
-				// if parent is disabled, then this must be disabled too.
-				if (m_parent) return m_parent->IsEnabled();
-
-				// if this is enabled as well as its ascendants, then this is enabled
-				return true;
-			}
-
-			// --------------------------------------------------------------------------------
-			// BEHAVIOR
-			// --------------------------------------------------------------------------------
-			bool IsFocusable() const
-			{
-				return m_focusable;
-			}
-
-			bool IsDroppable() const
-			{
-				return m_droppable;
-			}
-
-			// --------------------------------------------------------------------------------
-			// TRANSFORM
-			// --------------------------------------------------------------------------------
-			float GetWidth() const
-			{
-				return m_size.width;
-			}
-
-			float GetHeight() const
-			{
-				return m_size.height;
-			}
-
-			SizeF GetSize() const
-			{
-				return m_size;
-			}
-
-			engine::event::Event<const SizeF&> OnResize;
-
-			void SetSize(const SizeF& size)
-			{
-				// if size did not change, no need to update and invoke events
-				// commenting this out coz there seems to be a bug related to scrolling viewport
-				if (m_size == size) return;
-
-				SizeF oldSize = m_size;
-				m_size = size;
-				OnResize(size);
-				OnSizeChanged(oldSize, size);
-			}
-
-			PositionF GetAbsolutePosition() const
-			{
-				PositionF position = m_position;
-				if (m_parent)
-				{
-					position += m_parent->GetAbsolutePosition();
-				}
-				return position;
-			}
-
-			engine::event::Event<const PositionF&> OnMove;
-			void SetPosition(const PositionF& pos)
-			{
-				// if position did not change, no need to update and invoke events
-				if (m_position == pos) return;
-
-				PositionF oldPos = m_position;
-				m_position = pos;
-				OnMove(pos);
-				OnPositionChanged(oldPos, m_position);
-			}
-
-			PositionF GetPosition() const
-			{
-				return m_position;
-			}
-
-			RectF GetAbsoluteRect() const
-			{
-				PositionF absPos = GetAbsolutePosition();
-				SizeF size = GetSize();
-				return RectF
-				{
-					absPos.x,
-					absPos.y,
-					absPos.x + size.width,
-					absPos.y + size.height
-				};
-			}
-
-			// --------------------------------------------------------------------------------
-			// HIT TEST
-			// --------------------------------------------------------------------------------
-
-			bool Contains(const PositionF& position) const
-			{
-				// always pass 
-				if (m_hitTestBehavior == HitTestBehavior::AlwaysPass) return true;
-
-				// always fail
-				if (m_hitTestBehavior == HitTestBehavior::AlwaysFail) return false;
-
-				// translate the point (assume to be absolute position) into this widget's local space
-				PositionF local = position - GetAbsolutePosition();
-
-				// convert our size into rect. 
-				RectF rect{ 0, 0, m_size.width, m_size.height };
-
-				// since point is now in widget's local space, we can check if its inside it
-				return rect.Contains(local);
-			}
-
-			// --------------------------------------------------------------------------------
-			// INPUT
-			// --------------------------------------------------------------------------------
-
-			engine::event::Event<const DragEventArgs&> OnDragBegin;
-			engine::event::Event<const DragEventArgs&> OnDragMove;
-			engine::event::Event<const DragEventArgs&> OnDragEnd;
-
-			void MouseDown(const PositionF& position)
-			{
-				// let derived widget handle mouse down event first
-				OnMouseDown(position);
-
-				m_dragHandler.Begin(position, this);
-
-			}
-
-			void MouseUp(const PositionF& position)
-			{
-				m_dragHandler.End(position, this);
-
-				// now we handle mouse up event after we set its to state to NOT moving
-				OnMouseUp(position);
-			}
-
-			void MouseMove(const PositionF& position)
-			{
-				m_dragHandler.Update(position, this);
-
-				// handle this mouse event after this widget updates its position from mouse move
-				OnMouseMove(position);
-			}
-
-			void MouseEnter()
-			{
-				OnMouseEnter();
-			}
-
-			void MouseLeave()
-			{
-				OnMouseLeave();
-			}
-
-			void KeyDown(int key)
-			{
-				OnKeyDown(key);
-			}
-
-			void KeyUp(int key)
-			{
-				OnKeyUp(key);
-			}
-
-			// --------------------------------------------------------------------------------
-			// FOCUS
-			// --------------------------------------------------------------------------------
-			virtual void OnGotFocus()
-			{
-			}
-
-			virtual void OnLostFocus()
-			{
-			}
-
-			// --------------------------------------------------------------------------------
-			// TREE TRAVERSAL
-			// --------------------------------------------------------------------------------
-			enum SearchFlags
-			{
-				Visible = 1 << 0,
-				Enabled = 1 << 1,
-				Focusable = 1 << 2,
-			};
-
-			// traverse through the tree and find the top-most widget that intersects with point
-			Widget* FindTopWidgetAt(const PositionF& position, unsigned int flag)
-			{
-				// if widget is hidden, bail out
-				if (!IsVisible() && (flag & SearchFlags::Visible))
-				{
-					return nullptr;
-				}
-
-				// if widget is disabled, bail out
-				if (!IsEnabled() && (flag & SearchFlags::Enabled))
-				{
-					return nullptr;
-				}
-
-				// if widget is not focusable, bail out
-				if (!IsFocusable() && (flag & SearchFlags::Focusable))
-				{
-					return nullptr;
-				}
-
-				// do self test first. if this widget did not intersect with point, none of the children can. bail out
-				if (!Contains(position))
-				{
-					return nullptr;
-				}
-
-				for (std::vector<std::unique_ptr<Widget>>::reverse_iterator it = m_children.rbegin(); it != m_children.rend(); it++)
-				{
-					// find the top widget at this child. this call will also check this child for intersect
-					Widget* hit = it->get()->FindTopWidgetAt(position, flag);
-					if (hit) return hit;
-				}
-
-				// if none of this widget's children intersect with point, then this widget does
-				return this;
-			}
-
-			// find the top child that is visible, enabled, and intersects with given point
-			Widget* FindTopChildAt(const PositionF& position, int flag)
-			{
-				for (std::vector<std::unique_ptr<Widget>>::reverse_iterator it = m_children.rbegin(); it != m_children.rend(); it++)
-				{
-					// if widget is hidden, bail out
-					if (!(*it)->IsVisible() && (flag & SearchFlags::Visible))
-					{
-						continue;
-					}
-
-					// if widget is disabled, bail out
-					if (!(*it)->IsEnabled() && (flag & SearchFlags::Enabled))
-					{
-						continue;
-					}
-
-					// if widget is not focusable, bail out
-					if (!(*it)->IsFocusable() && (flag & SearchFlags::Focusable))
-					{
-						continue;
-					}
-
-					// if this widget intersects with point..
-					if ((*it)->Contains(position))
-					{
-						// note we're returning this child, not this child's possible descendants that might have intersected with the point 
-						return it->get();
-					}
-				}
-
-				// returns nullptr if none of this widget's children intersects with point
-				return nullptr;
-			}
-
-			Widget* FindAndResolveZOrderAt(const PositionF& position, int flag)
-			{
-				Widget* widget = this;
-
-				// if widget is hidden, bail out
-				if (!widget->IsVisible() && (flag & SearchFlags::Visible))
-				{
-					return nullptr;
-				}
-
-				// if widget is disabled, bail out
-				if (!widget->IsEnabled() && (flag & SearchFlags::Enabled))
-				{
-					return nullptr;
-				}
-
-				// if widget is not focusable, bail out
-				if (!widget->IsFocusable() && (flag & SearchFlags::Focusable))
-				{
-					return nullptr;
-				}
-
-				// check first if point is inside the root. bail out if not.
-				if (!widget->Contains(position))
-				{
-					return nullptr;
-				}
-
-				while (true)
-				{
-					// returns nullptr if none of the widget's child intersects with p
-					Widget* child = widget->FindTopChildAt(position, flag);
-
-					// bring the child to front is not really part of routing. this is z order handling
-					// but its convenient here. the right way architecturally is to collect route path 
-					// then process the route path outside of routing. however, that may introduce unnecessary
-					// performance impact so doing z order handling here is the best.				
-					if (child)
-					{
-						widget->BringChildToFront(child);
-					}
-					else
-					{
-						break;
-					}
-
-					widget = child;
-				}
-
-				return widget;
-			}
-
-			template<typename Func>
-			void ForEachChild(const Func& func)
-			{
-				for (const std::unique_ptr<Widget>& child : m_children)
-				{
-					func(child.get());
-				}
-			}
-
-			template<typename Func>
-			void ForEachChild(const Func& func) const
-			{
-				for (const std::unique_ptr<Widget>& child : m_children)
-				{
-					func(child.get());
-				}
-			}
-
-			template<typename Func>
-			bool ForEachWidget(const Func& func)
-			{
-				if (!func(this)) return false;
-
-				for (const std::unique_ptr<Widget>& child : m_children)
-				{
-					if (!child->ForEachWidget(func)) return false;
-				}
-
-				return true;
-			}
-
-			// --------------------------------------------------------------------------------
-			// TOOLTIP
-			// --------------------------------------------------------------------------------
-
-			bool HasTooltip() const
-			{
-				return m_tooltipBuilder != nullptr;
-			}
-
-			void BuildTooltip(Widget& tooltip)
-			{
-				if (m_tooltipBuilder)
-				{
-					m_tooltipBuilder(*this, tooltip);
-				}
-			}
-
-			void SetTooltip(std::function<void(Widget&, Widget&)> builder)
-			{
-				m_tooltipBuilder = std::move(builder);
-			}
-
-			// --------------------------------------------------------------------------------
-			// Draw
-			// --------------------------------------------------------------------------------
-			virtual void Draw(const UIDrawContext& context) const
-			{
-				// default implementation does nothing. derived class can override this to draw itself
-			}
-
-			// --------------------------------------------------------------------------------
-			// RESOURCE
-			// --------------------------------------------------------------------------------
-			virtual void ResourceChange()
-			{
-				OnResourceChange();
-			}
-
-		};
-#pragma endregion
-
 #pragma region // Layer
+		// UI is not just a single UI tree. it is a stack of UI trees. each tree is a layer. this class represents a layer in the UI stack.
+		// Layer is a widget that is the root of a UI tree. Hence, it has no parent. 
+		// It can be owned by another widget, which is usually a trigger widget that opens the layer. a Layer without owner is a top-level layer. 
+		// It can be of different types: Popup, Modal, Menu, SubMenu. Each type has different behavior in terms of input handling and rendering.
 		class Layer : public Widget
 		{
 		public:
 			enum Type
 			{
+				// Popup layer is a layer that automatically closes when it loses focus. It is used for context menus, tooltips, etc.
 				Popup,
+
+				// Modal layer is a layer that blocks input to layers below it. It is used for dialogs, message boxes, etc.
 				Modal,
+
+				// Menu layer is a layer that is used for menus. It can be a top-level menu or a submenu. It is used for menu bars, context menus, etc.
 				Menu,
+
+				// SubMenu layer is a layer that is used for submenus. It is a child of a Menu layer. It is used for cascading menus, etc.
 				SubMenu
 			};
 
@@ -1014,12 +480,11 @@ namespace engine
 			Type m_type;
 
 		protected:
-			UISystem* GetSystem() const override final
-			{
-				return m_system;
-			}
+			// overriden from Widget to return the UISystem as Layer is a root widget and has no parent.  
+			UISystem* GetSystem() const override final;
 
 		public:
+			// recipe for building a layer. this is used to create a layer with specific properties and a builder function that constructs the layer's content.
 			struct BuildDescription
 			{
 				PositionF position = {};
@@ -1029,46 +494,18 @@ namespace engine
 				bool movable = false;
 			};
 
-			Layer(UISystem* system, Widget* owner, const PositionF& pos, const SizeF& size, const Type& type, bool movable) :
-				m_owner(owner),
-				m_system(system),
-				m_type(type)
-			{
-				m_moveBehavior = movable ? Widget::MoveBehavior::Free : Widget::MoveBehavior::None;
-				SetPosition(pos);
-				SetSize(size);
-				m_focusable = false;
-			}
+			// constructor
+			Layer(UISystem* system, Widget* owner, const PositionF& pos, const SizeF& size, const Type& type, bool movable);
 
-			Widget* GetOwner() const
-			{
-				return m_owner;
-			}
+			// getters and type checkers
+			Widget* GetOwner() const;
+			bool IsModal() const;
+			bool IsMenu() const;
+			bool IsPopup() const;
+			Type GetType() const;
 
-			bool IsModal() const
-			{
-				return m_type == Type::Modal;
-			}
-
-			bool IsMenu() const
-			{
-				return m_type == Type::Menu;
-			}
-
-			bool IsPopup() const
-			{
-				return m_type == Type::Popup;
-			}
-
-			Type GetType() const
-			{
-				return m_type;
-			}
-
-			void Draw(const UIDrawContext& context) const override
-			{
-				if (context.skin) context.skin->DrawLayer(*this, context);
-			}
+			// draws the layer
+			void Draw(const UIDrawContext& context) const override;
 		};
 
 		// design consideration
@@ -1704,7 +1141,7 @@ namespace engine
 			void Begin(Widget* draggable)
 			{
 				// only reason why our draggables contain something is if we previously started dragging a draggable and has not dropped it yet.
-				// starting another drag while in this state is unacceptable. i should not happen
+				// starting another drag while in this state is unacceptable. it should not happen
 				if (m_draggables.Size())
 				{
 					throw std::runtime_error("we're about to start dragging something, why are we already in dragging state?");
@@ -1813,9 +1250,7 @@ namespace engine
 				// move position of the drag widget now relative to new parent
 				draggable->SetPosition(pos);
 
-				// TODO: for now, let's just always call this when drop happens. we don't know what use cases are for handling this yet. let's deal with it once we hit them use cases
-				// let parent invoke drop acceptance event
-				parent->DropAccepted(draggable);
+				// TODO: do we need to notify anyone when drop happened? not sure yet. if we do, we should do it here.
 
 				// clear our draggables list
 				m_draggables.Clear();
@@ -1942,7 +1377,6 @@ namespace engine
 			}
 
 			UISystem() :
-				//m_layoutTree(this),
 				m_layerManager(this),
 				m_DragDropLayer(this)
 			{
@@ -2321,14 +1755,6 @@ namespace engine
 			}
 		};
 
-		bool Widget::UnregisterToSystem()
-		{
-			OnUnregisterToSystem();
-
-			UISystem* system = GetSystem();
-			if (system) system->Detach(this);
-			return true;
-		}
 #pragma endregion
 
 #pragma region // OverlayTrigger
@@ -2931,6 +2357,9 @@ namespace engine
 		class Thumb : public Widget
 		{
 		private:
+			friend class ScrollBar;
+			friend class Slider;
+
 		public:
 			Thumb()
 			{
@@ -2958,7 +2387,7 @@ namespace engine
 			float m_value;
 
 			bool m_horizontal;
-			Widget* m_thumb;
+			Thumb* m_thumb;
 			float m_thumbLength;
 			bool m_isDragging;
 			int m_steps;
@@ -3315,7 +2744,7 @@ namespace engine
 			float m_viewportLength;
 			float m_offset; // current scroll position
 			bool m_horizontal;
-			Widget* m_thumb;
+			Thumb* m_thumb;
 			bool m_isDragging;
 			float m_minThumbLength;
 
@@ -3427,7 +2856,7 @@ namespace engine
 				AddChild(std::move(thumb));
 
 				// handle thumb movement. when thumb is moved, we will calculate the new offset based on thumb position and content length, viewport length, and scrollbar length
-				m_thumb->OnMove += [this](const PositionF& newPos)
+				m_thumb->Moved += [this](const PositionF& newPos)
 					{
 						// trackLength is the length scrollbar can move. so this must be length of scrollbar minus length of thumb. this is used to calculate the index size
 						float trackLength = (m_horizontal ? GetSize().width : GetSize().height) - (m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height);
@@ -3516,6 +2945,7 @@ namespace engine
 		class Content : public Widget
 		{
 		private:
+			friend class ResizeableFrame;
 		public:
 			Content()
 			{
@@ -3539,7 +2969,8 @@ namespace engine
 
 		class Grip : public Widget
 		{
-		protected:
+		private:
+			friend class ResizeableFrame;
 
 		public:
 			Grip(bool MoveHorizontal, bool MoveVertical)
@@ -3563,7 +2994,11 @@ namespace engine
 		// it has a min size that clamps to it when resizing the frame via grips
 		class ResizeableFrame : public Widget
 		{
+		public:
+
+
 		private:
+
 			// resize grip components
 			Grip* m_leftResizeGrip = nullptr;
 			Grip* m_rightResizeGrip = nullptr;
@@ -3574,7 +3009,7 @@ namespace engine
 			Grip* m_bottomLeftResizeGrip = nullptr;
 			Grip* m_bottomRightResizeGrip = nullptr;
 
-			Widget* m_content = nullptr;
+			Content* m_content = nullptr;
 
 			// resize grip thickness
 			float m_borderSize;
@@ -3727,7 +3162,7 @@ namespace engine
 					m_bottomRightResizeGrip = widget.get();
 					AddChild(std::move(widget));
 
-					std::unique_ptr<Widget> client = std::make_unique<Content>();
+					std::unique_ptr<Content> client = std::make_unique<Content>();
 					m_content = client.get();
 					AddChild(std::move(client));
 				}
@@ -3739,14 +3174,14 @@ namespace engine
 							m_beginPosition = GetPosition();
 							m_beginSize = GetSize();
 						};
-					m_bottomRightResizeGrip->OnDragBegin += capture;
-					m_topLeftResizeGrip->OnDragBegin += capture;
-					m_bottomResizeGrip->OnDragBegin += capture;
-					m_bottomLeftResizeGrip->OnDragBegin += capture;
-					m_topRightResizeGrip->OnDragBegin += capture;
-					m_topResizeGrip->OnDragBegin += capture;
-					m_leftResizeGrip->OnDragBegin += capture;
-					m_rightResizeGrip->OnDragBegin += capture;
+					m_bottomRightResizeGrip->DragBegin += capture;
+					m_topLeftResizeGrip->DragBegin += capture;
+					m_bottomResizeGrip->DragBegin += capture;
+					m_bottomLeftResizeGrip->DragBegin += capture;
+					m_topRightResizeGrip->DragBegin += capture;
+					m_topResizeGrip->DragBegin += capture;
+					m_leftResizeGrip->DragBegin += capture;
+					m_rightResizeGrip->DragBegin += capture;
 				}
 
 				// everytime grip moves, we make sure it always stay at the position relative to frame all the time.
@@ -3757,30 +3192,30 @@ namespace engine
 				// execute LayoutUpdate which will reposition the grip. then this handle will again reposition it. it won't cause recursive chain since
 				// SetPosition() is guarded. but it costs CPU execution time as grip's SetPosition() can be called more than once.
 				{
-					m_topRightResizeGrip->OnMove += [&](const PositionF& pos) { UpdateTopRightGripLayout(); };
-					m_topResizeGrip->OnMove += [&](const PositionF& pos) { UpdateTopGripLayout(); };
-					m_topLeftResizeGrip->OnMove += [&](const PositionF& pos) { UpdateTopLeftGripLayout(); };
-					m_rightResizeGrip->OnMove += [&](const PositionF& pos) { UpdateRightGripLayout(); };
-					m_leftResizeGrip->OnMove += [&](const PositionF& pos) { UpdateLeftGripLayout(); };
-					m_bottomRightResizeGrip->OnMove += [&](const PositionF& pos) { UpdateBottomRightGripLayout(); };
-					m_bottomResizeGrip->OnMove += [&](const PositionF& pos) { UpdateBottomGripLayout(); };
-					m_bottomLeftResizeGrip->OnMove += [&](const PositionF& pos) { UpdateBottomLeftGripLayout(); };
+					m_topRightResizeGrip->Moved += [&](const PositionF& pos) { UpdateTopRightGripLayout(); };
+					m_topResizeGrip->Moved += [&](const PositionF& pos) { UpdateTopGripLayout(); };
+					m_topLeftResizeGrip->Moved += [&](const PositionF& pos) { UpdateTopLeftGripLayout(); };
+					m_rightResizeGrip->Moved += [&](const PositionF& pos) { UpdateRightGripLayout(); };
+					m_leftResizeGrip->Moved += [&](const PositionF& pos) { UpdateLeftGripLayout(); };
+					m_bottomRightResizeGrip->Moved += [&](const PositionF& pos) { UpdateBottomRightGripLayout(); };
+					m_bottomResizeGrip->Moved += [&](const PositionF& pos) { UpdateBottomGripLayout(); };
+					m_bottomLeftResizeGrip->Moved += [&](const PositionF& pos) { UpdateBottomLeftGripLayout(); };
 				}
 
 				// we also track content drag in case content is draggable, we bubble up movement to the frame and make content stationary
 				{
-					m_content->OnDragBegin += [&](const Widget::DragEventArgs& args)
+					m_content->DragBegin += [&](const Widget::DragEventArgs& args)
 						{
 							MouseDown(args.currentPosition);
 						};
 
-					m_content->OnDragMove += [&](const Widget::DragEventArgs& args)
+					m_content->DragMove += [&](const Widget::DragEventArgs& args)
 						{
 							MouseMove(args.currentPosition);
 							UpdateLayout();
 						};
 
-					m_content->OnDragEnd += [&](const Widget::DragEventArgs& args)
+					m_content->DragEnd += [&](const Widget::DragEventArgs& args)
 						{
 							MouseUp(args.currentPosition);
 						};
@@ -3789,7 +3224,7 @@ namespace engine
 				// we track grips' drag. we update resizeableframe's position and size depending on grip's drag movement
 				{
 					// bottom-right grip handlers
-					m_bottomRightResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					m_bottomRightResizeGrip->DragMove += [&](const Widget::DragEventArgs& args)
 						{
 							VecF delta = args.Delta();
 
@@ -3801,7 +3236,7 @@ namespace engine
 						};
 
 					//  top-left grip handlers
-					m_topLeftResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					m_topLeftResizeGrip->DragMove += [&](const Widget::DragEventArgs& args)
 						{
 							VecF delta = args.Delta();
 
@@ -3829,7 +3264,7 @@ namespace engine
 						};
 
 					//  bottom-left grip handlers
-					m_bottomLeftResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					m_bottomLeftResizeGrip->DragMove += [&](const Widget::DragEventArgs& args)
 						{
 							VecF delta = args.Delta();
 
@@ -3854,7 +3289,7 @@ namespace engine
 						};
 
 					//  top-right grip handlers
-					m_topRightResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					m_topRightResizeGrip->DragMove += [&](const Widget::DragEventArgs& args)
 						{
 							VecF delta = args.Delta();
 
@@ -3879,7 +3314,7 @@ namespace engine
 						};
 
 					//  top grip handlers
-					m_topResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					m_topResizeGrip->DragMove += [&](const Widget::DragEventArgs& args)
 						{
 							VecF delta = args.Delta();
 
@@ -3904,7 +3339,7 @@ namespace engine
 						};
 
 					//  left grip handlers
-					m_leftResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					m_leftResizeGrip->DragMove += [&](const Widget::DragEventArgs& args)
 						{
 							VecF delta = args.Delta();
 
@@ -3929,7 +3364,7 @@ namespace engine
 						};
 
 					//  right grip handlers
-					m_rightResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					m_rightResizeGrip->DragMove += [&](const Widget::DragEventArgs& args)
 						{
 							SetSize(ClampSize(
 								{
@@ -3939,7 +3374,7 @@ namespace engine
 						};
 
 					//  bottom grip handlers
-					m_bottomResizeGrip->OnDragMove += [&](const Widget::DragEventArgs& args)
+					m_bottomResizeGrip->DragMove += [&](const Widget::DragEventArgs& args)
 						{
 							SetSize(ClampSize(
 								{
@@ -4045,13 +3480,13 @@ namespace engine
 			{
 				// When content moves, ensure it remains within the viewport bounds.
 				// 
-				// OnMove is only raised when content's position really changed.
+				// Moved is only raised when content's position really changed.
 				// Update the viewport's layout to ensure content stays within the bounds of viewport's area.
-				// Updating the layout may result in setting content's position again which will result in raising OnMove.
-				// As OnMove will only be raised  when content's position really changed, this will not result in recursive loop
+				// Updating the layout may result in setting content's position again which will result in raising Moved.
+				// As Moved will only be raised  when content's position really changed, this will not result in recursive loop
 				//
 				// also note that since we are monitoring content's move event, we don't need to monitor its drag event as dragging will 
-				// also eventually set position of content and will raise OnMove
+				// also eventually set position of content and will raise Moved
 				UpdateContentPosition();
 
 				// fire scroll event to notify that content has moved and viewport's offset has changed
@@ -4085,8 +3520,8 @@ namespace engine
 				if (m_content)
 				{
 					// let's unsubscribe from current content's events before removing it.
-					m_content->OnResize -= engine::event::Handler(this, &ViewPort::OnContentSizeChanged);
-					m_content->OnMove -= engine::event::Handler(this, &ViewPort::OnContentMove);
+					m_content->Resized -= engine::event::Handler(this, &ViewPort::OnContentSizeChanged);
+					m_content->Moved -= engine::event::Handler(this, &ViewPort::OnContentMove);
 
 					// this will destroy the content widget and all its children. so beware, this is permanent
 					RemoveChild(m_content);
@@ -4098,8 +3533,8 @@ namespace engine
 				AddChild(std::move(content));
 
 				// subscribe to new content's events
-				m_content->OnResize += engine::event::Handler(this, &ViewPort::OnContentSizeChanged);
-				m_content->OnMove += engine::event::Handler(this, &ViewPort::OnContentMove);
+				m_content->Resized += engine::event::Handler(this, &ViewPort::OnContentSizeChanged);
+				m_content->Moved += engine::event::Handler(this, &ViewPort::OnContentMove);
 
 				// we don't know what is the new content's size and position, so we need to ensure that it is within the viewport's bounds
 				UpdateContentPosition();
@@ -4131,7 +3566,7 @@ namespace engine
 				// This ultimately calls m_content->SetPosition().
 				//
 				// If the position actually changes, Widget::SetPosition() will fire
-				// the content's OnMove event. ViewPort listens to that event and
+				// the content's Moved event. ViewPort listens to that event and
 				// performs UpdateLayout() to enforce viewport bounds and any other
 				// scrolling rules.
 				//
@@ -4346,7 +3781,7 @@ namespace engine
 
 				// bubble up viewport's resize event to our own OnViewPortResize event. 
 				// this is useful for external content that needs to resize itself when viewport resizes.
-				m_viewport->OnResize += [&](const SizeF& size)
+				m_viewport->Resized += [&](const SizeF& size)
 					{
 						ViewPortResized(size);
 					};
@@ -4597,13 +4032,13 @@ namespace engine
 
 				OnSet(row, col, ptr);
 
-				//ptr->OnMove += [&](const PositionF& pos)
+				//ptr->Moved += [&](const PositionF& pos)
 				//	{
 				//		// TODO: this is overkill. we just need to update this widget, not the whole grid
 				//		//UpdateLayout();
 				//	};
 
-				//ptr->OnResize += [&](const SizeF& size)
+				//ptr->Resized += [&](const SizeF& size)
 				//	{
 				//		// TODO: this is overkill. we just need to update this widget, not the whole grid
 				//		//UpdateLayout();

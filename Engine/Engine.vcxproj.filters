@@ -405,6 +405,9 @@
     <ClInclude Include="Include\GUI\gui.h">
       <Filter>GUI</Filter>
     </ClInclude>
+    <ClInclude Include="Include\GUI\Widget.h">
+      <Filter>GUI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">
@@ -519,6 +522,15 @@
       <Filter>Graphics\Core</Filter>
     </ClCompile>
     <ClCompile Include="Source\GUI\gui.cpp">
+      <Filter>GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\GUI\Widget.cpp">
+      <Filter>GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\GUI\Layer.cpp">
+      <Filter>GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\GUI\UISystem.cpp">
       <Filter>GUI</Filter>
     </ClCompile>
   </ItemGroup>
