@@ -21,6 +21,8 @@
 #include <memory>
 #include <functional>
 
+
+
 namespace engine
 {
 	namespace gui
@@ -349,8 +351,335 @@ namespace engine
 {
 	namespace gui
 	{
+#pragma region // forward declarations
+#pragma endregion
+
+#pragma region // Layer
+		// UI is not just a single UI tree. it is a stack of UI trees. each tree is a layer. this class represents a layer in the UI stack.
+		// Layer is a widget that is the root of a UI tree. Hence, it has no parent. 
+		// It can be owned by another widget, which is usually a trigger widget that opens the layer. a Layer without owner is a top-level layer. 
+		// It can be of different types: Popup, Modal, Menu, SubMenu. Each type has different behavior in terms of input handling and rendering.
+		class Layer : public Widget
+		{
+		public:
+			enum Type
+			{
+				// Popup layer is a layer that automatically closes when it loses focus. It is used for context menus, tooltips, etc.
+				Popup,
+
+				// Modal layer is a layer that blocks input to layers below it. It is used for dialogs, message boxes, etc.
+				Modal,
+
+				// Menu layer is a layer that is used for menus. It can be a top-level menu or a submenu. It is used for menu bars, context menus, etc.
+				Menu,
+
+				// SubMenu layer is a layer that is used for submenus. It is a child of a Menu layer. It is used for cascading menus, etc.
+				SubMenu
+			};
+
+		private:
+			friend class LayerStack;
+
+			Widget* m_owner;
+			UISystem* m_system;
+			Type m_type;
+
+		protected:
+			// overriden from Widget to return the UISystem as Layer is a root widget and has no parent.  
+			UISystem* GetSystem() const override final;
+
+		public:
+			// recipe for building a layer. this is used to create a layer with specific properties and a builder function that constructs the layer's content.
+			struct BuildDescription
+			{
+				PositionF position = {};
+				SizeF size = {};
+				std::function<void(Widget*)> builder = nullptr;
+				Type type = Type::Popup;
+				bool movable = false;
+			};
+
+			// constructor
+			Layer(UISystem* system, Widget* owner, const PositionF& pos, const SizeF& size, const Type& type, bool movable);
+
+			// getters and type checkers
+			Widget* GetOwner() const;
+			bool IsModal() const;
+			bool IsMenu() const;
+			bool IsPopup() const;
+			Type GetType() const;
+
+			// draws the layer
+			void Draw(const UIDrawContext& context) const override;
+		};
+
+
+		// this class contains a stack of layers. it also enforces policies on how layers are collapsed and expanded.
+		// only LayerManager can create and manipulate the LayerStack.
+		class LayerStack
+		{
+		public:
+			// data structure that represents the result of a search for a layer in the stack. 
+			struct Route
+			{
+				// the layer that was found in the stack. if no layer was found, this will be nullptr
+				Widget* layer = nullptr;
+
+				// the widget in the layer's UI tree that was hit by the search. if no widget was hit, this will be nullptr
+				Widget* target = nullptr;
+
+				// the index of the layer in the stack. first (bottom) layer has index 0. next is 1. if no layer was found, this will be -1
+				int index = -1;
+
+				// indicates if the layer is blocked by a modal layer above it in the stack. if true, the layer cannot receive input events
+				bool isBlockedByModal = false;
+			};
+
+		private:
+			// only LayerManager can create and manipulate the LayerStack.
+			friend class LayerManager;
+
+			// the stack of layers. the first layer in the vector is the bottom layer. the last layer in the vector is the top layer.
+			std::vector<std::unique_ptr<Layer>> m_layers;
+
+		protected:
+			// constructor is protected to enforce that only LayerManager can create and manipulate the LayerStack.
+			LayerStack();
+
+			// returns the number of layers in the stack. this is used to determine if there are any active layers in the stack.
+			size_t Size() const;
+
+			// Collapses the layer stack starting at the specified layer index.
+			//
+			// ---------------------------------------------------------------------------------
+			// DESIGN NOTES
+			// ---------------------------------------------------------------------------------
+			// Layer collapse is always performed from a layer downward toward the top
+			// of the layer stack.
+			//
+			// Example:
+			//
+			//	Stack:
+			//		[Layer A]
+			//		[Layer B]
+			//		[Layer C]
+			//
+			//	CollapseAt(B)
+			//
+			//	Result:
+			//		[Layer A]
+			//
+			// Layer B and all layers above it are removed.
+			//
+			// ---------------------------------------------------------------------------------
+			// CASCADED LAYER COLLAPSE
+			// ---------------------------------------------------------------------------------
+			//
+			// Layers may contain Layer owners that own child layers higher in the stack.
+			//
+			// Example:
+			//
+			//	Layer A
+			//		contains Trigger B
+			//
+			//	Layer B
+			//		contains Trigger C
+			//
+			//	Layer C
+			//
+			// During collapse, layer's UI tree widgets are first unregistered from the UISystem
+			// before the layer itself is erased from the layer stack.
+			//
+			// While unregistering:
+			//
+			//	OwnerWidget::OnUnregisterToSystem()
+			//		-> UISystem::UnregisterLayer()
+			//			-> CollapseByOwner()
+			//
+			// may recursively request collapse of child layers higher in the stack.
+			//
+			// This is safe because:
+			//	- layer ownership is acyclic
+			//	- layer stack destruction only proceeds upward
+			//	- layer mutations only remove suffixes of the layer stack
+			//	- traversal is index-based (not iterator-based)
+			//	- the layer stack is never reordered during collapse
+			//
+			// Example:
+			//
+			//	Initial stack:
+			//		[A][B][C]
+			//
+			//	CollapseAt(A)
+			//
+			//	1. A unregisters Trigger B
+			//	2. Trigger B collapses B
+			//	3. B unregisters Trigger C
+			//	4. Trigger C collapses C
+			//
+			// Each nested collapse only removes layers above the current layer.
+			//
+			// Because nested collapses only shrink the end of the layer stack,
+			// the outer forward traversal remains valid and will naturally terminate
+			// once the layer stack size becomes smaller than the current traversal index.
+			//
+			// ---------------------------------------------------------------------------------
+			// IMPORTANT INVARIANT
+			// ---------------------------------------------------------------------------------
+			//
+			// This method is only safe because layer collapse semantics are strictly:
+			//
+			//	- synchronous
+			//	- upward-only
+			//	- suffix-removing
+			//
+			// Future changes such as below may invalidate these assumptions and require a deferred mutation model.
+			//	- arbitrary overlay removal
+			//	- overlay insertion during collapse
+			//	- overlay reordering
+			//	- deferred destruction
+			//	- async/evented mutation
+			void CollapseAt(const Route& result);
+
+			// a variant of CollapseAt() that collapses the layer stack starting at the layer above the specified layer index.
+			void CollapseAbove(const Route& route);
+
+			// collapses the entire layer stack. this is equivalent to CollapseAt(0)
+			void Collapse();
+
+			// this is the only way to add a new overlay in the stack and it will always end it at the end of the stack
+			void Add(std::unique_ptr<Layer> overlay);
+
+			// finds the top-most active layer that is owned by the given owner widget. 
+			// if found, returns a Route with the layer and index. if not found, returns a Route with nullptr and -1
+			Route FindRouteByOwner(Widget* owner);
+
+			// collapses layer stack on layer with the specified owner widget
+			void CollapseByOwner(Widget* owner);
+
+			// traverse through the layer stack from bottom to top
+			template<typename Func>
+			void ForEach(const Func& func)
+			{
+				for (std::vector<std::unique_ptr<Layer>>::iterator it = m_layers.begin(); it != m_layers.end(); it++)
+				{
+					func(it->get());
+				}
+			}
+
+			// get the bottom-most layer in the stack. if the stack is empty, throws an exception
+			Layer& Bottom() const;
+
+			// get the top-most layer in the stack. if the stack is empty, throws an exception
+			Layer& Top() const;
+
+			// find which top-most active layer that intersects with given point
+			Route FindRouteFromTopAt(const PositionF& position, int flags);
+
+			// check if any active layer is owned by given owner widget. returns true if found, false otherwise
+			bool IsExpanded(const Widget* owner) const;
+
+		};
+
+		// this class manages the layer stack and provides an interface for adding, removing, and collapsing layers. 
+		// it also handles the queuing of commands to manipulate the layer stack.
+		class LayerManager
+		{
+		private:
+			// internal data structure to store command request to add, remove, or collapse layers. this is used to queue commands that will be processed later.
+			struct Command
+			{
+				// the type of command to be executed
+				enum Type
+				{
+					Add,
+					Remove,
+					Collapse,
+				};
+
+				// command type
+				Type command;
+
+				// the owner widget that requested the command. this is used to identify which layer to add or remove
+				Widget* owner = nullptr;
+
+				// the index of the layer in the stack. this is used to identify which layer to remove or collapse
+				int index;
+
+				// the position and size of the layer to be added. this is used to create a new layer with the specified properties
+				PositionF position;
+				SizeF size;
+
+				// the builder function that will be called to build the content of the layer. this is used to create the UI tree of the layer
+				std::function<void(Widget*)> builder;
+
+				// the type of the layer to be added. this is used to determine the behavior of the layer in terms of input handling and rendering
+				Layer::Type type;
+
+				// indicates if the layer to be added is movable. this is used to determine if the layer can be dragged around by the user
+				bool movable;
+			};
+
+			// the stack of layers that this manager manages. this is used to keep track of the active layers in the UI
+			LayerStack m_stack;
+
+			// the UISystem that this manager is associated with. 
+			UISystem* m_system;
+
+			// the queue of commands that will be processed later. this is used to defer the execution of commands until the appropriate time
+			std::vector<Command> m_commands;
+
+		public:
+			// constructor. it requires a UISystem pointer to associate this manager with the UI system. 
+			// this is used to access the UISystem for registering and unregistering layers' UI trees.
+			LayerManager(UISystem* system);
+
+			// collapses the layer stack starting at the specified layer index. this is a wrapper around LayerStack::CollapseAbove()
+			void CollapseAbove(const LayerStack::Route& route);
+
+			// finds the top-most layer that intersects with given position and valid with given flags
+			LayerStack::Route FindRouteFromTopAt(const PositionF& position, int flags);
+
+			// collapses the entire layer stack. this is a wrapper around LayerStack::Collapse()
+			void Collapse();
+
+			// flushes all pending commands in the command queue
+			void FlushCommands();
+
+			// given a overlay stack route result, let overlay tree handle mouse down by performing overlay stack collapse if needed, 
+			// and process on queue overlay command requests e.g. toggle up/down a overlay
+			void ProcessCommandRequests();
+
+			// toggle the overlay
+			void QueueToggle(Widget* owner, const Layer::BuildDescription& desc);
+
+			// unregister a overlay build description owned by given widget
+			bool Remove(Widget* owner);
+
+			// traverse through the overlay stack from bottom to top
+			template<typename Func>
+			void ForEach(const Func& func)
+			{
+				m_stack.ForEach(func);
+			}
+
+			// queue add overlay based on build description as this has no owner
+			void QueueAdd(const Layer::BuildDescription& desc);
+
+			// queue collapse overlay stack at given index. if index is not specified, it will collapse the entire stack
+			void QueueCollapse(int index = 0);
+
+			// get the bottom-most layer in the stack. if the stack is empty, throws an exception
+			Layer& Bottom() const;
+
+			// checks if any active layer is owned by given owner widget. returns true if found, false otherwise
+			bool IsExpanded(const Widget* owner) const;
+		};
+
+#pragma endregion
 	}
 }
+
 
 namespace engine
 {
@@ -447,536 +776,6 @@ namespace engine
 			Widget* focus = nullptr;
 			Widget* capture = nullptr;
 		};
-#pragma endregion
-
-#pragma region // Layer
-		// UI is not just a single UI tree. it is a stack of UI trees. each tree is a layer. this class represents a layer in the UI stack.
-		// Layer is a widget that is the root of a UI tree. Hence, it has no parent. 
-		// It can be owned by another widget, which is usually a trigger widget that opens the layer. a Layer without owner is a top-level layer. 
-		// It can be of different types: Popup, Modal, Menu, SubMenu. Each type has different behavior in terms of input handling and rendering.
-		class Layer : public Widget
-		{
-		public:
-			enum Type
-			{
-				// Popup layer is a layer that automatically closes when it loses focus. It is used for context menus, tooltips, etc.
-				Popup,
-
-				// Modal layer is a layer that blocks input to layers below it. It is used for dialogs, message boxes, etc.
-				Modal,
-
-				// Menu layer is a layer that is used for menus. It can be a top-level menu or a submenu. It is used for menu bars, context menus, etc.
-				Menu,
-
-				// SubMenu layer is a layer that is used for submenus. It is a child of a Menu layer. It is used for cascading menus, etc.
-				SubMenu
-			};
-
-		private:
-			friend class LayerStack;
-
-			Widget* m_owner;
-			UISystem* m_system;
-			Type m_type;
-
-		protected:
-			// overriden from Widget to return the UISystem as Layer is a root widget and has no parent.  
-			UISystem* GetSystem() const override final;
-
-		public:
-			// recipe for building a layer. this is used to create a layer with specific properties and a builder function that constructs the layer's content.
-			struct BuildDescription
-			{
-				PositionF position = {};
-				SizeF size = {};
-				std::function<void(Widget*)> builder = nullptr;
-				Type type = Type::Popup;
-				bool movable = false;
-			};
-
-			// constructor
-			Layer(UISystem* system, Widget* owner, const PositionF& pos, const SizeF& size, const Type& type, bool movable);
-
-			// getters and type checkers
-			Widget* GetOwner() const;
-			bool IsModal() const;
-			bool IsMenu() const;
-			bool IsPopup() const;
-			Type GetType() const;
-
-			// draws the layer
-			void Draw(const UIDrawContext& context) const override;
-		};
-
-		// design consideration
-		// - enforce a policy where in finding route, search stops once a modal overlay did not intersect with input point
-		class LayerStack
-		{
-		private:
-			std::vector<std::unique_ptr<Layer>> m_layers;
-
-		public:
-			struct Route
-			{
-				Widget* overlay = nullptr;
-				Widget* target = nullptr;
-				int index = -1;
-				bool isBlockedByModal = false;
-			};
-
-			LayerStack()
-			{
-			}
-
-			size_t Size() const
-			{
-				return m_layers.size();
-			}
-
-			// Collapses the overlay stack starting at the specified overlay index.
-			//
-			// ---------------------------------------------------------------------------------
-			// DESIGN NOTES
-			// ---------------------------------------------------------------------------------
-			// Layer collapse is always performed from a overlay downward toward the top
-			// of the overlay stack.
-			//
-			// Example:
-			//
-			//	Stack:
-			//		[Layer A]
-			//		[Layer B]
-			//		[Layer C]
-			//
-			//	CollapseAt(B)
-			//
-			//	Result:
-			//		[Layer A]
-			//
-			// Layer B and all overlays above it are removed.
-			//
-			// ---------------------------------------------------------------------------------
-			// CASCADED OVERLAY COLLAPSE
-			// ---------------------------------------------------------------------------------
-			//
-			// Overlays may contain OverlayTriggers that own child overlays higher in the stack.
-			//
-			// Example:
-			//
-			//	Layer A
-			//		contains Trigger B
-			//
-			//	Layer B
-			//		contains Trigger C
-			//
-			//	Layer C
-			//
-			// During collapse, overlay widgets are first unregistered from the UISystem
-			// before the overlay itself is erased from the overlay stack.
-			//
-			// While unregistering:
-			//
-			//	OverlayTrigger::OnUnregisterToSystem()
-			//		-> UISystem::UnregisterLayer()
-			//			-> CollapseByOwner()
-			//
-			// may recursively request collapse of child overlays higher in the stack.
-			//
-			// This is safe because:
-			//	- overlay ownership is acyclic
-			//	- overlay stack destruction only proceeds upward
-			//	- overlay mutations only remove suffixes of the overlay stack
-			//	- traversal is index-based (not iterator-based)
-			//	- the overlay stack is never reordered during collapse
-			//
-			// Example:
-			//
-			//	Initial stack:
-			//		[A][B][C]
-			//
-			//	CollapseAt(A)
-			//
-			//	1. A unregisters Trigger B
-			//	2. Trigger B collapses B
-			//	3. B unregisters Trigger C
-			//	4. Trigger C collapses C
-			//
-			// Each nested collapse only removes overlays above the current overlay.
-			//
-			// Because nested collapses only shrink the end of the overlay stack,
-			// the outer forward traversal remains valid and will naturally terminate
-			// once the overlay stack size becomes smaller than the current traversal index.
-			//
-			// ---------------------------------------------------------------------------------
-			// IMPORTANT INVARIANT
-			// ---------------------------------------------------------------------------------
-			//
-			// This method is only safe because overlay collapse semantics are strictly:
-			//
-			//	- synchronous
-			//	- upward-only
-			//	- suffix-removing
-			//
-			// Future changes such as below may invalidate these assumptions and require a deferred mutation model.
-			//	- arbitrary overlay removal
-			//	- overlay insertion during collapse
-			//	- overlay reordering
-			//	- deferred destruction
-			//	- async/evented mutation
-			void CollapseAt(const Route& result)
-			{
-				int index = result.index < 0 ? 0 : result.index;
-
-				// index can be out of bounds. if there are no active overlays, and this is called, if index = 0, then this condition is valid
-				if (index >= (int)m_layers.size()) return;
-
-				// since we're removing overlays, their children must unregister to system.
-				for (size_t i = index; i < m_layers.size(); i++)
-				{
-					m_layers[i]->RemoveChildren();
-					m_layers[i]->OnUnregisterToSystem();
-				}
-
-				// after unregistering overlays' tree, remove them 
-				m_layers.erase(m_layers.begin() + index, m_layers.end());
-			}
-
-			void CollapseAbove(const Route& route)
-			{
-				Route routeAbove = route;
-				routeAbove.index++;
-				CollapseAt(routeAbove);
-			}
-
-			void Collapse()
-			{
-				Route route;
-				route.index = 0;
-				CollapseAt(route);
-			}
-
-			// this is the only way to add a new overlay in the stack and it will always end it at the end of the stack
-			void Add(std::unique_ptr<Layer> overlay)
-			{
-				m_layers.push_back(std::move(overlay));
-			}
-
-			Route FindRouteByOwner(Widget* owner)
-			{
-				Route result{ nullptr, nullptr, -1 };
-
-				// check if any active overlay is owned by given owner
-				for (int i = 0; i < m_layers.size(); i++)
-				{
-					// if this widget is an owner of existing overlay, then overlay is active. collapse overlay stack on it
-					if (m_layers[i].get()->GetOwner() == owner)
-					{
-						result.overlay = m_layers[i].get();
-						result.target = m_layers[i].get();
-						result.index = i;
-						break;
-					}
-				}
-
-				return result;
-			}
-
-			// collapses overlay stack on overlay with the specified owner widget
-			void CollapseByOwner(Widget* owner)
-			{
-				// find the active overlay that is owned by given owner, if any
-				Route result = FindRouteByOwner(owner);
-				if (!result.overlay) return;
-
-				// if found, since you get the index, create Route and set the index. collapse on it
-				CollapseAt(result);
-			}
-
-			// traverse through the overlay stack from bottom to top
-			template<typename Func>
-			void ForEach(const Func& func)
-			{
-				for (std::vector<std::unique_ptr<Layer>>::iterator it = m_layers.begin(); it != m_layers.end(); it++)
-				{
-					func(it->get());
-				}
-			}
-
-			Layer& Bottom() const
-			{
-				if (m_layers.empty())
-				{
-					throw std::runtime_error("Querying an empty stack is wrong.");
-				}
-
-				return *m_layers.front().get();
-			}
-
-			Layer& Top() const
-			{
-				if (m_layers.empty())
-				{
-					throw std::runtime_error("Querying an empty stack is wrong.");
-				}
-
-				return *m_layers.back().get();
-			}
-
-			// find which top-most active overlay that intersects with given point
-			Route FindRouteFromTopAt(const PositionF& position, int flags)
-			{
-				Route result;
-
-				for (int i = (int)m_layers.size() - 1; i >= 0; i--)
-				{
-					Widget* widget = m_layers[i]->FindTopWidgetAt(position, flags);
-					if (widget)
-					{
-						result.target = widget;
-						result.index = i;
-						result.overlay = m_layers[i].get();
-						result.isBlockedByModal = false;
-						break;
-					}
-					// if this overlay did not intersect with point, check if it's modal
-					else
-					{
-						// is this overlay a modal? if yes, stop right here. modal overlays when active is the only widget that can absorb user input
-						if (m_layers[i]->IsModal())
-						{
-							result.index = i;
-							result.isBlockedByModal = true;
-							break;
-						}
-					}
-				}
-
-				return result;
-			}
-
-			bool IsExpanded(const Widget* owner) const
-			{
-				// check if any active overlay is owned by given owner
-				for (int i = 0; i < m_layers.size(); i++)
-				{
-					// if this widget is an owner of existing overlay, then overlay is active. 
-					if (m_layers[i].get()->GetOwner() == owner)
-					{
-						return true;
-					}
-				}
-
-				return false;
-			}
-
-		};
-
-		class LayerManager
-		{
-		private:
-			// internal data structure to store command request 
-			struct Command
-			{
-				enum Type
-				{
-					Add,
-					Remove,
-					Collapse,
-				};
-
-				Type command;
-				Widget* owner = nullptr;
-				int index;
-				PositionF position;
-				SizeF size;
-				std::function<void(Widget*)> builder;
-				Layer::Type type;
-				bool movable;
-			};
-
-			LayerStack m_stack;
-			UISystem* m_system;
-			Dictionary<Widget*, Layer::BuildDescription> m_buildDescriptions;
-			std::vector<Command> m_commands;
-
-		public:
-			LayerManager(UISystem* system) :
-				m_system(system)
-			{
-			}
-
-			void CollapseAbove(const LayerStack::Route& route)
-			{
-				m_stack.CollapseAbove(route);
-			}
-
-			// finds the top-most layer that intersects with given position and valid with given flags
-			LayerStack::Route FindRouteFromTopAt(const PositionF& position, int flags)
-			{
-				return m_stack.FindRouteFromTopAt(position, flags);
-			}
-
-			void Collapse()
-			{
-				m_stack.Collapse();
-			}
-
-			void FlushCommands()
-			{
-				m_commands.clear();
-			}
-
-			// given a overlay stack route result, let overlay tree handle mouse down by performing overlay stack collapse if needed, 
-			// and process on queue overlay command requests e.g. toggle up/down a overlay
-			void ProcessCommandRequests()
-			{
-				// handle overlay add/remove queue requests
-				for (Command& cmd : m_commands)
-				{
-					switch (cmd.command)
-					{
-						// remove/toggle off the overlay that is owned by widget from overlay request
-					case Command::Remove:
-					{
-						// we already have the index of the overlay stack that we want to collapsed at. just validate and collapse with it
-						if (cmd.index >= 0 && cmd.index < m_stack.Size())
-						{
-							LayerStack::Route route{};
-							route.index = cmd.index;
-							m_stack.CollapseAt(route);
-						}
-						break;
-					}
-					// add this overlay on top of stack
-					case Command::Add:
-					{
-						// create the overlay
-						std::unique_ptr<Layer> overlay = std::make_unique<Layer>(m_system, cmd.owner, cmd.position, cmd.size, cmd.type, cmd.movable);
-
-						// if it has a payload, build it and add to overlay as child
-						if (cmd.builder)
-						{
-							cmd.builder(overlay.get());
-						}
-
-						// finally, add overlay to top of stack
-						m_stack.Add(std::move(overlay));
-						break;
-					}
-					case Command::Collapse:
-					{
-						m_stack.Collapse();
-						break;
-					}
-					default:
-						break;
-					}
-				}
-
-				// flush the commands after consuming them
-				m_commands.clear();
-			}
-
-			// toggle the overlay
-			void QueueToggle(Widget* owner)
-			{
-				// check if there is an active overlay that is owned by given owner
-				LayerStack::Route result = m_stack.FindRouteByOwner(owner);
-
-				// if the owner's overlay is already active, queue it for removal/collapse
-				if (result.overlay)
-				{
-					Command cmd{};
-					cmd.command = Command::Remove;
-					cmd.index = result.index;
-					cmd.owner = owner;
-					m_commands.push_back(cmd);
-					return;
-				}
-
-				// this widget's overlay does not exist in overlay stack. create it and add into top of the stack. but first, check if this widget has registered overlay build command
-				if (!m_buildDescriptions.Has(owner))
-				{
-					throw std::runtime_error("command for this owner does not exist");
-				}
-
-				// get the popu build command 
-				Layer::BuildDescription& desc = m_buildDescriptions.Get(owner);
-
-				// create overlay build request
-				Command cmd{};
-				cmd.command = Command::Add;
-				cmd.owner = owner;
-				cmd.position = owner->GetAbsolutePosition() + desc.position;
-				cmd.size = desc.size;
-				cmd.builder = desc.builder;
-				cmd.type = desc.type;
-				cmd.movable = desc.movable;
-				m_commands.push_back(cmd);
-			}
-
-			// register a overlay build description owned by given widget
-			bool Register(Widget* widget, const Layer::BuildDescription& desc)
-			{
-				return m_buildDescriptions.Register(widget, desc);
-			}
-
-			// unregister a overlay build description owned by given widget
-			bool Unregister(Widget* owner)
-			{
-				// collapse overlay stack at the overlay of this owner, if any
-				m_stack.CollapseByOwner(owner);
-
-				// then we unregister it from our overlay layer
-				return m_buildDescriptions.Unregister(owner);
-			}
-
-			// traverse through the overlay stack from bottom to top
-			template<typename Func>
-			void ForEach(const Func& func)
-			{
-				m_stack.ForEach(func);
-			}
-
-			// queue add overlay based on build description as this has no owner
-			void QueueAdd(const Layer::BuildDescription& desc)
-			{
-				// create overlay build command on top of stack based on build description
-				Command cmd{};
-				cmd.command = Command::Add;
-				cmd.owner = nullptr;
-				cmd.position = desc.position;
-				cmd.size = desc.size;
-				cmd.builder = desc.builder;
-				cmd.type = desc.type;
-				cmd.movable = desc.movable;
-				m_commands.push_back(cmd);
-			}
-
-			void QueueCollapse(int index = 0)
-			{
-				Command cmd{};
-				cmd.command = Command::Remove;
-				cmd.index = index;
-				m_commands.push_back(cmd);
-			}
-
-			Layer& Bottom() const
-			{
-				if (!m_stack.Size())
-				{
-					throw std::runtime_error("stack is empty. querying for first is wrong");
-				}
-
-				return m_stack.Bottom();
-			}
-
-			bool IsExpanded(const Widget* owner) const
-			{
-				return m_stack.IsExpanded(owner);
-			}
-		};
-
 #pragma endregion
 
 #pragma region // UIRenderer
@@ -1518,12 +1317,12 @@ namespace engine
 				// if we reach this point, we should be able to find the top widget that intersects with point. simultaneously we can resolve Z order as we traverse to find the top widget
 				// since bottom layer is a modal (root), it should always exist therefore we should always expect a valid layer at this point
 				// if not, then we must throw exception as this should not happen
-				if (!result.overlay)
+				if (!result.layer)
 				{
-					throw std::runtime_error("impossible not to find an overlay. why is this so???");
+					throw std::runtime_error("impossible not to find a layer. why is this so???");
 				}
 
-				Widget* widget = result.overlay->FindAndResolveZOrderAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+				Widget* widget = result.layer->FindAndResolveZOrderAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 
 				// at this point, we should have the top-most widget and Z order is resolved. it's impossible to not find top-most widget, we already have the layer.
 				if (!widget)
@@ -1537,7 +1336,7 @@ namespace engine
 				// collapse the overlay stack above the clicked overlay. we do this because:
 				// - if none of the overlays were clicked, all active overlay stacks will be collapsed 
 				// - if a overlay is clicked, all active overlays on top of it will be collapsed
-				m_layerManager.CollapseAbove(result);
+				//m_layerManager.CollapseAbove(result);
 
 				// set capture
 				SetCapture(widget);
@@ -1593,15 +1392,15 @@ namespace engine
 					return;
 				}
 
-				// if there is no overlay found yet we were not blocked by modal, something is wrong. this cannot happen
-				if (!result.overlay)
+				// if there is no layer found yet we were not blocked by modal, something is wrong. this cannot happen
+				if (!result.layer)
 				{
-					throw std::runtime_error("impossible not to find an overlay. why is this so???");
+					throw std::runtime_error("impossible not to find a layer. why is this so???");
 				}
 
 				// find the top widget in this layer's tree that is hovered. we also include disabled widgets in hover check.
 				// reason is so that even disable widgets can still have tooltip shown if they have it
-				Widget* hover = result.overlay->FindTopWidgetAt(p, Widget::SearchFlags::Visible);
+				Widget* hover = result.layer->FindTopWidgetAt(p, Widget::SearchFlags::Visible);
 
 				// let's resolve which widget is mouse over now, if any
 				if (hover != m_mouseOver)
@@ -1646,19 +1445,19 @@ namespace engine
 				}
 			}
 
-			bool RegisterLayer(Widget* widget, const Layer::BuildDescription& desc)
+			//bool RegisterLayer(Widget* widget, const Layer::BuildDescription& desc)
+			//{
+			//	return m_layerManager.Register(widget, desc);
+			//}
+
+			bool RemoveLayer(Widget* owner)
 			{
-				return m_layerManager.Register(widget, desc);
+				return m_layerManager.Remove(owner);
 			}
 
-			bool UnregisterLayer(Widget* owner)
+			void ToggleLayer(Widget* owner, const Layer::BuildDescription& desc)
 			{
-				return m_layerManager.Unregister(owner);
-			}
-
-			void ToggleLayer(Widget* owner)
-			{
-				m_layerManager.QueueToggle(owner);
+				m_layerManager.QueueToggle(owner, desc);
 			}
 
 			void AddWidget(std::unique_ptr<Widget> widget)
@@ -1724,14 +1523,14 @@ namespace engine
 				if (!result.isBlockedByModal)
 				{
 					// but check first if layer is really valid. it must.
-					// if there is no overlay found yet we were not blocked by modal, something is wrong. this cannot happen
-					if (!result.overlay)
+					// if there is no layer found yet we were not blocked by modal, something is wrong. this cannot happen
+					if (!result.layer)
 					{
-						throw std::runtime_error("impossible not to find an overlay. why is this so???");
+						throw std::runtime_error("impossible not to find a layer. why is this so???");
 					}
 
 					// let's now find the top widget in this layer's tree that intersects with the point
-					target = result.overlay->FindAndResolveZOrderAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+					target = result.layer->FindAndResolveZOrderAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 				}
 
 
@@ -1763,20 +1562,20 @@ namespace engine
 		protected:
 			Layer::BuildDescription m_buildDesc;
 
-			// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
-			bool OnRegisterToSystem() override final
-			{
-				UISystem* system = GetSystem();
-				if (system)
-				{
-					// be strict for now
-					if (!system->RegisterLayer(this, m_buildDesc))
-					{
-						throw std::runtime_error("failed to register layer");
-					}
-				}
-				return true;
-			}
+			//// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
+			//bool OnRegisterToSystem() override final
+			//{
+			//	UISystem* system = GetSystem();
+			//	if (system)
+			//	{
+			//		// be strict for now
+			//		if (!system->RegisterLayer(this, m_buildDesc))
+			//		{
+			//			throw std::runtime_error("failed to register layer");
+			//		}
+			//	}
+			//	return true;
+			//}
 
 			// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its layer descriptor into the system
 			bool OnUnregisterToSystem() override final
@@ -1785,7 +1584,7 @@ namespace engine
 				if (system)
 				{
 					// be strict for now
-					if (!system->UnregisterLayer(this))
+					if (!system->RemoveLayer(this))
 					{
 						throw std::runtime_error("failed to unregister layer");
 					}
@@ -1800,7 +1599,7 @@ namespace engine
 				UISystem* system = GetSystem();
 				if (system)
 				{
-					system->ToggleLayer(this);
+					system->ToggleLayer(this, m_buildDesc);
 				}
 			}
 
@@ -2269,20 +2068,20 @@ namespace engine
 		protected:
 			Layer::BuildDescription m_buildDesc;
 
-			// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
-			bool OnRegisterToSystem() override final
-			{
-				UISystem* system = GetSystem();
-				if (system)
-				{
-					// be strict for now
-					if (!system->RegisterLayer(this, m_buildDesc))
-					{
-						throw std::runtime_error("failed to register layer");
-					}
-				}
-				return true;
-			}
+			//// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
+			//bool OnRegisterToSystem() override final
+			//{
+			//	UISystem* system = GetSystem();
+			//	if (system)
+			//	{
+			//		// be strict for now
+			//		if (!system->RegisterLayer(this, m_buildDesc))
+			//		{
+			//			throw std::runtime_error("failed to register layer");
+			//		}
+			//	}
+			//	return true;
+			//}
 
 			// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its layer descriptor into the system
 			bool OnUnregisterToSystem() override final
@@ -2291,7 +2090,7 @@ namespace engine
 				if (system)
 				{
 					// be strict for now
-					if (!system->UnregisterLayer(this))
+					if (!system->RemoveLayer(this))
 					{
 						throw std::runtime_error("failed to unregister layer");
 					}
@@ -2306,7 +2105,7 @@ namespace engine
 				UISystem* system = GetSystem();
 				if (system)
 				{
-					system->ToggleLayer(this);
+					system->ToggleLayer(this, m_buildDesc);
 				}
 			}
 
