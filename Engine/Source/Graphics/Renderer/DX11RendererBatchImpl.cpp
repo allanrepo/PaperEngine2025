@@ -490,6 +490,29 @@ void engine::graphics::dx11::renderer::DX11RendererBatchImpl::Draw(
 }
 
 void engine::graphics::dx11::renderer::DX11RendererBatchImpl::Draw(
+	const engine::graphics::Font& font,
+	const std::string& text,
+	const engine::spatial::PositionF& pos,
+	const engine::graphics::ColorF& color
+)
+{
+	// this will be the horizontal position of the current character (first char at this point)
+	float xCurr = pos.x;
+
+	for (char c : text)
+	{
+		engine::spatial::PositionF _pos = { xCurr, pos.y };
+
+		engine::graphics::Sprite glyph = font.GetGlyph(c);
+
+		// draw the char
+		Draw(glyph, _pos, glyph.GetSize(), color, 0);
+
+		xCurr += glyph.GetWidth();
+	}
+}
+
+void engine::graphics::dx11::renderer::DX11RendererBatchImpl::Draw(
 	const engine::graphics::Sprite& sprite,   
 	const engine::spatial::PositionF& pos,
 	const math::SizeF& size, 

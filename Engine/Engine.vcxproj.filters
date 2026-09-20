@@ -420,6 +420,9 @@
     <ClInclude Include="Include\GUI\DragDropLayer.h">
       <Filter>GUI</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Graphics\Core\Font.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">
@@ -550,6 +553,9 @@
     </ClCompile>
     <ClCompile Include="Source\GUI\DragDropLayer.cpp">
       <Filter>GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\Core\Font.cpp">
+      <Filter>Graphics\Core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

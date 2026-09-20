@@ -152,6 +152,14 @@ namespace engine::graphics::dx11::renderer
 			const engine::graphics::ColorF& color,                                   // RGBA color tint
 			const float rotation                                                    // Rotation in radians
 		) override final;
+
+		// Draws a string using a font at the specified position and color
+		void Draw(
+			const engine::graphics::Font& font, // Font 
+			const std::string& text,                    // Text to render
+			const engine::spatial::PositionF& pos,                                 // Top-left screen position
+			const engine::graphics::ColorF& color                                   // RGBA color tint
+		) override final;
 	};
 }
 

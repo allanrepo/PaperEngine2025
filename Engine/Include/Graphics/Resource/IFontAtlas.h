@@ -10,6 +10,8 @@ namespace engine
 {
 	namespace graphics
 	{
+		class Font;
+
 		namespace resource
 		{
 			class IFontAtlas : public spatial::ISizeable<float>
@@ -19,12 +21,14 @@ namespace engine
 			public:
 				virtual ~IFontAtlas() = default;
 
+				// resource management
 				virtual bool Initialize(const std::string& fontName = "Arial", const size_t fontSize = 12) = 0;
-
 				virtual void Reset() = 0;
 
+				// get an instance of a glyph in sprite form
 				virtual engine::graphics::Sprite GetGlyph(const unsigned char character) const = 0;
 
+				// get an instance of the actual font atlas image resource in sprite form
 				virtual engine::graphics::Sprite GetSprite() const = 0;
 
 				// get size of characters
@@ -39,6 +43,9 @@ namespace engine
 				virtual float GetWidth() const = 0;
 				virtual float GetHeight() const = 0;
 				virtual engine::math::SizeF GetSize() const = 0;
+
+				// get a view of font atlas
+				virtual engine::graphics::Font MakeFont() const = 0;
 			};
 		}
 	}

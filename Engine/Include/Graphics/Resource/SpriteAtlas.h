@@ -10,10 +10,8 @@ namespace engine::graphics
 	{
 		class SpriteAtlasFactory;
 	}
-	namespace renderable
-	{
-		class Sprite;
-	}
+
+	class Sprite;
 
 	namespace resource
 	{
@@ -47,8 +45,6 @@ namespace engine::graphics
 			virtual float GetWidth() const override final;
 			virtual float GetHeight() const override final;
 			virtual math::SizeF GetSize() const override final;
-
-
 		};
 
 	}

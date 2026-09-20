@@ -82,3 +82,13 @@ void engine::graphics::renderer::Renderer::Draw(
     impl->Draw(sprite, pos, size, color, rotation);
 }
 
+void engine::graphics::renderer::Renderer::Draw(
+    const engine::graphics::Font& font, 
+    const std::string& text, 
+    const engine::spatial::PositionF& pos, 
+    const engine::graphics::ColorF& color
+)
+{
+    impl->Draw(font, text, pos, color);
+}
+

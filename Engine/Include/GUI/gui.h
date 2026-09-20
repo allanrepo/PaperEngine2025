@@ -11,6 +11,7 @@
 #include <Math/Rect.h>
 #include <Containers/Dictionary.h>
 #include <Graphics/Resource/IFontAtlas.h>
+#include <Graphics/Core/Font.h>
 #include <Graphics/Core/IRenderable.h>
 #include <Graphics/Core/Sprite.h>
 #include <Graphics/Core/Color.h>
@@ -76,6 +77,7 @@ namespace engine
 		using VecF = engine::math::VecF;
 		using RectF = engine::math::RectF;
 		using IFontAtlas = engine::graphics::resource::IFontAtlas;
+		using Font = engine::graphics::Font;
 		using IRenderable = engine::graphics::IRenderable;
 		using Sprite = engine::graphics::Sprite;
 		using ColorF = engine::graphics::ColorF;
@@ -168,9 +170,9 @@ namespace engine
 #pragma region // UIResources
 		struct UIResources
 		{
-			IFontAtlas* defaultFont = nullptr;
-			IFontAtlas* highlightFont = nullptr;
-			IFontAtlas* titleFont = nullptr;
+			Font defaultFont;
+			Font highlightFont;
+			Font titleFont;
 
 			enum class FontType
 			{
@@ -178,6 +180,13 @@ namespace engine
 				Highlight,
 				Title
 			};
+
+			UIResources()
+				: defaultFont(Font::MakeInvalidFont())
+				, highlightFont(Font::MakeInvalidFont())
+				, titleFont(Font::MakeInvalidFont())
+			{
+			}
 		};
 #pragma endregion
 
@@ -193,7 +202,6 @@ namespace engine
 			Widget* m_mouseOver = nullptr;
 			Widget* m_focus = nullptr;
 			std::vector<Widget*> m_queueForRemoval;
-
 			UIResources m_resources;
 
 			void SetFocus(Widget* widget)
@@ -233,7 +241,7 @@ namespace engine
 			}
 
 		public:
-			void SetFont(IFontAtlas* font, UIResources::FontType type)
+			void SetFont(Font font, UIResources::FontType type)
 			{
 				bool fontChanged = false;
 				switch (type)
@@ -268,7 +276,7 @@ namespace engine
 				}
 			}
 
-			IFontAtlas* GetFont(UIResources::FontType type) const
+			Font GetFont(UIResources::FontType type) const
 			{
 				switch (type)
 				{
@@ -279,7 +287,7 @@ namespace engine
 				case UIResources::FontType::Title:
 					return m_resources.titleFont;
 				default:
-					return nullptr;
+					throw std::runtime_error("invalid font type");
 				}
 			}
 
@@ -989,15 +997,15 @@ namespace engine
 					return false;
 				}
 
-				IFontAtlas* font = system->GetFont(m_fontType);
-				if (!font)
+				Font font = system->GetFont(m_fontType);
+				if (!font.IsValid())
 				{
 					m_textSize = {};
 					m_textPosition = {};
 					return false;
 				}
 
-				m_textSize = font->GetSize(m_text);
+				m_textSize = font.GetSize(m_text);
 
 				switch (m_vAlign)
 				{
@@ -3577,8 +3585,8 @@ namespace engine
 
 			void DrawLabel(const class Label& label, const UIDrawContext& context) const override
 			{
-				IFontAtlas* font = context.system.GetFont(label.GetFontType());
-				if (!font)
+				Font font = context.system.GetFont(label.GetFontType());
+				if (!font.IsValid())
 				{
 					throw std::runtime_error("font does not exist");
 				}
@@ -3589,7 +3597,7 @@ namespace engine
 				ColorF color = { 0.3f,0.3f,0.3f,1 };
 				if (label.GetParent() && label.GetParent() == context.focus) color = { 0, 0, 0, 1 };
 
-				context.renderer.Draw(*font, label.Get(), pos, color);
+				context.renderer.Draw(font, label.Get(), pos, color);
 			}
 
 			void DrawImage(const class Image& image, const UIDrawContext& ctx) const override

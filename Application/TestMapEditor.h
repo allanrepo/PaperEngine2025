@@ -5915,7 +5915,7 @@ namespace TestMapEditor
 			m_ux.SetSize({ 0,0 });
 			m_ux.Show(); 
 			IFontAtlas& font = AssetManager().Get<IFontAtlas>("font");
-			m_ux.SetFont(&font, UIResources::FontType::Default);
+			m_ux.SetFont(font.MakeFont(), UIResources::FontType::Default);
 
 			// setup our random text list resource
 			{
@@ -7253,7 +7253,7 @@ namespace TestMapEditor
 			m_ux.SetSize({ 0,0 });
 			m_ux.Show();
 			IFontAtlas& font = AssetManager().Get<IFontAtlas>("font");
-			m_ux.SetFont(&font, engine::gui::UIResources::FontType::Default);
+			m_ux.SetFont(font.MakeFont(), engine::gui::UIResources::FontType::Default);
 
 
 			// TextListBox

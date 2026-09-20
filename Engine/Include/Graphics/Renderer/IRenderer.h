@@ -1,5 +1,6 @@
 #pragma once
 #include <Graphics/Resource/IFontAtlas.h>
+#include <Graphics/Core/Font.h>
 #include <Math/Rect.h>
 #include <Spatial/Position.h>
 #include <Math/Size.h>
@@ -58,6 +59,14 @@ namespace engine::graphics::renderer
             const math::SizeF& size,                               // Sprite dimensions
             const engine::graphics::ColorF& color,                                   // RGBA color tint
             const float rotation                                                    // Rotation in radians
+        ) = 0;
+
+        // Draws a string using a font at the specified position and color
+        virtual void Draw(
+            const engine::graphics::Font& font, // Font 
+            const std::string& text,                    // Text to render
+            const engine::spatial::PositionF& pos,                                 // Top-left screen position
+            const engine::graphics::ColorF& color                                   // RGBA color tint
         ) = 0;
     };
 }

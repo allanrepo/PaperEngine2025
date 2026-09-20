@@ -61,6 +61,7 @@
     <ClInclude Include="Include\Graphics\Core\Color.h" />
     <ClInclude Include="Include\Graphics\Core\DX11CanvasImpl.h" />
     <ClInclude Include="Include\Graphics\Core\DX11Core.h" />
+    <ClInclude Include="Include\Graphics\Core\Font.h" />
     <ClInclude Include="Include\Graphics\Core\IAnimated.h" />
     <ClInclude Include="Include\Graphics\Core\ICanvas.h" />
     <ClInclude Include="Include\Graphics\Core\ICanvasImpl.h" />
@@ -140,6 +141,7 @@
     <ClCompile Include="Source\Graphics\Core\Canvas.cpp" />
     <ClCompile Include="Source\Graphics\Core\DX11CanvasImpl.cpp" />
     <ClCompile Include="Source\Graphics\Core\DX11Core.cpp" />
+    <ClCompile Include="Source\Graphics\Core\Font.cpp" />
     <ClCompile Include="Source\Graphics\Core\Primitives.cpp" />
     <ClCompile Include="Source\Graphics\Core\Sprite.cpp" />
     <ClCompile Include="Source\Graphics\IO\DX11ImageFileHelper.cpp" />

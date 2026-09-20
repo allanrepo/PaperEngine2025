@@ -1,4 +1,5 @@
 #include <Graphics/Resource/FontAtlas.h>
+#include <Graphics/Core/Font.h>
 #include <Utilities/Utilities.h>
 #include <Utilities/Logger.h>
 #include <Win32/GDIUtility.h>
@@ -152,3 +153,10 @@ engine::math::SizeF engine::graphics::resource::FontAtlas::GetSize() const
 		static_cast<float>(m_spriteAtlas->GetHeight())
 	};
 }
+
+engine::graphics::Font engine::graphics::resource::FontAtlas::MakeFont() const
+{
+	return engine::graphics::Font(this);
+}
+
+
