@@ -1,4 +1,5 @@
 #include <GUI/gui.h>
+#include <GUI/Layer.h>
 
 namespace engine
 {
@@ -339,8 +340,7 @@ namespace engine
 			m_commands.clear();
 		}
 
-		// given a overlay stack route result, let overlay tree handle mouse down by performing overlay stack collapse if needed, 
-		// and process on queue overlay command requests e.g. toggle up/down a overlay
+		// handle layer stack collapse and expand command requests.
 		void LayerManager::ProcessCommandRequests()
 		{
 			// handle overlay add/remove queue requests
@@ -382,6 +382,15 @@ namespace engine
 					m_stack.Collapse();
 					break;
 				}
+
+				// collapse the layer stack at the layer above the given index
+				case Command::CollapseAbove:
+				{
+					LayerStack::Route route{};
+					route.index = cmd.index;
+					m_stack.CollapseAbove(route);
+					break;
+				}
 				default:
 					break;
 				}
@@ -389,6 +398,14 @@ namespace engine
 
 			// flush the commands after consuming them
 			m_commands.clear();
+		}
+
+		void LayerManager::QueueCollapseAbove(const LayerStack::Route& route)
+		{
+			Command cmd{};
+			cmd.command = Command::CollapseAbove;
+			cmd.index = route.index;
+			m_commands.push_back(cmd);
 		}
 
 		// toggle the overlay
@@ -444,7 +461,7 @@ namespace engine
 			m_commands.push_back(cmd);
 		}
 
-		// queue collapse overlay stack at given index. if index is not specified, it will collapse the entire stack
+		// queue collapse layer stack at given index. if index is not specified, it will collapse the entire stack
 		void LayerManager::QueueCollapse(int index)
 		{
 			Command cmd{};

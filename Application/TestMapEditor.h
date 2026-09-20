@@ -6851,7 +6851,7 @@ namespace TestMapEditor
 					button->SetTooltip([&](Widget& owner, Widget& tooltip)
 						{
 							tooltip.SetSize({ 80,30 });
-							tooltip.SetPosition(owner.GetAbsolutePosition() + PositionF{ owner.GetSize().width + 5, 0 });
+							tooltip.SetPosition(PositionF{ owner.GetSize().width + 5, 0 });
 						});
 
 					std::unique_ptr<Label> label = std::make_unique<Label>("Message Box");
@@ -6887,7 +6887,7 @@ namespace TestMapEditor
 									button->SetTooltip([&](Widget& owner, Widget& tooltip)
 										{
 											tooltip.SetSize({ 80,30 });
-											tooltip.SetPosition(owner.GetAbsolutePosition() + PositionF{ owner.GetSize().width + 5, 0 });
+											tooltip.SetPosition( PositionF{ owner.GetSize().width + 5, 0 });
 										});
 
 									std::unique_ptr<Label> label = std::make_unique<Label>("Close");
@@ -6909,7 +6909,7 @@ namespace TestMapEditor
 									button->SetTooltip([&](Widget& owner, Widget& tooltip)
 										{
 											tooltip.SetSize({ 80,30 });
-											tooltip.SetPosition(owner.GetAbsolutePosition() + PositionF{ owner.GetSize().width + 5, 0 });
+											tooltip.SetPosition(PositionF{ owner.GetSize().width + 5, 0 });
 										});
 
 									label = std::make_unique<Label>("Toggle");

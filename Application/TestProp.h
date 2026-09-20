@@ -89,6 +89,9 @@ namespace TestProp
 	template<typename T>
 	using Registry = engine::cache::Registry<T>;
 
+	template<typename K, typename T>
+	using Dictionary = engine::container::Dictionary<K, T>;
+
 #pragma endregion
 
 	struct DrawCommand

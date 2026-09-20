@@ -408,6 +408,18 @@
     <ClInclude Include="Include\GUI\Widget.h">
       <Filter>GUI</Filter>
     </ClInclude>
+    <ClInclude Include="Include\GUI\Layer.h">
+      <Filter>GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\GUI\UISystem.h">
+      <Filter>GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\GUI\Tooltip.h">
+      <Filter>GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\GUI\DragDropLayer.h">
+      <Filter>GUI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">
@@ -531,6 +543,12 @@
       <Filter>GUI</Filter>
     </ClCompile>
     <ClCompile Include="Source\GUI\UISystem.cpp">
+      <Filter>GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\GUI\Tooltip.cpp">
+      <Filter>GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\GUI\DragDropLayer.cpp">
       <Filter>GUI</Filter>
     </ClCompile>
   </ItemGroup>

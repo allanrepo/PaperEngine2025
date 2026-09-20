@@ -85,7 +85,11 @@
     <ClInclude Include="Include\Graphics\Resource\ITextureImpl.h" />
     <ClInclude Include="Include\Graphics\Resource\SpriteAtlas.h" />
     <ClInclude Include="Include\Graphics\Resource\Texture.h" />
+    <ClInclude Include="Include\GUI\DragDropLayer.h" />
     <ClInclude Include="Include\GUI\gui.h" />
+    <ClInclude Include="Include\GUI\Layer.h" />
+    <ClInclude Include="Include\GUI\Tooltip.h" />
+    <ClInclude Include="Include\GUI\UISystem.h" />
     <ClInclude Include="Include\GUI\Widget.h" />
     <ClInclude Include="Include\IO\ASyncFileReader.h" />
     <ClInclude Include="Include\IO\CSVFileParser.h" />
@@ -148,8 +152,10 @@
     <ClCompile Include="Source\Graphics\Resource\FontAtlas.cpp" />
     <ClCompile Include="Source\Graphics\Resource\SpriteAtlas.cpp" />
     <ClCompile Include="Source\Graphics\Resource\Texture.cpp" />
+    <ClCompile Include="Source\GUI\DragDropLayer.cpp" />
     <ClCompile Include="Source\GUI\gui.cpp" />
     <ClCompile Include="Source\GUI\Layer.cpp" />
+    <ClCompile Include="Source\GUI\Tooltip.cpp" />
     <ClCompile Include="Source\GUI\UISystem.cpp" />
     <ClCompile Include="Source\GUI\Widget.cpp" />
     <ClCompile Include="Source\IO\ASyncFileReader.cpp" />
