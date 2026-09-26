@@ -1,13 +1,17 @@
 #pragma once
 #include <Spatial/ISizeable.h>
+#include <Core/View.h>
 
 namespace engine
 {
 	namespace graphics
 	{
+		class Sprite;
+
 		namespace resource
 		{
 			class FontAtlas;
+			class IFontAtlas;
 		}
 
 		class Font : public engine::spatial::ISizeable<float>

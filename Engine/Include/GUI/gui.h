@@ -1,4 +1,7 @@
 #pragma once
+#include <GUI/UISkin.h>
+#include <GUI/UIRenderer.h>
+#include <GUI/UISystem.h>
 #include <GUI/DragDropLayer.h>
 #include <GUI/Tooltip.h>
 #include <GUI/Layer.h>
@@ -15,9 +18,10 @@
 #include <Graphics/Core/IRenderable.h>
 #include <Graphics/Core/Sprite.h>
 #include <Graphics/Core/Color.h>
-
+#include <Utilities/Logger.h>
 #include <algorithm>
 #include <Containers/Grid.h>
+#include <set>
 
 namespace engine
 {
@@ -32,8 +36,6 @@ namespace engine
 		class UISystem;
 		struct UIDrawContext;
 #pragma endregion
-
-
 	}
 }
 
@@ -90,664 +92,33 @@ namespace engine
 
 #pragma endregion
 
-#pragma region // UISkin
-		class UISkin
-		{
-		public:
-			virtual ~UISkin() = default;
-
-			virtual void DrawButton(const class Button& button, const UIDrawContext& ctx) const = 0;
-			virtual void DrawLayer(const class Layer& overlay, const UIDrawContext& ctx) const = 0;
-			virtual void DrawFrame(const class Frame& frame, const UIDrawContext& ctx) const = 0;
-			virtual void DrawTooltip(const class Tooltip& tooltip, const UIDrawContext& ctx) const = 0;
-			virtual void DrawLabel(const class Label& label, const UIDrawContext& ctx) const = 0;
-			virtual void DrawImage(const class Image& image, const UIDrawContext& ctx) const = 0;
-			virtual void DrawDraggable(const Draggable& draggable, const UIDrawContext& context) const = 0;
-			virtual void DrawMenuButton(const MenuButton& menuButton, const UIDrawContext& context) const = 0;
-			virtual void DrawMenuItem(const MenuItem& menuItem, const UIDrawContext& context) const = 0;
-			virtual void DrawSubMenuButton(const SubMenuButton& subMenuButton, const UIDrawContext& context) const = 0;
-			virtual void DrawSlider(const Slider& slider, const UIDrawContext& context) const = 0;
-			virtual void DrawScrollBar(const ScrollBar& scrollbar, const UIDrawContext& context) const = 0;
-			virtual void DrawThumb(const Thumb& thumb, const UIDrawContext& context) const = 0;
-			virtual void DrawCheckBox(const CheckBox& checkbox, const UIDrawContext& context) const = 0;
-			virtual void DrawRadioButton(const RadioButton& radiobutton, const UIDrawContext& context) const = 0;
-			virtual void DrawGrip(const Grip& radiobutton, const UIDrawContext& context) const = 0;
-			virtual void DrawResizeableFrame(const ResizeableFrame& radiobutton, const UIDrawContext& context) const = 0;
-			virtual void DrawViewPort(const ViewPort& vp, const UIDrawContext& context) const = 0;
-			virtual void DrawContent(const Content& content, const UIDrawContext& context) const = 0;
-			virtual void DrawScrollView(const ScrollView& scrollview, const UIDrawContext& context) const = 0;
-			virtual void DrawUniformGrid(const UniformGrid& grid, const UIDrawContext& context) const = 0;
-			virtual void DrawStack(const Stack& stack, const UIDrawContext& context) const = 0;
-			virtual void DrawTextListBox(const TextListBox& box, const UIDrawContext& context) const = 0;
-			virtual void DrawTextList(const TextList& text, const UIDrawContext& context) const = 0;
-		};
-#pragma endregion
-
-#pragma region // UIDrawContext
-		struct UIDrawContext
-		{
-			IRenderer& renderer;
-			UISystem& system;
-			UISkin* skin = nullptr;
-			Widget* hover = nullptr;
-			Widget* focus = nullptr;
-			Widget* capture = nullptr;
-		};
-#pragma endregion
-
-#pragma region // UIRenderer
-		class UIRenderer
+#pragma region // DraggableItem
+		// a widget that can be dragged from one droppable widget into another
+		// it's used for inventory systems, skill bars, customizable menus, etc...
+		class DraggableItem : public Draggable
 		{
 		private:
-		public:
-			static void Draw(const UIDrawContext& context, const Widget& widget)
-			{
-				// if widget is hidden, its whole tree is also hidden. bail out
-				if (!widget.IsVisible()) return;
-
-				// draw this widget
-				widget.Draw(context);
-
-				// get current clip region from renderer. intersect with this widget's rect to get effective clip region. 
-				RectF orig = context.renderer.GetClipRegion();
-				RectF effective = widget.GetAbsoluteRect().Intersect(orig);
-
-				// apply effective clip region to renderer. this will make sure this widget's tree will be clipped by this widget's rect
-				context.renderer.SetClipRegion(effective);
-
-				// draw children
-				widget.ForEachChild([&](Widget* widget)
-					{
-						Draw(context, *widget);
-					});
-
-				// restore previous clip region after drawing this widget's tree
-				context.renderer.SetClipRegion(orig);
-			}
-		};
-#pragma endregion
-
-#pragma region // UIResources
-		struct UIResources
-		{
-			Font defaultFont;
-			Font highlightFont;
-			Font titleFont;
-
-			enum class FontType
-			{
-				Default,
-				Highlight,
-				Title
-			};
-
-			UIResources()
-				: defaultFont(Font::MakeInvalidFont())
-				, highlightFont(Font::MakeInvalidFont())
-				, titleFont(Font::MakeInvalidFont())
-			{
-			}
-		};
-#pragma endregion
-
-#pragma region // UISystem
-		class UISystem
-		{
-		private:
-			LayerManager m_layerManager;
-			TooltipManager m_tooltipManager;
-			DragDropLayer m_dragDropLayer;
-
-			Widget* m_mouseCapture = nullptr;
-			Widget* m_mouseOver = nullptr;
-			Widget* m_focus = nullptr;
-			std::vector<Widget*> m_queueForRemoval;
-			UIResources m_resources;
-
-			void SetFocus(Widget* widget)
-			{
-				// if we're setting the same widget that is already in focus, do nothing
-				if (m_focus == widget) return;
-
-				// since we're changing focus, notify current focus it's about to lose focus
-				if (m_focus)
-				{
-					m_focus->OnLostFocus();
-					m_focus = nullptr;
-				}
-
-				// if new focus widget does not exist, bail out
-				if (!widget) return;
-
-				// if this widget is not focusable, bail out
-				if (!widget->IsFocusable()) return;
-
-				// this new widget is valid to be new focus, notify it
-				m_focus = widget;
-				if (m_focus)
-				{
-					m_focus->OnGotFocus();
-				}
-			}
-
-			void SetCapture(Widget* widget)
-			{
-				m_mouseCapture = widget;
-			}
-
-			Widget& Root() const
-			{
-				return m_layerManager.Bottom();
-			}
-
-		public:
-			void SetFont(Font font, UIResources::FontType type)
-			{
-				bool fontChanged = false;
-				switch (type)
-				{
-				case UIResources::FontType::Default:
-					if (m_resources.defaultFont != font) fontChanged = true;
-					m_resources.defaultFont = font;
-					break;
-				case UIResources::FontType::Highlight:
-					if (m_resources.highlightFont != font) fontChanged = true;
-					m_resources.highlightFont = font;
-					break;
-				case UIResources::FontType::Title:
-					if (m_resources.titleFont != font) fontChanged = true;
-					m_resources.titleFont = font;
-					break;
-				default:
-					break;
-				}
-
-				// update all widgets if font changed as they may need to recalculate their layout based on new font
-				if (fontChanged)
-				{
-					m_layerManager.ForEach([](Widget* widget)
-						{
-							widget->ForEachWidget([](Widget* widget)
-								{
-									widget->ResourceChange();
-									return true;
-								});
-						});
-				}
-			}
-
-			Font GetFont(UIResources::FontType type) const
-			{
-				switch (type)
-				{
-				case UIResources::FontType::Default:
-					return m_resources.defaultFont;
-				case UIResources::FontType::Highlight:
-					return m_resources.highlightFont;
-				case UIResources::FontType::Title:
-					return m_resources.titleFont;
-				default:
-					throw std::runtime_error("invalid font type");
-				}
-			}
-
-			UISystem() :
-				m_layerManager(this),
-				m_dragDropLayer(this)
-			{
-				// define build for root layer and queue on layer manager
-				Layer::BuildDescription root
-				{
-					PositionF{0,0},
-					SizeF{0, 0},
-					nullptr,
-					Layer::Modal,
-					false
-				};
-				m_layerManager.QueueAdd(root);
-
-				// build the root layer
-				m_layerManager.ProcessCommandRequests();
-			}
-
-			void SetSize(const SizeF& size)
-			{
-				Root().SetSize(size);
-			}
-
-			void SetPosition(const PositionF& pos)
-			{
-				Root().SetPosition(pos);
-			}
-
-			void Show()
-			{
-				Root().Show();
-			}
-
-			void Draw(UIDrawContext& context)
-			{
-				// set the input state in context so that widgets can use it when drawing themselves
-				context.capture = m_mouseCapture;
-				context.hover = m_mouseOver;
-				context.focus = m_focus;
-
-				// draw overlays
-				m_layerManager.ForEach([&](Widget* widget)
-					{
-						UIRenderer::Draw(context, *widget);
-					});
-
-				// draw tooltip
-				UIRenderer::Draw(context, *m_tooltipManager.Get());
-
-				// draw draggable
-				m_dragDropLayer.ForEachChild([&](Widget* widget)
-					{
-						UIRenderer::Draw(context, *widget);
-					});
-			}
-
-			// this "detaches" the widget from system. if widget is mouse capture, hover, or focus, these states will be reset to null
-			void Detach(Widget* widget)
-			{
-				if (m_mouseCapture == widget) SetCapture(nullptr);
-				if (m_focus == widget) SetFocus(nullptr);
-				if (m_mouseOver == widget) m_mouseOver = nullptr;
-			}
-
-			// scenario 1 - no overlay exists, overlay trigger is clicked
-			//		- system does not check overlay tree for hit, as it is empty
-			//		- overlay trigger requests system to toggle its overlay
-			//		- system does not have its overlay yet so queue it to add
-			//		- system does not remove any overlay in tree. does nothing
-			//		- system handles all queued overlay requests
-			// 
-			// scenario 2 - overlays exists, overlay trigger is clicked, and its overlay already exists
-			//		- none of the overlays in overlay tree is hit, so all is queued for removal
-			//		- overlay trigger requests system to toggle its overlay
-			//		- system have its overlay so queue it to remove
-			//		- system removes all existing overlay in overlay tree
-			//		- system handles all queued overlay requests
-			// 
-			// scenario 3 - overlays exists, overlay trigger is clicked
-			// 		- none of the overlays in overlay tree is hit, so all is queued for removal
-			//		- overlay trigger requests system to toggle its overlay
-			//		- system does not have its overlay yet so queue it to add
-			//		- system removes all existing overlay in overlay tree
-			//		- system handles all queued overlay requests
-			// 
-			// scenario 4 - overlays exists, overlay trigger's overlay is active, mouse clicked somewhere not in any overlay nor in overlay trigger
-			// 		- none of the overlays in overlay tree is hit, so all is queued for removal
-			//		- overlay trigger does nothing. it did not get hit.
-			//		- system removes all existing overlay in overlay tree
-			//		- system has no pop requests to handle, does nothing
-			// 
-			// scenario 5 - overlay exists, overlay trigger's overlay is active, mouse clicked in one of the existing overlays
-			//		- system finds overlay that got hit in stack. queue overlays above it for removal
-			//		- overlay trigger does nothing. it did not get hit.
-			//		- system removes all overlays on queue for removal
-			//		- system has no pop requests to handle, does nothing
-			// 
-			// scenario 6 - no overlay exists, mouse clicked somewhere not in any overlay nor in overlay trigger
-			//		- system does not check overlay tree for hit, as it is empty
-			//		- overlay trigger does nothing. it did not get hit.
-			//		- system does not remove any overlay in tree. does nothing
-			//		- system has no pop requests to handle, does nothing
-			// 
-			// scenario 7 - overlay exists, overlay trigger a's overlay is active, but overlay trigger b is clicked
-			// 		- none of the overlays in overlay tree is hit, so all is queued for removal
-			//		- overlay trigger b requests system to toggle its overlay
-			//		- system checks for popbutton b's overlay. if it exists, queue it for removal. otherwise, queue it for add
-			//		- overlay trigger a does nothing. it did not get hit
-			//		- system removes all existing overlay in overlay tree
-			//		- system handles all queued overlay requests
-			// 
-			// scenario 8 - overlay opens a child overlay. this only happens if overlay contains a overlay trigger as child (only overlay trigger can request to spawn a overlay, as of now)
-			//		- system finds overlay that got hit in stack. queue overlays above it for removal
-			//		- overlay trigger clicked requests system to toggle its overlay
-			//		- system checks for popbutton's overlay. if it exists, queue it for removal. otherwise, queue it for add
-			//		- system removes all overlays on queue for removal
-			//		- system handles all queued overlay requests
-			// 
-			// scenario 9 - modal overlay exists
-			//		- THIS IS PROBLEM FOR ANOTHER DAY. WE DON'T HAVE MODAL YET
-			//
-			void MouseDown(const PositionF& p)
-			{
-				m_layerManager.FlushCommands();
-
-				// find top overlay that intersects with point. overlay must be visible and enabled
-				LayerStack::Route result = m_layerManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
-
-				// check if result says we're block by modal. this means that a modal layer exist and did not intersect with point and this blocks search to succeeding layer stack
-				if (result.isBlockedByModal)
-				{
-					// if block by modal, collapse above it. we should not collapse modals. it should only be collapsed via command
-					m_layerManager.CollapseAbove(result);
-
-					// in case focus, hover and capture are set to widgets that belong to overlay that collapsed, they are reset safely via UnregisterToSystem>Detach
-					return;
-				}
-
-				// if we reach this point, we should be able to find the top widget that intersects with point. simultaneously we can resolve Z order as we traverse to find the top widget
-				// since bottom layer is a modal (root), it should always exist therefore we should always expect a valid layer at this point
-				// if not, then we must throw exception as this should not happen
-				if (!result.layer)
-				{
-					throw std::runtime_error("impossible not to find a layer. why is this so???");
-				}
-
-				Widget* widget = result.layer->FindAndResolveZOrderAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
-
-				// at this point, we should have the top-most widget and Z order is resolved. it's impossible to not find top-most widget, we already have the layer.
-				if (!widget)
-				{
-					throw std::runtime_error("why no top-most widget when we already found the layer??");
-				}
-
-				// collapse the layer stack above the clicked layer. 
-				// it is expected that any layer above the clicked layer will be collapsed. 
-				// if a layer trigger e.g. menubutton is clicked, this will collapsed its child layer e.g. submenu if it is open. that is expected behavior
-				// if child layer is not open, then nothing will be collapsed. that is expected behavior
-				// the next call "mouse down" will handle layer trigger's request to toggle its layer.
-				// this command is queued because we don't want to collapse the layer stack above the clicked layer until after the clicked layer's mouse down event is executed. 
-				// this is because the clicked layer may request to toggle its layer, and if it does, we don't want to collapse it immediately after mouse down. 
-				// we want to give it a chance to toggle its layer first before we collapse the stack above it.
-				m_layerManager.QueueCollapseAbove(result);
-
-				// now we are ready to execute MouseDown event on the clicked widget, if there is one. by right there should be one by this time. 
-				widget->MouseDown(p);
-
-				// set capture
-				SetCapture(widget);
-
-				// set focus
-				SetFocus(widget);
-
-				// hide tooltip. if mouse is down, tooltip should be hidden regardless of where the mouse is clicked
-				m_tooltipManager.Hide();
-			}
-
-			void MouseUp(const PositionF& p)
-			{
-				if (!m_mouseCapture) return;
-				m_mouseCapture->MouseUp(p);
-				m_mouseCapture = nullptr;
-
-				// by right, tooltip of the widget (if it has tooltip) the mouse hovers now should appear... 
-				// but after mouse up, we don't have mouse over widget yet, so we don't bother showing tooltip now
-			}
-
-			void MouseMove(const PositionF& p)
-			{
-				// prioritize captured widget to handle mouse move 
-				if (m_mouseCapture)
-				{
-					m_mouseCapture->MouseMove(p);
-
-					// since mouse is captured, tooltip should be hidden
-					m_tooltipManager.Hide();
-
-					return;
-				}
-
-				// check first if mouse hovers over a overlay
-				LayerStack::Route result = m_layerManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
-
-				// if mouse hovers outside of the top overlay in the stack and down to top-most modal overlay, the route result will be "blocked by modal"
-				// this is because when one or more modal overlay exists, the top-most modal overlay and succeeding overlays on top of it are the only ones 
-				// allowed to receive mouse event or user input in general. if mouse cursor did not hover over any of them overlays, then mouse move is ignored. 
-				if (result.isBlockedByModal)
-				{
-					// just in case there is a mouse over widget somewhere, let's handle its mouse leave
-					if (m_mouseOver)
-					{
-						m_mouseOver->MouseLeave();
-						m_mouseOver = nullptr;
-					}
-
-					// make sure to hide any active tooltip as well
-					m_tooltipManager.Hide();
-
-					return;
-				}
-
-				// if there is no layer found yet we were not blocked by modal, something is wrong. this cannot happen
-				if (!result.layer)
-				{
-					throw std::runtime_error("impossible not to find a layer. why is this so???");
-				}
-
-				// find the top widget in this layer's tree that is hovered. we also include disabled widgets in hover check.
-				// reason is so that even disable widgets can still have tooltip shown if they have it
-				Widget* hover = result.layer->FindTopWidgetAt(p, Widget::SearchFlags::Visible);
-
-				// let's resolve which widget is mouse over now, if any
-				if (hover != m_mouseOver)
-				{
-					// invoke mouse leave on current mouse hover widget
-					if (m_mouseOver)
-					{
-						m_mouseOver->MouseLeave();
-					}
-
-					// just in case we hover outside of root, assuming root is not desktop, hover will be nullptr
-					m_mouseOver = hover;
-					if (m_mouseOver)
-					{
-						m_mouseOver->MouseEnter();
-					}
-				}
-
-				// finally if there is a mouse over widget, let it handle mouse move event
-				if (m_mouseOver)
-				{
-					m_mouseOver->MouseMove(p);
-				}
-
-				// if you reach this point, then mouse hovers a widget that might have a tooltip. show it.
-				m_tooltipManager.Show(m_mouseOver);
-			}
-
-			void KeyDown(int key)
-			{
-				if (m_focus)
-				{
-					m_focus->KeyDown(key);
-				}
-			}
-
-			void KeyUp(int key)
-			{
-				if (m_focus)
-				{
-					m_focus->KeyUp(key);
-				}
-			}
-
-			//bool RegisterLayer(Widget* widget, const Layer::BuildDescription& desc)
-			//{
-			//	return m_layerManager.Register(widget, desc);
-			//}
-
-			bool RemoveLayer(Widget* owner)
-			{
-				return m_layerManager.Remove(owner);
-			}
-
-			void ToggleLayer(Widget* owner, const Layer::BuildDescription& desc)
-			{
-				m_layerManager.QueueToggle(owner, desc);
-			}
-
-			void AddWidget(std::unique_ptr<Widget> widget)
-			{
-				Root().AddChild(std::move(widget));
-			}
-
-			void RemoveWidget(Widget* widget)
-			{
-				// bail out if invalid
-				if (!widget) return;
-
-				// we can now remove this widget. this will remove the widget's whole tree. 
-				//if (!m_layoutTree.Remove(widget))
-				if (!Root().Remove(widget))
-				{
-					// let's be strict for now to catch any silent error
-					throw std::runtime_error("failed to remove a widget from root");
-				}
-			}
-
-			void Collapse()
-			{
-				m_layerManager.QueueCollapse(1);
-			}
-
-			void AddLayer(const Layer::BuildDescription& desc)
-			{
-				m_layerManager.QueueAdd(desc);
-			}
-
-			bool IsLayerExpanded(const Widget* owner) const
-			{
-				return m_layerManager.IsExpanded(owner);
-			}
-
-			void Begin()
-			{
-				m_layerManager.FlushCommands();
-			}
-
-			void End()
-			{
-				// if a overlay trigger is clicked, it might have requested to toggle its overlay. process those requests here
-				m_layerManager.ProcessCommandRequests();
-			}
-
-			void BeginDrag(Widget* source)
-			{
-				// for now we just end drag immediately. we can implement this later when we have drag drop scenario
-				// but we want to have this method here as placeholder to show where drag drop manager will be used in
-				m_dragDropLayer.Begin(source);
-			}
-
-			// the position p here is the mouse position where the widget draggable is dragged into
-			// the goal of this method is to identify the top widget that intersects with that position p
-			void EndDrag(Widget* draggable, const PositionF& p)
-			{
-				// 1. find the top-most widget that intersects with given point
-				LayerStack::Route result = m_layerManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
-
-				// if route result is blocked by modal, it means we intersect outside of existing modal layer and there are no other widgets that can be found to drop current dragged widget
-				// but if not modal, we must have found the layer that intersects with  point
-				Widget* target = nullptr;
-				if (!result.isBlockedByModal)
-				{
-					// but check first if layer is really valid. it must.
-					// if there is no layer found yet we were not blocked by modal, something is wrong. this cannot happen
-					if (!result.layer)
-					{
-						throw std::runtime_error("impossible not to find a layer. why is this so???");
-					}
-
-					// let's now find the top widget in this layer's tree that intersects with the point
-					target = result.layer->FindAndResolveZOrderAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
-				}
-
-
-				// 2. pass that widget to dragdrop layer so it will attemp to drop the widget being drag into it
-				m_dragDropLayer.End(draggable, target);
-			}
-
-			void Flush()
-			{
-				for (Widget* widget : m_queueForRemoval)
-				{
-					widget->GetParent()->RemoveChild(widget);
-				}
-
-				m_queueForRemoval.clear();
-			}
-
-			void QueueForRemoval(Widget* widget)
-			{
-				m_queueForRemoval.push_back(widget);
-			}
-		};
-
-#pragma endregion
-
-#pragma region // OverlayTrigger
-		class OverlayTrigger : public Widget
-		{
 		protected:
-			Layer::BuildDescription m_buildDesc;
-
-			//// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
-			//bool OnRegisterToSystem() override final
-			//{
-			//	UISystem* system = GetSystem();
-			//	if (system)
-			//	{
-			//		// be strict for now
-			//		if (!system->RegisterLayer(this, m_buildDesc))
-			//		{
-			//			throw std::runtime_error("failed to register layer");
-			//		}
-			//	}
-			//	return true;
-			//}
-
-			// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its layer descriptor into the system
-			bool OnUnregisterToSystem() override final
+			// this widget is draggable via mouse move so we handle start of dragging through mouse down
+			virtual void OnMouseDown(const PositionF& position)
 			{
-				UISystem* system = GetSystem();
-				if (system)
-				{
-					// be strict for now
-					if (!system->RemoveLayer(this))
-					{
-						throw std::runtime_error("failed to unregister layer");
-					}
-				}
-
-				return true;
+				BeginDrag(position);
 			}
 
-			// requests system to toggle this widget's overlay
-			void Toggle()
+			// this widget drops on mouse up
+			virtual void OnMouseUp(const PositionF& position)
 			{
-				UISystem* system = GetSystem();
-				if (system)
-				{
-					system->ToggleLayer(this, m_buildDesc);
-				}
-			}
-
-			void OnMouseDown(const PositionF& position) override final
-			{
-				Toggle();
+				EndDrag(position);
 			}
 
 		public:
-			OverlayTrigger(const Layer::BuildDescription& buildDesc) :
-				m_buildDesc(buildDesc)
+			DraggableItem()
 			{
-				m_moveBehavior = MoveBehavior::None;
 			}
 
-			virtual bool HasTooltip() const
+			void Draw(const UIDrawContext& context) const override
 			{
-				return true;
-			}
-
-			virtual void BuildTooltip(Widget& tooltip)
-			{
-				// this is just for debug purposes. can formalize this later
-				tooltip.SetSize({ 80,30 });
-				tooltip.SetPosition(GetAbsolutePosition() + PositionF{ GetSize().width + 5, 0 });
+				context.skin.DrawDraggable(*this, context);
 			}
 		};
 #pragma endregion
@@ -939,7 +310,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawImage(*this, context);
+				context.skin.DrawImage(*this, context);
 			}
 
 			void SetAlignment(Widget::VerticalAlignment vAlign, Widget::HorizontalAlignment hAlign)
@@ -1006,6 +377,9 @@ namespace engine
 				}
 
 				m_textSize = font.GetSize(m_text);
+
+				// reset position value to default before realigning it
+				m_textPosition = {};
 
 				switch (m_vAlign)
 				{
@@ -1092,7 +466,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawLabel(*this, context);
+				context.skin.DrawLabel(*this, context);
 			}
 		};
 
@@ -1110,7 +484,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawFrame(*this, context);
+				context.skin.DrawFrame(*this, context);
 			}
 		};
 
@@ -1136,54 +510,23 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawButton(*this, context);
+				context.skin.DrawButton(*this, context);
 			}
 		};
 
-		class MenuButton : public Button
+		class MenuButton : public LayerTrigger
 		{
 		protected:
-			Layer::BuildDescription m_buildDesc;
+			//Layer::BuildDescription m_buildDesc;
 
-			//// this is fired up when this widget is added to a widget tree with a UI system. it will register its layer descriptor into the system
-			//bool OnRegisterToSystem() override final
-			//{
-			//	UISystem* system = GetSystem();
-			//	if (system)
-			//	{
-			//		// be strict for now
-			//		if (!system->RegisterLayer(this, m_buildDesc))
-			//		{
-			//			throw std::runtime_error("failed to register layer");
-			//		}
-			//	}
-			//	return true;
-			//}
+
 
 			// this is fired up when this widget is removed from a widget tree with a UI system. it will remove its layer descriptor into the system
 			bool OnUnregisterToSystem() override final
 			{
-				UISystem* system = GetSystem();
-				if (system)
-				{
-					// be strict for now
-					if (!system->RemoveLayer(this))
-					{
-						throw std::runtime_error("failed to unregister layer");
-					}
-				}
+				RemoveLayer();
 
 				return true;
-			}
-
-			// requests system to toggle this widget's overlay
-			void Toggle()
-			{
-				UISystem* system = GetSystem();
-				if (system)
-				{
-					system->ToggleLayer(this, m_buildDesc);
-				}
 			}
 
 			void OnMouseDown(const PositionF& position) override final
@@ -1192,16 +535,20 @@ namespace engine
 			}
 
 		public:
-			MenuButton(const Layer::BuildDescription& buildDesc) :
-				m_buildDesc(buildDesc)
+			MenuButton(const Layer::BuildDescription& buildDesc) 
+				: LayerTrigger(buildDesc)
 			{
 				m_moveBehavior = MoveBehavior::None;
-				m_buildDesc.type = Layer::Menu;
 			}
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawMenuButton(*this, context);
+				context.skin.DrawMenuButton(*this, context);
+			}
+
+			bool IsExpanded() const
+			{
+				return LayerTrigger::IsExpanded();
 			}
 		};
 
@@ -1217,7 +564,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawSubMenuButton(*this, context);
+				context.skin.DrawSubMenuButton(*this, context);
 			}
 		};
 
@@ -1226,7 +573,7 @@ namespace engine
 		public:
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawMenuItem(*this, context);
+				context.skin.DrawMenuItem(*this, context);
 			}
 		};
 
@@ -1251,7 +598,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawThumb(*this, context);
+				context.skin.DrawThumb(*this, context);
 			}
 		};
 
@@ -1510,7 +857,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawSlider(*this, context);
+				context.skin.DrawSlider(*this, context);
 			}
 		};
 
@@ -1594,7 +941,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawCheckBox(*this, context);
+				context.skin.DrawCheckBox(*this, context);
 			}
 		};
 
@@ -1609,7 +956,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawRadioButton(*this, context);
+				context.skin.DrawRadioButton(*this, context);
 			}
 		};
 
@@ -1814,7 +1161,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawScrollBar(*this, context);
+				context.skin.DrawScrollBar(*this, context);
 			}
 		};
 
@@ -1839,7 +1186,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawContent(*this, context);
+				context.skin.DrawContent(*this, context);
 			}
 		};
 
@@ -1862,7 +1209,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawGrip(*this, context);
+				context.skin.DrawGrip(*this, context);
 			}
 		};
 
@@ -2276,7 +1623,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawResizeableFrame(*this, context);
+				context.skin.DrawResizeableFrame(*this, context);
 			}
 
 			void AddContent(std::unique_ptr<Widget> widget)
@@ -2455,7 +1802,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawViewPort(*this, context);
+				context.skin.DrawViewPort(*this, context);
 			}
 
 			void AddContent(std::unique_ptr<Widget> content)
@@ -2703,7 +2050,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin) context.skin->DrawScrollView(*this, context);
+				context.skin.DrawScrollView(*this, context);
 			}
 
 		};
@@ -2771,10 +2118,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin)
-				{
-					context.skin->DrawStack(*this, context);
-				}
+				context.skin.DrawStack(*this, context);
 			}
 		};
 
@@ -2939,10 +2283,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin)
-				{
-					context.skin->DrawUniformGrid(*this, context);
-				}
+				context.skin.DrawUniformGrid(*this, context);
 			}
 		};
 
@@ -2983,11 +2324,8 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin)
-				{
-					// TODO: we don't have implementation for drawing TextItem yet...
-					// context.skin->DrawTextItem(*this, context);
-				}
+				// TODO: we don't have implementation for drawing TextItem yet...
+				// context.skin->DrawTextItem(*this, context);
 			}
 		};
 
@@ -3351,10 +2689,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin)
-				{
-					context.skin->DrawTextList(*this, context);
-				}
+				context.skin.DrawTextList(*this, context);
 			}
 		};
 
@@ -3472,10 +2807,7 @@ namespace engine
 
 			void Draw(const UIDrawContext& context) const override
 			{
-				if (context.skin)
-				{
 					//	context.skin->DrawTextListBox(*this, context);
-				}
 			}
 
 			void Clear()
@@ -3486,7 +2818,6 @@ namespace engine
 #pragma endregion
 
 #pragma region // UI theme/skin
-
 		class DefaultUISkin : public UISkin
 		{
 		public:
@@ -3495,7 +2826,7 @@ namespace engine
 				PositionF pos = button.GetAbsolutePosition();
 				SizeF size = button.GetSize();
 
-				if (&button == context.capture)
+				if (context.system.HasMouseCapture(button))
 				{
 					context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
 					context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
@@ -3508,7 +2839,7 @@ namespace engine
 				//	context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 0,0,0,1 }, 0);
 				//	context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
 				//}
-				else if (&button == context.hover)
+				else if (context.system.IsMouseOver(button))
 				{
 					context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
 					context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
@@ -3527,13 +2858,13 @@ namespace engine
 				PositionF pos = button.GetAbsolutePosition();
 				SizeF size = button.GetSize();
 
-				if (&button == context.capture)
+				if (context.system.HasMouseCapture(button))
 				{
 					context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
 					context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
 					context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
 				}
-				else if (&button == context.hover)
+				else if (context.system.IsMouseOver(button))
 				{
 					context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
 					context.renderer.Draw(pos + PositionF{ 0, 0 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
@@ -3556,7 +2887,7 @@ namespace engine
 
 				context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
 
-				ColorF color = (&overlay == context.focus) ? ColorF{ 0.6f, 0.6f, 0.6f, 1 } : ColorF{ 0.5f, 0.5f, 0.5f, 1 };
+				ColorF color = (context.system.HasFocus(overlay)) ? ColorF{ 0.6f, 0.6f, 0.6f, 1 } : ColorF{ 0.5f, 0.5f, 0.5f, 1 };
 				context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, color, 0);
 
 				if (overlay.IsMenu())
@@ -3592,10 +2923,10 @@ namespace engine
 				}
 
 				PositionF pos = label.GetTextAbsolutePosition();
-				if (label.GetParent() && label.GetParent() == context.capture) pos += PositionF{ 1, 1 };
+				if (label.GetParent() && context.system.HasMouseCapture(*label.GetParent())) pos += PositionF{ 1, 1 };
 
 				ColorF color = { 0.3f,0.3f,0.3f,1 };
-				if (label.GetParent() && label.GetParent() == context.focus) color = { 0, 0, 0, 1 };
+				if (label.GetParent() && context.system.HasMouseCapture(*label.GetParent())) color = { 0, 0, 0, 1 };
 
 				context.renderer.Draw(font, label.Get(), pos, color);
 			}
@@ -3627,17 +2958,18 @@ namespace engine
 
 				ctx.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
 
-				ColorF color = (&frame == ctx.focus) ? ColorF{ 0.6f, 0.6f, 0.6f, 1 } : ColorF{ 0.5f, 0.5f, 0.5f, 1 };
+				ColorF color = (ctx.system.HasFocus(*frame.GetParent())) ? ColorF{ 0.6f, 0.6f, 0.6f, 1 } : ColorF{ 0.5f, 0.5f, 0.5f, 1 };
 				ctx.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, color, 0);
 			}
 
 			void DrawMenuButton(const MenuButton& menuButton, const UIDrawContext& context) const override
 			{
+				
 				PositionF pos = menuButton.GetAbsolutePosition();
 				SizeF size = menuButton.GetSize();
-				bool isExpanded = context.system.IsLayerExpanded(&menuButton);
+				bool isExpanded = menuButton.IsExpanded();
 
-				if (&menuButton == context.capture)
+				if (context.system.HasMouseCapture(menuButton))
 				{
 					ColorF color = isExpanded ? ColorF{ 0.5f, 0.5f, 0.5f, 1 } : ColorF{ 0.6f, 0.6f, 0.6f, 1 };
 					context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
@@ -3651,7 +2983,7 @@ namespace engine
 						context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, color, 0);
 					}
 				}
-				else if (&menuButton == context.hover)
+				else if (context.system.IsMouseOver(menuButton))
 				{
 					ColorF color = isExpanded ? ColorF{ 0.5f, 0.5f, 0.5f, 1 } : ColorF{ 0.6f, 0.6f, 0.6f, 1 };
 					context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
@@ -3679,11 +3011,11 @@ namespace engine
 			{
 				PositionF pos = subMenuButton.GetAbsolutePosition();
 				SizeF size = subMenuButton.GetSize();
-				bool isExpanded = context.system.IsLayerExpanded(&subMenuButton);
+				bool isExpanded = subMenuButton.IsExpanded();
 				ColorF color = isExpanded ? ColorF{ 0.5f, 0.5f, 0.5f, 1 } : ColorF{ 0.6f, 0.6f, 0.6f, 1 };
 
 
-				if (&subMenuButton == context.capture || &subMenuButton == context.hover)
+				if (context.system.HasMouseCapture(subMenuButton) || context.system.IsMouseOver(subMenuButton))
 				{
 					context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
 					context.renderer.Draw(pos + PositionF{ 1, 1 }, size - (isExpanded ? SizeF{ 1,2 } : SizeF{ 2,2 }), color, 0);
@@ -3703,13 +3035,13 @@ namespace engine
 				PositionF pos = menuItem.GetAbsolutePosition();
 				SizeF size = menuItem.GetSize();
 
-				if (&menuItem == context.capture)
+				if (context.system.HasMouseCapture(menuItem))
 				{
 					context.renderer.Draw(pos + PositionF{ 4, 4 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
 					context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 4,4 }, { 0.6f,0.6f,0.6f,1 }, 0);
 					context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 4,4 }, { 0.5f,0.5f,0.5f,1 }, 0);
 				}
-				else if (&menuItem == context.hover)
+				else if (context.system.IsMouseOver(menuItem))
 				{
 					context.renderer.Draw(pos, size, { 0,0,0,1 }, 0);
 					context.renderer.Draw(pos + PositionF{ 1, 1 }, size - SizeF{ 2,2 }, { 0.6f,0.6f,0.6f,1 }, 0);
@@ -3733,7 +3065,7 @@ namespace engine
 				PositionF pos = thumb.GetAbsolutePosition();
 				SizeF size = thumb.GetSize();
 
-				ColorF color = (&thumb == context.hover) ? ColorF{ 0.6f, 0.6f, 0.6f, 1 } : ColorF{ 0.5f, 0.5f, 0.5f, 1 };
+				ColorF color = (context.system.IsMouseOver(thumb)) ? ColorF{0.6f, 0.6f, 0.6f, 1} : ColorF{0.5f, 0.5f, 0.5f, 1};
 
 				context.renderer.Draw(pos + PositionF{ 2, 2 }, size - SizeF{ 4,4 }, { 0,0,0,1 }, 0);
 				context.renderer.Draw(pos + PositionF{ 3, 3 }, size - SizeF{ 6,6 }, { 0.5f,0.5f,0.5f,1 }, 0);
@@ -3774,7 +3106,7 @@ namespace engine
 				PositionF pos = grip.GetAbsolutePosition();
 				SizeF size = grip.GetSize();
 
-				ColorF color = (&grip == context.hover) ? ColorF{ 0.5f,0,0,0.4f } : ColorF{ 0.5f,0,0,0.2f };
+				ColorF color = (context.system.IsMouseOver(grip)) ? ColorF{0.5f,0,0,0.4f} : ColorF{0.5f,0,0,0.2f};
 				context.renderer.Draw(pos, size, color, 0);
 
 			}

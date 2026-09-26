@@ -1,5 +1,5 @@
 #include <GUI/Tooltip.h>
-#include <GUI/gui.h>
+#include <GUI/UIRenderer.h>
 
 
 #pragma region // Tooltip
@@ -21,7 +21,7 @@ namespace engine
 		// handle rendering
 		void Tooltip::Draw(const UIDrawContext& context) const
 		{
-			if (context.skin) context.skin->DrawTooltip(*this, context);
+			context.skin.DrawTooltip(*this, context);
 		}
 #pragma endregion
 

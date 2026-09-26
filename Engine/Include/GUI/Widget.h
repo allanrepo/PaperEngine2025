@@ -68,6 +68,9 @@ namespace engine
 #pragma region // system registration - internal methods called when widget is added to or removed from UI tree
 			bool UnregisterToSystem();
 			bool RegisterToSystem();
+
+			engine::event::Event<Widget*> UnregisteredToSystem;
+
 #pragma endregion
 
 		protected:
@@ -124,15 +127,7 @@ namespace engine
 
 #pragma region // system reference
 			// get system reference from the root of UI tree this widget belongs to. if this widget is not attached to any tree, it will return nullptr
-			virtual UISystem* GetSystem() const
-			{
-				if (m_parent)
-				{
-					return m_parent->GetSystem();
-				}
-
-				return nullptr;
-			}
+			virtual UISystem* GetSystem() const;
 #pragma endregion
 
 #pragma region // hooks/callbacks for all actions that widget performs
@@ -223,7 +218,10 @@ namespace engine
 			{
 			}
 
-			virtual ~Widget() = default;
+			virtual ~Widget()
+			{
+				UnregisterToSystem();
+			}
 #pragma endregion
 
 #pragma region // parameter that determines the horizontal and vertical alignment of the widget's content within its extent

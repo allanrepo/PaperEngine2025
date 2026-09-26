@@ -358,5 +358,22 @@ namespace engine
 		};
 #pragma endregion
 
+#pragma region // LayerTrigger
+		class LayerTrigger : public Widget
+		{
+		protected:
+			Layer::BuildDescription m_buildDesc;
+
+			void RemoveLayer();
+
+			// requests system to toggle this widget's overlay
+			void Toggle();
+
+			bool IsExpanded() const;
+
+			LayerTrigger(const Layer::BuildDescription& buildDesc);
+		};
+#pragma endregion
+
 	}
 }

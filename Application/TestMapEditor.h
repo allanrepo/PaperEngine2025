@@ -5643,7 +5643,7 @@ namespace TestMapEditor
 	};
 #pragma endregion
 
-#if 1
+#if 0
 #pragma region // ButtonHandle
 	class ButtonHandle
 	{
@@ -5786,7 +5786,7 @@ namespace TestMapEditor
 		UISystem m_ux;
 		Button* m_button = nullptr;
 		bool m_fullscreen = false;
-		ButtonHandle m_buttonHandle;
+		//ButtonHandle m_buttonHandle;
 
 		bool m_showProp = false;
 		bool m_showTerrain = false;
@@ -5813,29 +5813,29 @@ namespace TestMapEditor
 		{
 			Layer::BuildDescription cmd;
 
-			// this is the position of the overlay relative to its owner OverlayTrigger local space
-			cmd.position = position;
+			//// this is the position of the overlay relative to its owner OverlayTrigger local space
+			//cmd.position = position;
 
-			// size of the Layer. this will also be the size of the OverlayTrigger that will be child of the Layer
-			cmd.size = size;
+			//// size of the Layer. this will also be the size of the OverlayTrigger that will be child of the Layer
+			//cmd.size = size;
 
-			// we will cascade up to given number of tier
-			if (tier > 0)
-			{
-				// this will be the build function. it will build a overlay trigger which will be child to this trigger's overlay
-				cmd.builder = [this, tier, size, position](Widget* parent)
-					{
-						std::unique_ptr<OverlayTrigger> overlayTrigger = std::make_unique<OverlayTrigger>(CreateBuildDescWithCascadedOverlays(tier - 1, size, position));
+			//// we will cascade up to given number of tier
+			//if (tier > 0)
+			//{
+			//	// this will be the build function. it will build a overlay trigger which will be child to this trigger's overlay
+			//	cmd.builder = [this, tier, size, position](Widget* parent)
+			//		{
+			//			std::unique_ptr<OverlayTrigger> overlayTrigger = std::make_unique<OverlayTrigger>(CreateBuildDescWithCascadedOverlays(tier - 1, size, position));
 
-						// this trigger's position is at top left corner of its parent overlay
-						overlayTrigger->SetPosition({0,0});
+			//			// this trigger's position is at top left corner of its parent overlay
+			//			overlayTrigger->SetPosition({0,0});
 
-						// this trigger's size is same as its parent overlay size so it will fill up the whole overlay
-						overlayTrigger->SetSize(size);
+			//			// this trigger's size is same as its parent overlay size so it will fill up the whole overlay
+			//			overlayTrigger->SetSize(size);
 
-						parent->AddChild(std::move(overlayTrigger));			
-					};
-			}
+			//			parent->AddChild(std::move(overlayTrigger));			
+			//		};
+			//}
 
 			return cmd;
 		}
@@ -5943,24 +5943,30 @@ namespace TestMapEditor
 			// dialog
 			if (true)
 			{
-				Dialog dialog(m_ux);
-				dialog.SetPosition({ 100, 100 });
-				dialog.SetSize({ 200, 100 });
+				std::unique_ptr<Button> button = std::make_unique<Button>();
+				button->SetPosition({100, 100});
+				button->SetSize({100, 50});
+				m_button = button.get();
+				m_ux.AddWidget(std::move(button));
 
-				ButtonHandle button = dialog.CreateButton({50,25}, {100, 50}, "Spawn");
-				button.Click() += [&, this]()
-					{						
-						Dialog dialog1(this->m_ux);
-						dialog1.SetPosition({ 200, 200 });
-						dialog1.SetSize({ 600, 400 });
-								
+				//Dialog dialog(m_ux);
+				//dialog.SetPosition({ 100, 100 }); 
+				//dialog.SetSize({ 200, 100 });
 
-						ButtonHandle button1 = dialog1.CreateButton({ 50,50 }, { 100, 50 }, "Close");
-						button1.Click() += [&, this]()
-							{
-								dialog1.Close();
-							};
-					};
+				//ButtonHandle button = dialog.CreateButton({50,25}, {100, 50}, "Spawn");
+				//button.Click() += [&, this]()
+				//	{						
+				//		Dialog dialog1(this->m_ux);
+				//		dialog1.SetPosition({ 200, 200 });
+				//		dialog1.SetSize({ 600, 400 });
+				//				
+
+				//		ButtonHandle button1 = dialog1.CreateButton({ 50,50 }, { 100, 50 }, "Close");
+				//		button1.Click() += [&, this]()
+				//			{
+				//				dialog1.Close();
+				//			};
+				//	};
 
 			}
 
@@ -6817,6 +6823,7 @@ namespace TestMapEditor
 			switch (key)
 			{
 			case 9: // TAB
+				m_ux.RemoveWidget(m_button);
 				break;
 			case 27: // ESC
 				m_ux.Collapse();
@@ -7072,53 +7079,53 @@ namespace TestMapEditor
 			case 52: // 4
 				if (!m_multiModalTrigger)
 				{
-					Layer::BuildDescription cmd
-					{
-						PositionF{0, 50},
-						SizeF({200, 200}),
-						nullptr,
-						Layer::Popup
-					};
+					//Layer::BuildDescription cmd
+					//{
+					//	PositionF{0, 50},
+					//	SizeF({200, 200}),
+					//	nullptr,
+					//	Layer::Popup
+					//};
 
-					cmd.builder = [](Widget* parent)
-						{
-							Layer::BuildDescription cmd2
-							{
-								PositionF{200, 10},
-								SizeF({200, 200}),
-								nullptr,
-								Layer::Modal
-							};
+					//cmd.builder = [](Widget* parent)
+					//	{
+					//		Layer::BuildDescription cmd2
+					//		{
+					//			PositionF{200, 10},
+					//			SizeF({200, 200}),
+					//			nullptr,
+					//			Layer::Modal
+					//		};
 
-							cmd2.builder = [](Widget* parent)
-								{
-									Layer::BuildDescription cmd3
-									{
-										PositionF{200, 10},
-										SizeF({200, 200}),
-										nullptr,
-										Layer::Popup
-									};
+					//		cmd2.builder = [](Widget* parent)
+					//			{
+					//				Layer::BuildDescription cmd3
+					//				{
+					//					PositionF{200, 10},
+					//					SizeF({200, 200}),
+					//					nullptr,
+					//					Layer::Popup
+					//				};
 
-									std::unique_ptr<OverlayTrigger> widget3 = std::make_unique<OverlayTrigger>(cmd3);
-									widget3->SetPosition({ 10, 10 });
-									widget3->SetSize({ 180, 50 });
+					//				std::unique_ptr<OverlayTrigger> widget3 = std::make_unique<OverlayTrigger>(cmd3);
+					//				widget3->SetPosition({ 10, 10 });
+					//				widget3->SetSize({ 180, 50 });
 
-									parent->AddChild(std::move(widget3));
-								};
+					//				parent->AddChild(std::move(widget3));
+					//			};
 
-							std::unique_ptr<OverlayTrigger> widget2 = std::make_unique<OverlayTrigger>(cmd2);
-							widget2->SetPosition({ 10, 10 });
-							widget2->SetSize({ 180, 50 });
+					//		std::unique_ptr<OverlayTrigger> widget2 = std::make_unique<OverlayTrigger>(cmd2);
+					//		widget2->SetPosition({ 10, 10 });
+					//		widget2->SetSize({ 180, 50 });
 
-							parent->AddChild(std::move(widget2));
-						};
+					//		parent->AddChild(std::move(widget2));
+					//	};
 
-					std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
-					widget->SetPosition({ 650, 100 });
-					widget->SetSize({ 100, 50 });
+					//std::unique_ptr<OverlayTrigger> widget = std::make_unique<OverlayTrigger>(cmd);
+					//widget->SetPosition({ 650, 100 });
+					//widget->SetSize({ 100, 50 });
 
-					m_ux.AddWidget(std::move(widget));
+					//m_ux.AddWidget(std::move(widget));
 				}
 				else
 				{
@@ -7152,7 +7159,7 @@ namespace TestMapEditor
 				//button->SetSize({ 120, 120 });
 				//frame->AddChild(std::move(button));
 
-				std::unique_ptr<Draggable> draggable = std::make_unique<Draggable>();
+				std::unique_ptr<DraggableItem> draggable = std::make_unique<DraggableItem>();
 				draggable->SetPosition({ 100, 100 });
 				draggable->SetSize({ 128, 128 });
 
@@ -7175,7 +7182,7 @@ namespace TestMapEditor
 				frame->SetPosition({ 300, 250 });
 				frame->SetSize({ 300, 300 });
 
-				draggable = std::make_unique<Draggable>();
+				draggable = std::make_unique<DraggableItem>();
 				draggable->SetPosition({ 50, 50 });
 				draggable->SetSize({ 128, 128 });
 
@@ -7210,8 +7217,6 @@ namespace TestMapEditor
 			Input::Instance().Update();
 
 			m_ux.End();
-
-			m_ux.Flush();
 		}
 
 		void OnRender() override
@@ -7223,7 +7228,7 @@ namespace TestMapEditor
 			renderer.SetClipRegion(canvas.GetViewPort());
 
 			DefaultUISkin skin;
-			UIDrawContext context{ renderer, m_ux, &skin };
+			UIDrawContext context{ renderer, m_ux, skin };
 			m_ux.Draw(context);
 
 			IFontAtlas& font = AssetManager().Get<IFontAtlas>("font");
@@ -7379,7 +7384,7 @@ namespace TestMapEditor
 			renderer.SetClipRegion(canvas.GetViewPort());
 
 			engine::gui::DefaultUISkin skin;
-			engine::gui::UIDrawContext context{ renderer, m_ux, &skin };
+			engine::gui::UIDrawContext context{ renderer, m_ux, skin };
 			m_ux.Draw(context);
 		}
 

@@ -421,7 +421,7 @@ namespace engine::graphics::animation
 		AnimationSystemCache() = default;
 
 	public:
-		// Non-copyable, but movable
+		// Non-copyable, non-movable
 		AnimationSystemCache(const AnimationSystemCache&) = delete;
 		AnimationSystemCache& operator=(const AnimationSystemCache&) = delete;
 		AnimationSystemCache(AnimationSystemCache&&) noexcept = delete;

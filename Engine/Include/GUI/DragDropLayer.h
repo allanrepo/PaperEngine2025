@@ -764,16 +764,11 @@ namespace engine
         {
         private:
         protected:
-            // this widget is draggable via mouse move so we handle start of dragging through mouse down
-            virtual void OnMouseDown(const PositionF& position);
+            void BeginDrag(const PositionF& position);
 
-            // this widget drops on mouse up
-            virtual void OnMouseUp(const PositionF& position);
+            void EndDrag(const PositionF& position);
 
-        public:
             Draggable();
-
-            void Draw(const UIDrawContext& context) const override;
         };
 #pragma endregion
 

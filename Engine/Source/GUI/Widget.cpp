@@ -1,4 +1,4 @@
-#include <GUI/gui.h>
+#include <GUI/Widget.h>
 
 
 #pragma region // Widget
@@ -74,6 +74,19 @@ namespace engine
 		PositionF Widget::DragHandler::GetBeginPosition() const
 		{
 			return m_beginMousePosition;
+		}
+#pragma endregion
+
+#pragma region // system reference
+		// get system reference from the root of UI tree this widget belongs to. if this widget is not attached to any tree, it will return nullptr
+		UISystem* Widget::GetSystem() const
+		{
+			if (m_parent)
+			{
+				return m_parent->GetSystem();
+			}
+
+			return nullptr;
 		}
 #pragma endregion
 
@@ -347,9 +360,9 @@ namespace engine
 			// callback hook for derived class to do its own cleanup before detaching from system
 			OnUnregisterToSystem();
 
-			// this will remove this widget from UISystem's focus, mouse capture, and mouse over tracking if this widget is currently being tracked by UISystem
-			UISystem* system = GetSystem();
-			if (system) system->Detach(this);
+			// this is an event that allows UISystem to untrack this widget from its interaction states
+			UnregisteredToSystem(this);
+
 			return true;
 		}
 
@@ -586,7 +599,6 @@ namespace engine
 			// if this is enabled as well as its ascendants, then this is enabled
 			return true;
 		}
-
 #pragma endregion
 
 #pragma region // behavior management

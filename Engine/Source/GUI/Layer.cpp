@@ -1,5 +1,6 @@
-#include <GUI/gui.h>
 #include <GUI/Layer.h>
+#include <GUI/UIRenderer.h>
+#include <GUI/UISystem.h>
 
 namespace engine
 {
@@ -55,7 +56,7 @@ namespace engine
 
 		void Layer::Draw(const UIDrawContext& context) const
 		{
-			if (context.skin) context.skin->DrawLayer(*this, context);
+			context.skin.DrawLayer(*this, context);
 		}
 #pragma endregion
 
@@ -485,6 +486,46 @@ namespace engine
 		bool LayerManager::IsExpanded(const Widget* owner) const
 		{
 			return m_stack.IsExpanded(owner);
+		}
+#pragma endregion
+
+#pragma region // LayerTrigger
+		void LayerTrigger::RemoveLayer()
+		{
+			UISystem* system = GetSystem();
+			if (system)
+			{
+				// be strict for now
+				if (!system->RemoveLayer(this))
+				{
+					throw std::runtime_error("failed to unregister layer");
+				}
+			}
+		}
+
+		// requests system to toggle this widget's overlay
+		void LayerTrigger::Toggle()
+		{
+			UISystem* system = GetSystem();
+			if (system)
+			{
+				system->ToggleLayer(this, m_buildDesc);
+			}
+		}
+
+		bool LayerTrigger::IsExpanded() const
+		{
+			UISystem* system = GetSystem();
+			if (system)
+			{
+				return system->IsLayerExpanded(this);
+			}
+			return false;
+		}
+
+		LayerTrigger::LayerTrigger(const Layer::BuildDescription& buildDesc) :
+			m_buildDesc(buildDesc)
+		{
 		}
 #pragma endregion
 	}

@@ -1,5 +1,6 @@
 #include <GUI/DragDropLayer.h>
-#include <GUI/gui.h>
+#include <GUI/UIRenderer.h>
+#include <GUI/UISystem.h>
 
 
 #pragma region // Drag and Drop Feature
@@ -151,7 +152,7 @@ namespace engine
 
 #pragma region // Draggable
 	// this widget is draggable via mouse move so we handle start of dragging through mouse down
-	void Draggable::OnMouseDown(const PositionF& position)
+	void Draggable::BeginDrag(const PositionF& position)
 	{
 		UISystem* system = GetSystem();
 		if (!system)
@@ -164,7 +165,7 @@ namespace engine
 	}
 
 	// this widget drops on mouse up
-	void Draggable::OnMouseUp(const PositionF& position)
+	void Draggable::EndDrag(const PositionF& position)
 	{
 		UISystem* system = GetSystem();
 		if (!system)
@@ -179,11 +180,6 @@ namespace engine
 	Draggable::Draggable()
 	{
 		m_moveBehavior = Widget::MoveBehavior::Free;
-	}
-
-	void Draggable::Draw(const UIDrawContext& context) const 
-	{
-		if (context.skin) context.skin->DrawDraggable(*this, context);
 	}
 
 #pragma endregion
