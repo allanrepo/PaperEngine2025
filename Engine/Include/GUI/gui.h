@@ -280,17 +280,6 @@ namespace engine
 			}
 
 		public:
-			//Image(std::unique_ptr<IRenderable> renderable) :
-			//	m_image(std::move(renderable)),
-			//	m_vAlign(Widget::VerticalAlignment::Center),
-			//	m_hAlign(Widget::HorizontalAlignment::Center),
-			//	m_imagePosition({ 0,0 })
-			//{
-			//	m_moveBehavior = MoveBehavior::None;
-			//	RefreshLayout();
-			//	m_hitTestBehavior = HitTestBehavior::AlwaysFail;
-			//}
-
 			Image(Renderable renderable)
 				: m_image(std::make_unique<Renderable>(std::move(renderable)))
 				, m_vAlign(Widget::VerticalAlignment::Center)
