@@ -91,6 +91,7 @@
     <ClInclude Include="Include\GUI\Layer.h" />
     <ClInclude Include="Include\GUI\Tooltip.h" />
     <ClInclude Include="Include\GUI\UIRenderer.h" />
+    <ClInclude Include="Include\GUI\UISkin.h" />
     <ClInclude Include="Include\GUI\UISystem.h" />
     <ClInclude Include="Include\GUI\Widget.h" />
     <ClInclude Include="Include\IO\ASyncFileReader.h" />
@@ -160,6 +161,7 @@
     <ClCompile Include="Source\GUI\Layer.cpp" />
     <ClCompile Include="Source\GUI\Tooltip.cpp" />
     <ClCompile Include="Source\GUI\UIRenderer.cpp" />
+    <ClCompile Include="Source\GUI\UISkin.cpp" />
     <ClCompile Include="Source\GUI\UISystem.cpp" />
     <ClCompile Include="Source\GUI\Widget.cpp" />
     <ClCompile Include="Source\IO\ASyncFileReader.cpp" />

@@ -222,6 +222,13 @@ namespace engine
 			{
 				UnregisterToSystem();
 			}
+
+			// non-copyable, non-movable
+			Widget(const Widget&) = delete;
+			Widget& operator=(const Widget&) = delete;
+			Widget(Widget&&) noexcept = delete;
+			Widget& operator=(Widget&&) noexcept = delete;
+
 #pragma endregion
 
 #pragma region // parameter that determines the horizontal and vertical alignment of the widget's content within its extent

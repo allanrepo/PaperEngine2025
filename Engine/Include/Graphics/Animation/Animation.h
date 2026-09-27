@@ -353,6 +353,7 @@ namespace engine::graphics::animation
 
 	protected:
 		std::vector<Animator<T>*> m_animators;
+		engine::container::Dictionary<std::string, std::unique_ptr<Animator<T>>> m_registry;
 
 	public:
 		AnimationSystem() 
@@ -406,7 +407,7 @@ namespace engine::graphics::animation
 		{
 			return m_animators.size();
 		}
-	};	
+	};
 
 	template<typename T>
 	class AnimationSystemCache : public AnimationSystem<T>,  public engine::core::Singleton<AnimationSystemCache<T>>
@@ -415,7 +416,7 @@ namespace engine::graphics::animation
 		friend class engine::core::Singleton<AnimationSystemCache<T>>;
 
 	private:
-		std::vector<Animator<T>*> m_animators;
+		//std::vector<Animator<T>*> m_animators;
 
 		// Private ctor for singleton
 		AnimationSystemCache() = default;

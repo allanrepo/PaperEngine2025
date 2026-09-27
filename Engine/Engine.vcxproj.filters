@@ -426,6 +426,9 @@
     <ClInclude Include="Include\GUI\UIRenderer.h">
       <Filter>GUI</Filter>
     </ClInclude>
+    <ClInclude Include="Include\GUI\UISkin.h">
+      <Filter>GUI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Win32\Window.cpp">
@@ -561,6 +564,9 @@
       <Filter>Graphics\Core</Filter>
     </ClCompile>
     <ClCompile Include="Source\GUI\UIRenderer.cpp">
+      <Filter>GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\GUI\UISkin.cpp">
       <Filter>GUI</Filter>
     </ClCompile>
   </ItemGroup>

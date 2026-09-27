@@ -275,6 +275,89 @@ namespace engine::event
             Clear();
         }
 
+        // copy constructor
+        // when event is constructed via copying another event, it does not copy the subscriptions of the event being copied.
+        // therefore is m_subscribers and m_unsubscribers will be empty. this is intentional. 
+        Event(const Event&)
+            : m_dispatching(false)
+        {
+        }
+
+        // copy assignment
+        // follows a policy where subscriptions are not copied because it's not safe. 
+        // if you subscribed to a then b = a, and this copies a subscription to b,
+        // you become a subscriber to b without knowing. if you get destroyed, you end up dangling on b
+        // also, if this event is dispatching, it is not allowed to copy another event. 
+        // if copy assignment happens while dispatching, the subscribers list that are iterated through
+        // will be cleared. that is catastropic.
+        // note that events are not recommended to be copied or moved because objects with events
+        // are stateful and should be just referenced instead.
+        Event& operator=(Event& other) 
+        {
+            if (m_dispatching)
+            {
+                throw std::runtime_error("Event is dispatching, object copy is not allowed");
+            }
+
+            if (this != &other)
+            {
+                // our existing subscriptions are removed
+                Clear();
+
+                // we also clear unsubscribers list since subscribers list is now empty
+                m_unsubscribers.clear();
+            }
+
+            return *this;
+        }
+
+        // move constructor
+        // move the subscriber's list of the source event to this event
+        // if source event is dispatching, it is not allowed to move its subscriptions.
+        Event(Event&& other) noexcept
+            : m_subscribers(std::move(other.m_subscribers))
+            , m_dispatching(false)
+        {
+            if (other.m_dispatching)
+            {
+                throw std::runtime_error("Event is dispatching, object move is not allowed");
+            }
+
+            other.m_unsubscribers.clear();
+        }
+
+        // move operator 
+        // move the subscriber's list of the source event to this event
+        // when either the source event or this event is dispatching, this operation is not allowed
+        // doing so will break the iteration of either subscriptions since this operation will
+        // clear the subscriptions list
+        Event& operator=(Event&& other) noexcept
+        {
+            if (m_dispatching)
+            {
+                throw std::runtime_error("Event is dispatching, object move is not allowed");
+            }
+
+            if (other.m_dispatching)
+            {
+                throw std::runtime_error("Event is dispatching, object move is not allowed");
+            }
+
+            if (this != &other)
+            {
+                Clear();
+
+                m_subscribers = std::move(other.m_subscribers);
+
+                m_unsubscribers.clear();
+
+                other.m_unsubscribers.clear();
+            }
+
+            return *this;
+        }
+
+
         // dispatch
         void operator ()(const Args&... args)
         {
