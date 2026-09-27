@@ -86,7 +86,7 @@ namespace TestActorNavigation
 	class Test
 	{
 		using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
-		using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite, Actor>;
+		using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite>;
 		using SpriteAnimationFactory = engine::graphics::factory::SpriteAnimationFactory;
 
 	private:

@@ -22,6 +22,8 @@
 #include <algorithm>
 #include <Containers/Grid.h>
 #include <set>
+#include <Graphics/Core/Renderable.h>
+#include <Graphics/Core/Animated.h>
 
 namespace engine
 {
@@ -83,6 +85,8 @@ namespace engine
 		using IRenderable = engine::graphics::IRenderable;
 		using Sprite = engine::graphics::Sprite;
 		using ColorF = engine::graphics::ColorF;
+		using Renderable = engine::graphics::Renderable;
+		using Animated = engine::graphics::Animated;
 
 		template<typename K, typename T>
 		using Dictionary = engine::container::Dictionary<K, T>;
@@ -276,11 +280,33 @@ namespace engine
 			}
 
 		public:
-			Image(std::unique_ptr<IRenderable> renderable) :
-				m_image(std::move(renderable)),
-				m_vAlign(Widget::VerticalAlignment::Center),
-				m_hAlign(Widget::HorizontalAlignment::Center),
-				m_imagePosition({ 0,0 })
+			//Image(std::unique_ptr<IRenderable> renderable) :
+			//	m_image(std::move(renderable)),
+			//	m_vAlign(Widget::VerticalAlignment::Center),
+			//	m_hAlign(Widget::HorizontalAlignment::Center),
+			//	m_imagePosition({ 0,0 })
+			//{
+			//	m_moveBehavior = MoveBehavior::None;
+			//	RefreshLayout();
+			//	m_hitTestBehavior = HitTestBehavior::AlwaysFail;
+			//}
+
+			Image(Renderable renderable)
+				: m_image(std::make_unique<Renderable>(std::move(renderable)))
+				, m_vAlign(Widget::VerticalAlignment::Center)
+				, m_hAlign(Widget::HorizontalAlignment::Center)
+				, m_imagePosition({ 0,0 })
+			{
+				m_moveBehavior = MoveBehavior::None;
+				RefreshLayout();
+				m_hitTestBehavior = HitTestBehavior::AlwaysFail;
+			}
+
+			Image(Animated animated)
+				: m_image(std::make_unique<Animated>(std::move(animated)))
+				, m_vAlign(Widget::VerticalAlignment::Center)
+				, m_hAlign(Widget::HorizontalAlignment::Center)
+				, m_imagePosition({ 0,0 })
 			{
 				m_moveBehavior = MoveBehavior::None;
 				RefreshLayout();

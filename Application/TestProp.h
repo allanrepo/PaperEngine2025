@@ -83,8 +83,7 @@ namespace TestProp
 	template<typename T, typename K, typename V>
 	using LookupResolver = engine::algorithm::LookupResolver<T, K, V>;
 
-	template<typename Owner>
-	using AnimationController = engine::graphics::animation::AnimationController<Sprite, Owner>;
+	using AnimationController = engine::graphics::animation::AnimationController<Sprite>;
 
 	template<typename T>
 	using Registry = engine::cache::Registry<T>;

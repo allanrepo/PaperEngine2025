@@ -50,20 +50,20 @@ namespace test
 	using Sprite = engine::graphics::Sprite;
 	using AnimationSystemCache = engine::graphics::animation::AnimationSystemCache< engine::graphics::Sprite>;
 
-	template <typename Owner>
-	using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite, Owner>;
+	using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite>;
 	using AnimationSystem = engine::graphics::animation::AnimationSystem<engine::graphics::Sprite>;
 
 
 	struct Item
 	{
-		AnimationController<Item> animated;
+		AnimationController animated;
 		PositionF pos;
 
 		Item(const AnimationSet& set, PositionF p, const std::string& name, int loopCount, AnimationSystem* system = nullptr):
-			animated(set, this, system),
+			animated(AnimationController::MakeInvalid()),
 			pos(p)
 		{
+			animated = system->MakeAnimationController(name, set);
 			animated.Play(name, loopCount);
 		}
 	};
@@ -220,7 +220,7 @@ namespace test
 			AnimationSet& set = engine::cache::Registry<AnimationSet>::Instance().Get("dust");
 			AnimationSystem& sys = engine::cache::Registry<AnimationSystem>::Instance().Get("dust");
 			m_items.push_back(std::make_unique<Item>(set, PositionF{400, 400}, "dust", 2, &sys));
-			m_items.back()->animated.EndEvent += engine::event::Handler(this, &TestAnimation::OnEndItem);
+			//m_items.back()->animated.EndEvent += engine::event::Handler(this, &TestAnimation::OnEndItem);
 		}
 
 		void OnKeyDown(int key)
@@ -308,13 +308,13 @@ namespace test
 				AnimationSet& set = engine::cache::Registry<AnimationSet>::Instance().Get("dust");
 				AnimationSystem& sys = engine::cache::Registry<AnimationSystem>::Instance().Get("dust");
 				m_items.push_back(std::make_unique<Item>(set, PositionF((float)x, (float)y), "dust", 2, &sys));
-				m_items.back()->animated.EndEvent += engine::event::Handler(this, &TestAnimation::OnEndItem);
+			//	m_items.back()->animated.EndEvent += engine::event::Handler(this, &TestAnimation::OnEndItem);
 			}
 			else if (btn == 2)
 			{
 				AnimationSet& set = engine::cache::Registry<AnimationSet>::Instance().Get("dust");
 				m_items.push_back(std::make_unique<Item>(set, PositionF((float)x, (float)y), "dust", 2));
-				m_items.back()->animated.EndEvent += engine::event::Handler(this, &TestAnimation::OnEndItem);
+			//	m_items.back()->animated.EndEvent += engine::event::Handler(this, &TestAnimation::OnEndItem);
 			}
 		}
 

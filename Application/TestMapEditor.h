@@ -153,8 +153,7 @@ namespace TestMapEditor
 	template<typename T>
 	using Table = engine::container::Table<T>;
 
-	template<typename Owner>
-	using AnimationController = engine::graphics::animation::AnimationController<Sprite, Owner>;
+	using AnimationController = engine::graphics::animation::AnimationController<Sprite>;
 
 	template<typename T, typename K, typename V>
 	using LookupResolver = engine::algorithm::LookupResolver<T, K, V>;
@@ -6880,8 +6879,7 @@ namespace TestMapEditor
 							cmd.builder = [&](Widget* parent)
 								{
 									auto& animSet = AssetManager().Get<AnimationSet<Sprite>>("birchtree_anim_set");
-									std::unique_ptr<Animated> anim = std::make_unique<Animated>(animSet, "birch_tree_idle");
-									std::unique_ptr<Image> image = std::make_unique<Image>(std::move(anim));
+									std::unique_ptr<Image> image = std::make_unique<Image>(Animated(animSet, "birch_tree_idle"));
 									image->SetPosition({ 100, 80 });
 									image->SetSize({ 120, 120 });
 									m_image = image.get();
@@ -7165,8 +7163,8 @@ namespace TestMapEditor
 
 				{
 					auto& animSet = AssetManager().Get<AnimationSet<Sprite>>("birchtree_anim_set");
-					std::unique_ptr<Animated> anim = std::make_unique<Animated>(animSet, "birch_tree_idle");
-					std::unique_ptr<Image> image = std::make_unique<Image>(std::move(anim));
+					std::unique_ptr<Image> image = std::make_unique<Image>(Animated(animSet, "birch_tree_idle"));
+
 					image->SetPosition({ 8, 8 });
 					image->SetSize({ 112, 112 });
 					image->EnableStretch(true);
@@ -7188,8 +7186,8 @@ namespace TestMapEditor
 
 				{
 					auto& animSet = AssetManager().Get<AnimationSet<Sprite>>("pinetree_anim_set");
-					std::unique_ptr<Animated> anim = std::make_unique<Animated>(animSet, "pine_tree_idle");
-					std::unique_ptr<Image> image = std::make_unique<Image>(std::move(anim));
+					std::unique_ptr<Image> image = std::make_unique<Image>(Animated(animSet, "pine_tree_idle"));
+
 					image->SetPosition({ 8, 8 });
 					image->SetSize({ 112, 112 });
 					image->EnableStretch(true);
@@ -7642,6 +7640,7 @@ namespace TestMapEditor
 					Registry<TerrainSet>::Instance().Register("splash_tileset", std::make_unique<TerrainSet>("splash_tileset"));
 					TerrainSet& splashTileset = assets.Get<TerrainSet>("splash_tileset");
 					std::unique_ptr<TileDefinition> tiledef = std::make_unique<TileDefinition>();
+					AnimationSystemCache<Sprite>::Instance().Create("splash_anim");
 					tiledef->renderable = std::make_unique<Animated>(splashAnimSet, "splash_anim");
 					tiledef->constraint = TileConstraint::NONE;
 					splashTileset.Register(0, std::move(tiledef));

@@ -56,7 +56,7 @@ namespace TestActor
 		//using ISpriteAtlas = engine::graphics::resource::ISpriteAtlas;
 		//using SpriteAtlas = engine::graphics::resource::SpriteAtlas;
 		using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
-		using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite, Actor>;
+		using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite>;
 		using SpriteAnimationFactory = engine::graphics::factory::SpriteAnimationFactory;
 		//using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
 		//using AnimationSystem = engine::graphics::animation::AnimationSystem<engine::graphics::Sprite, Item>;

@@ -10,18 +10,21 @@ namespace engine
 	{
 		class Animated : public IRenderable, public IAnimated<std::string>
 		{
-			using AnimationController = engine::graphics::animation::AnimationController<Sprite, Animated>;
 			using AnimationSet = engine::graphics::animation::AnimationSet<Sprite>;
+			using AnimationController = engine::graphics::animation::AnimationController<Sprite>;
+			using AnimationSystem = engine::graphics::animation::AnimationSystem<Sprite>;
+			using AnimationSystemCache = engine::graphics::animation::AnimationSystemCache<Sprite>;
 
 		private:
-			AnimationController m_animationController;
+			AnimationController m_AnimationController;
 
 		public:
-			Animated(const AnimationSet& set, const std::string& name) :
-				m_animationController(set, nullptr)
+			Animated(const AnimationSet& set, const std::string& name, AnimationSystem* system = nullptr)
+				: m_AnimationController(AnimationController::MakeInvalid())
 			{
-				// safer to set owner here only so we know Animated is now fully constructed
-				m_animationController.SetOwner(this);
+				// if no specific animation system is passed, use the cached one.
+				m_AnimationController = system ? system->MakeAnimationController(name, set) : AnimationSystemCache::Instance().MakeAnimationController(name, set);
+
 				Play(name);
 			}
 
@@ -29,17 +32,18 @@ namespace engine
 
 			Sprite GetSprite() const noexcept override final
 			{
-				return m_animationController.GetCurrent();
+				return m_AnimationController.GetCurrent();
 			}
 
 			bool Play(const std::string& name) override final
 			{
-				return m_animationController.Play(name);
+				return m_AnimationController.Play(name);
 			}
 
+			// we have to implement to satisfy IAnimated interface but animation is updated by animation system, so we do nothing here.
 			void Update(double time) override final
 			{
-				m_animationController.Update(time);
+				// do nothing
 			}
 		};
 	}

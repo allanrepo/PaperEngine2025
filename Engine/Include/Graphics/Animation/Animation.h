@@ -15,11 +15,14 @@ namespace engine::graphics::animation
 	template<typename T>
 	class AnimationSystem;
 
-	template<typename T, typename Owner>
-	class AnimationController;
+	//template<typename T, typename Owner>
+	//class AnimationController;
 
 	template<typename T>
 	class AnimationSystemCache;
+
+	template<typename T>
+	class AnimationController;
 
 	// represents a single frame in an animation sequence.
 	// holds the payload element T and the duration to display this frame.
@@ -256,103 +259,10 @@ namespace engine::graphics::animation
 		const_iterator cend() const { return m_registry.cend(); }
 	};
 
-	template<typename T, typename Owner>
-	class AnimationController
-	{
-	private:
-		Animator<T> m_animator;
-		core::View<AnimationSet<T>> m_set;
-		core::Handle<AnimationSystem<T>> m_system;
-		Owner* m_owner;
-
-		// event handler for our Animator's EndEvent so we can emit it as well
-		void OnAnimatorEnd(Animator<T>& animator)
-		{
-			if(m_owner) EndEvent(*m_owner);
-		}
-
-	public:
-		AnimationController(const AnimationSet<T>& set, Owner* owner = nullptr, AnimationSystem<T>* system = nullptr) :
-			m_set(&set),
-			m_system(system? system : &AnimationSystemCache<T>::Instance()),
-			m_owner(owner)
-		{
-			m_animator.EndEvent += engine::event::Handler(this, &AnimationController::OnAnimatorEnd);
-			if (m_system.IsValid()) m_system->Register(m_animator);
-		}
-
-		~AnimationController()
-		{
-			if (m_system.IsValid()) m_system->Unregister(m_animator);
-			m_animator.EndEvent -= engine::event::Handler(this, &AnimationController::OnAnimatorEnd);
-		}
-
-		// Non-copyable, but movable
-		AnimationController(const AnimationController&) = delete;
-		AnimationController& operator=(const AnimationController&) = delete;
-		AnimationController(AnimationController&&) noexcept = delete;
-		AnimationController& operator=(AnimationController&&) noexcept = delete;
-
-		// chains end animation sequence event from Animator
-		engine::event::Event<Owner&> EndEvent;
-
-		bool Play(const std::string& key)
-		{
-			if (!m_set.IsValid()) return false;
-
-			if (m_set->Has(key))
-			{
-				m_animator.Play(m_set->Get(key));
-				return true;
-			}
-
-			return false;
-		}
-
-		void Play(const std::string& name, int loopCount)
-		{
-			Play(name);
-			SetPolicy(PlaybackPolicy::FiniteLoop, loopCount);
-		}
-
-		void SetOwner(Owner* owner)
-		{
-			m_owner = owner;
-		}
-
-		void Update(double delta)
-		{
-			m_animator.Update(delta);
-		}
-
-		const T& GetCurrent() const
-		{
-			return m_animator.GetCurrent();
-		}
-
-		bool IsValid() const
-		{
-			return m_set.IsValid();
-		}
-
-		void SetPolicy(PlaybackPolicy policy = PlaybackPolicy::Default, int loopCount = -1)
-		{
-			m_animator.SetPolicy(policy, loopCount);
-		}
-
-		bool IsRunning() const
-		{
-			return m_animator.IsRunning();
-		}
-	};
-
 	template<typename T>
 	class AnimationSystem
 	{
 	private:
-
-	protected:
-		std::vector<Animator<T>*> m_animators;
 		engine::container::Dictionary<std::string, std::unique_ptr<Animator<T>>> m_registry;
 
 	public:
@@ -370,42 +280,44 @@ namespace engine::graphics::animation
 
 		void Update(double delta)
 		{
-			for (Animator<T>* animator : m_animators)
+			for (auto& [key, animator] : m_registry)
 			{
-				if (animator) 
-				{
-					animator->Update(delta); // or whatever method Animator exposes
-				}
-			}
-		}
-
-		void Register(Animator<T>& animator)
-		{
-			if (std::find(m_animators.begin(), m_animators.end(), &animator) == m_animators.end())
-			{
-				m_animators.push_back(&animator);
-			}
-		}
-
-		void Unregister(Animator<T>& animator)
-		{
-			// find the iterator where our animator is
-			auto it = std::find(m_animators.begin(), m_animators.end(), &animator);
-
-			// if we didn't find, bail out
-			if (it != m_animators.end())
-			{
-				// move last item into where our animator is, effectly removing from the list
-				*it = m_animators.back();
-
-				// pop the last item. we didn't lose it. the item is now where our animator use to be
-				m_animators.pop_back();
+				animator->Update(delta); // or whatever method Animator exposes
 			}
 		}
 
 		size_t Size() const
 		{
-			return m_animators.size();
+			return m_registry.Size();
+		}
+
+		bool Create(const std::string& name)
+		{
+			// if already exists, return false
+			return m_registry.Register(name, std::make_unique<Animator<T>>());
+
+		}
+
+		bool Destroy(const std::string& name)
+		{
+			// if does not exist, return false
+			return m_registry.Unregister(name);
+		}
+
+		AnimationController<T> MakeAnimationController(const std::string& name, const AnimationSet<T>& set)
+		{			
+			// do we have an animator with the given key? if not, let us make one.
+			if (!m_registry.Has(name))
+			{
+				Create(name);
+			}
+
+			// get reference to the animator
+			Animator<T>* animator = m_registry.Get(name).get();
+						
+			// create animator handle and return
+			AnimationController<T> animCtrl(&set, animator);
+			return animCtrl;
 		}
 	};
 
@@ -416,8 +328,6 @@ namespace engine::graphics::animation
 		friend class engine::core::Singleton<AnimationSystemCache<T>>;
 
 	private:
-		//std::vector<Animator<T>*> m_animators;
-
 		// Private ctor for singleton
 		AnimationSystemCache() = default;
 
@@ -427,6 +337,71 @@ namespace engine::graphics::animation
 		AnimationSystemCache& operator=(const AnimationSystemCache&) = delete;
 		AnimationSystemCache(AnimationSystemCache&&) noexcept = delete;
 		AnimationSystemCache& operator=(AnimationSystemCache&&) noexcept = delete;
+	};
+
+	template<typename T>
+	class AnimationController
+	{
+	private:
+		core::Handle<Animator<T>> m_animator;
+		core::View<AnimationSet<T>> m_set;
+
+		friend class AnimationSystem<T>;
+
+		AnimationController(const AnimationSet<T>* set, Animator<T>* animator) 
+			: m_set(set)
+			, m_animator(animator)
+		{
+		}
+
+	public:
+		~AnimationController()
+		{
+		}
+
+		bool Play(const std::string& key)
+		{
+			if (!m_set.IsValid()) return false;
+
+			if (m_set->Has(key))
+			{
+				m_animator->Play(m_set->Get(key));
+				return true;
+			}
+
+			return false;
+		}
+
+		void Play(const std::string& name, int loopCount)
+		{
+			Play(name);
+			SetPolicy(PlaybackPolicy::FiniteLoop, loopCount);
+		}
+
+		const T& GetCurrent() const
+		{
+			return m_animator->GetCurrent();
+		}
+
+		bool IsValid() const
+		{
+			return (m_set.IsValid() && m_animator.IsValid());
+		}
+
+		void SetPolicy(PlaybackPolicy policy = PlaybackPolicy::Default, int loopCount = -1)
+		{
+			m_animator->SetPolicy(policy, loopCount);
+		}
+
+		bool IsRunning() const
+		{
+			return m_animator->IsRunning();
+		}
+
+		static AnimationController MakeInvalid()
+		{
+			return AnimationController(nullptr, nullptr);
+		}
 	};
 
 }

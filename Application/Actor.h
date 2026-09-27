@@ -53,7 +53,7 @@ namespace engine
 			//using ISpriteAtlas = engine::graphics::resource::ISpriteAtlas;
 			//using SpriteAtlas = engine::graphics::resource::SpriteAtlas;
 			using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
-			using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite, Actor>;
+			using AnimationController = engine::graphics::animation::AnimationController<engine::graphics::Sprite>;
 			//using SpriteAnimationFactory = engine::graphics::factory::SpriteAnimationFactory;
 			//using AnimationSet = engine::graphics::animation::AnimationSet<engine::graphics::Sprite>;
 			using AnimationSystem = engine::graphics::animation::AnimationSystem<engine::graphics::Sprite>;
@@ -85,8 +85,10 @@ namespace engine
 				m_stateMachine(this),
 				m_name(name),
 				m_direction(Direction::Right),
-				m_animController(set, this, sys)
+				m_animController(AnimationController::MakeInvalid())
 			{
+				m_animController = sys->MakeAnimationController(name, set);
+
 				m_stateMachine.Set<ActorIdleState>();
 			}
 
@@ -96,7 +98,7 @@ namespace engine
 			{
 				// update state and animation manager, position
 				m_stateMachine.Update(delta);
-				m_animController.Update(delta);
+				//m_animController.Update(delta);
 				m_motion.Update(m_transform, delta);
 			}
 
