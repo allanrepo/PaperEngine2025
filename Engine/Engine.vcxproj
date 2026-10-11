@@ -49,6 +49,7 @@
     <ClInclude Include="Include\Engine\Factory\RendererFactory.h" />
     <ClInclude Include="Include\Engine\Factory\SpriteAtlasFactory.h" />
     <ClInclude Include="Include\Engine\Factory\TextureFactory.h" />
+    <ClInclude Include="Include\Engine\Gooey\Gooey.h" />
     <ClInclude Include="Include\Engine\Graphics\Draw.h" />
     <ClInclude Include="Include\Engine\Loader\AsyncLoader.h" />
     <ClInclude Include="Include\Engine\Loader\SpriteAtlasLoader.h" />
@@ -86,6 +87,7 @@
     <ClInclude Include="Include\Graphics\Resource\ITextureImpl.h" />
     <ClInclude Include="Include\Graphics\Resource\SpriteAtlas.h" />
     <ClInclude Include="Include\Graphics\Resource\Texture.h" />
+    <ClInclude Include="Include\GUI\Controls.h" />
     <ClInclude Include="Include\GUI\DragDropLayer.h" />
     <ClInclude Include="Include\GUI\gui.h" />
     <ClInclude Include="Include\GUI\Layer.h" />
@@ -138,6 +140,7 @@
     <ClCompile Include="Source\Engine\Engine.cpp" />
     <ClCompile Include="Source\Engine\Factory\CanvasFactory.cpp" />
     <ClCompile Include="Source\Engine\Factory\SpriteAtlasFactory.cpp" />
+    <ClCompile Include="Source\Engine\Gooey\Gooey.cpp" />
     <ClCompile Include="Source\Engine\Graphics\Draw.cpp" />
     <ClCompile Include="Source\Engine\Loader\AsyncLoader.cpp" />
     <ClCompile Include="Source\Graphics\Core\Canvas.cpp" />
@@ -156,6 +159,7 @@
     <ClCompile Include="Source\Graphics\Resource\FontAtlas.cpp" />
     <ClCompile Include="Source\Graphics\Resource\SpriteAtlas.cpp" />
     <ClCompile Include="Source\Graphics\Resource\Texture.cpp" />
+    <ClCompile Include="Source\GUI\Controls.cpp" />
     <ClCompile Include="Source\GUI\DragDropLayer.cpp" />
     <ClCompile Include="Source\GUI\gui.cpp" />
     <ClCompile Include="Source\GUI\Layer.cpp" />

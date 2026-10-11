@@ -80,6 +80,9 @@
     <ClInclude Include="TestMapEditor.h">
       <Filter>Tests</Filter>
     </ClInclude>
+    <ClInclude Include="TestUI.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

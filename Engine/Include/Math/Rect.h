@@ -127,6 +127,21 @@ namespace engine
 				};
 			}
 
+			bool operator==(const Rect<T>& other) const
+			{
+				return
+					left == other.left &&
+					top == other.top &&
+					right == other.right &&
+					bottom == other.bottom;
+			}
+
+			bool operator!=(const Rect<T>& other) const
+			{
+				return !(*this == other);
+			}
+
+
 		};
 
 		using RectF = engine::math::Rect<float>;

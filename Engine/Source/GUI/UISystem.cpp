@@ -561,6 +561,11 @@ namespace engine
 				throw std::runtime_error("failed to remove a widget from root");
 			}
 		}
+
+		bool UISystem::IsRegistered(Widget* widget) const
+		{
+			return this == widget->GetSystem();
+		}
 #pragma endregion
 
 	}

@@ -22,6 +22,48 @@ namespace engine
 		struct UIDrawContext;
 #pragma endregion
 
+#pragma region // Anchor - parameter that determines the horizontal and vertical anchor of the widget's position relative to its parent
+		enum class HorizontalAnchor
+		{
+			Left,
+			Right,
+			Center,
+			Fill,
+		};
+
+		enum class VerticalAnchor
+		{
+			Top,
+			Bottom,
+			Center,
+			Fill,
+		};
+#pragma endregion
+
+#pragma region // LayoutMode - parameter that determines how the widget's layout is determined. it can be free, anchored, or filled
+		enum class LayoutMode
+		{
+			Free,
+			Anchor,
+		};
+#pragma endregion
+
+#pragma region // parameter that determines the horizontal and vertical alignment of the widget's content within its extent
+		enum class HorizontalAlignment
+		{
+			Left,
+			Right,
+			Center,
+		};
+
+		enum class VerticalAlignment
+		{
+			Top,
+			Bottom,
+			Center,
+		};
+#pragma endregion
+
 #pragma region // Widget
 		class Widget
 		{
@@ -36,9 +78,9 @@ namespace engine
 			friend class TooltipManager;
 #pragma endregion
 
-#pragma region // DragHandler - private helper class that manages widget's drag operation
-			friend class DragHandler;
-			class DragHandler
+#pragma region // DragTracker - private helper class that manages widget's drag operation
+			friend class DragTracker;
+			class DragTracker
 			{
 			private:
 				// widget dragging trackers
@@ -48,7 +90,7 @@ namespace engine
 				Widget* m_widget;
 
 			public:
-				DragHandler(Widget* widget);
+				DragTracker(Widget* widget);
 
 				// call when widget is about to be dragged, e.g. OnMouseDown
 				void Begin(const PositionF& position);
@@ -96,6 +138,19 @@ namespace engine
 			};
 #pragma endregion
 
+#pragma region // Layout Properties
+			// layout mode determines how the widget's position and size are determined. it can be free, anchored, or filled
+			LayoutMode m_layoutMode = LayoutMode::Free;
+
+			// anchor properties determine the widget's position relative to its parent. it can be left, right, center, top, bottom, or center
+			HorizontalAnchor m_horizontalAnchor = HorizontalAnchor::Left;
+			VerticalAnchor m_verticalAnchor = VerticalAnchor::Top;
+
+			// clearance margin between this widget and its parent's edges when it is anchored. 
+			RectF m_margin = { 0, 0, 0, 0 };
+
+#pragma endregion
+
 #pragma region // member variables
 			// tree
 			Widget* m_parent = nullptr;
@@ -122,7 +177,7 @@ namespace engine
 			std::function<void(Widget&, Widget&)> m_tooltipBuilder;
 
 			// widget dragging tracker
-			DragHandler m_dragHandler;
+			DragTracker m_DragTracker;
 #pragma endregion
 
 #pragma region // system reference
@@ -214,7 +269,7 @@ namespace engine
 		public:
 #pragma region // RAII
 			Widget()
-				: m_dragHandler(this)
+				: m_DragTracker(this)
 			{
 			}
 
@@ -231,20 +286,21 @@ namespace engine
 
 #pragma endregion
 
-#pragma region // parameter that determines the horizontal and vertical alignment of the widget's content within its extent
-			enum class HorizontalAlignment
-			{
-				Left,
-				Right,
-				Center
-			};
+#pragma region // Layout Management
+			void SetLayoutMode(LayoutMode mode);
+			LayoutMode GetLayoutMode() const;
 
-			enum class VerticalAlignment
-			{
-				Top,
-				Bottom,
-				Center
-			};
+			void SetHorizontalAnchor(HorizontalAnchor anchor);
+			void SetVerticalAnchor(VerticalAnchor anchor);
+
+			HorizontalAnchor GetHorizontalAnchor() const;
+			VerticalAnchor GetVerticalAnchor() const;
+
+			void RefreshLayout();
+			void RefreshChildrenLayout();
+
+			void SetMargin(const RectF& margin);
+			RectF GetMargin() const;
 #pragma endregion
 
 #pragma region // heirarchy management
@@ -277,6 +333,7 @@ namespace engine
 #pragma region // behavior properties
 			bool IsFocusable() const;
 			bool IsDroppable() const;
+			bool IsDraggable() const;
 #pragma endregion
 
 #pragma region // transform and extent properties

@@ -6,14 +6,13 @@ namespace engine
 {
 	namespace gui
 	{
-
 #pragma region // DragController
-		Widget::DragHandler::DragHandler(Widget* widget)
+		Widget::DragTracker::DragTracker(Widget* widget)
 			: m_widget(widget)
 		{
 		}
 
-		void Widget::DragHandler::Begin(const PositionF& position)
+		void Widget::DragTracker::Begin(const PositionF& position)
 		{
 			// if not movable, bail out
 			if (m_widget->m_moveBehavior == MoveBehavior::None) return;
@@ -30,20 +29,26 @@ namespace engine
 			m_widget->DragBegin(DragEventArgs{ GetBeginPosition(), position });
 		}
 
-		void Widget::DragHandler::Update(const PositionF& position)
+		void Widget::DragTracker::Update(const PositionF& position)
 		{
 			if (m_isMoving)
 			{
-				// calculate the mouse movement delta between its position at start of mouse drag and its position now
-				// factor in the move state - free? horizontal? vertical?
-				VecF delta =
+
+				// the position passed is the position after drag but this position does not care if this widget's movement is horizontal, vertical, or not moving at all.
+				// so we calculate with the horizontal and vertical movement taken into consideration.
+				PositionF currentPosition =
 				{
 					// if we can move horizontally, use the mouse position. otherwise, use begin position
-					(m_widget->m_moveBehavior & MoveBehavior::Horizontal) ? position.x - m_beginMousePosition.x : 0.0f,
+					(m_widget->m_moveBehavior & MoveBehavior::Horizontal) ? position.x : m_beginMousePosition.x,
 
 					// if we can move vertically, use the mouse position. otherwise, use begin position
-					(m_widget->m_moveBehavior & MoveBehavior::Vertical) ? position.y - m_beginMousePosition.y : 0.0f
+					(m_widget->m_moveBehavior & MoveBehavior::Vertical) ? position.y : m_beginMousePosition.y
 				};
+
+				// calculate the mouse movement delta between its position at start of mouse drag and its position now
+				// factor in the move state - free? horizontal? vertical?
+				// since currentPosition already factored in move state, we just calculate delta as below
+				VecF delta = currentPosition - m_beginMousePosition;
 
 				// we only drag the widget if new position after this drag is different from current position
 				PositionF dragpos = m_beginMovePosition + delta;
@@ -52,11 +57,11 @@ namespace engine
 				// transform widget's position based on mouse movement delta
 				m_widget->SetPosition(m_beginMovePosition + delta);
 
-				m_widget->DragMove(DragEventArgs{ GetBeginPosition(), position });
+				m_widget->DragMove(DragEventArgs{ GetBeginPosition(), currentPosition });
 			}
 		}
 
-		void Widget::DragHandler::End(const PositionF& position)
+		void Widget::DragTracker::End(const PositionF& position)
 		{
 			// if we never moved, we shouldn't be ending move. we shouldn't be firing up DragEnd event
 			if (!m_isMoving) return;
@@ -66,12 +71,12 @@ namespace engine
 			m_widget->DragEnd(DragEventArgs{ GetBeginPosition(), position });
 		}
 
-		bool Widget::DragHandler::IsDragging() const
+		bool Widget::DragTracker::IsDragging() const
 		{
 			return m_isMoving;
 		}
 
-		PositionF Widget::DragHandler::GetBeginPosition() const
+		PositionF Widget::DragTracker::GetBeginPosition() const
 		{
 			return m_beginMousePosition;
 		}
@@ -406,6 +411,15 @@ namespace engine
 					widget->RegisterToSystem();
 					return true;
 				});
+
+			// once the child widget is added, refresh its layout as well as its children.
+			c->RefreshLayout();
+
+			// if this child is anchored and its anchor is fill, then it will resize. if it resizes, its children, if any, must also refresh their layout.
+			if (c->GetLayoutMode() == LayoutMode::Anchor && (c->GetVerticalAnchor() == VerticalAnchor::Fill || c->GetHorizontalAnchor() == HorizontalAnchor::Fill))
+			{
+				c->RefreshChildrenLayout();
+			}
 		}
 
 		void Widget::RemoveChild(Widget* widget)
@@ -611,6 +625,12 @@ namespace engine
 		{
 			return m_droppable;
 		}
+
+		bool Widget::IsDraggable() const
+		{
+			return m_moveBehavior == MoveBehavior::None ? false : true;
+		}
+
 #pragma endregion
 
 #pragma region // transform and extent properties
@@ -638,6 +658,11 @@ namespace engine
 			m_size = size;
 			Resized(size);
 			OnSizeChanged(oldSize, size);
+
+			// once this widget size changed and it fires up callback and notify listeners, 
+			// refresh its position/size based on its layout and do so on its children
+			RefreshLayout();
+			RefreshChildrenLayout();
 		}
 
 		PositionF Widget::GetAbsolutePosition() const
@@ -659,6 +684,12 @@ namespace engine
 			m_position = pos;
 			Moved(pos);
 			OnPositionChanged(oldPos, m_position);
+
+			// once this widget is repositioned, we need to refresh its layout.
+			// if its layout mode is anchored, then setting it to whatever new position is irrelevant
+			// and it will reposition it again based on the layout mode.
+			// its children does not need to their layouts to be refreshed since this widget's size won't change
+			RefreshLayout();
 		}
 
 		PositionF Widget::GetPosition() const
@@ -686,12 +717,12 @@ namespace engine
 			// let derived widget handle mouse down event first
 			OnMouseDown(position);
 
-			m_dragHandler.Begin(position);
+			m_DragTracker.Begin(position);
 		}
 
 		void Widget::MouseUp(const PositionF& position)
 		{
-			m_dragHandler.End(position);
+			m_DragTracker.End(position);
 
 			// now we handle mouse up event after we set its to state to NOT moving
 			OnMouseUp(position);
@@ -699,7 +730,7 @@ namespace engine
 
 		void Widget::MouseMove(const PositionF& position)
 		{
-			m_dragHandler.Update(position);
+			m_DragTracker.Update(position);
 
 			// handle this mouse event after this widget updates its position from mouse move
 			OnMouseMove(position);
@@ -751,6 +782,183 @@ namespace engine
 		{
 			OnResourceChange();
 		}
+#pragma endregion
+
+#pragma region // layout management
+		void Widget::SetLayoutMode(LayoutMode mode)
+		{
+			// if already set to same mode, do nothing. no need to trigger refresh layout
+			if (m_layoutMode == mode) return;
+
+			m_layoutMode = mode;
+
+			// because mode change, this widget might need to be repositioned or resized 
+			// since it might be resized, we also need to refresh its children
+			RefreshLayout();
+			RefreshChildrenLayout();
+		}
+
+		LayoutMode Widget::GetLayoutMode() const
+		{
+			return m_layoutMode;
+		}
+
+		void Widget::SetHorizontalAnchor(HorizontalAnchor anchor)
+		{
+			// if already set to same anchor, do nothing. no need to trigger refresh layout
+			if (m_horizontalAnchor == anchor) return;
+
+			m_horizontalAnchor = anchor;
+
+			// change in anchor only matters if our layout mode is anchored
+			if (m_layoutMode != LayoutMode::Anchor) return;
+
+			// refresh this widget's layout since anchor changed. 
+			RefreshLayout();
+
+			// if this widget is anchored and its anchor is fill, then it will resize. if it resizes, its children, if any, must also refresh their layout.
+			if (GetLayoutMode() == LayoutMode::Anchor && (GetVerticalAnchor() == VerticalAnchor::Fill || GetHorizontalAnchor() == HorizontalAnchor::Fill))
+			{
+				RefreshChildrenLayout();
+			}
+		}
+
+		void Widget::SetVerticalAnchor(VerticalAnchor anchor)
+		{
+			// if already set to same anchor, do nothing. no need to trigger refresh layout
+			if (m_verticalAnchor == anchor) return;
+
+			m_verticalAnchor = anchor;
+
+			// change in anchor only matters if our layout mode is anchored
+			if (m_layoutMode != LayoutMode::Anchor) return;
+
+			// refresh this widget's layout since anchor changed. 
+			RefreshLayout();
+
+			// if this widget is anchored and its anchor is fill, then it will resize. if it resizes, its children, if any, must also refresh their layout.
+			if (GetLayoutMode() == LayoutMode::Anchor && (GetVerticalAnchor() == VerticalAnchor::Fill || GetHorizontalAnchor() == HorizontalAnchor::Fill))
+			{
+				RefreshChildrenLayout();
+			}
+		}
+
+		HorizontalAnchor Widget::GetHorizontalAnchor() const
+		{
+			return m_horizontalAnchor;			
+		}
+
+		VerticalAnchor Widget::GetVerticalAnchor() const
+		{
+			return m_verticalAnchor;
+		}
+
+		// resolves the position and size of this widget given its layout mode.
+		void Widget::RefreshLayout()
+		{
+			switch (m_layoutMode)
+			{			
+				case LayoutMode::Free:
+				{
+					// do nothing. we're using the actual position set for this widget
+					break;
+				}
+
+				case LayoutMode::Anchor:
+				{
+					// if this widget has no parent, we cannot anchor. bail out
+					if (!m_parent) break;
+
+					// let's get the size of the parent widget. this will be the region where this widget will be aligned and anchored into
+					SizeF region = m_parent->GetSize();
+
+					// get its initial position and size. we will modify the position based on the anchor properties
+					PositionF pos = GetPosition();
+					SizeF size = GetSize();
+
+					switch (m_horizontalAnchor)
+					{
+					case HorizontalAnchor::Center:
+						pos.x = region.width / 2.0f - m_size.width / 2.0f;
+						break;
+					case HorizontalAnchor::Left:
+						pos.x = m_margin.left;
+						break;
+					case HorizontalAnchor::Right:
+						pos.x = region.width - m_size.width - m_margin.right;
+						break;
+					case HorizontalAnchor::Fill:
+						pos.x = m_margin.left;
+						size.width = region.width - m_margin.left - m_margin.right;
+						break;
+					default:
+						throw std::runtime_error("invalid horizontal anchor");
+					}
+
+					switch (m_verticalAnchor)
+					{
+					case VerticalAnchor::Center:
+						pos.y = region.height / 2.0f - m_size.height / 2.0f;
+						break;
+					case VerticalAnchor::Top:
+						pos.y = m_margin.top;
+						break;
+					case VerticalAnchor::Bottom:
+						pos.y = region.height - m_size.height - m_margin.bottom;
+						break;
+					case VerticalAnchor::Fill:
+						pos.y = m_margin.top;
+						size.height = region.height - m_margin.top - m_margin.bottom;
+						break;
+					default:
+						throw std::runtime_error("invalid vertical anchor");
+					}
+
+					// set the new position and size of this widget based on the anchor properties
+					SetPosition(pos);
+					SetSize(size);
+
+					break;
+				}
+			}
+		}
+
+		void Widget::RefreshChildrenLayout()
+		{
+			for (auto& child : m_children)
+			{
+				child->RefreshLayout();
+			}
+		}
+
+		void Widget::SetMargin(const RectF& margin)
+		{
+			// if margin is already set to the same value, do nothing. no need to trigger refresh layout
+			if (m_margin == margin) return;
+
+			m_margin = margin;
+
+			// margin is only relevant if layout mode is anchored. if so, refresh this widget's layout
+			if (m_layoutMode != LayoutMode::Anchor) return;
+
+			// since margin changed, this widget might need to be repositioned or resized. if it resizes, its children must also refresh their layout.
+			SizeF oldSize = m_size;
+
+			// refresh this widget's layout since margin changed.
+			RefreshLayout();
+
+			// if this widget's size changed, refresh its children's layout as well
+			if(oldSize != m_size)
+			{
+				RefreshChildrenLayout();
+			}
+		}
+
+		RectF Widget::GetMargin() const
+		{
+			return m_margin;
+		}
+
 #pragma endregion
 	}
 }

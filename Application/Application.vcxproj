@@ -154,6 +154,7 @@
     <ClInclude Include="TestPathFinding.h" />
     <ClInclude Include="TestSprite.h" />
     <ClInclude Include="TestTile.h" />
+    <ClInclude Include="TestUI.h" />
     <ClInclude Include="TestWin32.h" />
   </ItemGroup>
   <ItemGroup>

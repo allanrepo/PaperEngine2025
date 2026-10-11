@@ -1188,6 +1188,8 @@ namespace engine
 #pragma region // widget operations API
             void AddWidget(std::unique_ptr<Widget> widget);
             void RemoveWidget(Widget* widget);
+
+            bool IsRegistered(Widget* widget) const;
 #pragma endregion
 
 #pragma region // layer operations API

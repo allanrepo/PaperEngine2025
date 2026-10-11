@@ -348,7 +348,6 @@ namespace engine
         class RadioButton;
         class ScrollBar;
         class ResizeableFrame;
-        class Grip;
         class ViewPort;
         class Content;
         class ScrollView;
@@ -356,6 +355,7 @@ namespace engine
         class Stack;
         class TextListBox;
         class TextList;
+        class ResizeableFrame;
 #pragma endregion
 
 #pragma region // UISkin
@@ -384,7 +384,6 @@ namespace engine
             virtual void DrawThumb(const Thumb& thumb, const UIDrawContext& context) const = 0;
             virtual void DrawCheckBox(const CheckBox& checkbox, const UIDrawContext& context) const = 0;
             virtual void DrawRadioButton(const RadioButton& radiobutton, const UIDrawContext& context) const = 0;
-            virtual void DrawGrip(const Grip& radiobutton, const UIDrawContext& context) const = 0;
             virtual void DrawResizeableFrame(const ResizeableFrame& radiobutton, const UIDrawContext& context) const = 0;
             virtual void DrawViewPort(const ViewPort& vp, const UIDrawContext& context) const = 0;
             virtual void DrawContent(const Content& content, const UIDrawContext& context) const = 0;
@@ -402,7 +401,7 @@ namespace engine
         {
             IRenderer& renderer;
             UISystem& system;
-            UISkin& skin;
+            const UISkin& skin;
         };
 #pragma endregion
 
