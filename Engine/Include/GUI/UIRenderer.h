@@ -385,7 +385,6 @@ namespace engine
             virtual void DrawCheckBox(const CheckBox& checkbox, const UIDrawContext& context) const = 0;
             virtual void DrawRadioButton(const RadioButton& radiobutton, const UIDrawContext& context) const = 0;
             virtual void DrawResizeableFrame(const ResizeableFrame& radiobutton, const UIDrawContext& context) const = 0;
-            virtual void DrawViewPort(const ViewPort& vp, const UIDrawContext& context) const = 0;
             virtual void DrawContent(const Content& content, const UIDrawContext& context) const = 0;
             virtual void DrawScrollView(const ScrollView& scrollview, const UIDrawContext& context) const = 0;
             virtual void DrawUniformGrid(const UniformGrid& grid, const UIDrawContext& context) const = 0;

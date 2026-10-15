@@ -5922,25 +5922,6 @@ namespace TestMapEditor
 				m_button = button.get();
 				m_ux.AddWidget(std::move(button));
 
-				//Dialog dialog(m_ux);
-				//dialog.SetPosition({ 100, 100 }); 
-				//dialog.SetSize({ 200, 100 });
-
-				//ButtonHandle button = dialog.CreateButton({50,25}, {100, 50}, "Spawn");
-				//button.Click() += [&, this]()
-				//	{						
-				//		Dialog dialog1(this->m_ux);
-				//		dialog1.SetPosition({ 200, 200 });
-				//		dialog1.SetSize({ 600, 400 });
-				//				
-
-				//		ButtonHandle button1 = dialog1.CreateButton({ 50,50 }, { 100, 50 }, "Close");
-				//		button1.Click() += [&, this]()
-				//			{
-				//				dialog1.Close();
-				//			};
-				//	};
-
 			}
 
 			// ScrollBar
@@ -5982,48 +5963,14 @@ namespace TestMapEditor
 				}
 			}
 
-			if(false)
-			{
-				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
-				resizeableframe->SetPosition({ 300,300 });
-				resizeableframe->SetSize({ 600, 600 });
-
-				//std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
-				//viewport->SetPosition({ 0, 0 });
-				//viewport->SetSize(resizeableframe->GetContentsize());
-				//viewport->SetContentSize({ 500, 500 });
-				//m_viewport = viewport.get();
-				//resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
-				//	{
-				//		m_viewport->SetPosition({ 0,0 });
-				//		m_viewport->SetSize(size);
-				//	};
-				//resizeableframe->AddContent(std::move(viewport));
-
-				m_ux.AddWidget(std::move(resizeableframe));
-			}
-
-			// ViewPort
+			// TextListBox
 			if (false)
 			{
-				std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
-				viewport->SetPosition({ 250, 250 });
-				viewport->SetSize({ 300,300 });
-
-				viewport->SetContent(std::make_unique<Content>());
-				viewport->SetContentSize({ 500, 500 });
-				m_viewport = viewport.get();
-				m_ux.AddWidget(std::move(viewport));
-			}
-
-			// TextList
-			if (false)
-			{
-				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
+				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>();
 				resizeableframe->SetPosition({ 200,200 });
 				resizeableframe->SetSize({ 300, 300 });
 
-				std::unique_ptr<TextList> textListBox = std::make_unique<TextList>();
+				std::unique_ptr<TextListBox> textListBox = std::make_unique<TextListBox>();
 				textListBox->SetPosition({ 0, 0 });
 				textListBox->SetSize(resizeableframe->GetContentsize());
 				textListBox->Append("hello");
@@ -6041,17 +5988,13 @@ namespace TestMapEditor
 				textListBox->Append("hello");
 				textListBox->Append("world");
 
-				textListBox->SetMin(4);
-				textListBox->SetMax(7);
-
-				m_textList = textListBox.get();
+				m_textListBox = textListBox.get();
 				resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
 					{
-						m_textList->SetPosition({ 0,0 });
-						m_textList->SetSize(size);
+						m_textListBox->SetPosition({ 0,0 });
+						m_textListBox->SetSize(size);
 					};
 				resizeableframe->AddContent(std::move(textListBox));
-
 
 
 				m_ux.AddWidget(std::move(resizeableframe));
@@ -6239,224 +6182,13 @@ namespace TestMapEditor
 				m_ux.AddWidget(std::move(resizeableframe));
 			}
 
-			// TextListBox
-			if (false)
-			{
-				// create our resizeable frame. 
-				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
-				resizeableframe->SetPosition({ 250,200 });
-				resizeableframe->SetSize({ 300, 300 });
-
-				// create our TextListBox. this will be the content of the resizeable frame
-				std::unique_ptr<TextListBox> textListBox = std::make_unique<TextListBox>();
-				textListBox->SetPosition({ 0, 0 });
-				textListBox->SetSize(resizeableframe->GetContentsize());
-				m_textListBox = textListBox.get();
-
-				// add the TextListBox to the resizeable frame's content
-				resizeableframe->AddContent(std::move(textListBox));
-
-				// when the resizeable frame's content size changes, we need to update the TextListBox's size to match the new content size of the resizeable frame
-				// so it will always fill the resizeable frame's content area
-				resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
-					{
-						m_textListBox->SetPosition({ 0,0 });
-						m_textListBox->SetSize(size);
-					};
-
-				// add our resizeable frame to the ux system
-				m_ux.AddWidget(std::move(resizeableframe));
-
-				std::unique_ptr<Button> addButton = CreateButton({ 50, 200 }, { 150, 50 }, "Append");
-				addButton->Click += [this]()
-					{
-						// add a random text from m_randomTexts to the TextListBox
-						if (m_textListBox)
-						{
-							size_t index = engine::utilities::Random<size_t>(0, m_randomTexts.size() - 1);
-							m_textListBox->Append(m_randomTexts[index]);
-						}
-					};
-				m_ux.AddWidget(std::move(addButton));	
-
-				std::unique_ptr<Button> removeButton = CreateButton({ 50, 280 }, { 150, 50 }, "Remove Last");
-				removeButton->Click += [this]()
-					{
-						// remove the last item from the TextListBox
-						if (m_textListBox)
-						{
-							m_textListBox->RemoveLast();
-						}
-					};
-				m_ux.AddWidget(std::move(removeButton));
-
-				std::unique_ptr<Button> clearButton = CreateButton({ 50, 360 }, { 150, 50 }, "Clear");
-				clearButton->Click += [this]()
-					{
-						// clear all items from the TextListBox
-						if (m_textListBox)
-						{
-							m_textListBox->Clear();
-						}
-					};
-				m_ux.AddWidget(std::move(clearButton));
-
-			}
-
-			// ViewPort
-			if (false)
-			{
-				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
-				resizeableframe->SetPosition({ 200,200 });
-				resizeableframe->SetSize({ 300, 300 });
-
-				std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
-				viewport->SetPosition({ 0, 0 });
-				viewport->SetSize(resizeableframe->GetContentsize());
-
-				// create content for the viewport. this will be a TextList with many items and a min/max number of items to display
-				{
-					std::unique_ptr<TextList> textList = std::make_unique<TextList>();
-					textList->SetPosition({ 0, 0 });
-					textList->SetSize({ 500, 500 });
-					textList->Append("hello");
-					textList->Append("world");
-					textList->Append("hello");
-					textList->Append("world");
-					textList->Append("hello");
-					textList->Append("world");
-					textList->Append("hello");
-					textList->Append("world");
-					textList->Append("hello");
-					textList->Append("hello");
-					textList->Append("world");
-					textList->Append("hello");
-					textList->Append("world");
-
-					textList->SetMin(4);
-					textList->SetMax(7);
-
-					textList->SetPosition({ 0, -100.0f });
-
-					viewport->Scroll += [&](const PositionF& offset)
-						{
-							// get position of textlist relative to viewport's content area. this is the offset of the textlist's position relative to the viewport's content area
-							PositionF textListOffset = m_viewport->GetOffset();
-							float textListItemHeight = m_textList->GetItemHeight();
-							int min = static_cast<int>(m_viewport->GetOffset().y / textListItemHeight);
-							int max = static_cast<int>((m_viewport->GetOffset().y + m_viewport->GetSize().height) / textListItemHeight);
-
-							m_textList->SetMin(min);		
-							m_textList->SetMax(max);
-							
-						};
-
-					viewport->Resized += [&](const SizeF& size)
-						{
-							// when viewport's size change, adjust content's width to match viewport's width. height will be determined by content's own size
-							m_textList->SetSize({size.width, m_textList->GetSize().height});
-
-							// get position of textlist relative to viewport's content area. this is the offset of the textlist's position relative to the viewport's content area
-							PositionF textListOffset = m_viewport->GetOffset();
-							float textListItemHeight = m_textList->GetItemHeight();
-							int min = static_cast<int>(m_viewport->GetOffset().y / textListItemHeight);
-							int max = static_cast<int>((m_viewport->GetOffset().y + m_viewport->GetSize().height) / textListItemHeight);
-
-							m_textList->SetMin(min);
-							m_textList->SetMax(max);
-						};
-
-					viewport->ContentChanged += [&](Widget* content)
-						{
-							// when viewport's content changes, adjust content's width to match viewport's width. height will be determined by content's own size
-							content->SetSize({ viewport->GetSize().width, content->GetSize().height });
-						};
-
-					m_textList = textList.get();
-					viewport->SetContent(std::move(textList));
-				}
-
-				m_viewport = viewport.get();
-				resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
-					{
-						m_viewport->SetPosition({ 0,0 });
-						m_viewport->SetSize(size);
-					};
-				resizeableframe->AddContent(std::move(viewport));
-
-				m_ux.AddWidget(std::move(resizeableframe));
-
-			}
-
+			// this demo builds a resizeable dialog box with title bar and an image filling the client area.
 			if (true)
 			{
 				std::unique_ptr<engine::gui::ResizeableFrame> frame = std::make_unique<engine::gui::ResizeableFrame>();
 				frame->SetPosition({ 100,100 });
 				frame->SetSize({ 400, 300 });
 
-				if(false)
-				{
-					std::unique_ptr<engine::gui::Frame> child = std::make_unique<engine::gui::Frame>(true, false);
-					child->SetPosition({ 50,50 });
-					child->SetSize({ 100, 80 });
-					child->SetLayoutMode(engine::gui::LayoutMode::Anchor);
-					child->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
-					child->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
-					child->SetMargin({ 10, 10, 10, 10 });
-					frame->AddChild(std::move(child));
-				}
-
-				if(false)
-				{
-					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
-					button->SetPosition({ 50,50 });
-					button->SetSize({ 64, 64 });
-					button->SetLayoutMode(engine::gui::LayoutMode::Anchor);
-					button->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Right);
-					button->SetVerticalAnchor(engine::gui::VerticalAnchor::Center);
-					button->SetMargin({ 10, 10, 10, 10 });
-					frame->AddContent(std::move(button));
-
-					std::unique_ptr<engine::gui::Button> button1 = std::make_unique<engine::gui::Button>();
-					button1->SetPosition({ 50,50 });
-					button1->SetSize({ 64, 64 });
-					button1->SetLayoutMode(engine::gui::LayoutMode::Anchor);
-					button1->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Right);
-					button1->SetVerticalAnchor(engine::gui::VerticalAnchor::Center);
-					button1->SetMargin({ 10, 10, 10+ 10 + 64, 10 });
-					frame->AddContent(std::move(button1));
-
-					std::unique_ptr<engine::gui::Button> button2 = std::make_unique<engine::gui::Button>();
-					button2->SetPosition({ 50,50 });
-					button2->SetSize({ 64, 64 });
-					button2->SetLayoutMode(engine::gui::LayoutMode::Anchor);
-					button2->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Right);
-					button2->SetVerticalAnchor(engine::gui::VerticalAnchor::Center);
-					button2->SetMargin({ 10, 10, 10 + 10 + 64 + 10 + 64, 10 });
-					frame->AddContent(std::move(button2));
-
-					std::unique_ptr<engine::gui::Button> button3 = std::make_unique<engine::gui::Button>();
-					button3->SetPosition({ 50,50 });
-					button3->SetSize({ 64, 64 });
-					button3->SetLayoutMode(engine::gui::LayoutMode::Anchor);
-					button3->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
-					button3->SetVerticalAnchor(engine::gui::VerticalAnchor::Center);
-					button3->SetMargin({ 10, 10, 10 + 10 + 64 + 10 + 64 + 10 + 64, 10 });
-					frame->AddContent(std::move(button3));
-
-					//std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Hello Title Bar");
-					//label->SetPosition({ 50,50 });
-					//label->SetSize({ 0, 0 });
-					//label->SetAlignment(VerticalAlignment::Center, HorizontalAlignment::Left);
-					//label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
-					//label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
-					//label->SetVerticalAnchor(engine::gui::VerticalAnchor::Center);
-					//label->SetMargin({ 10, 10, 10 + 10 + 64 + 10 + 64 + 10 + 64, 10 });
-					//frame->AddContent(std::move(label));
-
-				}
-
-				if (true)
 				{
 					// title bar frame
 					std::unique_ptr<engine::gui::DragHandle> titlebar = std::make_unique<engine::gui::DragHandle>(*frame.get(), true, true);
@@ -6485,7 +6217,7 @@ namespace TestMapEditor
 						minimize->SetLayoutMode(engine::gui::LayoutMode::Anchor);
 						minimize->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Right);
 						minimize->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
-						minimize->SetMargin({ 2, 2, 2 + 2 +titlebarSize.width, 2 });
+						minimize->SetMargin({ 2, 2, 2 + 2 + titlebarSize.width, 2 });
 						titlebar->AddChild(std::move(minimize));
 
 						std::unique_ptr<engine::gui::Panel> panel = std::make_unique<engine::gui::Panel>(false);
@@ -6511,7 +6243,9 @@ namespace TestMapEditor
 					}
 
 					frame->AddContent(std::move(titlebar));
+				}
 
+				{
 					// client area frame
 					std::unique_ptr<engine::gui::Frame> clientArea = std::make_unique<engine::gui::Frame>(false, false);
 					clientArea->SetPosition({ 50,50 });
@@ -6520,11 +6254,164 @@ namespace TestMapEditor
 					clientArea->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
 					clientArea->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
 					clientArea->SetMargin({ 0, 48 + 4, 0, 0 });
+
+					{
+						std::unique_ptr<ScrollView> scrollview = std::make_unique<ScrollView>();
+						scrollview->SetPosition({ 0, 0 });
+						scrollview->SetSize({ 0, 0 });
+						scrollview->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+						scrollview->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+						scrollview->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+						scrollview->SetMargin({ 0, 0, 0, 0 });
+
+						{
+							Sprite pusha = AssetManager().Get<ISpriteAtlas>("pusha_sprite").GetSprite();
+							std::unique_ptr<Image> image = std::make_unique<Image>(Renderable(pusha));
+							image->SetPosition({ 0, 0 });
+							image->SetSize(pusha.GetSize());
+							scrollview->SetContent(std::move(image));
+						}
+
+						clientArea->AddChild(std::move(scrollview));
+
+					}
 					frame->AddContent(std::move(clientArea));
 				}
 
 				m_ux.AddWidget(std::move(frame));
 			}
+
+			if (true)
+			{
+				std::unique_ptr<engine::gui::ResizeableFrame> frame = std::make_unique<engine::gui::ResizeableFrame>();
+				frame->SetPosition({ 100,100 });
+				frame->SetSize({ 400, 300 });
+
+				{
+					// title bar frame
+					std::unique_ptr<engine::gui::DragHandle> titlebar = std::make_unique<engine::gui::DragHandle>(*frame.get(), true, true);
+					titlebar->SetPosition({ 50,50 });
+					titlebar->SetSize({ 48, 48 });
+					titlebar->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					titlebar->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					titlebar->SetVerticalAnchor(engine::gui::VerticalAnchor::Top);
+					titlebar->SetMargin({ 0, 0, 0, 4 });
+
+					{
+						SizeF titlebarSize = titlebar->GetSize();
+
+						std::unique_ptr<engine::gui::Button> close = std::make_unique<engine::gui::Button>();
+						close->SetPosition({ 50,50 });
+						close->SetSize({ titlebarSize.width - 2, 0 });
+						close->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+						close->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Right);
+						close->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+						close->SetMargin({ 2, 2, 2, 2 });
+						titlebar->AddChild(std::move(close));
+
+						std::unique_ptr<engine::gui::Button> minimize = std::make_unique<engine::gui::Button>();
+						minimize->SetPosition({ 50,50 });
+						minimize->SetSize({ titlebarSize.width - 2, 0 });
+						minimize->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+						minimize->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Right);
+						minimize->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+						minimize->SetMargin({ 2, 2, 2 + 2 + titlebarSize.width, 2 });
+						titlebar->AddChild(std::move(minimize));
+
+						std::unique_ptr<engine::gui::Panel> panel = std::make_unique<engine::gui::Panel>(false);
+						panel->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+						panel->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+						panel->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+						panel->SetMargin({ 2, 2, 2 + titlebarSize.width + 2 + titlebarSize.width + 2, 2 });
+
+						{
+							std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("TextListBox demo");
+							label->SetPosition({ 0,0 });
+							label->SetSize({ 0, 0 });
+							label->SetAlignment(VerticalAlignment::Center, HorizontalAlignment::Left);
+							label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+							label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+							label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+							label->SetMargin({ 2, 2, 2, 2 });
+							panel->AddChild(std::move(label));
+						}
+
+						titlebar->AddChild(std::move(panel));
+
+					}
+
+					frame->AddContent(std::move(titlebar));
+				}
+
+				{
+					// client area frame
+					std::unique_ptr<engine::gui::Frame> clientArea = std::make_unique<engine::gui::Frame>(false, false);
+					clientArea->SetPosition({ 50,50 });
+					clientArea->SetSize({ 48, 48 });
+					clientArea->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					clientArea->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					clientArea->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					clientArea->SetMargin({ 0, 48 + 4, 0, 0 });
+
+					{
+						std::unique_ptr<ScrollView> scrollview = std::make_unique<ScrollView>();
+						scrollview->SetPosition({ 0, 0 });
+						scrollview->SetSize({ 0, 0 });
+						scrollview->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+						scrollview->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+						scrollview->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+						scrollview->SetMargin({ 0, 0, 0, 0 });
+
+
+						{
+							std::unique_ptr<Widget> content = std::make_unique<Widget>();
+							content->SetPosition({ 0, 0 });
+							content->SetSize({ 50, 500000});
+							scrollview->SetContent(std::move(content));
+						}
+
+						clientArea->AddChild(std::move(scrollview));
+
+						//std::unique_ptr<TextListBox> textListBox = std::make_unique<TextListBox>();
+						//textListBox->SetPosition({ 0, 0 });
+						//textListBox->SetSize({ 500000, 50 });
+						//textListBox->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+						//textListBox->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+						//textListBox->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+						//textListBox->SetMargin({ 0, 0, 0, 0 });
+
+						//for (int i = 0; i < 500; i++)
+						//{
+						//	textListBox->Append("hello 1");
+						//	textListBox->Append("world 2");
+						//	textListBox->Append("hello 3");
+						//	textListBox->Append("world 4");
+						//	textListBox->Append("hello 5");
+						//	textListBox->Append("world 6");
+						//	textListBox->Append("hello 7");
+						//	textListBox->Append("world 8");
+						//	textListBox->Append("hello 9");
+						//	textListBox->Append("world 10");
+						//	textListBox->Append("hello 11");
+						//	textListBox->Append("world 12");
+						//	textListBox->Append("hello 13");
+						//	textListBox->Append("world 14");
+						//}
+
+
+						//clientArea->AddChild(std::move(textListBox));
+
+					}
+					frame->AddContent(std::move(clientArea));
+				}
+
+				m_ux.AddWidget(std::move(frame));
+			}
+
+
+
+
+			
 
 			// let's create menu system
 			{
@@ -7780,6 +7667,9 @@ namespace TestMapEditor
 
 				// create animation set where we will store animated tiles like splash animation
 				Registry<AnimationSet<Sprite>>::Instance().Register("splash_anim_set", std::make_unique<AnimationSet<Sprite>>());
+
+				// create sprite atlas for the pusha sprite
+				SpriteAtlasFactory::Create("pusha_sprite", L"../Assets/pusha.JPG", 1, 1);
 
 				// create animation for splash and store in animation set
 				ISpriteAtlas& splashAnimSprites = assets.Get<ISpriteAtlas>("splash_anim_sprites");

@@ -54,7 +54,7 @@ namespace engine
 			void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize)override final;
 
 			// calculates the position of the text given the font and alignment
-			bool RefreshLayout();
+			bool UpdateLayout();
 
 		public:
 			// constructor
@@ -118,7 +118,7 @@ namespace engine
 			void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize)override final;
 
 			// calculates the position of the image based on alignment
-			bool RefreshLayout();
+			bool UpdateLayout();
 
 		public:
 			// constructor for Renderable as image resource
@@ -187,11 +187,10 @@ namespace engine
 			friend class ScrollBar;
 			friend class Slider;
 
-		public:
 			Thumb();
-
 			Thumb(bool isHorizontal);
 
+		public:
 			void Draw(const UIDrawContext& context) const override;
 		};
 #pragma endregion
@@ -371,11 +370,6 @@ namespace engine
 					m_droppable = false;
 					m_focusable = false;
 				}
-
-				//void Draw(const UIDrawContext& context) const override
-				//{
-				//	context.skin.DrawContent(*this, context);
-				//}
 			};
 
 			class Grip : public Widget
@@ -537,5 +531,111 @@ namespace engine
 		};
 #pragma endregion
 
+#pragma region // ScrollView
+		// ScrollView manages the overall scrolling control. 
+		// It arranges the viewport and scrollbars, determines which scrollbars are needed, 
+		// and synchronizes their sizes and positions with the content.
+		class ScrollView : public Widget
+		{
+		private:
+#pragma region // ViewPort - container widget that holds a single "content" widget and manages the content widget's scrolling.
+			// ViewPort manages the content being viewed.It owns the content widget, moves it to implement scrolling, 
+			// keeps its position within valid bounds, and publishes events when the content moves, resizes, or changes.
+			// ViewPort doesn't need to know how content moves. It simply reports that its content moved or changed size
+			// if content is larger than viewport, it ensures that content always fill the whole region of the viewport.
+			// if content is smaller than viewport, it ensures the content stays put and its top-left is at 0,0 of viewport
+			// NOTE: inner class because i think this is ScrollView's implementation detail.
+			class ViewPort : public Widget
+			{
+			protected:
+				Widget* m_content;
+
+				// this method ensures that content's position is always within the viewport's bounds. 
+				// if content's position is outside the viewport, it will be moved back to the nearest position within the viewport
+				void UpdateContentPosition();
+
+				// handler for when viewport's size changes. we need to ensure that content's position is still within the viewport's bounds
+				void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override;
+
+				// event handler for when content's size changes. we need to ensure that content's position is still within the viewport's bounds
+				void OnContentSizeChanged(const SizeF& size);
+
+				// callback when content change position. 
+				void OnContentMove(const PositionF& pos);
+
+			public:
+				// event invoked when content changes position
+				engine::event::Event<const VecF&> Scroll;
+
+				// event invoked when content's size changed
+				engine::event::Event<const SizeF&> ContentSizeChanged;
+
+				// event invoked when content object changed
+				engine::event::Event<Widget*> ContentChanged;
+
+				ViewPort();
+
+				void SetContent(std::unique_ptr<Widget> content);
+
+				void SetContentSize(const SizeF& size);
+
+				SizeF GetContentSize() const;
+
+				VecF GetOffset() const;
+
+				void SetOffset(const VecF& offset);
+
+				void AddContent(std::unique_ptr<Widget> content);
+			};
+#pragma endregion
+
+		protected:
+			// components
+			ViewPort* m_viewport;
+			ScrollBar* m_hScrollBar;
+			ScrollBar* m_vScrollBar;
+
+			// if true, scrollbars are hidden if not needed
+			bool m_autoHideScrollBars;
+
+			float m_scrollSize;
+			float m_borderSize;
+
+		protected:
+
+			// this will update thumb positions of the scroll bars
+			void UpdateThumbPositions();
+
+			// this will update the content size of scroll bars. scroll bars then will refresh its thumb size and thumb position internally
+			void UpdateScrollBarContentSize();
+
+			// this will update the viewport size of scroll bars.  scroll bars then will refresh its thumb size and thumb position internally
+			void UpdateScrollBarViewportSize();
+
+			void UpdateLayout();
+
+			void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override;
+
+		public:
+
+			engine::event::Event<const VecF&> Scroll;
+			engine::event::Event<Widget*> ContentChanged;
+			engine::event::Event<const SizeF&> ViewPortResized;
+
+			ScrollView(bool autoHideScrollBars = true, float scrollSize = 20.0f, float borderSize = 2.0f);
+
+			void SetContentSize(const SizeF& size);
+
+			void SetContent(std::unique_ptr<Widget> content);
+
+			// should this be called View? or Client? what's the best name for this?
+			SizeF GetViewPortSize() const;
+
+			VecF GetViewPortOffset() const;
+
+			void Draw(const UIDrawContext& context) const override;
+
+		};
+#pragma endregion
 	}
 }

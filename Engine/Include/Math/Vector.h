@@ -17,6 +17,7 @@ namespace engine
 				else                                          return T{ 0 };
 				}();
 
+
 			T x;
 			T y;
 

@@ -41,6 +41,21 @@ namespace engine::graphics::dx11::imageio
 			const wchar_t* filename);
 	}
 
+	namespace jpg
+	{
+		HRESULT LoadTextureFromFile(
+			ID3D11Device* device,
+			ID3D11DeviceContext* context,
+			const wchar_t* filename,
+			ID3D11ShaderResourceView** textureView);
+
+		HRESULT SaveTextureToFile(
+			ID3D11Device* device,
+			ID3D11DeviceContext* context,
+			ID3D11Texture2D* texture,
+			const wchar_t* filename);
+	}
+
 	HRESULT LoadTextureFromFile(
 		ID3D11Device* device,
 		ID3D11DeviceContext* context,
