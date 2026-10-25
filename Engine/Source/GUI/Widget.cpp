@@ -680,8 +680,13 @@ namespace engine
 			// if position did not change, no need to update and invoke events
 			if (m_position == pos) return;
 
+			// set to new position
 			PositionF oldPos = m_position;
 			m_position = pos;
+
+			// before we raise event, let us refresh layout first.
+
+
 			Moved(pos);
 			OnPositionChanged(oldPos, m_position);
 

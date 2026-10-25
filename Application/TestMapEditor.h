@@ -5914,7 +5914,7 @@ namespace TestMapEditor
 			}
 			
 			// dialog
-			if (true)
+			if (false)
 			{
 				std::unique_ptr<Button> button = std::make_unique<Button>();
 				button->SetPosition({100, 100});
@@ -5963,7 +5963,85 @@ namespace TestMapEditor
 				}
 			}
 
-			// TextListBox
+			// HScrollBar in Resizeable
+			if (true)
+			{
+				// create resizeable frame to house the scrollbar
+				std::unique_ptr<engine::gui::ResizeableFrame> frame = std::make_unique<engine::gui::ResizeableFrame>(8.0f, SizeF{ 32, 32 });
+				frame->SetPosition({ 150,100 });
+				frame->SetSize({ 400, 50 });
+
+				// create scrollbar and fit it into our resizeable frame
+				{
+					std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(8.0f, 1.0f, true);
+					scrollbar->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					scrollbar->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					scrollbar->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					m_scrollbar = scrollbar.get();
+					frame->AddContent(std::move(scrollbar));
+				}
+
+				m_ux.AddWidget(std::move(frame));
+			}
+
+			// VScrollBar in Resizeable
+			if (false)
+			{
+				// create resizeable frame to house the scrollbar
+				std::unique_ptr<engine::gui::ResizeableFrame> frame = std::make_unique<engine::gui::ResizeableFrame>(8.0f, SizeF{32, 32});
+				frame->SetPosition({ 50,200 });
+				frame->SetSize({ 50, 400 });
+
+				// create scrollbar and fit it into our resizeable frame
+				{
+					std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(40000.0f, 100.0f, false);
+					scrollbar->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					scrollbar->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					scrollbar->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					m_scrollbar = scrollbar.get();
+					frame->AddContent(std::move(scrollbar));
+				}
+
+				m_ux.AddWidget(std::move(frame));
+			}
+
+			// ScrollView::ViewPort in Resizeable
+			if (false)
+			{
+				// create resizeable frame to house the scrollbar
+				std::unique_ptr<engine::gui::ResizeableFrame> frame = std::make_unique<engine::gui::ResizeableFrame>();
+				frame->SetPosition({ 75,75 });
+				frame->SetSize({ 400, 400 });
+
+				{
+					// create viewport and make it fit into resizeable frame
+					std::unique_ptr<ScrollView::ViewPort> vp = std::make_unique<ScrollView::ViewPort>();
+					vp->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					vp->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					vp->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					vp->SetMargin({ 0, 0, 0, 0 });
+
+					{
+						// create image and set it as content of viewport
+						Sprite pusha = AssetManager().Get<ISpriteAtlas>("pusha_sprite").GetSprite();
+						std::unique_ptr<Image> image = std::make_unique<Image>(Renderable(pusha));
+						image->SetPosition({ 5, 50 });
+						image->SetSize(pusha.GetSize());
+						vp->SetContent(std::move(image));
+						vp->SetOffset({ 5000, 5000 });
+					}
+
+					frame->AddContent(std::move(vp));
+
+
+				}
+
+				m_ux.AddWidget(std::move(frame));
+
+			}
+
+
+			// TextListBox in ResizeableFrame
 			if (false)
 			{
 				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>();
@@ -5973,20 +6051,24 @@ namespace TestMapEditor
 				std::unique_ptr<TextListBox> textListBox = std::make_unique<TextListBox>();
 				textListBox->SetPosition({ 0, 0 });
 				textListBox->SetSize(resizeableframe->GetContentsize());
-				textListBox->Append("hello");
-				textListBox->Append("world");
-				textListBox->Append("hello");
-				textListBox->Append("world");
-				textListBox->Append("hello");
-				textListBox->Append("world");
-				textListBox->Append("hello");
-				textListBox->Append("world");
-				textListBox->Append("hello");
-				textListBox->Append("world");
-				textListBox->Append("hello");
-				textListBox->Append("world");
-				textListBox->Append("hello");
-				textListBox->Append("world");
+
+				for (int i = 0; i < 100; i++)
+				{
+					textListBox->Append("hello");
+					textListBox->Append("world");
+					textListBox->Append("hello");
+					textListBox->Append("world");
+					textListBox->Append("hello");
+					textListBox->Append("world");
+					textListBox->Append("hello");
+					textListBox->Append("world");
+					textListBox->Append("hello");
+					textListBox->Append("world");
+					textListBox->Append("hello");
+					textListBox->Append("world");
+					textListBox->Append("hello");
+					textListBox->Append("world");
+				}
 
 				m_textListBox = textListBox.get();
 				resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
@@ -6138,19 +6220,23 @@ namespace TestMapEditor
 					std::unique_ptr<TextList> textList = std::make_unique<TextList>();
 					textList->SetPosition({ 0, 0 });
 					//textList->SetSize({ 500, 500 });
-					textList->Append("hello");
-					textList->Append("world");
-					textList->Append("hello1");
-					textList->Append("world1");
-					textList->Append("hello2");
-					textList->Append("world2");
-					textList->Append("hello3");
-					textList->Append("world3");
-					textList->Append("hello4");
-					textList->Append("hello5");
-					textList->Append("world4");
-					textList->Append("hello6");
-					textList->Append("world5");
+
+					for (int i = 0; i < 100; i++)
+					{
+						textList->Append("hello");
+						textList->Append("world");
+						textList->Append("hello1");
+						textList->Append("world1");
+						textList->Append("hello2");
+						textList->Append("world2");
+						textList->Append("hello3");
+						textList->Append("world3");
+						textList->Append("hello4");
+						textList->Append("hello5");
+						textList->Append("world4");
+						textList->Append("hello6");
+						textList->Append("world5");
+					}
 
 					textList->SetMin(4);
 					textList->SetMax(7);
@@ -6267,9 +6353,11 @@ namespace TestMapEditor
 						{
 							Sprite pusha = AssetManager().Get<ISpriteAtlas>("pusha_sprite").GetSprite();
 							std::unique_ptr<Image> image = std::make_unique<Image>(Renderable(pusha));
-							image->SetPosition({ 0, 0 });
+							image->SetPosition({ 5, 50 });
 							image->SetSize(pusha.GetSize());
+							//image->SetSize({1000, 10000});
 							scrollview->SetContent(std::move(image));
+							scrollview->SetContentPosition({ 5, 50 });
 						}
 
 						clientArea->AddChild(std::move(scrollview));
@@ -6354,52 +6442,59 @@ namespace TestMapEditor
 					clientArea->SetMargin({ 0, 48 + 4, 0, 0 });
 
 					{
-						std::unique_ptr<ScrollView> scrollview = std::make_unique<ScrollView>();
-						scrollview->SetPosition({ 0, 0 });
-						scrollview->SetSize({ 0, 0 });
-						scrollview->SetLayoutMode(engine::gui::LayoutMode::Anchor);
-						scrollview->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
-						scrollview->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
-						scrollview->SetMargin({ 0, 0, 0, 0 });
+						//std::unique_ptr<ScrollView> scrollview = std::make_unique<ScrollView>();
+						//scrollview->SetPosition({ 0, 0 });
+						//scrollview->SetSize({ 0, 0 });
+						//scrollview->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+						//scrollview->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+						//scrollview->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+						//scrollview->SetMargin({ 0, 0, 0, 0 });
 
-
-						{
-							std::unique_ptr<Widget> content = std::make_unique<Widget>();
-							content->SetPosition({ 0, 0 });
-							content->SetSize({ 50, 500000});
-							scrollview->SetContent(std::move(content));
-						}
-
-						clientArea->AddChild(std::move(scrollview));
-
-						//std::unique_ptr<TextListBox> textListBox = std::make_unique<TextListBox>();
-						//textListBox->SetPosition({ 0, 0 });
-						//textListBox->SetSize({ 500000, 50 });
-						//textListBox->SetLayoutMode(engine::gui::LayoutMode::Anchor);
-						//textListBox->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
-						//textListBox->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
-						//textListBox->SetMargin({ 0, 0, 0, 0 });
-
-						//for (int i = 0; i < 500; i++)
 						//{
-						//	textListBox->Append("hello 1");
-						//	textListBox->Append("world 2");
-						//	textListBox->Append("hello 3");
-						//	textListBox->Append("world 4");
-						//	textListBox->Append("hello 5");
-						//	textListBox->Append("world 6");
-						//	textListBox->Append("hello 7");
-						//	textListBox->Append("world 8");
-						//	textListBox->Append("hello 9");
-						//	textListBox->Append("world 10");
-						//	textListBox->Append("hello 11");
-						//	textListBox->Append("world 12");
-						//	textListBox->Append("hello 13");
-						//	textListBox->Append("world 14");
+						//	std::unique_ptr<Widget> content = std::make_unique<Widget>();
+						//	content->SetPosition({ 0, 0 });
+						//	content->SetSize({ 50, 50000});
+						//	scrollview->SetContent(std::move(content));
 						//}
 
+						//clientArea->AddChild(std::move(scrollview));
 
-						//clientArea->AddChild(std::move(textListBox));
+						std::unique_ptr<TextListBox> textListBox = std::make_unique<TextListBox>();
+						textListBox->SetPosition({ 0, 0 });
+						textListBox->SetSize({ 500000, 50 });
+						textListBox->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+						textListBox->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+						textListBox->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+						textListBox->SetMargin({ 0, 0, 0, 0 });
+						//textListBox->SetPosition({ 0,0 });
+						//textListBox->SetSize(clientArea->GetSize());
+						//m_textListBox = textListBox.get();
+
+						//clientArea->Resized += [&](const SizeF& size)
+						//	{
+						//		m_textListBox->SetPosition({ 0,0 });
+						//		m_textListBox->SetSize(size);
+						//	};
+
+						for (int i = 0; i < 500; i++)
+						{
+							textListBox->Append("hello 1");
+							textListBox->Append("world 2");
+							textListBox->Append("hello 3");
+							textListBox->Append("world 4");
+							textListBox->Append("hello 5");
+							textListBox->Append("world 6");
+							textListBox->Append("hello 7");
+							textListBox->Append("world 8");
+							textListBox->Append("hello 9");
+							textListBox->Append("world 10");
+							textListBox->Append("hello 11");
+							textListBox->Append("world 12");
+							textListBox->Append("hello 13");
+							textListBox->Append("world 14");
+						}
+
+						clientArea->AddChild(std::move(textListBox));
 
 					}
 					frame->AddContent(std::move(clientArea));
@@ -7669,7 +7764,7 @@ namespace TestMapEditor
 				Registry<AnimationSet<Sprite>>::Instance().Register("splash_anim_set", std::make_unique<AnimationSet<Sprite>>());
 
 				// create sprite atlas for the pusha sprite
-				SpriteAtlasFactory::Create("pusha_sprite", L"../Assets/pusha.JPG", 1, 1);
+				SpriteAtlasFactory::Create("pusha_sprite", L"../Assets/pusha1.JPG", 1, 1);
 
 				// create animation for splash and store in animation set
 				ISpriteAtlas& splashAnimSprites = assets.Get<ISpriteAtlas>("splash_anim_sprites");

@@ -1014,6 +1014,12 @@ namespace engine
 				m_textListModel->Set(index, text);
 			}
 
+			virtual size_t Size() const
+			{
+				return m_textListModel->Size();
+			}
+
+
 			void Draw(const UIDrawContext& context) const override
 			{
 				context.skin.DrawTextList(*this, context);

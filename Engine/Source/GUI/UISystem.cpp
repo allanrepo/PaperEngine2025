@@ -27,7 +27,6 @@ namespace engine
 				{
 					widget->UnregisteredToSystem -= engine::event::Handler(this, &InteractionStateTracker::OnWidgetUnregistered);
 					m_trackedWidgets.Unregister(widget);
-					LOG("untracked: " + std::to_string(m_trackedWidgets.Size()));
 				}
 			}
 		}
@@ -46,7 +45,6 @@ namespace engine
 					m_trackedWidgets.Register(widget, 1);
 					widget->UnregisteredToSystem += engine::event::Handler(this, &InteractionStateTracker::OnWidgetUnregistered);
 				}
-				LOG("tracked: " + std::to_string(m_trackedWidgets.Size()));
 			}
 		}
 

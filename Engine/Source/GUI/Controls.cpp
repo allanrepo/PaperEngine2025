@@ -592,7 +592,7 @@ namespace engine
 		// checks if the scrollbar can scroll. if content is smaller than viewport, it cannot scroll
 		bool ScrollBar::CanScroll() const
 		{
-			return m_contentLength > m_viewportLength;
+			return (m_contentLength > m_viewportLength) && (m_viewportLength > 0) && (m_contentLength > 0);
 		}
 
 		// callback when mouse is pressed down on the scroll bar. this can happen on the thumb or on the track. 
@@ -603,15 +603,23 @@ namespace engine
 			// if cannot scroll e.g. content smaller than viewport, no need to drag
 			if (!CanScroll()) return;
 
-			// did we clicked on thumb or track?
+			// get the local position in the scrollbar's area where the mouse clicked. we only need position along the scrollbar's orientation.
 			float lpos = (m_horizontal ? pos.x : pos.y) - (m_horizontal ? GetAbsolutePosition().x : GetAbsolutePosition().y);
+
+			// get the size of the thumb. this is the length of the thumb widget along scrollbar's orientation
 			float thumbSize = m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height;
+
+			// get the thumb position (local to scrollbar). this is the top position of thumb widget if scrollbar orientation is vertical, and left position if horizontal
 			float thumbPos = m_horizontal ? m_thumb->GetPosition().x : m_thumb->GetPosition().y;
 
-			// if click on track, move thumb to that position, and start dragging. the thumb will be centered on the click position if possible.
+			// did we clicked on thumb or track?
 			if (lpos < thumbPos || lpos > thumbPos + thumbSize)
 			{
+				// if click on track, move thumb to that position, and start dragging. the thumb will be centered on the click position if possible.
 				float newThumbPos = lpos - thumbSize / 2.0f;
+
+				// the new thumb pos could position thumb outside scrollbar's tracklength as the 'pos' from OnMouseDown could be outside scrollbar's area
+				// that's fine. we just set it. we will validate the thumb position with our handler to thumb's 'Moved' event
 				m_thumb->SetPosition(m_horizontal ? PositionF{ newThumbPos,  m_thumb->GetPosition().y } : PositionF{ m_thumb->GetPosition().x, newThumbPos });
 			}
 
@@ -627,6 +635,23 @@ namespace engine
 		}
 
 		// callback when mouse is moved on the scroll bar. this can happen on the thumb or on the track.
+		// thumb moves when this happen
+		//	- thumb moves just a normal widget would.no checking if it's position is outside scrollbar's scroll range
+		//	- scrollbar handles thumb move event.without checking if position is valid or not, it forces it to be inside scrollbar's scroll range
+		//	- translate current thumb physical pos into logical pos
+		//	- if logical pos is outside logical range, clamp it
+		//	- translate logical pos back to physical thumb pos
+		//	- now compare this translated physical thumb pos with thumb's current physical pos
+		//		- if it's different, it means the thumb need to be nudged so it's really inside scrollbar's scroll range
+		//		- set thumb physical position to the newly translated physical pos
+		//		- setting thumb physical position will trigger thumb move event.
+		//		- this must be ignored
+		//		- the handler's purpose is to correct the thumb's position to ensure it's inside scrollbar's scroll range
+		//		- we already guaranteed that this position puts thumb inside scrollbar's scroll range. so no need to correct it again
+		//		- we also should skip raising Scroll event because we're doing that already
+		//	- if logical pos != offset
+		//		- offset = logical pos
+		//		- raise Scroll event
 		void ScrollBar::OnMouseMove(const PositionF& pos)
 		{
 			// if we're dragging, let the thumb handle the mouse move event so it can update its position and fire its moved event
@@ -648,12 +673,15 @@ namespace engine
 			// if either content or viewport is 0, set ratio to 1.0f so that thumb will be full length of scrollbar, no scrolling needed
 			float ratio = m_contentLength > 0 ? m_viewportLength > 0 ? m_viewportLength / m_contentLength : 1.0f : 1.0f;
 
+			// get the minimum and maximum allowed size of the thumb. it cannot be smaller than minimum thumblength, unless tracklength is smaller than minimum thumb length
+			float min = std::min<float>(m_minThumbLength, trackLength);
+			float max = trackLength;
+
 			// here when calculating the actual length of the thumb, we clamp to tracklength so even if ratio > 1, we don't end up with thumb bigger than scroll bar
 			float length = std::clamp(ratio * trackLength,
 				// we're comparing value between m_minThumbLength and trackLength. between m_minThumbLength and trackLength, use smaller for min value and bigger for max value. 
 				// this is a must because if min value is bigger than max value, std::clamp will throw an exception
-				m_minThumbLength > trackLength ? trackLength : m_minThumbLength,
-				trackLength > m_minThumbLength ? trackLength : m_minThumbLength
+				min, max
 			); // clamp min size
 
 			SizeF thumbSize{
@@ -663,32 +691,53 @@ namespace engine
 			m_thumb->SetSize(thumbSize);
 		}
 
-		// internal method to update the position of the thumb when offset, content length, or viewport length changes.
+		// internal method to update the physical position of the thumb based on current offset, content length, or viewport length.
 		void ScrollBar::UpdateThumbPosition()
 		{
-			// tracklength is the length of the scrollbar in pixels. it will be used to calculate the index size
-			float trackLength = m_horizontal ? GetSize().width : GetSize().height;
+			// trackLength is the physical length the thumb can move within the scrollbar. this must be length of scrollbar minus length of thumb. 
+			float trackLength = (m_horizontal ? GetSize().width : GetSize().height) - (m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height);
 
-			// how much pixels in tracklength does each content occupies? that is index size
-			// if content is less than viewport, set it to 0 as we doin't need to scroll
-			// if content is 0, then there is nothing to scroll. handle this because if viewport is negative and content is 0, the previous condition might pass a content being 0
-			// if viewport is 0, it could mean content is infinitely large compared to viewport, so we don't need to scroll either. set it to 0
-			float indexSize =
-				m_viewportLength == 0.0f ? 0 :
-				m_contentLength == 0.0f ? 0 :
-				m_contentLength <= m_viewportLength ? 0 :
-				trackLength / m_contentLength;
+			// this is the logical range in which viewport can move. if value is 1, it means viewport can be at logical position 0 and 1.
+			float logicalRange = m_contentLength - m_viewportLength;
 
-			// now let's calculate the thumb position to snap it to the index.
-			float thumbPos = m_offset * indexSize;
-			m_thumb->SetPosition(m_horizontal ? PositionF{ thumbPos, 0 } : PositionF{ 0, thumbPos });
+			// if viewport length is greater than content length, logical range is < 0. scrolling is NOT required
+			logicalRange = logicalRange < 0 ? 0 : logicalRange;
+
+			// now let's calculate the thumb's physical position by translating its logical position
+			// note that if logical range is <= 0, thumb is not scrolling. therefore it will be set to 0
+			float thumbPhysicalPos = logicalRange == 0 ? 0.0f : m_offset * trackLength / logicalRange;
+			m_thumb->SetPosition(m_horizontal ? PositionF{ thumbPhysicalPos, 0 } : PositionF{ 0, thumbPhysicalPos });
 		}
 
 		// callback when the size of the scrollbar changes. this is called when the scrollbar is resized. we will update the thumb size and position based on new size
+		//	note: offset, viewport length, and content length does not change when scrollbar resize
+		//	- scrollbar length represents content length while thumb length represents viewport length
+		//		- if scrollbar length is 100, content length is 4, and viewport length is 3, then thumb length is 75
+		//		- if scrollbar length changes, then thumb length must change to maintain its proportion with content and viewport length
+		//	- likewise, thumb's physical position represents offset value (logical position)
+		//		- if scrollbar length and thumb length changes, thumb's physical position needs to be updated too in order to maintain its proportion with offset value 
+		//			- repositioning thumb will trigger thumb move.
+		//				- it's possible that thumb moves in physical position where its corresponding logical position is not same with current offset value
+		//				- e.g.scrollbar length is too small and thumb length is already at minimum length
+		//					- thumb length will be resized to fill the scrollbar.its physical position will be set to 0, 0
+		//					- physical position of 0, 0 means logical position of 0. offset must not be changed to 0 if it's value is not 0.
+		//				- since we're not supposed to change offset value, thumb's move handler must not change offset and must not raise Scroll event
 		void ScrollBar::OnSizeChanged(const SizeF&, const SizeF&)
 		{
+			// update thumb size
 			UpdateThumbSize();
+
+			// offset must not change value since only scrollbar size changed. 
+			// yes the thumb position must be updated since the tracklength has changed but this should not change offset value.
+			// if tracklength becomes smaller than minimum thumb size, the thumb resizes to fit the whole tracklength and its position to 0,0
+			// this change in thumb position must not change our offset. 
+			m_ignoreScrollBarScroll = true;
+
+			// update the thumb position
 			UpdateThumbPosition();
+
+			// after updating thumb position, we don't need to suppress updating offset
+			m_ignoreScrollBarScroll = false;
 		}
 
 		// constructor
@@ -711,52 +760,86 @@ namespace engine
 			// handle thumb movement. when thumb is moved, we will calculate the new offset based on thumb position and content length, viewport length, and scrollbar length
 			m_thumb->Moved += [this](const PositionF& newPos)
 				{
-					// trackLength is the length scrollbar can move. so this must be length of scrollbar minus length of thumb. this is used to calculate the index size
+					// we might be setting position of thumb but we know it's position is correct and does not need recorrection, so we just ignore this handler.
+					if (m_ignoreThumbMove) return;
+
+					// trackLength is the physical length the thumb can move within the scrollbar. this must be length of scrollbar minus length of thumb. 
 					float trackLength = (m_horizontal ? GetSize().width : GetSize().height) - (m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height);
 
-					// scroll size is the min/max range of value that scrollbar can scroll. content is the total range, while viewport is the viewable range
-					// content is the size of the data that can be viewed. viewport is the size of the data that is viewable.
-					// if viewport is smaller than content, then scrolling is required 
-					float scrollSize = m_contentLength - m_viewportLength;
+					// this is the logical range in which viewport can move. if value is 1, it means viewport can be at logical position 0 and 1.
+					float logicalRange = m_contentLength - m_viewportLength;
 
-					// given trackLength which is the actual scroll range of scrollbar in pixel, and scrollSize which is the range it can scroll,
-					// scrollIndexSize is the size in pixel per every value the scrollbar can scroll
-					// if scrollsize is 0 or negative, then scrolling should not happen
-					float scrollIndexSize = scrollSize > 0 ? trackLength / scrollSize : 0;
+					// if viewport length is greater than content length, logical range is < 0. scrolling is NOT required
+					logicalRange = logicalRange < 0 ? 0 : logicalRange;
 
-					// get thumb position. this is based on thumb widget's position and the scrollbar's orientation
-					float thumbPos = m_horizontal ? newPos.x : newPos.y;
+					// get the thumb position
+					float thumbPhysicalPos = m_horizontal ? newPos.x : newPos.y;
 
-					// if scroll index size is 0, then scrolling should not happen
-					float index = scrollIndexSize == 0 ? 0 : std::floor(thumbPos / scrollIndexSize + 0.5f);
+					// thumb position is in physical space and could be any value. let's translate it into a logical space
+					// note the +0.5 is just for centering
+					// if tracklength is 0. this means thumb has no space to move. the thumb fills up the scrollbar. 
+					// since thumb cannot scroll, it will be positioned at 0,0
+					float thumbLogicalPos = trackLength == 0 ? 0 : std::floor(thumbPhysicalPos * logicalRange / trackLength + 0.5f);
 
-					// clamp index such that its value can only be between 0 and (m_contentLength - m_viewportLength)
-					index = std::clamp<float>(index, 0.0f, std::max<float>(0.0f, m_contentLength - m_viewportLength));
+					// thumb's logical position is now in logical space, but it can be outside of the logical range. let's clamp it to within logical range
+					thumbLogicalPos = std::clamp<float>(thumbLogicalPos, 0.0f, std::max<float>(0.0f, logicalRange));
 
-					// now let's calculate the thumb position to snap it to the index.
-					thumbPos = index * scrollIndexSize;
-					m_thumb->SetPosition(m_horizontal ? PositionF{ thumbPos, 0 } : PositionF{ 0, thumbPos });
+					// we now have a valid logical position for our thumb. translate it back to physical space
+					// note that if logical range is <= 0, thumb is not scrolling. therefore it will be set to 0
+					float correctedThumbPhysicalPos = logicalRange == 0 ? 0.0f : thumbLogicalPos * trackLength / logicalRange;
+
+					// if corrected position is not same as current position, it means we need to adjust the thumb position to be within scrollbar's scroll range
+					if (correctedThumbPhysicalPos != thumbPhysicalPos)
+					{
+						// finally, we set the thumb position. 
+						// since the physical thumb position we are now setting thumb to is guaranteed to be valid, we can disable listening to thumb's Moved event when set the position again
+						m_ignoreThumbMove = true;
+						m_thumb->SetPosition(m_horizontal ? PositionF{ correctedThumbPhysicalPos, 0 } : PositionF{ 0, correctedThumbPhysicalPos });
+						m_ignoreThumbMove = false;
+					}
+
+					// if we only intend to reposition thumb but not change offset, bail out now
+					if (m_ignoreScrollBarScroll) return;
 
 					// finally, if the calculated index is same as current offset, we don't have to do anything
 					// note that offset is just another name for index.
-					if (m_offset == index) return;
-					m_offset = index;
+					if (m_offset == thumbLogicalPos) return;
+					m_offset = thumbLogicalPos;
 					Scroll(m_offset);
 				};
 		}
 
 		// set the offset of the scrollbar. this will update the thumb position and fire the scroll event if the offset is changed.
+		// since we're changing offset, we can immediately check offset if valid and clamp it if it's not.then if resulting offset is same as current, can bail out now
+		//	- at this point, our new offset is guaranteed valid, meaning if translated to thumb physical position, thumb will be inside scrollbar's scroll range
+		//	- also if we reach this point, new offset is different from current offset so we need to change its value
+		//	- changing offset value means we need to update thumb physical position
+		//		- but resulting physical position guarantees thumb is inside scrollbar's scroll range so we don't need to check for recorrecting.
+		//		- this will ignore thumb's move event
+		//	- since we're ignoring thumb's move event, we need to raise Scroll event ourselves.
+		//	- Scroll event needs to be raised because offset value changed
 		void ScrollBar::SetOffset(float offset)
 		{
-			// clamp offset to be within 0 and (contentLength - viewportLength). if content is smaller than viewport, set offset to 0
+			// clamp offset to be within logical range (0 and [contentLength - viewportLength]). if content is smaller than viewport, set offset to 0
 			offset = std::clamp(offset, 0.0f, std::max<float>(0.0f, m_contentLength - m_viewportLength));
 
-			// if thumb position did not change, no need to update and invoke scroll events
+			// if the new offset is same as current, can just bail out
 			if (m_offset == offset) return;
 
 			// update offset, thumb position, and fire scroll event
 			m_offset = offset;
+
+			// at this point, we know new offset is guaranteed to be valid, so we can set thumb position without worry that it will be in an invalid position
+			m_ignoreThumbMove = true;
+
+			// now update the thumb's physical position based on new offset.
+			// since we are ignoring recorrection, it will just blindly set thumb to new physical position without validating
 			UpdateThumbPosition();
+
+			// we can now set state back to normal and handle any thumb movement. 
+			m_ignoreThumbMove = false;
+
+			// since we ignore thumb movement, we will raise scroll ourselves. we know offset has changed at this point, so we just raise the event
 			Scroll(m_offset);
 		}
 
@@ -767,31 +850,89 @@ namespace engine
 		}
 
 		// set the content length of the scrollbar. this will update the thumb size and position based on new content length and offset.
+		// change content length
+		//	- because content changes, logical range changes too.This needs to check if offset needs clamping.
+		//	- since content length changes, proportion with thumb and scrollbar length changes.
+		//		- we need to update thumb size since scrollbar length did not change, so we can maintain proportion
+		//	- when content length changes, ratio between content and viewport changes.
+		//		- it's possible that offset changes too. current offset that is within logical range might be outside of it already and needs clamping
+		//			- e.g.current offset = 5, vp = 1, content = 8. now content changes to 4. offset needs to be clamped to 4
+		//			- this needs thumb position to be updated
+		//		- offset may not need to change but still needs thumb position to change.
+		//			- e.g.offset = 2, vp = 1, content = 8. scrollbar length = 800, so thumb length = 100 and thumb position = 200
+		//			- but content changes to 5. vp is still 1 and offset remains 2 (still within logical range after content changes to 5).
+		//			- scrollbar length is still 800 but thumb length now changes to 160. even though offset remains at 2, thumb position now needs to change to 320
 		void ScrollBar::SetContentLength(float length)
 		{
-			// cannot be negative content length. if negative, set to 0
-			m_contentLength = std::max<float>(0.0f, length);
+			// clamp the new length to be sure its valid. it cannot be negative.
+			length = std::max<float>(0.0f, length);
 
-			// refresh offset in case it is out of range now due to content length change. if content is smaller than viewport, set offset to 0
+			// bail out if new length is same as current content length
+			if (length == m_contentLength) return;
+
+			// let's now change to new length
+			m_contentLength = length;
+
+			// since content length changes, proportion with thumb and scrollbar length changes. update thumb size to maintain the proportion
+			UpdateThumbSize();
+
+			// store the old offset. we need this as reference later to check if we need to raise Scroll event because offset changed
+			float oldOffset = m_offset;
+
+			// update offset now by clamping with new content length. the result will be a valid offset (within logical range) regardless
 			m_offset = std::clamp(m_offset, 0.0f, std::max<float>(0.0f, m_contentLength - m_viewportLength));
 
-			// update thumb size and position based on possibly new content length and offset
-			UpdateThumbSize();
+			// update thumb position. offset may or may not changed but we still need to update thumb's physical position.
+			// but we also can skip recorrecting because we're updating thumb position based on new offset which is guaranteed to be valid.
+			m_ignoreThumbMove = true;
 			UpdateThumbPosition();
+
+			// we can now resume handling thumb move event and recorrect if needed, raise Scroll event if needed
+			m_ignoreThumbMove = false;
+
+			// since we ignored thumb move event, we did not raise Scroll event. that is fine. we want to raise Scroll event ourselves.
+			// we know if offset changes or not.
+			if (oldOffset != m_offset)
+			{
+				Scroll(m_offset);
+			}
 		}
 
 		// set the viewport length of the scrollbar. this will update the thumb size and position based on new viewport length and offset.
 		void ScrollBar::SetViewportLength(float length)
 		{
-			// cannot be negative viewport length. if negative, set to 0
-			m_viewportLength = std::max<float>(0.0f, length);
+			// clamp the new length to be sure its valid. it cannot be negative.
+			length = std::max<float>(0.0f, length);
 
-			// refresh offset in case it is out of range now due to content length change. if content is smaller than viewport, set offset to 0
+			// bail out if new length is same as current content length
+			if (length == m_viewportLength) return;
+
+			// let's now change to new length
+			m_viewportLength = length;
+
+			// since viewport length changes, proportion with thumb and scrollbar length changes. update thumb size to maintain the proportion
+			UpdateThumbSize();
+
+			// store the old offset. we need this as reference later to check if we need to raise Scroll event because offset changed
+			float oldOffset = m_offset;
+
+			// update offset now by clamping with new viewport length. the result will be a valid offset (within logical range) regardless
 			m_offset = std::clamp(m_offset, 0.0f, std::max<float>(0.0f, m_contentLength - m_viewportLength));
 
-			// update thumb size and position based on possibly new content length and offset
-			UpdateThumbSize();
+			// update thumb position. offset may or may not changed but we still need to update thumb's physical position.
+			// but we also can skip recorrecting because we're updating thumb position based on new offset which is guaranteed to be valid.
+			m_ignoreThumbMove = true;
 			UpdateThumbPosition();
+
+			// we can now resume handling thumb move event and recorrect if needed, raise Scroll event if needed
+			m_ignoreThumbMove = false;
+
+			// since we ignored thumb move event, we did not raise Scroll event. that is fine. we want to raise Scroll event ourselves.
+			// we know if offset changes or not.
+			if (oldOffset != m_offset)
+			{
+				Scroll(m_offset);
+			}
 		}
 
 		float ScrollBar::GetContentLength() const
@@ -1277,13 +1418,39 @@ namespace engine
 		}
 #pragma endregion
 
-
-
-
 #pragma region // ViewPort - container widget that holds a single "content" widget and manages the content widget's scrolling.
+		// design notes:
+		// - Purpose
+		//		- it's a container of a single widget. this can be any type of widget. it's called content
+		//		- it controls the position of the content widget. 
+		//			- it makes sure it's top-left position is 0,0 or less
+		//			- and if it's top-left position is 0,0 or less, it's bottom-right position is widget's width/height or more
+		//			- it basically forces content widget to always fill this viewport's extent
+		//			- and if the content's size is smaller than viewport extent, it's locked into 0,0 position
+		// - Setting content
+		//		- when setting content, it updates content's position relative to its new parent - ViewPort.
+		//		- this is because it's possible the content's position/size before it become's this ViewPort's content is out of ViewPort's bounds
+		//		- ContentChange event is also invoked so listeners are notified for content change
+		//		- if content's position is changed by viewport, content invokes Moved event which viewport listens to
+		//			- viewport's content "Moved" event handler will again update content's position. 
+		//			- but since content is now within the bounds of the viewport, it is guaranteed to never set position again. 
+		//			- that ensures no stack overflow from recursion
+		//			- the Moved event handler will then raise "Scroll" event
+		//				- the scroll event will notify listeners that the position of the content relative to viewport changed
+		//				- this is useful when a listener like scrollbar needs to update its thumb position relative to content's position
+		//				- it will then update it by the given "offset"
+		// - what is "offset"?
+		//		- it is the distance between viewport's origin (0,0) and content's top-left position.
+		//		- since content's top-left position cannot be greater than 0,0 this value is 0,0 or -x, -y
+		//		- what happens when you set offset?
+		//			- 
+		// 
+		// 
+		// 
+		
 		// this method ensures that content's position is always within the viewport's bounds. 
 		// if content's position is outside the viewport, it will be moved back to the nearest position within the viewport
-		void ScrollView::ViewPort::UpdateContentPosition()
+		bool ScrollView::ViewPort::UpdateContentPosition()
 		{
 			// if content's position is > 0,0 then move it back to 0, 0
 			PositionF position = m_content->GetPosition();
@@ -1312,13 +1479,18 @@ namespace engine
 				updatePos = true;
 			}
 
+			// only set position of content if confirmed its position really needs to be changed
 			if (updatePos)
 			{
 				m_content->SetPosition(position);
+				return true;
 			}
+
+			// if you reach this point, content position need not be changed because it did not need to be corrected
+			return false;
 		}
 
-		// handler for when viewport's size changes. we need to ensure that content's position is still within the viewport's bounds
+		// handler for when viewport's size changes. we need to ensure that content's position is still within the viewport's       
 		void ScrollView::ViewPort::OnSizeChanged(const SizeF& oldSize, const SizeF& newSize)
 		{
 			UpdateContentPosition();
@@ -1327,6 +1499,7 @@ namespace engine
 		// event handler for when content's size changes. we need to ensure that content's position is still within the viewport's bounds
 		void ScrollView::ViewPort::OnContentSizeChanged(const SizeF& size)
 		{
+			// we need to ensure that the content is within the viewport's bounds after resizing
 			UpdateContentPosition();
 
 			// bubble up the event to notify that content's size has changed. this is useful for scroll bars to update their thumb size and position
@@ -1338,14 +1511,19 @@ namespace engine
 		{
 			// When content moves, ensure it remains within the viewport bounds.
 			// 
-			// Moved is only raised when content's position really changed.
+			// 'Moved' event from content is only raised when content's position really changed.
 			// Update the viewport's layout to ensure content stays within the bounds of viewport's area.
-			// Updating the layout may result in setting content's position again which will result in raising Moved.
+			// Updating the layout may result in setting content's position again which will result in raising content's 'Moved' event.
 			// As Moved will only be raised  when content's position really changed, this will not result in recursive loop
 			//
 			// also note that since we are monitoring content's move event, we don't need to monitor its drag event as dragging will 
 			// also eventually set position of content and will raise Moved
-			UpdateContentPosition();
+			// 
+			// if this function returns true, it means it corrected the position. 
+			if (UpdateContentPosition())
+			{
+				return;
+			}
 
 			// fire scroll event to notify that content has moved and viewport's offset has changed
 			Scroll(GetOffset());
@@ -1363,6 +1541,16 @@ namespace engine
 			std::unique_ptr<Widget> content = std::make_unique<Widget>();
 			m_content = content.get();
 			SetContent(std::move(content));
+		}
+
+		SizeF ScrollView::ViewPort::GetContentSize() const
+		{
+			return m_content->GetSize();
+		}
+
+		VecF ScrollView::ViewPort::GetOffset() const
+		{
+			return PositionF{ 0,0 } - m_content->GetPosition();
 		}
 
 		void ScrollView::ViewPort::SetContent(std::unique_ptr<Widget> content)
@@ -1402,16 +1590,6 @@ namespace engine
 			m_content->SetSize(size);
 		}
 
-		SizeF ScrollView::ViewPort::GetContentSize() const
-		{
-			return m_content->GetSize();
-		}
-
-		VecF ScrollView::ViewPort::GetOffset() const
-		{
-			return PositionF{ 0,0 } - m_content->GetPosition();
-		}
-
 		void ScrollView::ViewPort::SetOffset(const VecF& offset)
 		{
 			// Setting the viewport offset is done by moving the content in the
@@ -1421,8 +1599,12 @@ namespace engine
 			//
 			// If the position actually changes, Widget::SetPosition() will fire
 			// the content's Moved event. ViewPort listens to that event and
-			// performs UpdateLayout() to enforce viewport bounds and any other
+			// performs UpdateContentPosition() to enforce viewport bounds and any other
 			// scrolling rules.
+			// 
+			// if UpdateContentPosition() recorrects the position, it will call content's m_content->SetPosition() again.
+			// since position is corrected, the corresponding UpdateContentPosition() from "Moved" event handler will not 
+			// call m_content->SetPosition() anymore
 			//
 			// Widget::SetPosition() is guarded against assigning the same value,
 			// preventing redundant notifications and avoiding recursive update
@@ -1466,6 +1648,8 @@ namespace engine
 
 		void ScrollView::UpdateLayout()
 		{
+			throw std::runtime_error("ScrollView error ScrollView::UpdateLayout()");
+
 			if (m_autoHideScrollBars)
 			{
 				// let's assume scroll bars are not needed first
@@ -1510,17 +1694,39 @@ namespace engine
 					}
 				}
 
-				// now let's hide or show vertical scrollbar 
-				if (vScrollBarVisible) m_vScrollBar->Show();
-				else m_vScrollBar->Hide();
+				bool updateViewportSize = false;
 
-				// now let's hide or show horizontal scrollbar 
-				if (hScrollBarVisible) m_hScrollBar->Show();
-				else m_hScrollBar->Hide();
+				// now let's hide or show vertical scrollbar. do this only if the visibility of the scrollbar has changed. 
+				if (vScrollBarVisible)// && !m_vScrollBar->IsVisible())
+				{
+					m_vScrollBar->Show();
+					updateViewportSize = true;
+				}
+				else if (!vScrollBarVisible)// && m_vScrollBar->IsVisible())
+				{
+					m_vScrollBar->Hide();
+					updateViewportSize = true;
+				}
 
-				// update viewport size and position
-				m_viewport->SetPosition({ 0,0 });
-				m_viewport->SetSize(viewportSize);
+				// now let's hide or show horizontal scrollbar. do this only if the visibility of the scrollbar has changed. 
+				if (hScrollBarVisible)// && !m_hScrollBar->IsVisible())
+				{
+					m_hScrollBar->Show();
+					updateViewportSize = true;
+				}
+				else if (!hScrollBarVisible)// && m_hScrollBar->IsVisible())
+				{
+					m_hScrollBar->Hide();
+					updateViewportSize = true;
+				}
+
+				// we only set viewport's size if any scrollbar toggled its visibility. if both scrollbars are already visible or already hidden, we don't need to set viewport's size again
+				// update viewport size
+				//m_viewport->SetPosition({ 0,0 });
+				if (updateViewportSize)
+				{
+					m_viewport->SetSize(viewportSize);
+				}
 			}
 			else
 			{
@@ -1560,11 +1766,164 @@ namespace engine
 		// callback when scrollview's size changes. we need to update the layout of the viewport and scrollbars
 		void ScrollView::OnSizeChanged(const SizeF& oldSize, const SizeF& newSize)
 		{
-			UpdateLayout();
+			// remember viewport's size
+			SizeF vp = m_viewport->GetSize();
 
-			// viewport's size will change
-			// scrollbar's size will change
+			//when scrollview resize, the viewport component must resize too in order to fit in it
+			//because viewport is resized, it might also need to reposition its content.
+			//if content need to be scrolled as viewport gets bigger, content will be repositioned
+			//this will raise content's 'Move' event. viewport will then try to reposition the content again for recorrecting if needed.
+			//this is fine because if content does not need recorrecting, it will not reposition it anymore, preventing stack overflow.
+			//the issue is, viewport will raise 'Scroll' event and ScrollView will be notified.
+			//in ScrollView's viewport 'Scroll' event handler, it will update thumb position of its scrollbars.
+			//when scrollbars' thumb position are updated (moved), it will raise its 'Scroll' event.
+			//ScrollView is also subscribed to this, and its handler will set the ViewPort's offset. 
+			//This will result in recursive loop between ViewPort and Scrollbar setting each other's offset!
+			//to fix this, either ViewPort or Scrollbar must be the initiator of the offset update. the other one should just follow.
+			//Since ViewPort holds the content, it is the initiator and scrollbars just sync into it.
+			//So, in ScrollView's 'Resize' handler, we set a flag that when true, bypasses scrollbar's 'Scroll' event handler.
+			m_ignoreScrollBarScroll = true;
 
+			// because our size changed, we need to resize viewport to maintain its layout to fit in it
+			// we also need to check if scrollbars are needed. 
+			// this will show scrollbars if are needed. hide them if not.
+			// viewport will also fit its size if scrollbars are hidden or visible
+			UpdateComponentLayout();
+
+			// if viewport resizes, scrollbar states must change too. its thumb sizes must change because they are in sync with content/viewport size
+			// offset can change too so must update scrollbar offsets as well
+			// but updating scrollbars should not trigger update to viewport. we already updated viewport.
+			// viewport has its own mechanism to adjust its offset based on its viewport and content size.
+			// scrollbars just syncs to it.
+			if (vp == m_viewport->GetSize()) return;
+
+			// update scrollbars' viewport size since viewport resized
+			UpdateScrollBarViewportSize();
+
+			// update scrollbars' thumb position
+			UpdateThumbPositions();
+
+			// allow receiving scrollbar scroll event notification
+			m_ignoreScrollBarScroll = false;
+		}
+
+		// update the layout by resizing, repositioning the component layouts - viewport and scrollbars
+		void ScrollView::UpdateComponentLayout()
+		{			
+			if (m_autoHideScrollBars)
+			{
+				// let's assume scroll bars are not needed first
+				bool hScrollBarVisible = false;
+				bool vScrollBarVisible = false;
+
+				// since we assume there are no scrollbars so we also assume viewport occupies the whole scrollview
+				SizeF viewportSize = GetSize();
+
+				// if content.size < viewport.size, no need to do anything since scrollbars are hidden
+				SizeF contentSize = m_viewport->GetContentSize();
+
+				// we need to do a few passes to check if either or both scrollbars are needed
+				while (
+					(contentSize.height > viewportSize.height && !vScrollBarVisible) ||
+					(contentSize.height <= viewportSize.height && vScrollBarVisible) ||
+					(contentSize.width > viewportSize.width && !hScrollBarVisible) ||
+					(contentSize.width <= viewportSize.width && hScrollBarVisible)
+					)
+				{
+					if (contentSize.width > viewportSize.width)
+					{
+						hScrollBarVisible = true;
+						viewportSize.height = GetSize().height - m_borderSize - m_scrollSize;
+					}
+					else
+					{
+						hScrollBarVisible = false;
+						viewportSize.height = GetSize().height;
+					}
+
+
+					if (contentSize.height > viewportSize.height)
+					{
+						vScrollBarVisible = true;
+						viewportSize.width = GetSize().width - m_borderSize - m_scrollSize;
+					}
+					else
+					{
+						vScrollBarVisible = false;
+						viewportSize.width = GetSize().width;
+					}
+				}
+
+				// now let's hide or show vertical scrollbar. do this only if the visibility of the scrollbar has changed. 
+				if (vScrollBarVisible && !m_vScrollBar->IsVisible())
+				{
+					m_vScrollBar->Show();
+				}
+				else if (!vScrollBarVisible && m_vScrollBar->IsVisible())
+				{
+					m_vScrollBar->Hide();
+				}
+
+				// now let's hide or show horizontal scrollbar. do this only if the visibility of the scrollbar has changed. 
+				if (hScrollBarVisible && !m_hScrollBar->IsVisible())
+				{
+					m_hScrollBar->Show();
+				}
+				else if (!hScrollBarVisible && m_hScrollBar->IsVisible())
+				{
+					m_hScrollBar->Hide();
+				}
+
+				// at this point, we already have the viewport size but have yet to set it. 
+				// we also have scrollbars enabled if they are needed, disabled if not.
+
+				// set the viewport size. SetSize() is smart enough to not raise 'Resize' event if we're setting it with the same size as before
+				// so no event notification happens if no change in size
+				m_viewport->SetSize(viewportSize);
+			}
+			// if scrollbars are not autohide, they are always visible
+			else
+			{
+				// if scrollbars are always visible...
+				if(!m_vScrollBar->IsVisible()) m_vScrollBar->Show();
+				if(!m_hScrollBar->IsVisible()) m_hScrollBar->Show();
+
+				// viewport top-left is always at scrollview's origin
+				m_viewport->SetPosition({ 0,0 });
+
+				// viewport always fills the scrollview extent minus the scrollbars which are always visible
+				// we don't listen to viewport's resize event so nothing to do here.
+				m_viewport->SetSize({
+						GetSize().width - m_borderSize - m_scrollSize,
+						GetSize().height - m_borderSize - m_scrollSize
+					});
+			}
+
+			// we also update scrollbars' position and size. 
+			// we don't listen scrollbars' 'Moved' and 'Resize' events so no risk of recursive deadlock here
+
+			// update horizontal scrollbar size and position
+			m_hScrollBar->SetPosition({ 0, GetSize().height - m_scrollSize });
+			m_hScrollBar->SetSize(
+				{
+					GetSize().width - (m_vScrollBar->IsVisible() ? m_scrollSize : 0.0f),
+					m_scrollSize,
+				}
+				);
+
+			// update vertical scrollbar size and position
+			m_vScrollBar->SetPosition({ GetSize().width - m_scrollSize, 0 });
+			m_vScrollBar->SetSize(
+				{
+					m_scrollSize,
+					GetSize().height - (m_hScrollBar->IsVisible() ? m_scrollSize : 0.0f),
+				}
+				);
+
+			// we done here. it is not this method's responsibility to update components' logic states
+
+			//UpdateScrollBarContentSize();
+			//UpdateScrollBarViewportSize();
 		}
 
 		ScrollView::ScrollView(bool autoHideScrollBars, float scrollSize, float borderSize)
@@ -1575,23 +1934,34 @@ namespace engine
 			, m_vScrollBar(nullptr)
 			, m_autoHideScrollBars(autoHideScrollBars)
 		{
+			// this widget is not draggable
 			m_moveBehavior = MoveBehavior::None;
 
+			// create viewport widget component
 			std::unique_ptr<ViewPort> viewport = std::make_unique<ViewPort>();
 			m_viewport = viewport.get();
 			AddChild(std::move(viewport));
 
+			// create horizontal scrollbar widget component
 			std::unique_ptr<ScrollBar> hScrollBar = std::make_unique<ScrollBar>(0.0f, 0.0f, true);
 			m_hScrollBar = hScrollBar.get();
 			AddChild(std::move(hScrollBar));
 
+			// create vertical scrollbar widget component
 			std::unique_ptr<ScrollBar> vScrollBar = std::make_unique<ScrollBar>(0.f, 0.0f, false);
 			m_vScrollBar = vScrollBar.get();
 			AddChild(std::move(vScrollBar));
 
-			// listen to viewport's scroll event. when viewport's content moves or scrolls, we need to update our scrollbar's thumb positions
+			// listen to viewport's scroll event. when viewport's content moves, we need to update our scrollbar's thumb positions
 			m_viewport->Scroll += [&](const VecF& offset)
 				{
+					// update thumb positions of scrollbars to sync with viewport's content position
+					// scrollbars should not trigger viewport to sync with it after their thumbs change position. otherwise it's gonna be deadlock
+					// then finally raise Scroll event					
+
+
+					if (!m_ignoreViewPortScroll) 
+
 					// this will update thumb positions of the scroll bars
 					UpdateThumbPositions();
 
@@ -1600,16 +1970,65 @@ namespace engine
 
 			m_viewport->ContentSizeChanged += [&](const SizeF& size)
 				{
+					// when content size changes, we first need to check if we need scrollbars. if it's autohide and we don't need it, we need to hide them
+					// if scrollbars are active, we need to update size of the scrollbars' thumb
+					// we also need to check if thumb position need to change. 
+					// all these changes in scrollbar should not trigger viewport to sync with the scrollbar. otherwise it's gonna be deadlock
+
+					
 					// this will update the content size of scroll bars. scroll bars then will refresh its thumb size and thumb position internally
+					//UpdateScrollBarContentSize();
+					//UpdateLayout();
+
+					// with new content, we need to check if scrollbars are needed. 
+					// this will show scrollbars if are needed. hide them if not.
+					// this will also resize the viewport to always fit in the scrollview
+					UpdateComponentLayout();
+
+					// new content might have a different size, offset or position relative to its viewport so we need to update scrollbar states
+					// but since the viewport initiated the change here, we don't need to update the viewport after updating scrollbar thumbs
+					m_ignoreScrollBarScroll = true;
+
+					// update scrollbars' content size since we changed content
 					UpdateScrollBarContentSize();
-					UpdateLayout();
+
+					// update scrollbars' thumb position
+					UpdateThumbPositions();
+
+					// allow receiving scrollbar scroll event notification
+					m_ignoreScrollBarScroll = false;
 				};
 
 			m_viewport->ContentChanged += [&](Widget* content)
 				{
-					// this will update the content size of scroll bars. scroll bars then will refresh its thumb size and thumb position internally
+					// when content changes, we need to check if we need scrollbars. if it's autohide and we don't need it, we need to hide them
+					// if scrollbars are active, we need to update size of the scrollbars' thumb
+					// we also need to check if thumb position need to change. 
+					// all these changes in scrollbar should not trigger viewport to sync with the scrollbar. otherwise it's gonna be deadlock
+					// then finally raise ContentChange event
+
+					//// this will update the content size of scroll bars. scroll bars then will refresh its thumb size and thumb position internally
+					//UpdateScrollBarContentSize();
+					//UpdateLayout();
+
+
+					// with new content, we need to check if scrollbars are needed. 
+					// this will show scrollbars if are needed. hide them if not.
+					// this will also resize the viewport to always fit in the scrollview
+					UpdateComponentLayout();
+
+					// new content might have a different size, offset or position relative to its viewport so we need to update scrollbar states
+					// but since the viewport initiated the change here, we don't need to update the viewport after updating scrollbar thumbs
+					m_ignoreScrollBarScroll = true;
+
+					// update scrollbars' content size since we changed content
 					UpdateScrollBarContentSize();
-					UpdateLayout();
+
+					// update scrollbars' thumb position
+					UpdateThumbPositions();
+
+					// allow receiving scrollbar scroll event notification
+					m_ignoreScrollBarScroll = false;
 
 					// bubble up the event to our own OnContentChange event
 					ContentChanged(content);
@@ -1619,25 +2038,43 @@ namespace engine
 			// this is useful for external content that needs to resize itself when viewport resizes.
 			m_viewport->Resized += [&](const SizeF& size)
 				{
+					// by right, viewport component does not resize by itself. we own this component. we decide when it resizes.
+					// therefore when its 'Resized' event is raised, we don't have to do anything. 
+					// TODO: we only emit this event to bubble it up. but do we really need to? let's check this 
+
 					ViewPortResized(size);
 				};
 
 			// handler for when horizontal scrollbar scrolls. only viewport's content position changes here. layout remains the same.
 			m_hScrollBar->Scroll += [&](float offset)
 				{
+					if (m_ignoreScrollBarScroll) return;
+
 					VecF currOffset = m_viewport->GetOffset();
 					currOffset.x = offset;
+
+					m_ignoreViewPortScroll = true;
 					m_viewport->SetOffset(currOffset);
+					m_ignoreViewPortScroll = false;
+
+					Scroll(currOffset);
+
 				};
 
 			// handler for when vertical scrollbar scrolls. only viewport's content position changes here. layout remains the same.
 			m_vScrollBar->Scroll += [&](float offset)
 				{
+					if (m_ignoreScrollBarScroll) return;
+
 					VecF currOffset = m_viewport->GetOffset();
 					currOffset.y = offset;
-					m_viewport->SetOffset(currOffset);
-				};
 
+					m_ignoreViewPortScroll = true;
+					m_viewport->SetOffset(currOffset);
+					m_ignoreViewPortScroll = false;
+
+					Scroll(currOffset);
+				};
 		}
 
 		void ScrollView::SetContentSize(const SizeF& size)
@@ -1647,7 +2084,39 @@ namespace engine
 
 		void ScrollView::SetContent(std::unique_ptr<Widget> content)
 		{
+			// first, set the content into viewport. this will update viewport with new content, new content size, and new offset. 
+			// it is possible for viewport to raise its Scroll event if content needs to be repositioned to be within the bounds of viewport
+			// but it is guaranteed that we will update thumb positions in 'ContentChanged' event handler
+
 			m_viewport->SetContent(std::move(content));
+
+
+			// with new content, we need to check if scrollbars are needed. 
+			// we also need to update position of scrollbars' thumb based on current position of content
+			// since we may need to enable or disable scrollbars, we may need to update viewport size. 
+
+			//// with new content, we need to check if scrollbars are needed. 
+			//// this will show scrollbars if are needed. hide them if not.
+			//// if scrollbars change visibility state, viewport will be resized
+			//UpdateComponentLayout();
+
+			//// new content might have a different size, offset or position relative to its viewport so we need to update scrollbar states
+			//// but since the viewport initiated the change here, we don't need to update the viewport after updating scrollbar thumbs
+			//m_ignoreScrollBarScroll = true;
+
+			//// update scrollbars' content size since we changed content
+			//UpdateScrollBarContentSize();
+
+			//// update scrollbars' thumb position
+			//UpdateThumbPositions();
+
+			//// allow receiving scrollbar scroll event notification
+			//m_ignoreScrollBarScroll = false;
+		}
+
+		void ScrollView::SetContentPosition(const PositionF& pos)
+		{
+			m_viewport->SetOffset(PositionF{ 0,0 } - pos);
 		}
 
 		SizeF ScrollView::GetViewPortSize() const

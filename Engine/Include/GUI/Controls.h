@@ -187,10 +187,10 @@ namespace engine
 			friend class ScrollBar;
 			friend class Slider;
 
+		public:
 			Thumb();
 			Thumb(bool isHorizontal);
 
-		public:
 			void Draw(const UIDrawContext& context) const override;
 		};
 #pragma endregion
@@ -283,6 +283,54 @@ namespace engine
 #pragma endregion
 
 #pragma region // ScrollBar
+		// provides a visual and interactive mechanism for navigating content that is larger than its viewport.
+		// behavior is determined by three primary values:
+		//	- Content length — the length of the content being viewed.
+		//	- Viewport length — the length of the visible area.
+		//	- Scroll offset — the current logical position within the scrollable content.
+		// 
+		// Scrollbar and Thumb geometry:
+		//  - scrollbar has a physical length, which determines the available space in which the thumb can move. it represents the content's length
+		//  - thumb's length represents the visible area of the content. it represents the viewport's length
+		//  - when scrolling is possible, the thumb's physical length is calculated proportionally
+		//		- thumbLength = scrollbarLength * viewportLength / contentLength;
+		// 
+		// illustration of a scrollbar with physical length of 100.
+		// - content length is 4 and viewport length is 3. 
+		// - thumb represents the viewport hence the calculated thumb length is 75 (scrollbar length * viewport length / content length)
+		// - track length is the distance thumb can travel within the scrollbar. in our case, it is 25
+		// - this means that thumb's position (left position in our example) relative to scrollbar ranges from 0 to 25
+		// 
+		//		Scrollbar (length = 100)
+		//		0                                                                   100
+		//		|-------------------------------------------------------------------- - |
+		//		|===============================================|-------------------- - |
+		//		0                                              75                    100
+		//		|<--------------Thumb = 75 -------------------> | < --Track = 25 -----> |
+		// 
+		// resolving thumb's physical position based on logical offset:
+		// - Although the thumb can be physically moved between positions 0 and 25, its final position will always be realigned to match the logical offset.
+		// - The thumb represents the viewport. In our example, the viewport can only occupy 2 logical positions: 0 and 1.
+		//		- At logical position 0, the viewport displays content from 1 to 3.
+		//		- At logical position 1, the viewport displays content from 2 to 4.
+		// - Although the thumb can physically move anywhere between positions 0 and 25, its final position will always be realigned to match the viewport's logical position. 
+		// - In our example, the thumb can therefore end up only at position 0 or position 25.
+		// 
+		// use case: when viewport is larger than content, or viewport size is 0, or content size is 0:
+		// - in either of these cases, no scrolling is possible
+		// - in this case, thumb fills the entire scrollbar and will be positioned at 0,0 of scrollbar
+		// - because thumb fills that entire scrollbar, it cannot be dragged.
+		// - the logical scroll offset is 0
+		// 
+		// thumb's minimum physical length:
+		//	- athumb that becomes too small can be difficult to see and interact with.
+		//  - to address this, the scrollbar defines a minimum thumb length. 
+		//  - the thumb must never exceed the scrollbar's physical length. 
+		//	- when the minimum thumb length exceeds the calculated length, the thumb no longer represents the exact visible proportion of the content. 
+		// 
+		// use case: when scrollbar's physical length becomes too small and thumb ends up filling the scrollbar
+		//	- assuming current logical offset value in our example is 1 and scrollbar has been resized to be too small and forced thumb to fill the scrollbar
+		//	- thumb will now be repositioned at 0,0. this does not change the logical offset. logical offset remains 1.
 		class ScrollBar : public Widget
 		{
 		private:
@@ -293,6 +341,9 @@ namespace engine
 			Thumb* m_thumb;
 			bool m_isDragging;
 			float m_minThumbLength;
+
+			bool m_ignoreScrollBarScroll = false;
+			bool m_ignoreThumbMove = false;
 
 		protected:
 			// checks if the scrollbar can scroll. if content is smaller than viewport, it cannot scroll
@@ -314,6 +365,9 @@ namespace engine
 
 			// internal method to update the position of the thumb when offset, content length, or viewport length changes.
 			void UpdateThumbPosition();
+			void UpdateThumbPosition(float offset);
+
+			int CalculateIndexFromThumbPosition(float thumbPos);
 
 			// callback when the size of the scrollbar changes. this is called when the scrollbar is resized. we will update the thumb size and position based on new size
 			void OnSizeChanged(const SizeF&, const SizeF&) override;
@@ -537,7 +591,7 @@ namespace engine
 		// and synchronizes their sizes and positions with the content.
 		class ScrollView : public Widget
 		{
-		private:
+		public:
 #pragma region // ViewPort - container widget that holds a single "content" widget and manages the content widget's scrolling.
 			// ViewPort manages the content being viewed.It owns the content widget, moves it to implement scrolling, 
 			// keeps its position within valid bounds, and publishes events when the content moves, resizes, or changes.
@@ -552,7 +606,7 @@ namespace engine
 
 				// this method ensures that content's position is always within the viewport's bounds. 
 				// if content's position is outside the viewport, it will be moved back to the nearest position within the viewport
-				void UpdateContentPosition();
+				bool UpdateContentPosition();
 
 				// handler for when viewport's size changes. we need to ensure that content's position is still within the viewport's bounds
 				void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override;
@@ -589,6 +643,10 @@ namespace engine
 			};
 #pragma endregion
 
+		private:
+			bool m_ignoreScrollBarScroll = false;
+			bool m_ignoreViewPortScroll = false;
+
 		protected:
 			// components
 			ViewPort* m_viewport;
@@ -616,6 +674,8 @@ namespace engine
 
 			void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override;
 
+			void UpdateComponentLayout();
+
 		public:
 
 			engine::event::Event<const VecF&> Scroll;
@@ -632,6 +692,8 @@ namespace engine
 			SizeF GetViewPortSize() const;
 
 			VecF GetViewPortOffset() const;
+
+			void SetContentPosition(const PositionF& pos);
 
 			void Draw(const UIDrawContext& context) const override;
 
