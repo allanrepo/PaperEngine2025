@@ -5755,6 +5755,8 @@ namespace TestMapEditor
 		TextListBox* m_textListBox = nullptr;
 		TextList* m_textList = nullptr;
 		ScrollBar* m_scrollbar = nullptr;
+		ScrollBar* m_scrollbarSmooth = nullptr;
+
 		int m_imageState = 0;
 		UISystem m_ux;
 		Button* m_button = nullptr;
@@ -5966,22 +5968,115 @@ namespace TestMapEditor
 			// HScrollBar in Resizeable
 			if (true)
 			{
-				// create resizeable frame to house the scrollbar
-				std::unique_ptr<engine::gui::ResizeableFrame> frame = std::make_unique<engine::gui::ResizeableFrame>(8.0f, SizeF{ 32, 32 });
-				frame->SetPosition({ 150,100 });
-				frame->SetSize({ 400, 50 });
+				static Slider* s_content = nullptr;
+				static Slider* s_viewport = nullptr;
 
-				// create scrollbar and fit it into our resizeable frame
+				std::unique_ptr<Slider> content = std::make_unique<Slider>(0.0f, 9.0f, 50.0f);
+				content->SetPosition({ 150, 100 });
+				content->SetSize({400, 50});
+				content->Value(8.0f);
+				content->SetName("content");
+				content->SetStepCount(10);
+				content->Change += [&](float value)
+					{
+						LOG("Slider[content]: " + std::to_string(value));
+
+						m_scrollbar->SetContentLength(value);
+					};
+
+				s_content = content.get();
+				m_ux.AddWidget(std::move(content));
+
+				std::unique_ptr<Slider> viewport = std::make_unique<Slider>(0.0f, 9.0f, 50.0f);
+				viewport->SetPosition({ 150, 160 });
+				viewport->SetSize({ 400, 50 });
+				viewport->Value(3.0f);
+				viewport->SetStepCount(10);
+				viewport->SetName("viewport");
+				viewport->Change += [&](float value)
+					{
+						LOG("Slider[viewport]: " + std::to_string(value));
+
+						m_scrollbar->SetViewportLength(value);
+					};
+				s_viewport = viewport.get();
+				m_ux.AddWidget(std::move(viewport));
+
+				std::unique_ptr<Slider> slider = std::make_unique<Slider>(0.0f, 100.0f, 50.0f);
+				slider->SetPosition({ 150, 220 });
+				slider->SetSize({ 400, 50 });
+				slider->Min(-20.0f);
+				slider->Max(5.0f);
+				slider->Value(3.0f);
+				slider->SetStepCount(2);
+
+				slider->Change += [&](float value)
+					{
+						m_scrollbar->SetOffset(value);
+						m_scrollbarSmooth->SetOffset(value);
+						LOG("Slider: " + std::to_string(value));
+					};
+				m_ux.AddWidget(std::move(slider));
+
+				std::unique_ptr<Slider> stepsize = std::make_unique<Slider>(0.0f, 3.0f, 50.0f);
+				stepsize->SetPosition({ 150, 280 });
+				stepsize->SetSize({ 400, 50 });
+				stepsize->Value(1);
+				stepsize->SetStepCount(7);
+
+				stepsize->Change += [&](float value)
+					{
+						m_scrollbar->SetStepSize(value);
+						m_scrollbarSmooth->SetStepSize(value);
+						LOG("Slider[stepsize]: " + std::to_string(value));
+					};
+				m_ux.AddWidget(std::move(stepsize));
+
 				{
-					std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(8.0f, 1.0f, true);
-					scrollbar->SetLayoutMode(engine::gui::LayoutMode::Anchor);
-					scrollbar->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
-					scrollbar->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
-					m_scrollbar = scrollbar.get();
-					frame->AddContent(std::move(scrollbar));
+					// create resizeable frame to house the scrollbar
+					std::unique_ptr<engine::gui::ResizeableFrame> frame = std::make_unique<engine::gui::ResizeableFrame>(8.0f, SizeF{ 32, 32 });
+					frame->SetPosition({ 150,400 });
+					frame->SetSize({ 400, 50 });
+
+					// create scrollbar and fit it into our resizeable frame
+					{
+						std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(s_content->Value(), s_viewport->Value(), true);
+						scrollbar->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+						scrollbar->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+						scrollbar->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+						scrollbar->SetStepSize(1.5f);
+						scrollbar->SetScrollMode(ScrollBar::ScrollMode::Discrete);
+						scrollbar->SetName("discrete");
+
+						m_scrollbar = scrollbar.get();
+						frame->AddContent(std::move(scrollbar));
+					}
+
+					m_ux.AddWidget(std::move(frame));
 				}
 
-				m_ux.AddWidget(std::move(frame));
+				{
+					// create resizeable frame to house the scrollbar
+					std::unique_ptr<engine::gui::ResizeableFrame> frame = std::make_unique<engine::gui::ResizeableFrame>(8.0f, SizeF{ 32, 32 });
+					frame->SetPosition({ 150,700 });
+					frame->SetSize({ 400, 50 });
+
+					// create scrollbar and fit it into our resizeable frame
+					{
+						std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(s_content->Value(), s_viewport->Value(), true);
+						scrollbar->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+						scrollbar->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+						scrollbar->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+						scrollbar->SetStepSize(1.5f);
+						scrollbar->SetScrollMode(ScrollBar::ScrollMode::Smooth);
+						scrollbar->SetName("smooth");
+
+						m_scrollbarSmooth = scrollbar.get();
+						frame->AddContent(std::move(scrollbar));
+					}
+
+					m_ux.AddWidget(std::move(frame));
+				}
 			}
 
 			// VScrollBar in Resizeable
@@ -6269,7 +6364,7 @@ namespace TestMapEditor
 			}
 
 			// this demo builds a resizeable dialog box with title bar and an image filling the client area.
-			if (true)
+			if (false)
 			{
 				std::unique_ptr<engine::gui::ResizeableFrame> frame = std::make_unique<engine::gui::ResizeableFrame>();
 				frame->SetPosition({ 100,100 });
@@ -6369,7 +6464,7 @@ namespace TestMapEditor
 				m_ux.AddWidget(std::move(frame));
 			}
 
-			if (true)
+			if (false)
 			{
 				std::unique_ptr<engine::gui::ResizeableFrame> frame = std::make_unique<engine::gui::ResizeableFrame>();
 				frame->SetPosition({ 100,100 });

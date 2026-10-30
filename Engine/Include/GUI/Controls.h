@@ -283,6 +283,10 @@ namespace engine
 #pragma endregion
 
 #pragma region // ScrollBar
+		// design principle:
+		// - thumb position and movement is always decided by logical position. only then it gets translated into physical position
+		// - offset must be able to set between 0 to max boundary or logical range, even if scrolling is discrete. 
+
 		// provides a visual and interactive mechanism for navigating content that is larger than its viewport.
 		// behavior is determined by three primary values:
 		//	- Content length — the length of the content being viewed.
@@ -333,6 +337,13 @@ namespace engine
 		//	- thumb will now be repositioned at 0,0. this does not change the logical offset. logical offset remains 1.
 		class ScrollBar : public Widget
 		{
+		public:
+			enum class ScrollMode
+			{
+				Smooth,
+				Discrete
+			};
+
 		private:
 			float m_contentLength;
 			float m_viewportLength;
@@ -342,8 +353,10 @@ namespace engine
 			bool m_isDragging;
 			float m_minThumbLength;
 
-			bool m_ignoreScrollBarScroll = false;
 			bool m_ignoreThumbMove = false;
+
+			ScrollMode m_scrollMode = ScrollMode::Discrete;
+			float m_stepSize = 1.5f;
 
 		protected:
 			// checks if the scrollbar can scroll. if content is smaller than viewport, it cannot scroll
@@ -363,34 +376,39 @@ namespace engine
 			// internal method to update the size of the thumb based on the content length, viewport length, and scrollbar length. this is called when content or viewport changes.
 			void UpdateThumbSize();
 
-			// internal method to update the position of the thumb when offset, content length, or viewport length changes.
-			void UpdateThumbPosition();
-			void UpdateThumbPosition(float offset);
+			float LogicalToPhysicalPosition(float logicalPos) const;
+			float PhysicalToLogicalPosition(float physicalPos) const;
 
-			int CalculateIndexFromThumbPosition(float thumbPos);
+			float SnapToNearestStep(float value, float step) const;
 
 			// callback when the size of the scrollbar changes. this is called when the scrollbar is resized. we will update the thumb size and position based on new size
 			void OnSizeChanged(const SizeF&, const SizeF&) override;
 
 		public:
-			// event that is fired when the scrollbar is scrolled. it will pass the new offset value to the subscribers. 
-			// this is used to notify the content that it needs to update its position based on new offset
+			// event that is raised when internal offset changed. offset is the logical position of the thumb
+			// logical position is the position of viewport along the content
 			engine::event::Event<float> Scroll;
 
 			// constructor
-			ScrollBar(float contentLength, float viewportLength, bool isHorizontal);
+			ScrollBar(float contentLength, float viewportLength, bool isHorizontal, float minThumLength = 16.0f, float stepSize = 1.0f, ScrollBar::ScrollMode mode = ScrollBar::ScrollMode::Discrete);
 
 			// set the offset of the scrollbar. this will update the thumb position and fire the scroll event if the offset is changed.
 			void SetOffset(float offset);
 
 			// getter for offset. this is the current scroll position of the scrollbar. it is used to determine how much content is scrolled.
-			float Offset() const;
+			float GetOffset() const;
 
 			// set the content length of the scrollbar. this will update the thumb size and position based on new content length and offset.
 			void SetContentLength(float length);
 
 			// set the viewport length of the scrollbar. this will update the thumb size and position based on new viewport length and offset.
 			void SetViewportLength(float length);
+
+			void SetStepSize(float step);
+			float GetStepSize() const;
+
+			void SetScrollMode(ScrollMode mode);
+			ScrollMode GetScrollMode() const;
 
 			float GetContentLength() const;
 			float GetViewportLength() const;

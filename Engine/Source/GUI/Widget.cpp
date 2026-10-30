@@ -683,10 +683,6 @@ namespace engine
 			// set to new position
 			PositionF oldPos = m_position;
 			m_position = pos;
-
-			// before we raise event, let us refresh layout first.
-
-
 			Moved(pos);
 			OnPositionChanged(oldPos, m_position);
 
@@ -964,6 +960,18 @@ namespace engine
 			return m_margin;
 		}
 
+#pragma endregion
+
+#pragma region // attributes
+		void Widget::SetName(const std::string& name)
+		{
+			m_name = name;
+		}
+
+		std::string Widget::GetName() const
+		{
+			return m_name;
+		}
 #pragma endregion
 	}
 }

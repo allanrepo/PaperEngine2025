@@ -178,6 +178,10 @@ namespace engine
 
 			// widget dragging tracker
 			DragTracker m_DragTracker;
+
+			// attributes
+			std::string m_name;
+
 #pragma endregion
 
 #pragma region // system reference
@@ -397,6 +401,11 @@ namespace engine
 			{
 				// default implementation does nothing. derived class can override this to draw itself
 			}
+#pragma endregion
+
+#pragma region // attributes
+			void SetName(const std::string& name);
+			std::string GetName() const;
 #pragma endregion
 		};
 #pragma endregion

@@ -329,7 +329,7 @@ namespace engine
 			// getter for offset. this is the current scroll position of the scrollbar. it is used to determine how much content is scrolled.
 			float Offset() const
 			{
-				return m_scrollBar->Offset();	
+				return m_scrollBar->GetOffset();	
 			}
 
 			// set the content length of the scrollbar. this will update the thumb size and position based on new content length and offset.

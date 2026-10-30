@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <algorithm>
+#include <Utilities/Utilities.h>
 
 namespace engine
 {
@@ -689,24 +690,58 @@ namespace engine
 				m_horizontal ? thickness : length
 			};
 			m_thumb->SetSize(thumbSize);
-		}
+		}	
 
-		// internal method to update the physical position of the thumb based on current offset, content length, or viewport length.
-		void ScrollBar::UpdateThumbPosition()
+		float ScrollBar::LogicalToPhysicalPosition(float logicalPos) const
 		{
-			// trackLength is the physical length the thumb can move within the scrollbar. this must be length of scrollbar minus length of thumb. 
+			// trackLength is the physical range the thumb can move within the scrollbar. this must be length of scrollbar minus length of thumb. 
 			float trackLength = (m_horizontal ? GetSize().width : GetSize().height) - (m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height);
 
-			// this is the logical range in which viewport can move. if value is 1, it means viewport can be at logical position 0 and 1.
+			// this is the logical range in which viewport can move. 
 			float logicalRange = m_contentLength - m_viewportLength;
 
-			// if viewport length is greater than content length, logical range is < 0. scrolling is NOT required
-			logicalRange = logicalRange < 0 ? 0 : logicalRange;
+			// we can have negative logical range, but if that's the case, it must be clamped to 0. 
+			// so if viewport length is greater than content length, logical range is < 0. scrolling is NOT required
+			logicalRange = std::max<float>(0.0f, logicalRange);
+
+			// we can't have negative track length. if thumb is same size as scrollbar, scrolling is NOT required
+			trackLength = std::max<float>(0.0f, trackLength);
 
 			// now let's calculate the thumb's physical position by translating its logical position
 			// note that if logical range is <= 0, thumb is not scrolling. therefore it will be set to 0
-			float thumbPhysicalPos = logicalRange == 0 ? 0.0f : m_offset * trackLength / logicalRange;
-			m_thumb->SetPosition(m_horizontal ? PositionF{ thumbPhysicalPos, 0 } : PositionF{ 0, thumbPhysicalPos });
+			return logicalRange == 0 ? 0.0f : logicalPos * trackLength / logicalRange;
+		}
+
+		float ScrollBar::PhysicalToLogicalPosition(float physicalPos) const
+		{
+			// trackLength is the physical range the thumb can move within the scrollbar. this must be length of scrollbar minus length of thumb. 
+			float trackLength = (m_horizontal ? GetSize().width : GetSize().height) - (m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height);
+
+			// this is the logical range in which viewport can move. 
+			float logicalRange = m_contentLength - m_viewportLength;
+
+			// we can have negative logical range, but if that's the case, it must be clamped to 0. 
+			// so if viewport length is greater than content length, logical range is < 0. scrolling is NOT required
+			logicalRange = std::max<float>(0.0f, logicalRange);
+
+			// we can't have negative track length. if thumb is same size as scrollbar, scrolling is NOT required
+			trackLength = std::max<float>(0.0f, trackLength);
+
+			// now let's calculate the thumb's logical position by translating its physical position
+			// note that if tracklength is <= 0, thumb is not scrolling. therefore it will be set to 0
+			return trackLength == 0 ? 0.0f : physicalPos * logicalRange / trackLength;
+		}
+
+		float ScrollBar::SnapToNearestStep(float value, float step) const
+		{
+			// sanity check. if step is invalid, just return the value
+			if (step <= 0) return value;
+
+			// a more descriptive implementation
+			//return std::floor((value + step * 0.5f) / step) * step;
+			
+			// simplified version
+			return std::floor(value / step + 0.5f) * step;
 		}
 
 		// callback when the size of the scrollbar changes. this is called when the scrollbar is resized. we will update the thumb size and position based on new size
@@ -727,27 +762,36 @@ namespace engine
 			// update thumb size
 			UpdateThumbSize();
 
-			// offset must not change value since only scrollbar size changed. 
-			// yes the thumb position must be updated since the tracklength has changed but this should not change offset value.
-			// if tracklength becomes smaller than minimum thumb size, the thumb resizes to fit the whole tracklength and its position to 0,0
-			// this change in thumb position must not change our offset. 
-			m_ignoreScrollBarScroll = true;
+			// offset value has not changed. content and viewport lengths did not change too. so logically nothing has changed. offset value is valid. no need to validate
 
-			// update the thumb position
-			UpdateThumbPosition();
+			// convert current offset to physical position.
+			float thumbPhysicalPos = LogicalToPhysicalPosition(m_offset);
 
-			// after updating thumb position, we don't need to suppress updating offset
-			m_ignoreScrollBarScroll = false;
+			// we then set thumb to new physical position. we ignore the move event handler since we guaranteed that the new thumb position is valid, no need for correction
+			{
+				// since the physical thumb position we are now setting thumb to is guaranteed to be valid, we can disable listening to thumb's Moved event when set the position again
+				m_ignoreThumbMove = true;
+
+				// RAII: this ensures m_ignoreThumbMove state is back to normal (set to false) after we go out of scope.
+				engine::utilities::OnOutOfScope cleanup([&]
+					{
+						m_ignoreThumbMove = false;
+					});
+
+				m_thumb->SetPosition(m_horizontal ? PositionF{ thumbPhysicalPos, 0 } : PositionF{ 0, thumbPhysicalPos });
+			}
 		}
 
 		// constructor
-		ScrollBar::ScrollBar(float contentLength, float viewportLength, bool isHorizontal) :
-			m_contentLength(contentLength),
-			m_viewportLength(viewportLength),
-			m_offset(0),
-			m_horizontal(isHorizontal),
-			m_isDragging(false),
-			m_minThumbLength(16.0f)
+		ScrollBar::ScrollBar(float contentLength, float viewportLength, bool isHorizontal, float minThumLength, float stepSize, ScrollBar::ScrollMode mode)
+			: m_contentLength(contentLength)
+			, m_viewportLength(viewportLength)
+			, m_offset(0)
+			, m_horizontal(isHorizontal)
+			, m_isDragging(false)
+			, m_minThumbLength(minThumLength)
+			, m_stepSize(stepSize)
+			, m_scrollMode(mode)
 		{
 			// this scrollbar is not movable. it is a static widget that can only be moved by dragging the thumb
 			m_moveBehavior = MoveBehavior::None;
@@ -758,53 +802,58 @@ namespace engine
 			AddChild(std::move(thumb));
 
 			// handle thumb movement. when thumb is moved, we will calculate the new offset based on thumb position and content length, viewport length, and scrollbar length
+			// the purpose of this handler is to recorrect the thumb position to make sure it is within the scrollbar's scroll range
 			m_thumb->Moved += [this](const PositionF& newPos)
 				{
-					// we might be setting position of thumb but we know it's position is correct and does not need recorrection, so we just ignore this handler.
+					// bail out if ignoring thumb move
 					if (m_ignoreThumbMove) return;
 
-					// trackLength is the physical length the thumb can move within the scrollbar. this must be length of scrollbar minus length of thumb. 
-					float trackLength = (m_horizontal ? GetSize().width : GetSize().height) - (m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height);
-
-					// this is the logical range in which viewport can move. if value is 1, it means viewport can be at logical position 0 and 1.
-					float logicalRange = m_contentLength - m_viewportLength;
-
-					// if viewport length is greater than content length, logical range is < 0. scrolling is NOT required
-					logicalRange = logicalRange < 0 ? 0 : logicalRange;
-
-					// get the thumb position
+					// get the thumb's physical position
 					float thumbPhysicalPos = m_horizontal ? newPos.x : newPos.y;
 
-					// thumb position is in physical space and could be any value. let's translate it into a logical space
-					// note the +0.5 is just for centering
-					// if tracklength is 0. this means thumb has no space to move. the thumb fills up the scrollbar. 
-					// since thumb cannot scroll, it will be positioned at 0,0
-					float thumbLogicalPos = trackLength == 0 ? 0 : std::floor(thumbPhysicalPos * logicalRange / trackLength + 0.5f);
+					// convert thumb's physical position to logical position. this will be clamped to logical range
+					float thumbLogicalPos = PhysicalToLogicalPosition(thumbPhysicalPos);
 
-					// thumb's logical position is now in logical space, but it can be outside of the logical range. let's clamp it to within logical range
-					thumbLogicalPos = std::clamp<float>(thumbLogicalPos, 0.0f, std::max<float>(0.0f, logicalRange));
+					// calculate logical range and clamp to >= 0. we will use this later
+					float logicalRange = std::max<float>(0.0f, m_contentLength - m_viewportLength);
 
-					// we now have a valid logical position for our thumb. translate it back to physical space
-					// note that if logical range is <= 0, thumb is not scrolling. therefore it will be set to 0
-					float correctedThumbPhysicalPos = logicalRange == 0 ? 0.0f : thumbLogicalPos * trackLength / logicalRange;
-
-					// if corrected position is not same as current position, it means we need to adjust the thumb position to be within scrollbar's scroll range
-					if (correctedThumbPhysicalPos != thumbPhysicalPos)
+					// are we discrete scrolling? if yes, snap to nearest. 
+					if (m_scrollMode == ScrollMode::Discrete)
 					{
-						// finally, we set the thumb position. 
-						// since the physical thumb position we are now setting thumb to is guaranteed to be valid, we can disable listening to thumb's Moved event when set the position again
-						m_ignoreThumbMove = true;
-						m_thumb->SetPosition(m_horizontal ? PositionF{ correctedThumbPhysicalPos, 0 } : PositionF{ 0, correctedThumbPhysicalPos });
-						m_ignoreThumbMove = false;
+						// calculate logical position that snaps to step size and is nearest to current offset
+						float snapped = SnapToNearestStep(thumbLogicalPos, m_stepSize);
+
+						// this is special handling on use case where current offset is at maximum boundary. 
+						// if say step size = 1.5 and logical range is [0, 5], the steps are [0, 1.5, 3.0, 4.5, 5]
+						// if say current offset = 3, then you set it to 5 as new offset, the result will snap to 4.5 when it should be 5
+						// to fix this, check which is nearer to the current offset, max boundary? or the snapped 4.5?
+						thumbLogicalPos = (logicalRange - thumbLogicalPos <= thumbLogicalPos - snapped) ? logicalRange : snapped;
 					}
 
-					// if we only intend to reposition thumb but not change offset, bail out now
-					if (m_ignoreScrollBarScroll) return;
+					// clamp logical pos to be within logical range [0, logical range]
+					thumbLogicalPos = std::clamp(thumbLogicalPos, 0.0f, logicalRange);
 
-					// finally, if the calculated index is same as current offset, we don't have to do anything
-					// note that offset is just another name for index.
+					// now we have valid logical position. convert to physical position. this will be clamped to trackLength
+					float newThumbPhysicalPos = LogicalToPhysicalPosition(thumbLogicalPos);
+
+					// we then set thumb to new physical position. we ignore the move event handler since we guaranteed that the new thumb position is valid, no need for correction
+					{
+						// since the physical thumb position we are now setting thumb to is guaranteed to be valid, we can disable listening to thumb's Moved event when set the position again
+						m_ignoreThumbMove = true;
+
+						// RAII: this ensures m_ignoreThumbMove state is back to normal (set to false) after we go out of scope.
+						engine::utilities::OnOutOfScope cleanup([&]
+							{
+								m_ignoreThumbMove = false;
+							});
+
+						m_thumb->SetPosition(m_horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
+					}
+
+					// if logical position is not same as current offset, set logical position as new offset. then raise Scroll event
 					if (m_offset == thumbLogicalPos) return;
 					m_offset = thumbLogicalPos;
+					LOG("m_thumb->Moved() offset: " + std::to_string(m_offset));
 					Scroll(m_offset);
 				};
 		}
@@ -820,31 +869,59 @@ namespace engine
 		//	- Scroll event needs to be raised because offset value changed
 		void ScrollBar::SetOffset(float offset)
 		{
-			// clamp offset to be within logical range (0 and [contentLength - viewportLength]). if content is smaller than viewport, set offset to 0
-			offset = std::clamp(offset, 0.0f, std::max<float>(0.0f, m_contentLength - m_viewportLength));
-
 			// if the new offset is same as current, can just bail out
-			if (m_offset == offset) return;
+			//if (m_offset == offset) return;
 
-			// update offset, thumb position, and fire scroll event
+			// remember old offset as we will refer to this later to check if we indeed changed offset after validating it
+			float oldOffset = m_offset;
+
+			// set new offset
 			m_offset = offset;
 
-			// at this point, we know new offset is guaranteed to be valid, so we can set thumb position without worry that it will be in an invalid position
-			m_ignoreThumbMove = true;
+			// calculate logical range and clamp to >= 0. we will use this later
+			float logicalRange = std::max<float>(0.0f, m_contentLength - m_viewportLength);
 
-			// now update the thumb's physical position based on new offset.
-			// since we are ignoring recorrection, it will just blindly set thumb to new physical position without validating
-			UpdateThumbPosition();
+			// but wait, if scroll mode is discrete, offset must snap to nearest step size.
+			if (m_scrollMode == ScrollMode::Discrete)
+			{
+				// calculate logical position that snaps to step size and is nearest to current offset
+				float snapped = SnapToNearestStep(m_offset, m_stepSize);
 
-			// we can now set state back to normal and handle any thumb movement. 
-			m_ignoreThumbMove = false;
+				// this is special handling on use case where current offset is at maximum boundary. 
+				// if say step size = 1.5 and logical range is [0, 5], the steps are [0, 1.5, 3.0, 4.5, 5]
+				// if say current offset = 3, then you set it to 5 as new offset, the result will snap to 4.5 when it should be 5
+				// to fix this, check which is nearer to the current offset, max boundary? or the snapped 4.5?
+				m_offset = (logicalRange - m_offset <= m_offset - snapped) ? logicalRange : snapped;
+			}
 
-			// since we ignore thumb movement, we will raise scroll ourselves. we know offset has changed at this point, so we just raise the event
+			// clamp logical pos to be within logical range [0, logical range]
+			m_offset = std::clamp(m_offset, 0.0f, logicalRange);
+
+			// now we have valid logical position. convert to physical position. this will be clamped to trackLength
+			float newThumbPhysicalPos = LogicalToPhysicalPosition(m_offset);
+
+			// if new physical position is not same as current thumb position, we set position again. but this time, ignore thumb move event. 
+			{
+				// since the physical thumb position we are now setting thumb to is guaranteed to be valid, we can disable listening to thumb's Moved event when set the position again
+				m_ignoreThumbMove = true;
+
+				// RAII: this ensures m_ignoreThumbMove state is back to normal (set to false) after we go out of scope.
+				engine::utilities::OnOutOfScope cleanup([&]
+					{
+						m_ignoreThumbMove = false;
+					});
+
+				m_thumb->SetPosition(m_horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
+			}
+
+			// finally, if the resulting new offset is not same as old offset, we raise Scroll event
+			if (oldOffset == m_offset) return;
+			LOG("SetOffset() offset: " + std::to_string(m_offset));
 			Scroll(m_offset);
 		}
 
 		// getter for offset. this is the current scroll position of the scrollbar. it is used to determine how much content is scrolled.
-		float ScrollBar::Offset() const
+		float ScrollBar::GetOffset() const
 		{
 			return m_offset;
 		}
@@ -876,26 +953,37 @@ namespace engine
 			// since content length changes, proportion with thumb and scrollbar length changes. update thumb size to maintain the proportion
 			UpdateThumbSize();
 
-			// store the old offset. we need this as reference later to check if we need to raise Scroll event because offset changed
-			float oldOffset = m_offset;
+			// content length changed. it's possible current offset is now outside logical range. so we check. if it is, we need to clamp it be within logical range
+			// if scroll mode is discrete, offset is still definitely snapped so we don't have to snap it again
+			float thumbLogicalPos = m_offset;
 
-			// update offset now by clamping with new content length. the result will be a valid offset (within logical range) regardless
-			m_offset = std::clamp(m_offset, 0.0f, std::max<float>(0.0f, m_contentLength - m_viewportLength));
+			// but we need to clamp it to new logical range if necessary [0, logical range]
+			float logicalRange = std::max<float>(0.0f, m_contentLength - m_viewportLength);
+			thumbLogicalPos = std::clamp(thumbLogicalPos, 0.0f, logicalRange);
 
-			// update thumb position. offset may or may not changed but we still need to update thumb's physical position.
-			// but we also can skip recorrecting because we're updating thumb position based on new offset which is guaranteed to be valid.
-			m_ignoreThumbMove = true;
-			UpdateThumbPosition();
+			// now we have valid logical position (offset), let's convert to physical position. 
+			// since our offset is valid, the resulting thumb physical position is guaranteed to be within track length
+			float newThumbPhysicalPos = LogicalToPhysicalPosition(thumbLogicalPos);
 
-			// we can now resume handling thumb move event and recorrect if needed, raise Scroll event if needed
-			m_ignoreThumbMove = false;
-
-			// since we ignored thumb move event, we did not raise Scroll event. that is fine. we want to raise Scroll event ourselves.
-			// we know if offset changes or not.
-			if (oldOffset != m_offset)
+			// we then set thumb to new physical position. we ignore the move event handler since we guaranteed that the new thumb position is valid, no need for correction
 			{
-				Scroll(m_offset);
+				// since the physical thumb position we are now setting thumb to is guaranteed to be valid, we can disable listening to thumb's Moved event when set the position again
+				m_ignoreThumbMove = true;
+
+				// RAII: this ensures m_ignoreThumbMove state is back to normal (set to false) after we go out of scope.
+				engine::utilities::OnOutOfScope cleanup([&]
+					{
+						m_ignoreThumbMove = false;
+					});
+
+				m_thumb->SetPosition(m_horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
 			}
+
+			// if the new logical position is not same as previous offset, set logical position as new offset. then raise Scroll event
+			if (m_offset == thumbLogicalPos) return;
+			m_offset = thumbLogicalPos;
+			LOG("SetContentLength() offset: " + std::to_string(m_offset));
+			Scroll(m_offset);
 		}
 
 		// set the viewport length of the scrollbar. this will update the thumb size and position based on new viewport length and offset.
@@ -904,7 +992,7 @@ namespace engine
 			// clamp the new length to be sure its valid. it cannot be negative.
 			length = std::max<float>(0.0f, length);
 
-			// bail out if new length is same as current content length
+			// bail out if new length is same as current viewport length
 			if (length == m_viewportLength) return;
 
 			// let's now change to new length
@@ -913,26 +1001,131 @@ namespace engine
 			// since viewport length changes, proportion with thumb and scrollbar length changes. update thumb size to maintain the proportion
 			UpdateThumbSize();
 
-			// store the old offset. we need this as reference later to check if we need to raise Scroll event because offset changed
+			// viewport length changed. it's possible current offset is now outside logical range. so we check. if it is, we need to clamp it be within logical range
+			// if scroll mode is discrete, offset is still definitely snapped so we don't have to snap it again
+			float thumbLogicalPos = m_offset;
+
+			// but we need to clamp it to new logical range if necessary [0, logical range]
+			float logicalRange = std::max<float>(0.0f, m_contentLength - m_viewportLength);
+			thumbLogicalPos = std::clamp(thumbLogicalPos, 0.0f, logicalRange);
+
+			// now we have valid logical position (offset), let's convert to physical position. 
+			// since our offset is valid, the resulting thumb physical position is guaranteed to be within track length
+			float newThumbPhysicalPos = LogicalToPhysicalPosition(thumbLogicalPos);
+
+			// we then set thumb to new physical position. we ignore the move event handler since we guaranteed that the new thumb position is valid, no need for correction
+			{
+				// since the physical thumb position we are now setting thumb to is guaranteed to be valid, we can disable listening to thumb's Moved event when set the position again
+				m_ignoreThumbMove = true;
+
+				// RAII: this ensures m_ignoreThumbMove state is back to normal (set to false) after we go out of scope.
+				engine::utilities::OnOutOfScope cleanup([&]
+					{
+						m_ignoreThumbMove = false;
+					});
+
+				m_thumb->SetPosition(m_horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
+			}
+
+			// if the new logical position is not same as previous offset, set logical position as new offset. then raise Scroll event
+			if (m_offset == thumbLogicalPos) return;
+			m_offset = thumbLogicalPos;
+			LOG("SetViewportLength() offset: " + std::to_string(m_offset));
+			Scroll(m_offset);
+		}
+
+		void ScrollBar::SetStepSize(float step)
+		{
+			// clamp the new step size to be sure its valid. it cannot be negative.
+			step = std::max<float>(0.0f, step);
+
+			// bail out if new step size is same as current step size
+			if (step == m_stepSize) return;
+
+			// let's now change step size
+			m_stepSize = step;
+
+			// note: it does not matter if step size is too big, even bigger than track length. thumb's move event handler will always tame the thumb position
+			// to be within scroll range
+
+			// remember old offset. in case we change it, we must raise Scroll event
 			float oldOffset = m_offset;
 
-			// update offset now by clamping with new viewport length. the result will be a valid offset (within logical range) regardless
-			m_offset = std::clamp(m_offset, 0.0f, std::max<float>(0.0f, m_contentLength - m_viewportLength));
+			// calculate logical range and clamp to >= 0. we will use this later
+			float logicalRange = std::max<float>(0.0f, m_contentLength - m_viewportLength);
 
-			// update thumb position. offset may or may not changed but we still need to update thumb's physical position.
-			// but we also can skip recorrecting because we're updating thumb position based on new offset which is guaranteed to be valid.
-			m_ignoreThumbMove = true;
-			UpdateThumbPosition();
-
-			// we can now resume handling thumb move event and recorrect if needed, raise Scroll event if needed
-			m_ignoreThumbMove = false;
-
-			// since we ignored thumb move event, we did not raise Scroll event. that is fine. we want to raise Scroll event ourselves.
-			// we know if offset changes or not.
-			if (oldOffset != m_offset)
+			// if scroll mode is discrete, offset must snap to nearest step size since we changed step size
+			if (m_scrollMode == ScrollMode::Discrete)
 			{
-				Scroll(m_offset);
+				// calculate logical position that snaps to step size and is nearest to current offset
+				float snapped = SnapToNearestStep(m_offset, m_stepSize);
+
+				// this is special handling on use case where current offset is at maximum boundary. 
+				// if say step size = 1.5 and logical range is [0, 5], the steps are [0, 1.5, 3.0, 4.5, 5]
+				// if say current offset = 3, then you set it to 5 as new offset, the result will snap to 4.5 when it should be 5
+				// to fix this, check which is nearer to the current offset, max boundary? or the snapped 4.5?
+				m_offset = (logicalRange - m_offset <= m_offset - snapped) ? logicalRange : snapped;
 			}
+			// if we're not running on discrete step, no need to validate thumb position and offset
+			else
+			{
+				return;
+			}
+
+			// clamp logical pos to be within logical range [0, logical range]
+			m_offset = std::clamp(m_offset, 0.0f, logicalRange);
+
+			// now we have valid logical position. convert to physical position. this will be clamped to trackLength
+			float newThumbPhysicalPos = LogicalToPhysicalPosition(m_offset);
+
+			// if new physical position is not same as current thumb position, we set position again. but this time, ignore thumb move event. 
+			{
+				// since the physical thumb position we are now setting thumb to is guaranteed to be valid, we can disable listening to thumb's Moved event when set the position again
+				m_ignoreThumbMove = true;
+
+				// RAII: this ensures m_ignoreThumbMove state is back to normal (set to false) after we go out of scope.
+				engine::utilities::OnOutOfScope cleanup([&]
+					{
+						m_ignoreThumbMove = false;
+					});
+
+				m_thumb->SetPosition(m_horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
+			}
+
+			// finally, if the resulting new offset is not same as old offset, we raise Scroll event
+			if (oldOffset == m_offset) return;
+			LOG("SetStepSize() offset: " + std::to_string(m_offset));
+			Scroll(m_offset);
+		}
+
+		float ScrollBar::GetStepSize() const
+		{
+			return m_stepSize;
+		}
+
+		void ScrollBar::SetScrollMode(ScrollBar::ScrollMode mode)
+		{
+			// if same mode, do nothing
+			if (mode == m_scrollMode) return;
+
+			// set to new mode
+			m_scrollMode = mode;
+
+			// if new mode is smooth scrolling, we don't have to do anything
+			if (m_scrollMode == ScrollBar::ScrollMode::Smooth) return;
+
+			// if new mode is discrete, then we may need to update thumb position so it will snap to step size if needed
+			if (m_scrollMode == ScrollBar::ScrollMode::Discrete)
+			{
+				// we only need to update if scroll mode is discrete.
+				// logical range remains the same. but offset might change since it needs to snap now. so let's set it
+				SetOffset(m_offset);
+			}
+		}
+
+		ScrollBar::ScrollMode ScrollBar::GetScrollMode() const
+		{
+			return m_scrollMode;
 		}
 
 		float ScrollBar::GetContentLength() const
