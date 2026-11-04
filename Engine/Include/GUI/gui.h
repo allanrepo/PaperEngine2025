@@ -1274,13 +1274,13 @@ namespace engine
 			{
 				Sprite sprite = image.Get();
 
-				PositionF pivot = sprite.GetPivot();
+				//PositionF pivot = sprite.GetPivot();
 
-				PositionF pivotInPixels = image.IsStretched() ? PositionF{ pivot.x * image.GetWidth(), pivot.y * image.GetHeight() } : sprite.GetPivotInPixels();
+				//PositionF pivotInPixels = image.IsStretched() ? PositionF{ pivot.x * image.GetWidth(), pivot.y * image.GetHeight() } : sprite.GetPivotInPixels();
 
-				PositionF pos = (image.IsStretched() ? image.GetAbsolutePosition() : image.GetImageAbsolutePosition()) + pivotInPixels;
+				PositionF pos = image.GetImageAbsolutePosition();// (image.IsStretched() ? image.GetAbsolutePosition() : image.GetImageAbsolutePosition()) + pivotInPixels;
 
-				SizeF size = image.IsStretched() ? image.GetSize() : sprite.GetSize();
+				SizeF size = image.GetImageSize(); // image.IsStretched() ? image.GetSize() : sprite.GetSize();
 
 				//ctx.renderer.Draw(image.GetImageAbsolutePosition(), image.IsStretched() ? image.GetSize() : sprite.GetSize(), { 0,1,0,0.5f }, 0);
 				//ctx.renderer.Draw(image.GetAbsolutePosition(), image.GetSize(), { 0,0,0,0.5f }, 0);

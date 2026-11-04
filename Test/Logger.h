@@ -30,4 +30,6 @@ private:
 inline bool Logger::Enable = false;
 
 // Helper macro: creates a unique logger object per function
-#define LOG_FUNCTION()if(Logger::Enable) Logger __logger(__FUNCTION__)
+#define LOG_FUNCTION()if(Logger::Enable) Logger __logger(__func__) 
+#define LOG_FUNCTION_CPP()if(Logger::Enable) Logger __logger(__func__)
+

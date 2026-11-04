@@ -181,6 +181,7 @@ namespace engine
 
 			// attributes
 			std::string m_name;
+			bool m_verbose = false;
 
 #pragma endregion
 
@@ -204,6 +205,7 @@ namespace engine
 			virtual void OnKeyUp(int key);
 			virtual void OnGotFocus();
 			virtual void OnLostFocus();
+			virtual void OnVerbose(bool enable);
 
 #pragma endregion
 
@@ -344,11 +346,11 @@ namespace engine
 			float GetWidth() const;
 			float GetHeight() const;
 			SizeF GetSize() const;
-			engine::event::Event<const SizeF&> Resized;
+			engine::event::Event<const SizeF&, const SizeF&> Resized;
 			void SetSize(const SizeF& size);
 
 			PositionF GetAbsolutePosition() const;
-			engine::event::Event<const PositionF&> Moved;
+			engine::event::Event<const PositionF&, const PositionF&> Moved;
 			void SetPosition(const PositionF& pos);
 			PositionF GetPosition() const;
 			RectF GetAbsoluteRect() const;
@@ -406,6 +408,10 @@ namespace engine
 #pragma region // attributes
 			void SetName(const std::string& name);
 			std::string GetName() const;
+
+			void Verbose(bool enable = false);
+			bool IsVerbose() const;
+
 #pragma endregion
 		};
 #pragma endregion

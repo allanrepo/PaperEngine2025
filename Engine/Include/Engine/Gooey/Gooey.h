@@ -139,15 +139,15 @@ namespace engine
 			}
 
 		public:
-			void EnableStretch(bool stretch)
-			{
-				m_image->EnableStretch(stretch);
-			}
+			//void EnableStretch(bool stretch)
+			//{
+			//	m_image->EnableStretch(stretch);
+			//}
 
-			bool IsStretched() const
-			{
-				return m_image->IsStretched();
-			}
+			//bool IsStretched() const
+			//{
+			//	return m_image->IsStretched();
+			//}
 
 			// absolute position of image's top-left corner
 			PositionF GetImageAbsolutePosition() const
@@ -161,11 +161,11 @@ namespace engine
 				return m_image->Get();
 			}
 
-			// set alignment
-			void SetAlignment(VerticalAlignment vAlign, HorizontalAlignment hAlign)
-			{
-				m_image->SetAlignment(vAlign, hAlign);
-			}
+			//// set alignment
+			//void SetAlignment(VerticalAlignment vAlign, HorizontalAlignment hAlign)
+			//{
+			//	m_image->SetAlignment(vAlign, hAlign);
+			//}
 		};
 #pragma endregion
 

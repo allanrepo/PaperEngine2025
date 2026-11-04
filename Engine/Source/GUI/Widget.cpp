@@ -168,6 +168,10 @@ namespace engine
 		{
 		}
 
+		void Widget::OnVerbose(bool enable)
+		{
+		}
+
 #pragma endregion
 
 #pragma region // internal methods for tree traversal and z order
@@ -656,8 +660,10 @@ namespace engine
 
 			SizeF oldSize = m_size;
 			m_size = size;
-			Resized(size);
 			OnSizeChanged(oldSize, size);
+
+			// raise event to notify listeners that this widget's size has changed
+			Resized(oldSize, size);
 
 			// once this widget size changed and it fires up callback and notify listeners, 
 			// refresh its position/size based on its layout and do so on its children
@@ -683,8 +689,10 @@ namespace engine
 			// set to new position
 			PositionF oldPos = m_position;
 			m_position = pos;
-			Moved(pos);
 			OnPositionChanged(oldPos, m_position);
+
+			// raise event to notify listeners that this widget's position has changed
+			Moved(oldPos, m_position);
 
 			// once this widget is repositioned, we need to refresh its layout.
 			// if its layout mode is anchored, then setting it to whatever new position is irrelevant
@@ -971,6 +979,18 @@ namespace engine
 		std::string Widget::GetName() const
 		{
 			return m_name;
+		}
+
+		void Widget::Verbose(bool enable)
+		{
+			m_verbose = enable;
+
+			OnVerbose(m_verbose);
+		}
+
+		bool Widget::IsVerbose() const
+		{
+			return m_verbose;
 		}
 #pragma endregion
 	}

@@ -91,9 +91,6 @@
     <Filter Include="Scene">
       <UniqueIdentifier>{ae9e8a48-c532-46f0-a8f8-daa76113be72}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Notes">
-      <UniqueIdentifier>{2d1c0368-8a7c-43fb-8c6c-21459c41e8c1}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Components\Terrain">
       <UniqueIdentifier>{5d6b07a4-f9a6-48f0-9d4d-b0a5b1b5fb84}</UniqueIdentifier>
     </Filter>
@@ -105,6 +102,9 @@
     </Filter>
     <Filter Include="Engine\Gooey">
       <UniqueIdentifier>{66be2495-257f-4e59-826b-3042af50da5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Performance\Notes">
+      <UniqueIdentifier>{2d1c0368-8a7c-43fb-8c6c-21459c41e8c1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -587,22 +587,22 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes\AutoTileSysem.txt">
-      <Filter>Notes</Filter>
+      <Filter>Performance\Notes</Filter>
     </Text>
     <Text Include="DependencySketch.txt">
-      <Filter>Notes</Filter>
+      <Filter>Performance\Notes</Filter>
     </Text>
     <Text Include="Notes\PropEditingSystem.txt">
-      <Filter>Notes</Filter>
+      <Filter>Performance\Notes</Filter>
     </Text>
     <Text Include="Notes\PropSystem.txt">
-      <Filter>Notes</Filter>
+      <Filter>Performance\Notes</Filter>
     </Text>
     <Text Include="Notes\Camera.txt">
-      <Filter>Notes</Filter>
+      <Filter>Performance\Notes</Filter>
     </Text>
     <Text Include="Notes\TerrainSystem.txt">
-      <Filter>Notes</Filter>
+      <Filter>Performance\Notes</Filter>
     </Text>
   </ItemGroup>
 </Project>

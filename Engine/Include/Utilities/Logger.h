@@ -9,30 +9,31 @@
 
 namespace engine::utilities
 {
-    class Logger
+    class ScopeLogger
     {
     public:
         static bool Enable;
-        Logger(const std::string& functionName)
+        ScopeLogger(const std::string& functionName)
             : m_functionName(functionName)
         {
-            std::cout << "[ENTER] " << m_functionName << std::endl;
+            if(Enable) std::cout << "[ENTER] " << m_functionName << std::endl;
         }
 
-        ~Logger()
+        ~ScopeLogger()
         {
-            std::cout << "[EXIT]  " << m_functionName << std::endl;
+            if(Enable) std::cout << "[EXIT]  " << m_functionName << std::endl;
         }
 
     private:
         std::string m_functionName;
     };
 
-    inline bool Logger::Enable = false;
+    inline bool ScopeLogger::Enable = false;
 
 
 }
 
 // Helper macro: creates a unique logger object per function
-#define LOG_FUNCTION()if(utilities::Logger::Enable) utilities::Logger __logger(__FUNCTION__)
+//#define LOG_FUNCTION()if(engine::utilities::ScopeLogger::Enable) engine::utilities::ScopeLogger __logger(__func__) // standard C++
+#define LOG_FUNCTION()engine::utilities::ScopeLogger __logger(__FUNCSIG__) // MSVC
 

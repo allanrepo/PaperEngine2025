@@ -215,3 +215,28 @@ so behavior i can describe as follows:
 
 NOTES FOR DEMO: PATH FINDING
 - performance challenge: open start, blocked goal - if you forget what this is, check with gpt. it knows.
+
+
+
+
+
+
+ScrollView 
+- resize
+	- resize viewport
+		- *reposition content
+			- update offset				
+	- resize scrollbars
+		- resize thumb (based on current viewport/content length ratio)
+		- reposition thumb (based on current offset)
+
+
+
+viewport
+- resize
+	- update scrollbars' viewport length
+
+
+
+
+

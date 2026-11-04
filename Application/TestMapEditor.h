@@ -43,7 +43,8 @@
 #include <Spatial/Camera.h>
 #include <GUI/gui.h>	
 #include <Engine/Gooey/Gooey.h>
-
+#include <conio.h>
+#include <iostream>
 
 namespace TestMapEditor
 {
@@ -5749,7 +5750,7 @@ namespace TestMapEditor
 		Widget* m_menu = nullptr;
 		Widget* m_menuBar = nullptr;
 		Slider* m_slider = nullptr;
-		ViewPort* m_viewport = nullptr;
+		ScrollView::ViewPort* m_viewport = nullptr;
 		ScrollView* m_scrollview = nullptr;
 		UniformGrid* m_uniformGrid = nullptr;
 		TextListBox* m_textListBox = nullptr;
@@ -5767,6 +5768,7 @@ namespace TestMapEditor
 		bool m_showTerrain = false;
 		bool m_showFineGrid = false;
 		bool m_showTileGrid = false;
+		bool m_enableClipping = true;
 
 		Widget* m_controlDialog = nullptr;
 		Widget* m_testDialog = nullptr;
@@ -5886,6 +5888,8 @@ namespace TestMapEditor
 
 		void OnEnter() override
 		{
+			engine::utilities::ScopeLogger::Enable = true;
+
 			m_ux.SetPosition({ 0,0 });
 			m_ux.SetSize({ 0,0 });
 			m_ux.Show(); 
@@ -5926,47 +5930,347 @@ namespace TestMapEditor
 
 			}
 
-			// ScrollBar
-			if(false)
+			// [TESTER] Image widget tester
+			if (false)
 			{
-				std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(4000.0f, 100.0f, true);
-				scrollbar->SetPosition({ 300,300 });
-				scrollbar->SetSize({ 600, 50 });
-				m_scrollbar = scrollbar.get();
-				m_ux.AddWidget(std::move(scrollbar));
+				static int s_selection = 0;
+				static engine::gui::Label* s_imageAnchorButtonLabel = nullptr;
+				static engine::gui::Image* s_imageForTesting = nullptr;
+				static int s_image = 0;
+				static engine::gui::Renderable* s_renderable = nullptr;
 
-				// content adjuster
-				if(1)
+				// button to toggle image anchor. clicking this will toggle Image anchor styles through all possible combinations
 				{
-					std::unique_ptr<ScrollBar> contentScroll = std::make_unique<ScrollBar>(12.0f, 2.0f, true);
-					contentScroll->SetPosition({ 300,400 });
-					contentScroll->SetSize({ 400, 25 });
-					contentScroll->Scroll += [&](float value)
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 5, 60 });
+					button->SetSize({ 300, 50 });
+					button->Click += [&]()
 						{
-							m_scrollbar->SetContentLength(value);
+							s_selection++;
+							s_selection = s_selection == 16 ? 0 : s_selection;
+
+							switch (s_selection)
+							{
+							case 0:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Left);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Top);
+								s_imageAnchorButtonLabel->Set("Top-Left");
+								break;
+							case 1:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Center);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Top);
+								s_imageAnchorButtonLabel->Set("Top-Center");
+								break;
+							case 2:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Right);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Top);
+								s_imageAnchorButtonLabel->Set("Top-Right");
+								break;
+							case 3:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Right);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Center);
+								s_imageAnchorButtonLabel->Set("Center-Right");
+								break;
+							case 4:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Right);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Bottom);
+								s_imageAnchorButtonLabel->Set("Bottom-Right");
+								break;
+							case 5:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Center);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Bottom);
+								s_imageAnchorButtonLabel->Set("Bottom-Center");
+								break;
+							case 6:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Left);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Bottom);
+								s_imageAnchorButtonLabel->Set("Bottom-Left");
+								break;
+							case 7:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Left);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Center);
+								s_imageAnchorButtonLabel->Set("Center-Left");
+								break;
+							case 8:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Center);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Center);
+								s_imageAnchorButtonLabel->Set("Center-Center");
+								break;
+							case 9:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Left);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Fill);
+								s_imageAnchorButtonLabel->Set("Fill-Left");
+								break;
+							case 10:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Center);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Fill);
+								s_imageAnchorButtonLabel->Set("Fill-Center");
+								break;
+							case 11:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Right);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Fill);
+								s_imageAnchorButtonLabel->Set("Fill-Right");
+								break;
+							case 12:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Fill);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Top);
+								s_imageAnchorButtonLabel->Set("Top-Fill");
+								break;
+							case 13:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Fill);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Center);
+								s_imageAnchorButtonLabel->Set("Center-Fill");
+								break;
+							case 14:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Fill);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Bottom);
+								s_imageAnchorButtonLabel->Set("Bottom-Fill");
+								break;
+							case 15:
+								s_imageForTesting->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Fill);
+								s_imageForTesting->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Fill);
+								s_imageAnchorButtonLabel->Set("Fill-Fill");
+								break;
+							default:
+								break;
+							}
 						};
-					//contentScroll->SetOffset(10.0f);
-					m_ux.AddWidget(std::move(contentScroll));
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Image Orientation");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					s_imageAnchorButtonLabel = label.get();
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
 				}
 
-				// viewport adjuster
-				if(1)
+				// button to toggle image between a sprite and animated
 				{
-					std::unique_ptr<ScrollBar> viewportScroll = std::make_unique<ScrollBar>(12.0f, 2.0f, true);
-					viewportScroll->SetPosition({ 300,450 });
-					viewportScroll->SetSize({ 400, 25 });
-					viewportScroll->Scroll += [&](float value)
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 350, 60 });
+					button->SetSize({ 200, 50 });
+					button->Click += [&]()
 						{
-							m_scrollbar->SetViewportLength(value);
-						};
+							s_image++;
+							if (s_image == 2) s_image = 0;
 
-					//viewportScroll->SetOffset(7.0f);
-					m_ux.AddWidget(std::move(viewportScroll));
+							if (s_image == 0)
+							{
+								// set animated object as renderable for our image
+								auto& animSet = AssetManager().Get<AnimationSet<Sprite>>("birchtree_anim_set");
+								s_imageForTesting->Set(Animated(animSet, "birch_tree_idle"));
+							}
+							else if (s_image == 1)
+							{
+								// create static sprite as our renderable for our image
+								Sprite pusha = AssetManager().Get<ISpriteAtlas>("pusha_sprite").GetSprite();
+								s_imageForTesting->Set(Renderable(pusha));
+							}
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Image");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// create frame, movable, interactive
+				std::unique_ptr<engine::gui::Frame> frame = std::make_unique<engine::gui::Frame>();
+				frame->SetPosition({ 100, 100 });
+				frame->SetSize({ 600, 600 });
+								
+				{
+					// create image
+					auto& animSet = AssetManager().Get<AnimationSet<Sprite>>("birchtree_anim_set");
+					std::unique_ptr<Image> image = std::make_unique<Image>(Animated(animSet, "birch_tree_idle"));
+
+					//Sprite pusha = AssetManager().Get<ISpriteAtlas>("pusha_sprite").GetSprite();
+					//std::unique_ptr<Image> image = std::make_unique<Image>(Renderable(pusha));
+					image->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					image->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					image->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					image->SetMargin({ 0, 0, 0, 0 });
+					image->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Fill);
+					image->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Fill);
+					s_imageForTesting = image.get();
+					frame->AddChild(std::move(image));
+				}
+
+				m_ux.AddWidget(std::move(frame));
+
+			}
+
+			// [TESTER] DragHandler widget tester
+			if (false)
+			{
+				{
+					// create a panel widget. this widget is non visible, none draggable, but interactive
+					std::unique_ptr<engine::gui::Panel> panel = std::make_unique<engine::gui::Panel>();
+					panel->SetPosition({ 100, 100 });
+					panel->SetSize({ 600, 600 });
+
+					{
+						// create drag handler widget. this is also non visible widget. 
+						// set panel as its proxy. let's make it fit into panel widget. 
+						// make it child of panel too.
+						std::unique_ptr<engine::gui::DragHandle> dragHandle = std::make_unique<engine::gui::DragHandle>(*panel.get(), true, true);
+						dragHandle->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+						dragHandle->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+						dragHandle->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+						dragHandle->SetMargin({ 0, 0, 0, 0 });
+
+						{
+							// create image widget. set it as child of drag handler so we can see something
+							// make it fit into drag handler
+							Sprite pusha = AssetManager().Get<ISpriteAtlas>("pusha_sprite").GetSprite();
+							std::unique_ptr<Image> image = std::make_unique<Image>(Renderable(pusha));
+							image->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+							image->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+							image->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+							image->SetMargin({ 0, 0, 0, 0 });
+							image->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Fill);
+							image->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Fill);
+							dragHandle->AddChild(std::move(image));
+						}
+
+						panel->AddChild(std::move(dragHandle));
+					}
+					m_ux.AddWidget(std::move(panel));
 				}
 			}
 
-			// HScrollBar in Resizeable
-			if (true)
+			// [TESTER] ScrollView::ViewPort widget tester
+			if (false)
+			{
+				static engine::gui::Slider* s_hImageSizeSlider = nullptr;
+				static engine::gui::Slider* s_vImageSizeSlider = nullptr;
+				static engine::gui::Panel* s_contentPanel = nullptr;
+				static Sprite s_spriteImage = engine::graphics::Sprite::MakeInvalidSprite();
+
+				// button to toggle render clipping
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 5, 60 });
+					button->SetSize({ 200, 50 });
+					button->Click += [&]()
+						{
+							m_enableClipping = !m_enableClipping;
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Toggle Clipping");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// slider to adjust width of the content
+				{
+					std::unique_ptr<Slider> width = std::make_unique<Slider>(0.0f, 3.0f, 50.0f);
+					width->SetPosition({ 225, 60 });
+					width->SetSize({ 400, 50 });
+					width->Value(1.0f);
+					width->SetName("width");
+					width->SetStepCount(31);
+					width->Change += [&](float value)
+						{
+							LOG("Slider[width]: " + std::to_string(value));
+							s_contentPanel->SetSize({ s_spriteImage.GetWidth() * value, s_contentPanel->GetHeight() });
+						};
+
+					s_hImageSizeSlider = width.get();
+					m_ux.AddWidget(std::move(width));
+				}
+
+				// slider to adjust height of the content
+				{
+					std::unique_ptr<Slider> height = std::make_unique<Slider>(0.0f, 3.0f, 50.0f);
+					height->SetPosition({ 5, 125 });
+					height->SetSize({ 50, 400 });
+					height->Horizontal(false);
+					height->Value(1.0f);
+					height->SetName("height");
+					height->SetStepCount(31);
+					height->Change += [&](float value)
+						{
+							LOG("Slider[height]: " + std::to_string(value));
+							s_contentPanel->SetSize({ s_contentPanel->GetWidth(), s_spriteImage.GetHeight() * value });
+						};
+
+					s_vImageSizeSlider = height.get();
+					m_ux.AddWidget(std::move(height));
+				}
+
+				// create resizeable frame to house the scrollview
+				std::unique_ptr<engine::gui::ResizeableFrame> resizeable = std::make_unique<engine::gui::ResizeableFrame>(8.0f, SizeF{ 5.0f,5.0f });
+				resizeable->SetPosition({ 175,175 });
+				resizeable->SetSize({ 400, 400 });
+				static ResizeableFrame* s_resizeable = resizeable.get();
+				m_ux.AddWidget(std::move(resizeable));
+
+				// create viewport and make it fit into resizeable frame
+				{
+					std::unique_ptr<ScrollView::ViewPort> vp = std::make_unique<ScrollView::ViewPort>();
+					vp->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					vp->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					vp->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					vp->SetMargin({ 0, 0, 0, 0 });
+					vp->Verbose(true);
+
+					// create a panel widget. this widget is non visible, none draggable, but interactive. this will be the content of our viewport
+					{
+						std::unique_ptr<engine::gui::Panel> panel = std::make_unique<engine::gui::Panel>();
+						panel->SetPosition({ 100, 100 });
+						panel->SetSize({ 2048, 2048 });
+
+						// create drag handler widget. this is also non visible widget. set panel as its proxy. let's make it fit into panel widget. 
+						// make it child of panel too. this will make the panel draggable
+						{
+							std::unique_ptr<engine::gui::DragHandle> dragHandle = std::make_unique<engine::gui::DragHandle>(*panel.get(), true, true);
+							dragHandle->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+							dragHandle->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+							dragHandle->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+							dragHandle->SetMargin({ 0, 0, 0, 0 });
+
+							// create a sprite. we will feed this into Image widget
+							s_spriteImage = AssetManager().Get<ISpriteAtlas>("pusha_sprite").GetSprite();
+
+							// set the panel size to be this sprite's size. we want the sprite to fill the panel
+							panel->SetSize({ s_spriteImage.GetWidth() * s_hImageSizeSlider->Value(), s_spriteImage.GetHeight() * s_vImageSizeSlider->Value() });
+
+							// create image widget. use our sprite as its renderable component
+							// set it as child of drag handle so we can see something in the scrollview's content. 
+							// both panel and draghandle are not visible
+							// make it fit into drag handler so it will look like it also fit into scrollview's content
+							{
+								std::unique_ptr<Image> image = std::make_unique<Image>(Renderable(s_spriteImage));
+								image->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+								image->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+								image->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+								image->SetMargin({ 0, 0, 0, 0 });
+								image->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Fill);
+								image->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Fill);
+								dragHandle->AddChild(std::move(image));
+							}
+
+							panel->AddChild(std::move(dragHandle));
+						}
+						s_contentPanel = panel.get();
+						vp->SetContent(std::move(panel));
+
+					}
+
+					s_resizeable->AddContent(std::move(vp));
+
+				}
+			}
+
+			// [TESTER] ScrollBar widget tester
+			if (false)
 			{
 				static Slider* s_content = nullptr;
 				static Slider* s_viewport = nullptr;
@@ -6047,6 +6351,7 @@ namespace TestMapEditor
 						scrollbar->SetStepSize(1.5f);
 						scrollbar->SetScrollMode(ScrollBar::ScrollMode::Discrete);
 						scrollbar->SetName("discrete");
+						scrollbar->Verbose(true);
 
 						m_scrollbar = scrollbar.get();
 						frame->AddContent(std::move(scrollbar));
@@ -6079,62 +6384,151 @@ namespace TestMapEditor
 				}
 			}
 
-			// VScrollBar in Resizeable
-			if (false)
+			// [TESTER] ScrollView widget tester
+			if (true)
 			{
-				// create resizeable frame to house the scrollbar
-				std::unique_ptr<engine::gui::ResizeableFrame> frame = std::make_unique<engine::gui::ResizeableFrame>(8.0f, SizeF{32, 32});
-				frame->SetPosition({ 50,200 });
-				frame->SetSize({ 50, 400 });
+				static ResizeableFrame* s_resizeable = nullptr;
+				static engine::gui::Slider* s_hImageSizeSlider = nullptr;
+				static engine::gui::Slider* s_vImageSizeSlider = nullptr;
+				static engine::gui::Panel* s_contentPanel = nullptr;
+				static Sprite s_spriteImage = engine::graphics::Sprite::MakeInvalidSprite();
 
-				// create scrollbar and fit it into our resizeable frame
+				// button to toggle render clipping
 				{
-					std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(40000.0f, 100.0f, false);
-					scrollbar->SetLayoutMode(engine::gui::LayoutMode::Anchor);
-					scrollbar->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
-					scrollbar->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
-					m_scrollbar = scrollbar.get();
-					frame->AddContent(std::move(scrollbar));
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 5, 60 });
+					button->SetSize({ 200, 50 });
+					button->Click += [&]()
+						{
+							m_enableClipping = !m_enableClipping;
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Toggle Clipping");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
 				}
 
-				m_ux.AddWidget(std::move(frame));
-			}
-
-			// ScrollView::ViewPort in Resizeable
-			if (false)
-			{
-				// create resizeable frame to house the scrollbar
-				std::unique_ptr<engine::gui::ResizeableFrame> frame = std::make_unique<engine::gui::ResizeableFrame>();
-				frame->SetPosition({ 75,75 });
-				frame->SetSize({ 400, 400 });
-
+				// slider to adjust width of the content
 				{
-					// create viewport and make it fit into resizeable frame
-					std::unique_ptr<ScrollView::ViewPort> vp = std::make_unique<ScrollView::ViewPort>();
-					vp->SetLayoutMode(engine::gui::LayoutMode::Anchor);
-					vp->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
-					vp->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
-					vp->SetMargin({ 0, 0, 0, 0 });
+					std::unique_ptr<Slider> width = std::make_unique<Slider>(0.0f, 3.0f, 50.0f);
+					width->SetPosition({ 225, 60 });
+					width->SetSize({ 400, 50 });
+					width->Value(1.0f);
+					width->SetName("width");
+					width->SetStepCount(31);
+					width->Change += [&](float value)
+						{
+							LOG("Slider[width]: " + std::to_string(value));
+							s_contentPanel->SetSize({ s_spriteImage.GetWidth() * value, s_contentPanel->GetHeight()});
+						};
 
+					s_hImageSizeSlider = width.get();
+					m_ux.AddWidget(std::move(width));
+				}
+
+				// slider to adjust height of the content
+				{
+					std::unique_ptr<Slider> height = std::make_unique<Slider>(0.0f, 3.0f, 50.0f);
+					height->SetPosition({ 5, 125 });
+					height->SetSize({ 50, 400 });
+					height->Horizontal(false);
+					height->Value(1.0f);
+					height->SetName("height");
+					height->SetStepCount(31);
+					height->Change += [&](float value)
+						{
+							LOG("Slider[height]: " + std::to_string(value));
+							s_contentPanel->SetSize({ s_contentPanel->GetWidth(), s_spriteImage.GetHeight() * value });
+						};
+
+					s_vImageSizeSlider = height.get();
+					m_ux.AddWidget(std::move(height));
+				}
+
+				// button to resize resizeable frame
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 650, 60 });
+					button->SetSize({ 200, 50 });
+					button->Click += [&]()
+						{
+							SizeF size = s_resizeable->GetSize();
+							size += SizeF{ 50, 50 };
+							s_resizeable->SetSize(size);
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Resize");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// create resizeable frame to house the scrollview
+				std::unique_ptr<engine::gui::ResizeableFrame> resizeable = std::make_unique<engine::gui::ResizeableFrame>(8.0f, SizeF{ 5.0f,5.0f });
+				resizeable->SetPosition({ 175,175 });
+				resizeable->SetSize({ 400, 400 });
+				s_resizeable = resizeable.get();
+				m_ux.AddWidget(std::move(resizeable));
+
+				// create scrollview and make it fit into resizeable frame
+				{
+					std::unique_ptr<ScrollView> sv = std::make_unique<ScrollView>();
+					sv->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					sv->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					sv->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					sv->SetMargin({ 0, 0, 0, 0 });
+					sv->Verbose(true);
+					static ScrollView* s_sv = sv.get();
+					s_resizeable->AddContent(std::move(sv));
+
+					// create a panel widget. this widget is non visible, none draggable, but interactive. this will be the content of our scrollview
 					{
-						// create image and set it as content of viewport
-						Sprite pusha = AssetManager().Get<ISpriteAtlas>("pusha_sprite").GetSprite();
-						std::unique_ptr<Image> image = std::make_unique<Image>(Renderable(pusha));
-						image->SetPosition({ 5, 50 });
-						image->SetSize(pusha.GetSize());
-						vp->SetContent(std::move(image));
-						vp->SetOffset({ 5000, 5000 });
+						std::unique_ptr<engine::gui::Panel> panel = std::make_unique<engine::gui::Panel>();
+						panel->SetPosition({ 100, 100 });
+						panel->SetSize({ 2048, 2048 });
+
+						// create drag handler widget. this is also non visible widget. set panel as its proxy. let's make it fit into panel widget. 
+						// make it child of panel too. this will make the panel draggable
+						{
+							std::unique_ptr<engine::gui::DragHandle> dragHandle = std::make_unique<engine::gui::DragHandle>(*panel.get(), true, true);
+							dragHandle->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+							dragHandle->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+							dragHandle->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+							dragHandle->SetMargin({ 0, 0, 0, 0 });
+
+							// create a sprite. we will feed this into Image widget
+							s_spriteImage = AssetManager().Get<ISpriteAtlas>("pusha_sprite").GetSprite();
+
+							// set the panel size to be this sprite's size. we want the sprite to fill the panel
+							panel->SetSize({ s_spriteImage.GetWidth() * s_hImageSizeSlider->Value(), s_spriteImage.GetHeight() * s_vImageSizeSlider->Value() });
+
+							// create image widget. use our sprite as its renderable component
+							// set it as child of drag handle so we can see something in the scrollview's content. 
+							// both panel and draghandle are not visible
+							// make it fit into drag handler so it will look like it also fit into scrollview's content
+							{
+								std::unique_ptr<Image> image = std::make_unique<Image>(Renderable(s_spriteImage));
+								image->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+								image->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+								image->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+								image->SetMargin({ 0, 0, 0, 0 });
+								image->SetHorizontalImageAnchor(engine::gui::HorizontalAnchor::Fill);
+								image->SetVerticalImageAnchor(engine::gui::VerticalAnchor::Fill);
+								dragHandle->AddChild(std::move(image));
+							}
+
+							panel->AddChild(std::move(dragHandle));
+						}
+						s_contentPanel = panel.get();
+						s_sv->SetContent(std::move(panel));
 					}
-
-					frame->AddContent(std::move(vp));
-
-
 				}
-
-				m_ux.AddWidget(std::move(frame));
-
 			}
-
 
 			// TextListBox in ResizeableFrame
 			if (false)
@@ -7113,58 +7507,58 @@ namespace TestMapEditor
 
 									button->Click += [&]()
 										{
-											switch (m_imageState)
-											{
-											case 0:
-												m_image->EnableStretch(false);
-												m_image->SetAlignment(VerticalAlignment::Top, HorizontalAlignment::Left);
-												m_imageState = 1;
-												break;
-											case 1:
-												m_image->EnableStretch(false);
-												m_image->SetAlignment(VerticalAlignment::Top, HorizontalAlignment::Center);
-												m_imageState = 2;
-												break;
-											case 2:
-												m_image->EnableStretch(false);
-												m_image->SetAlignment(VerticalAlignment::Top, HorizontalAlignment::Right);
-												m_imageState = 3;
-												break;
-											case 3:
-												m_image->EnableStretch(false);
-												m_image->SetAlignment(VerticalAlignment::Center, HorizontalAlignment::Left);
-												m_imageState = 4;
-												break;
-											case 4:
-												m_image->EnableStretch(false);
-												m_image->SetAlignment(VerticalAlignment::Center, HorizontalAlignment::Center);
-												m_imageState = 5;
-												break;
-											case 5:
-												m_image->EnableStretch(false);
-												m_image->SetAlignment(VerticalAlignment::Center, HorizontalAlignment::Right);
-												m_imageState = 6;
-												break;
-											case 6:
-												m_image->EnableStretch(false);
-												m_image->SetAlignment(VerticalAlignment::Bottom, HorizontalAlignment::Left);
-												m_imageState = 7;
-												break;
-											case 7:
-												m_image->EnableStretch(false);
-												m_image->SetAlignment(VerticalAlignment::Bottom, HorizontalAlignment::Center);
-												m_imageState = 8;
-												break;
-											case 8:
-												m_image->EnableStretch(false);
-												m_image->SetAlignment(VerticalAlignment::Bottom, HorizontalAlignment::Right);
-												m_imageState = 9;
-												break;
-											case 9:
-												m_image->EnableStretch(true);
-												m_imageState = 0;
-												break;
-											}
+											//switch (m_imageState)
+											//{
+											//case 0:
+											//	m_image->EnableStretch(false);
+											//	m_image->SetAlignment(VerticalAlignment::Top, HorizontalAlignment::Left);
+											//	m_imageState = 1;
+											//	break;
+											//case 1:
+											//	m_image->EnableStretch(false);
+											//	m_image->SetAlignment(VerticalAlignment::Top, HorizontalAlignment::Center);
+											//	m_imageState = 2;
+											//	break;
+											//case 2:
+											//	m_image->EnableStretch(false);
+											//	m_image->SetAlignment(VerticalAlignment::Top, HorizontalAlignment::Right);
+											//	m_imageState = 3;
+											//	break;
+											//case 3:
+											//	m_image->EnableStretch(false);
+											//	m_image->SetAlignment(VerticalAlignment::Center, HorizontalAlignment::Left);
+											//	m_imageState = 4;
+											//	break;
+											//case 4:
+											//	m_image->EnableStretch(false);
+											//	m_image->SetAlignment(VerticalAlignment::Center, HorizontalAlignment::Center);
+											//	m_imageState = 5;
+											//	break;
+											//case 5:
+											//	m_image->EnableStretch(false);
+											//	m_image->SetAlignment(VerticalAlignment::Center, HorizontalAlignment::Right);
+											//	m_imageState = 6;
+											//	break;
+											//case 6:
+											//	m_image->EnableStretch(false);
+											//	m_image->SetAlignment(VerticalAlignment::Bottom, HorizontalAlignment::Left);
+											//	m_imageState = 7;
+											//	break;
+											//case 7:
+											//	m_image->EnableStretch(false);
+											//	m_image->SetAlignment(VerticalAlignment::Bottom, HorizontalAlignment::Center);
+											//	m_imageState = 8;
+											//	break;
+											//case 8:
+											//	m_image->EnableStretch(false);
+											//	m_image->SetAlignment(VerticalAlignment::Bottom, HorizontalAlignment::Right);
+											//	m_imageState = 9;
+											//	break;
+											//case 9:
+											//	m_image->EnableStretch(true);
+											//	m_imageState = 0;
+											//	break;
+											//}
 										};
 
 									parent->AddChild(std::move(button));
@@ -7356,7 +7750,7 @@ namespace TestMapEditor
 
 					image->SetPosition({ 8, 8 });
 					image->SetSize({ 112, 112 });
-					image->EnableStretch(true);
+					//image->EnableStretch(true);
 					m_image = image.get();
 					draggable->AddChild(std::move(image));
 				}
@@ -7379,7 +7773,7 @@ namespace TestMapEditor
 
 					image->SetPosition({ 8, 8 });
 					image->SetSize({ 112, 112 });
-					image->EnableStretch(true);
+					//image->EnableStretch(true);
 					m_image = image.get();
 					draggable->AddChild(std::move(image));
 				}
@@ -7411,7 +7805,7 @@ namespace TestMapEditor
 			AssetManager assets;
 			ICanvas& canvas = assets.Get<ICanvas>("canvas");
 			IRenderer& renderer = assets.Get<IRenderer>("renderer");
-			renderer.EnableClipping(true);
+			renderer.EnableClipping(m_enableClipping);
 			renderer.SetClipRegion(canvas.GetViewPort());
 
 			DefaultUISkin skin;
@@ -7859,7 +8253,8 @@ namespace TestMapEditor
 				Registry<AnimationSet<Sprite>>::Instance().Register("splash_anim_set", std::make_unique<AnimationSet<Sprite>>());
 
 				// create sprite atlas for the pusha sprite
-				SpriteAtlasFactory::Create("pusha_sprite", L"../Assets/pusha1.JPG", 1, 1);
+				SpriteAtlasFactory::Create("pusha_sprite_big", L"../Assets/pusha1.JPG", 1, 1);
+				SpriteAtlasFactory::Create("pusha_sprite", L"../Assets/pusha.JPG", 1, 1);
 
 				// create animation for splash and store in animation set
 				ISpriteAtlas& splashAnimSprites = assets.Get<ISpriteAtlas>("splash_anim_sprites");

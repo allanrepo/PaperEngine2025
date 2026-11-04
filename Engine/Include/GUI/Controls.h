@@ -90,7 +90,15 @@ namespace engine
 #pragma endregion
 
 #pragma region // Image
-		// non interactive widget used to display renderable objects
+		// description:
+		//	- non interactive widget used to display renderable objects
+		// design considerations:
+		//	- why do we care about image's sprite pivot? 
+		//		- because renderer will take sprite's pivot into account.
+		//		- it will translate sprite's top-left position with its given pivot.
+		//		- pivot is part of sprite's geometric description. Renderer must always be aware of it and take it into account when rendering sprite
+		//	- why is IRenderable image object reference a unique_ptr? Isn't IRenderable a lightweight view object only?
+		//		- only reason why we store it as unique_ptr is so it can be polymorphic. other than that, IRenderables are lightweight views that can be copied around.
 		class Image : public Widget
 		{
 		private:
@@ -100,26 +108,10 @@ namespace engine
 			std::unique_ptr<IRenderable> m_image;
 
 			// image alignment inside this widget's layout. 
-			// an alignment with both horizontal and vertical set to center means the image will be rendered at the center of the widget
-			VerticalAlignment m_vAlign;
-			HorizontalAlignment m_hAlign;
-
-			// top-left position of the image relative to widget's layout
-			PositionF m_imagePosition;
-
-			// if true, the image will be stretched to fill the widget's layout
-			bool m_stretch = false;
+			VerticalAnchor m_vImageAnchor;
+			HorizontalAnchor m_hImageAnchor;
 
 		protected:
-			// this is fired up when this widget is added to a widget tree with a UI system. 
-			bool OnRegisterToSystem() override final;
-
-			// reposition the image based on its alignment
-			void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize)override final;
-
-			// calculates the position of the image based on alignment
-			bool UpdateLayout();
-
 		public:
 			// constructor for Renderable as image resource
 			Image(Renderable renderable);
@@ -127,18 +119,24 @@ namespace engine
 			// constructor for Animated as image resource
 			Image(Animated animated);
 
+			// set renderable resource 
+			void Set(Renderable renderable);
+			void Set(Animated animated);
+
 			// non-copyable, non-movable
 			Image(const Image&) = delete;
 			Image& operator=(const Image&) = delete;
 			Image(Image&&) noexcept = delete;
 			Image& operator=(Image&&) noexcept = delete;
 
-			void EnableStretch(bool stretch);
-
-			bool IsStretched() const;
-
-			// absolute position of image's top-left corner
+			// get the image's absolute position, accounting for image's sprite pivot 
 			PositionF GetImageAbsolutePosition() const;
+
+			// get the image's position relative to the widget's coordinates, accountin image's sprite pivot 
+			PositionF GetImagePosition() const;
+
+			// get the image size. this will return image size based on image anchor type
+			SizeF GetImageSize() const;
 
 			// get sprite 
 			Sprite Get() const;
@@ -147,7 +145,8 @@ namespace engine
 			void Draw(const UIDrawContext& context) const override;
 
 			// set alignment
-			void SetAlignment(VerticalAlignment vAlign, HorizontalAlignment hAlign);
+			void SetHorizontalImageAnchor(HorizontalAnchor hAnchor);
+			void SetVerticalImageAnchor(VerticalAnchor vAnchor);
 		};
 #pragma endregion
 
@@ -604,36 +603,60 @@ namespace engine
 #pragma endregion
 
 #pragma region // ScrollView
-		// ScrollView manages the overall scrolling control. 
-		// It arranges the viewport and scrollbars, determines which scrollbars are needed, 
-		// and synchronizes their sizes and positions with the content.
+		// design principle:
+		// - has 3 components - viewport, horizontal scrollbar, vertical scrollbar
+		// - ScrollView is the main orchestrator of the scrolling behavior. viewport and scrollbars don't know about each other.
+		// - their events are handled by ScrollView to synchronize their behavior.
+		// - when resize happen, ScrollView fully manages the layout and behavior of its components to ensure all of them are in sync.
+		// - when scrollbars are scrolled, ScrollView handles its events and update the viewport's content position accordingly.
+		// - when viewport's content is scrolled, ScrollView handles its events and update the scrollbars' thumb position accordingly.
 		class ScrollView : public Widget
 		{
 		public:
 #pragma region // ViewPort - container widget that holds a single "content" widget and manages the content widget's scrolling.
-			// ViewPort manages the content being viewed.It owns the content widget, moves it to implement scrolling, 
-			// keeps its position within valid bounds, and publishes events when the content moves, resizes, or changes.
-			// ViewPort doesn't need to know how content moves. It simply reports that its content moved or changed size
-			// if content is larger than viewport, it ensures that content always fill the whole region of the viewport.
-			// if content is smaller than viewport, it ensures the content stays put and its top-left is at 0,0 of viewport
+			// design principle:
+			// - Purpose
+			//		- it's a container of a single widget. this can be any type of widget. it's called content
+			//		- it controls the position of the content widget. 
+			//			- it makes sure it's top-left position is 0,0 or less
+			//			- and if it's top-left position is 0,0 or less, it's bottom-right position is widget's width/height or more
+			//			- it basically forces content widget to always fill this viewport's extent
+			//			- and if the content's size is smaller than viewport extent, it's locked into 0,0 position
+			// - Setting content
+			//		- when setting content, it updates content's position relative to its new parent - ViewPort.
+			//		- this is because it's possible the content's position/size before it become's this ViewPort's content is out of ViewPort's bounds
+			//		- ContentChange event is also invoked so listeners are notified for content change
+			//		- if content's position is changed by viewport, content invokes Moved event which viewport listens to
+			//			- viewport's content "Moved" event handler will again update content's position. 
+			//			- but since content is now within the bounds of the viewport, it is guaranteed to never set position again. 
+			//			- that ensures no stack overflow from recursion
+			//			- the Moved event handler will then raise "Scroll" event
+			//				- the scroll event will notify listeners that the position of the content relative to viewport changed
+			//				- this is useful when a listener like scrollbar needs to update its thumb position relative to content's position
+			//				- it will then update it by the given "offset"
+			// - what is "offset"?
+			//		- it is the distance between viewport's origin (0,0) and content's top-left position (origin - position)
+			//		- since content's top-left position cannot be greater than 0,0 this value is 0,0 or +x, +y
+			// 
 			// NOTE: inner class because i think this is ScrollView's implementation detail.
 			class ViewPort : public Widget
 			{
 			protected:
+				// reference to the content widget. it does not own it. it is just controlled by ViewPort.
 				Widget* m_content;
 
 				// this method ensures that content's position is always within the viewport's bounds. 
 				// if content's position is outside the viewport, it will be moved back to the nearest position within the viewport
-				bool UpdateContentPosition();
+				bool ResolveContentPosition();
 
 				// handler for when viewport's size changes. we need to ensure that content's position is still within the viewport's bounds
 				void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override;
 
-				// event handler for when content's size changes. we need to ensure that content's position is still within the viewport's bounds
-				void OnContentSizeChanged(const SizeF& size);
+				// callback when content's size changes. we need to ensure that content's position is still within the viewport's bounds
+				void OnContentSizeChanged(const SizeF& oldSize, const SizeF& newSize);
 
 				// callback when content change position. 
-				void OnContentMove(const PositionF& pos);
+				void OnContentMove(const PositionF& oldPos, const PositionF& newPos);
 
 			public:
 				// event invoked when content changes position
@@ -645,19 +668,22 @@ namespace engine
 				// event invoked when content object changed
 				engine::event::Event<Widget*> ContentChanged;
 
+				// constructor
 				ViewPort();
 
+				// set the content widget. this will replace the current content widget if any. it will also set the content's position to 0,0 of viewport
 				void SetContent(std::unique_ptr<Widget> content);
 
+				// set the content size. this will resize the content widget to the given size. it will also ensure that content's position is still within the viewport's bounds
 				void SetContentSize(const SizeF& size);
 
-				SizeF GetContentSize() const;
-
-				VecF GetOffset() const;
-
+				// set the content's position. this will move the content widget to the given position. it will also ensure that content's position is still within the viewport's bounds
 				void SetOffset(const VecF& offset);
 
-				void AddContent(std::unique_ptr<Widget> content);
+				// getters
+				SizeF GetContentSize() const;
+				VecF GetOffset() const;
+				Widget* GetContent() const;
 			};
 #pragma endregion
 
@@ -679,16 +705,16 @@ namespace engine
 
 		protected:
 
+			void OnVerbose(bool enable) override;
+
 			// this will update thumb positions of the scroll bars
-			void UpdateThumbPositions();
+			void UpdateScrollBarOffsets();
 
 			// this will update the content size of scroll bars. scroll bars then will refresh its thumb size and thumb position internally
 			void UpdateScrollBarContentSize();
 
 			// this will update the viewport size of scroll bars.  scroll bars then will refresh its thumb size and thumb position internally
 			void UpdateScrollBarViewportSize();
-
-			void UpdateLayout();
 
 			void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override;
 
