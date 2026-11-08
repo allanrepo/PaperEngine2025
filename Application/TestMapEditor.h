@@ -5888,13 +5888,15 @@ namespace TestMapEditor
 
 		void OnEnter() override
 		{
-			engine::utilities::ScopeLogger::Enable = true;
+			engine::utilities::ScopeLogger::Enable = false;
 
 			m_ux.SetPosition({ 0,0 });
 			m_ux.SetSize({ 0,0 });
 			m_ux.Show(); 
 			IFontAtlas& font = AssetManager().Get<IFontAtlas>("font");
 			m_ux.SetFont(font.MakeFont(), UIResources::FontType::Default);
+			IFontAtlas& font32 = AssetManager().Get<IFontAtlas>("font32");
+			m_ux.SetFont(font32.MakeFont(), UIResources::FontType::Title);
 
 			// setup our random text list resource
 			{
@@ -5928,6 +5930,34 @@ namespace TestMapEditor
 				m_button = button.get();
 				m_ux.AddWidget(std::move(button));
 
+			}
+
+			// [TESTER] Slider widget tester
+			if (false)
+			{
+				// create resizeable frame to house the scrollview
+				static ResizeableFrame* s_resizeable = nullptr;
+				std::unique_ptr<engine::gui::ResizeableFrame> resizeable = std::make_unique<engine::gui::ResizeableFrame>(8.0f, SizeF{ 5.0f,5.0f });
+				resizeable->SetPosition({ 175,175 });
+				resizeable->SetSize({ 400, 400 });
+				s_resizeable = resizeable.get();
+				m_ux.AddWidget(std::move(resizeable));
+
+				{
+					std::unique_ptr<Slider> slider = std::make_unique<Slider>(0.0f, 3.0f, 50.0f, 31, engine::gui::Orientation::Horizontal);
+					slider->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					slider->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					slider->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					slider->SetMargin({ 0, 0, 0, 0 });
+					slider->Value(1.0f);
+					slider->SetName("width");
+					slider->Change += [&](float value)
+						{
+							LOG("Slider: " + std::to_string(value));
+						};
+
+					s_resizeable->AddContent(std::move(slider));
+				}
 			}
 
 			// [TESTER] Image widget tester
@@ -6170,12 +6200,12 @@ namespace TestMapEditor
 
 				// slider to adjust width of the content
 				{
-					std::unique_ptr<Slider> width = std::make_unique<Slider>(0.0f, 3.0f, 50.0f);
+					std::unique_ptr<Slider> width = std::make_unique<Slider>(0.0f, 3.0f, 50.0f, 31, engine::gui::Orientation::Horizontal);
 					width->SetPosition({ 225, 60 });
 					width->SetSize({ 400, 50 });
 					width->Value(1.0f);
 					width->SetName("width");
-					width->SetStepCount(31);
+					width->SetRange(31);
 					width->Change += [&](float value)
 						{
 							LOG("Slider[width]: " + std::to_string(value));
@@ -6188,13 +6218,12 @@ namespace TestMapEditor
 
 				// slider to adjust height of the content
 				{
-					std::unique_ptr<Slider> height = std::make_unique<Slider>(0.0f, 3.0f, 50.0f);
+					std::unique_ptr<Slider> height = std::make_unique<Slider>(0.0f, 3.0f, 50.0f, 31, engine::gui::Orientation::Vertical);
 					height->SetPosition({ 5, 125 });
 					height->SetSize({ 50, 400 });
-					height->Horizontal(false);
 					height->Value(1.0f);
 					height->SetName("height");
-					height->SetStepCount(31);
+					height->SetRange(31);
 					height->Change += [&](float value)
 						{
 							LOG("Slider[height]: " + std::to_string(value));
@@ -6275,12 +6304,12 @@ namespace TestMapEditor
 				static Slider* s_content = nullptr;
 				static Slider* s_viewport = nullptr;
 
-				std::unique_ptr<Slider> content = std::make_unique<Slider>(0.0f, 9.0f, 50.0f);
+				std::unique_ptr<Slider> content = std::make_unique<Slider>(0.0f, 9.0f, 50.0f, 10, engine::gui::Orientation::Horizontal);
 				content->SetPosition({ 150, 100 });
 				content->SetSize({400, 50});
 				content->Value(8.0f);
 				content->SetName("content");
-				content->SetStepCount(10);
+				content->SetRange(10);
 				content->Change += [&](float value)
 					{
 						LOG("Slider[content]: " + std::to_string(value));
@@ -6291,11 +6320,11 @@ namespace TestMapEditor
 				s_content = content.get();
 				m_ux.AddWidget(std::move(content));
 
-				std::unique_ptr<Slider> viewport = std::make_unique<Slider>(0.0f, 9.0f, 50.0f);
+				std::unique_ptr<Slider> viewport = std::make_unique<Slider>(0.0f, 9.0f, 50.0f, 10, engine::gui::Orientation::Horizontal);
 				viewport->SetPosition({ 150, 160 });
 				viewport->SetSize({ 400, 50 });
 				viewport->Value(3.0f);
-				viewport->SetStepCount(10);
+				viewport->SetRange(10);
 				viewport->SetName("viewport");
 				viewport->Change += [&](float value)
 					{
@@ -6306,13 +6335,13 @@ namespace TestMapEditor
 				s_viewport = viewport.get();
 				m_ux.AddWidget(std::move(viewport));
 
-				std::unique_ptr<Slider> slider = std::make_unique<Slider>(0.0f, 100.0f, 50.0f);
+				std::unique_ptr<Slider> slider = std::make_unique<Slider>(0.0f, 100.0f, 50.0f, 3, engine::gui::Orientation::Horizontal);
 				slider->SetPosition({ 150, 220 });
 				slider->SetSize({ 400, 50 });
 				slider->Min(-20.0f);
 				slider->Max(5.0f);
 				slider->Value(3.0f);
-				slider->SetStepCount(2);
+				slider->SetRange(2);
 
 				slider->Change += [&](float value)
 					{
@@ -6322,11 +6351,11 @@ namespace TestMapEditor
 					};
 				m_ux.AddWidget(std::move(slider));
 
-				std::unique_ptr<Slider> stepsize = std::make_unique<Slider>(0.0f, 3.0f, 50.0f);
+				std::unique_ptr<Slider> stepsize = std::make_unique<Slider>(0.0f, 3.0f, 50.0f, 7, engine::gui::Orientation::Horizontal);
 				stepsize->SetPosition({ 150, 280 });
 				stepsize->SetSize({ 400, 50 });
 				stepsize->Value(1);
-				stepsize->SetStepCount(7);
+				stepsize->SetRange(7);
 
 				stepsize->Change += [&](float value)
 					{
@@ -6344,7 +6373,7 @@ namespace TestMapEditor
 
 					// create scrollbar and fit it into our resizeable frame
 					{
-						std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(s_content->Value(), s_viewport->Value(), true);
+						std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(s_content->Value(), s_viewport->Value(), engine::gui::Orientation::Horizontal);
 						scrollbar->SetLayoutMode(engine::gui::LayoutMode::Anchor);
 						scrollbar->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
 						scrollbar->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
@@ -6368,7 +6397,7 @@ namespace TestMapEditor
 
 					// create scrollbar and fit it into our resizeable frame
 					{
-						std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(s_content->Value(), s_viewport->Value(), true);
+						std::unique_ptr<ScrollBar> scrollbar = std::make_unique<ScrollBar>(s_content->Value(), s_viewport->Value(), engine::gui::Orientation::Horizontal);
 						scrollbar->SetLayoutMode(engine::gui::LayoutMode::Anchor);
 						scrollbar->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
 						scrollbar->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
@@ -6385,7 +6414,7 @@ namespace TestMapEditor
 			}
 
 			// [TESTER] ScrollView widget tester
-			if (true)
+			if (false)
 			{
 				static ResizeableFrame* s_resizeable = nullptr;
 				static engine::gui::Slider* s_hImageSizeSlider = nullptr;
@@ -6413,12 +6442,12 @@ namespace TestMapEditor
 
 				// slider to adjust width of the content
 				{
-					std::unique_ptr<Slider> width = std::make_unique<Slider>(0.0f, 3.0f, 50.0f);
+					std::unique_ptr<Slider> width = std::make_unique<Slider>(0.0f, 3.0f, 50.0f, 31, engine::gui::Orientation::Horizontal);
 					width->SetPosition({ 225, 60 });
 					width->SetSize({ 400, 50 });
 					width->Value(1.0f);
 					width->SetName("width");
-					width->SetStepCount(31);
+					width->SetRange(31);
 					width->Change += [&](float value)
 						{
 							LOG("Slider[width]: " + std::to_string(value));
@@ -6431,13 +6460,12 @@ namespace TestMapEditor
 
 				// slider to adjust height of the content
 				{
-					std::unique_ptr<Slider> height = std::make_unique<Slider>(0.0f, 3.0f, 50.0f);
+					std::unique_ptr<Slider> height = std::make_unique<Slider>(0.0f, 3.0f, 50.0f, 31, engine::gui::Orientation::Vertical);
 					height->SetPosition({ 5, 125 });
 					height->SetSize({ 50, 400 });
-					height->Horizontal(false);
 					height->Value(1.0f);
 					height->SetName("height");
-					height->SetStepCount(31);
+					height->SetRange(31);
 					height->Change += [&](float value)
 						{
 							LOG("Slider[height]: " + std::to_string(value));
@@ -6527,6 +6555,398 @@ namespace TestMapEditor
 						s_contentPanel = panel.get();
 						s_sv->SetContent(std::move(panel));
 					}
+				}
+			}
+
+			// [TESTER] TextList widget tester
+			if (false)
+			{
+				static TextList* s_textList = nullptr;
+				static Slider* s_itemHeightSlider = nullptr;
+				static Label* s_itemHeightLabel = nullptr;
+				static Slider* s_maxItemsSlider = nullptr;
+				static Label* s_maxItemsLabel = nullptr;
+				static Slider* s_minItemsSlider = nullptr;
+				static Label* s_minItemsLabel = nullptr;
+
+				// button to toggle render clipping
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 5, 60 });
+					button->SetSize({ 200, 50 });
+					button->Click += [&]()
+						{
+							m_enableClipping = !m_enableClipping;
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Toggle Clipping");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// button to add new text
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 210, 60 });
+					button->SetSize({ 150, 50 });
+					button->Click += [&]()
+						{
+							int index = engine::utilities::Random<int>(0, (int)m_randomTexts.size() - 1);
+							s_textList->Append(m_randomTexts[index]);
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Add Text");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// button to remove last text
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 370, 60 });
+					button->SetSize({ 165, 50 });
+					button->Click += [&]()
+						{
+							s_textList->RemoveLast();
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Remove Text");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// slider to adjust item height
+				{
+					std::unique_ptr<Slider> itemheight = std::make_unique<Slider>(-1.0f, 100.0f, 50.0f, 31, engine::gui::Orientation::Horizontal);
+					itemheight->SetPosition({ 5, 120 });
+					itemheight->SetSize({ 240, 50 });
+					itemheight->Value(64.0f);
+					itemheight->SetName("itemheight");
+					itemheight->SetRange(102);
+					itemheight->Change += [&](float value)
+						{
+							LOG("Slider[itemheight]: " + std::to_string(value));
+							s_textList->SetItemHeight(value);
+							s_itemHeightLabel->Set("Val: " + std::to_string(static_cast<int>(value)));
+						};
+
+					s_itemHeightSlider = itemheight.get();
+					m_ux.AddWidget(std::move(itemheight));
+
+					std::unique_ptr<Label> itemHeightLabel = std::make_unique<Label>("Val: " + std::to_string(static_cast<int>(s_itemHeightSlider->Value())));
+					itemHeightLabel->SetPosition({ 250, 120 });
+					itemHeightLabel->SetSize({ 100, 50 });
+					s_itemHeightLabel = itemHeightLabel.get();
+					m_ux.AddWidget(std::move(itemHeightLabel));
+				}
+
+				// slider to adjust max
+				{
+					std::unique_ptr<Slider> max = std::make_unique<Slider>(-1.0f, 20.0f, 50.0f, 31, engine::gui::Orientation::Horizontal);
+					max->SetPosition({ 5, 180 });
+					max->SetSize({ 240, 50 });
+					max->Value(5);
+					max->SetName("max");
+					max->SetRange(22);
+					max->Change += [&](float value)
+						{
+							LOG("Slider[max]: " + std::to_string(value));
+							s_textList->SetRange(s_textList->GetMin(), static_cast<int>(value));
+							s_maxItemsLabel->Set("Max: " + std::to_string(static_cast<int>(value)));
+						};
+
+					s_maxItemsSlider = max.get();
+					m_ux.AddWidget(std::move(max));
+					std::unique_ptr<Label> maxItemsLabel = std::make_unique<Label>("Max: " + std::to_string(static_cast<int>(s_maxItemsSlider->Value())));
+					maxItemsLabel->SetPosition({ 250, 180 });
+					maxItemsLabel->SetSize({ 100, 50 });
+					s_maxItemsLabel = maxItemsLabel.get();
+					m_ux.AddWidget(std::move(maxItemsLabel));
+				}
+
+				// slider to adjust min
+				{
+					std::unique_ptr<Slider> min = std::make_unique<Slider>(-1.0f, 20.0f, 50.0f, 31, engine::gui::Orientation::Horizontal);
+					min->SetPosition({ 5, 240 });
+					min->SetSize({ 240, 50 });
+					min->Value(2);
+					min->SetName("min");
+					min->SetRange(22);
+					min->Change += [&](float value)
+						{
+							LOG("Slider[min]: " + std::to_string(value));
+							s_textList->SetRange(static_cast<int>(value), s_textList->GetMax());
+							s_minItemsLabel->Set("Min: " + std::to_string(static_cast<int>(value)));
+						};
+
+					s_minItemsSlider = min.get();
+					m_ux.AddWidget(std::move(min));
+					std::unique_ptr<Label> minItemsLabel = std::make_unique<Label>("Min: " + std::to_string(static_cast<int>(s_minItemsSlider->Value())));
+					minItemsLabel->SetPosition({ 250, 240 });
+					minItemsLabel->SetSize({ 100, 50 });
+					s_minItemsLabel = minItemsLabel.get();
+					m_ux.AddWidget(std::move(minItemsLabel));
+				}
+
+
+				std::unique_ptr<TextList> textList = std::make_unique<TextList>(s_itemHeightSlider->Value(), UIResources::FontType::Title);
+				textList->SetPosition({ 100, 100 });
+				textList->SetSize({ 500, 500 });
+
+				for (int i = 0; i < 1; i++)
+				{
+					textList->Append("hello");
+					textList->Append("world");
+					textList->Append("hello1");
+					textList->Append("world1");
+					textList->Append("hello2");
+					textList->Append("world2");
+					textList->Append("hello3");
+					textList->Append("world3");
+					textList->Append("hello4");
+					textList->Append("hello5");
+					textList->Append("world4");
+					textList->Append("hello6");
+					textList->Append("world5");
+				}
+				textList->SetRange((int)s_minItemsSlider->Value(), (int)s_maxItemsSlider->Value());
+				s_textList = textList.get();
+				m_ux.AddWidget(std::move(textList));
+
+				//{
+				//	std::unique_ptr<TextItem> textItem = std::make_unique<TextItem>("Hello World");
+				//	textItem->SetPosition({ 5,5 });
+				//	textItem->SetSize({ 200, 50 });
+				//	m_ux.AddWidget(std::move(textItem));
+
+				//}
+
+
+			}
+
+			// [TESTER] TextListBox widget tester
+			if (true)
+			{
+				static TextListBox* s_textListBox = nullptr;
+				static ResizeableFrame* s_resizeable = nullptr;
+				static Slider* s_itemHeightSlider = nullptr;
+				static Label* s_itemHeightLabel = nullptr;
+
+				static engine::gui::Slider* s_hImageSizeSlider = nullptr;
+				static engine::gui::Slider* s_vImageSizeSlider = nullptr;
+				static engine::gui::Panel* s_contentPanel = nullptr;
+				static Sprite s_spriteImage = engine::graphics::Sprite::MakeInvalidSprite();
+
+
+				// button to toggle render clipping
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 5, 60 });
+					button->SetSize({ 200, 50 });
+					button->Click += [&]()
+						{
+							m_enableClipping = !m_enableClipping;
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Toggle Clipping");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// button to add new text
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 210, 60 });
+					button->SetSize({ 150, 50 });
+					button->Click += [&]()
+						{
+							int index = engine::utilities::Random<int>(0, (int)m_randomTexts.size() - 1);
+							s_textListBox->Append(m_randomTexts[index]);
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Add Text");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// button to remove last text
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 370, 60 });
+					button->SetSize({ 165, 50 });
+					button->Click += [&]()
+						{
+							s_textListBox->RemoveLast();
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Remove Text");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// button to clear all text
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 540, 60 });
+					button->SetSize({ 120, 50 });
+					button->Click += [&]()
+						{
+							s_textListBox->Clear();
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Clear");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// button to toggle font
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 670, 60 });
+					button->SetSize({ 160, 50 });
+					button->Click += [&]()
+						{
+							if (s_textListBox->GetFontType() == UIResources::FontType::Default) s_textListBox->SetFontType(UIResources::FontType::Title);
+							else s_textListBox->SetFontType(UIResources::FontType::Default);
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Toggle Font");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// button to unselect all items
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 840, 60 });
+					button->SetSize({ 160, 50 });
+					button->Click += [&]()
+						{
+							s_textListBox->UnselectAll();
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Unselect All");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// button to select all items
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 1010, 60 });
+					button->SetSize({ 160, 50 });
+					button->Click += [&]()
+						{
+							s_textListBox->SelectAll();
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Select All");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// slider to adjust item height
+				{
+					std::unique_ptr<Slider> itemheight = std::make_unique<Slider>(-1.0f, 100.0f, 50.0f, 31, engine::gui::Orientation::Horizontal);
+					itemheight->SetPosition({ 5, 180 });
+					itemheight->SetSize({ 240, 50 });
+					itemheight->Value(64.0f);
+					itemheight->SetName("itemheight");
+					itemheight->SetRange(102);
+					itemheight->Change += [&](float value)
+						{
+							LOG("Slider[itemheight]: " + std::to_string(value));
+							s_textListBox->SetItemHeight(value);
+							s_itemHeightLabel->Set("Val: " + std::to_string(static_cast<int>(value)));
+						};
+
+					s_itemHeightSlider = itemheight.get();
+					m_ux.AddWidget(std::move(itemheight));
+
+					std::unique_ptr<Label> itemHeightLabel = std::make_unique<Label>("Val: " + std::to_string(static_cast<int>(s_itemHeightSlider->Value())));
+					itemHeightLabel->SetPosition({ 250, 180 });
+					itemHeightLabel->SetSize({ 100, 50 });
+					s_itemHeightLabel = itemHeightLabel.get();
+					m_ux.AddWidget(std::move(itemHeightLabel));
+				}
+
+				// button to toggle selection mode
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 5, 120 });
+					button->SetSize({ 240, 50 });
+					button->Click += [&]()
+						{
+							s_textListBox->SetSelectionMode(s_textListBox->GetSelectionMode() == SelectionMode::Multiple ? SelectionMode::Single : SelectionMode::Multiple);
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Toggle Selection Mode");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
+				// create resizeable frame to house the scrollview
+				std::unique_ptr<engine::gui::ResizeableFrame> resizeable = std::make_unique<engine::gui::ResizeableFrame>(8.0f, SizeF{ 5.0f,5.0f });
+				resizeable->SetPosition({ 400, 125 });
+				resizeable->SetSize({ 400, 400 });
+				s_resizeable = resizeable.get();
+				m_ux.AddWidget(std::move(resizeable));
+
+				// create TextListBox and make it fit into resizeable frame
+				{
+					std::unique_ptr<TextListBox> textListBox = std::make_unique<TextListBox>();
+					textListBox->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					textListBox->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					textListBox->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					textListBox->SetMargin({ 0, 0, 0, 0 });
+					textListBox->Verbose(false);
+					textListBox->Clicked += [&](const std::string& text)
+						{
+							LOG("Clicked: " + text);
+						};
+					s_textListBox = textListBox.get();	
+					s_resizeable->AddContent(std::move(textListBox));
+
+					// add text to the textlistbox
+					for (size_t i = 0; i < 20; i++)
+					{
+						int index = engine::utilities::Random<int>(0, (int)m_randomTexts.size() - 1);
+						s_textListBox->Append(m_randomTexts[index]);
+					}
+
 				}
 			}
 
@@ -6643,6 +7063,8 @@ namespace TestMapEditor
 			// ScrollView with TextList as content
 			if(false)
 			{
+				m_enableClipping = false;
+
 				// create our resizeable frame. 
 				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>(20.0f);
 				resizeableframe->SetPosition({ 700,200 });
@@ -6663,7 +7085,7 @@ namespace TestMapEditor
 						m_scrollview->SetSize(size);
 					};
 
-				m_scrollview->ViewPortResized += [&](const SizeF& size)
+				m_scrollview->ViewPortResized += [&](const SizeF& oldSize, const SizeF& size)
 					{
 						// when scrollview's size change, adjust content's width to match scrollview's width. height will be determined by content's own size
 						m_textList->SetSize({ size.width, m_textList->GetSize().height });
@@ -6674,8 +7096,7 @@ namespace TestMapEditor
 						int min = static_cast<int>(offset.y / textListItemHeight);
 						int max = static_cast<int>((offset.y + m_scrollview->GetViewPortSize().height) / textListItemHeight);
 
-						m_textList->SetMin(min);
-						m_textList->SetMax(max);
+						m_textList->SetRange(min, max);
 					};
 
 				m_scrollview->ContentChanged += [&](Widget* content)
@@ -6689,8 +7110,7 @@ namespace TestMapEditor
 						int min = static_cast<int>(offset.y / textListItemHeight);
 						int max = static_cast<int>((offset.y + m_scrollview->GetViewPortSize().height) / textListItemHeight);
 
-						m_textList->SetMin(min);
-						m_textList->SetMax(max);
+						m_textList->SetRange(min, max);
 					};
 
 				m_scrollview->Scroll += [&](const VecF& offset)
@@ -6700,17 +7120,16 @@ namespace TestMapEditor
 						int min = static_cast<int>(offset.y / textListItemHeight);
 						int max = static_cast<int>((offset.y + m_scrollview->GetViewPortSize().height) / textListItemHeight);
 
-						m_textList->SetMin(min);
-						m_textList->SetMax(max);
+						m_textList->SetRange(min, max);
 					};
 
 				// create our TextList. fill its contents
 				{
 					std::unique_ptr<TextList> textList = std::make_unique<TextList>();
 					textList->SetPosition({ 0, 0 });
-					//textList->SetSize({ 500, 500 });
+					textList->SetSize({ 500, 500 });
 
-					for (int i = 0; i < 100; i++)
+					for (int i = 0; i < 1; i++)
 					{
 						textList->Append("hello");
 						textList->Append("world");
@@ -6727,8 +7146,7 @@ namespace TestMapEditor
 						textList->Append("world5");
 					}
 
-					textList->SetMin(4);
-					textList->SetMax(7);
+					textList->SetRange(1, 5);
 
 					// add TextList as ScrollView's content
 					m_textList = textList.get();
@@ -6998,6 +7416,7 @@ namespace TestMapEditor
 			
 
 			// let's create menu system
+			if(false)
 			{
 				std::unique_ptr<Frame> menuBar = std::make_unique<Frame>(false, false);
 				menuBar->SetPosition({ 0,0 });
@@ -7584,30 +8003,30 @@ namespace TestMapEditor
 					m_controlDialog = dialog.get();
 
 					{
-						std::unique_ptr<Slider> slider = std::make_unique<Slider>(0.0f, 100.0f, 50.0f);
+						std::unique_ptr<Slider> slider = std::make_unique<Slider>(0.0f, 100.0f, 50.0f, 3, engine::gui::Orientation::Horizontal);
 						slider->SetPosition({ 10, 10 });
 						slider->SetSize({ 200, 32 });
 						slider->Min(-1.0f);
 						slider->Max(200.0f);
 						slider->Value(100.0f);
-						slider->SetStepCount(1000);
+						slider->SetRange(1000);
 
 						slider->Change += [&](float value)
 							{
-								m_slider->SetStepCount((int)value);
+								m_slider->SetRange((int)value);
 							};
 
 						m_controlDialog->AddChild(std::move(slider));
 					}
 
 					{
-						std::unique_ptr<Slider> slider = std::make_unique<Slider>(0.0f, 100.0f, 50.0f);
+						std::unique_ptr<Slider> slider = std::make_unique<Slider>(0.0f, 100.0f, 50.0f, 3, engine::gui::Orientation::Horizontal);
 						slider->SetPosition({ 10, 45 });
 						slider->SetSize({ 200, 32 });
 						slider->Min(-100.0f);
 						slider->Max(100.0f);
 						slider->Value(0.0f);
-						slider->SetStepCount(1000);
+						slider->SetRange(1000);
 
 						slider->Change += [&](float value)
 							{
@@ -7632,13 +8051,12 @@ namespace TestMapEditor
 					dialog->SetSize({ 640, 480 });
 					m_testDialog = dialog.get();
 
-					std::unique_ptr<Slider> slider = std::make_unique<Slider>(0.0f, 100.0f, 50.0f);
+					std::unique_ptr<Slider> slider = std::make_unique<Slider>(0.0f, 100.0f, 50.0f, 3, engine::gui::Orientation::Horizontal);
 					slider->SetPosition({ 25, 25 });
 					slider->SetSize({ 300, 50 });
 					slider->Min(-1.0f);
 					slider->Max(1.0f);
 					slider->Value(0.0f);
-					slider->SetStepCount(3);
 					m_slider = slider.get();
 					m_testDialog->AddChild(std::move(slider));
 
@@ -7651,7 +8069,7 @@ namespace TestMapEditor
 				}
 				break;
 			case 51: // 3 
-				m_slider->Horizontal(!m_slider->Horizontal());
+				//m_slider->Horizontal(!m_slider->Horizontal());
 
 				//m_slider->SetThumbLength(1000.0f);
 
@@ -7818,7 +8236,7 @@ namespace TestMapEditor
 		void OnResize(size_t width, size_t height) override
 		{
 			m_ux.SetSize({ static_cast<float>(width), static_cast<float>(height) });
-			m_menuBar->SetSize({ static_cast<float>(width), m_menuBar->GetSize().height });
+			if(m_menuBar) m_menuBar->SetSize({ static_cast<float>(width), m_menuBar->GetSize().height });
 		}
 
 
@@ -8047,12 +8465,12 @@ namespace TestMapEditor
 
 				// slider
 				{
-					engine::gooey::Slider slider = dialog.MakeSlider(2.0f, 10.0f, 50.0f);
+					engine::gooey::Slider slider = dialog.MakeSlider(2.0f, 10.0f, 50.0f, 9, engine::gui::Orientation::Horizontal);
 
 					slider.SetPosition({ 10, 10 });
 					slider.SetSize({ 200, 32 });
 					slider.Value(5);
-					slider.SetStepCount(9);
+					slider.SetRange(9);
 
 					slider.Change() += [&](float value)
 						{
@@ -8225,6 +8643,8 @@ namespace TestMapEditor
 
 			// create our utility font atlas for drawing text
 			FontFactory::Create("font", "Terminal", 12);
+			FontFactory::Create("font32", "Consolas", 32);
+
 
 			// setup stopwatch to manage timing and start it
 			Registry<StopWatch>::Instance().Register("stopwatch", std::make_unique<StopWatch>());

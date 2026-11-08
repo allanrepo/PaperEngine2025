@@ -111,6 +111,7 @@ namespace engine
 			, m_hAlign(HorizontalAlignment::Center)
 			, m_textSize({ 0,0 })
 			, m_textPosition({ 0,0 })
+			, m_color({ 1,1,1,1 })
 		{
 			m_moveBehavior = MoveBehavior::None;
 			m_hitTestBehavior = HitTestBehavior::AlwaysFail;
@@ -130,6 +131,16 @@ namespace engine
 			// refresh cached information about text with new font type
 			UpdateLayout();
 		}
+
+		void Label::SetColor(const ColorF& color)
+		{
+			m_color = color;
+		}
+
+		ColorF Label::GetColor() const
+		{
+			return m_color;
+		}	
 
 		// get font type
 		UIResources::FontType Label::GetFontType() const
@@ -357,9 +368,9 @@ namespace engine
 			m_hitTestBehavior = HitTestBehavior::AlwaysFail; // non interactive
 		}
 
-		Thumb::Thumb(bool isHorizontal)
+		Thumb::Thumb(engine::gui::Orientation isHorizontal)
 		{
-			m_moveBehavior = isHorizontal ? MoveBehavior::Horizontal : MoveBehavior::Vertical;
+			m_moveBehavior = isHorizontal == engine::gui::Orientation::Horizontal ? MoveBehavior::Horizontal : MoveBehavior::Vertical;
 			m_hitTestBehavior = HitTestBehavior::AlwaysFail; // non interactive
 		}
 
@@ -405,13 +416,14 @@ namespace engine
 			SizeF thumbSize = m_thumb->GetSize();
 
 			// horizontal orientation
-			if (m_horizontal)
+			if (m_orientation == Orientation::Horizontal)
 			{
 				float x = (GetSize().width - thumbSize.width) * nvalue;
 				m_thumb->SetPosition({ x, 0 });
 			}
+
 			// vertical orientation
-			else
+			else if (m_orientation == Orientation::Vertical)
 			{
 				float y = (GetSize().height - thumbSize.height) * nvalue;
 				m_thumb->SetPosition({ 0, y });
@@ -421,18 +433,18 @@ namespace engine
 		void Slider::UpdateThumbSize()
 		{
 			// if horizontal orientation, get slider height. otherwise, get width
-			float thickness = m_horizontal ? GetHeight() : GetWidth();
+			float thickness = m_orientation == Orientation::Horizontal ? GetHeight() : GetWidth();
 
 			// get the slider length. 
-			float sliderLength = m_horizontal ? GetWidth() : GetHeight();
+			float sliderLength = m_orientation == Orientation::Horizontal ? GetWidth() : GetHeight();
 
 			// if clamp thumb length within slider length, if needed
 			float length = m_thumbLength < sliderLength ? m_thumbLength : sliderLength;
 
 			SizeF thumbSize
 			{
-				m_horizontal ? length : thickness,
-				m_horizontal ? thickness : length,
+				m_orientation == Orientation::Horizontal ? length : thickness,
+				m_orientation == Orientation::Horizontal ? thickness : length,
 			};
 
 			m_thumb->SetSize(thumbSize);
@@ -443,13 +455,13 @@ namespace engine
 			// translate the clicked position (world position) to slider's local coordinate
 			PositionF local = position - GetAbsolutePosition();
 
-			float thumbLength = m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height;
+			float thumbLength = m_orientation == Orientation::Horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height;
 
 			// get length of the slider. this is the length it can move, so subtract thumb length
-			float length = m_horizontal ? GetSize().width - m_thumb->GetSize().width : GetSize().height - m_thumb->GetSize().height;
+			float length = m_orientation == Orientation::Horizontal ? GetSize().width - m_thumb->GetSize().width : GetSize().height - m_thumb->GetSize().height;
 
 			// normalize the value of the position based on slider length
-			float nvalue = length <= 0.0f ? 0.0f : (m_horizontal ? local.x - thumbLength / 2.0f : local.y - thumbLength / 2.0f) / length;
+			float nvalue = length <= 0.0f ? 0.0f : (m_orientation == Orientation::Horizontal ? local.x - thumbLength / 2.0f : local.y - thumbLength / 2.0f) / length;
 
 			// if in case position is outside slider extents, clamp it
 			nvalue = std::clamp<float>(nvalue, 0.0f, 1.0f);
@@ -465,9 +477,9 @@ namespace engine
 
 		float Slider::Snap(float value) const
 		{
-			if (m_steps <= 1) return m_min;
+			if (m_range <= 1) return m_min;
 
-			int steps = m_steps - 1;
+			int steps = m_range - 1;
 
 			float stepSize = (m_max - m_min) / steps;
 
@@ -478,39 +490,21 @@ namespace engine
 			return value;
 		}
 
-		Slider::Slider(float min, float max, float thumbLength) :
+		Slider::Slider(float min, float max, float thumbLength, int range, Orientation orientation) :
 			m_min(min),
 			m_max(max),
 			m_thumbLength(thumbLength),
 			m_value(min),
-			m_horizontal(true),
+			m_orientation(orientation),
 			m_isDragging(false),
-			m_steps(0)
+			m_range(range)
 		{
 			m_moveBehavior = MoveBehavior::None;
 
-			std::unique_ptr<Thumb> thumb = std::make_unique<Thumb>();
+			std::unique_ptr<SliderThumb> thumb = std::make_unique<SliderThumb>(m_orientation);
 			m_thumb = thumb.get();
 
 			AddChild(std::move(thumb));
-
-		}
-
-		void Slider::Horizontal(bool enable)
-		{
-			if (m_horizontal != enable)
-			{
-				m_horizontal = enable;
-
-				UpdateThumbSize();
-
-				UpdateThumbPosition();
-			}
-		}
-
-		bool Slider::Horizontal() const
-		{
-			return m_horizontal;
 		}
 
 		void Slider::SetThumbLength(float length)
@@ -588,19 +582,9 @@ namespace engine
 			return m_value;
 		}
 
-		void Slider::SetStepSize(float size)
+		void Slider::SetRange(int range)
 		{
-			m_steps = size > 0 ?
-				static_cast<int>(std::round((m_max - m_min) / size)) + 1 :
-				1;
-
-			// snap the current value and update value. this will also possibly update thumb position if needed
-			Value(Snap(m_value));
-		}
-
-		void Slider::SetStepCount(int count)
-		{
-			m_steps = count;
+			m_range = range;
 
 			// snap the current value and update value. this will also possibly update thumb position if needed
 			Value(Snap(m_value));
@@ -628,13 +612,13 @@ namespace engine
 			if (!CanScroll()) return;
 
 			// get the local position in the scrollbar's area where the mouse clicked. we only need position along the scrollbar's orientation.
-			float lpos = (m_horizontal ? pos.x : pos.y) - (m_horizontal ? GetAbsolutePosition().x : GetAbsolutePosition().y);
+			float lpos = (m_orientation == engine::gui::Orientation::Horizontal ? pos.x : pos.y) - (m_orientation == engine::gui::Orientation::Horizontal ? GetAbsolutePosition().x : GetAbsolutePosition().y);
 
 			// get the size of the thumb. this is the length of the thumb widget along scrollbar's orientation
-			float thumbSize = m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height;
+			float thumbSize = m_orientation == engine::gui::Orientation::Horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height;
 
 			// get the thumb position (local to scrollbar). this is the top position of thumb widget if scrollbar orientation is vertical, and left position if horizontal
-			float thumbPos = m_horizontal ? m_thumb->GetPosition().x : m_thumb->GetPosition().y;
+			float thumbPos = m_orientation == engine::gui::Orientation::Horizontal ? m_thumb->GetPosition().x : m_thumb->GetPosition().y;
 
 			// did we clicked on thumb or track?
 			if (lpos < thumbPos || lpos > thumbPos + thumbSize)
@@ -644,7 +628,7 @@ namespace engine
 
 				// the new thumb pos could position thumb outside scrollbar's tracklength as the 'pos' from OnMouseDown could be outside scrollbar's area
 				// that's fine. we just set it. we will validate the thumb position with our handler to thumb's 'Moved' event
-				m_thumb->SetPosition(m_horizontal ? PositionF{ newThumbPos,  m_thumb->GetPosition().y } : PositionF{ m_thumb->GetPosition().x, newThumbPos });
+				m_thumb->SetPosition(m_orientation == engine::gui::Orientation::Horizontal ? PositionF{ newThumbPos,  m_thumb->GetPosition().y } : PositionF{ m_thumb->GetPosition().x, newThumbPos });
 			}
 
 			// set dragging state to true and forward the mouse down event to the thumb so it can handle dragging
@@ -689,8 +673,8 @@ namespace engine
 		void ScrollBar::UpdateThumbSize()
 		{
 			// get the length of scrollbar based on its orientation.
-			float trackLength = m_horizontal ? GetWidth() : GetHeight();
-			float thickness = m_horizontal ? GetHeight() : GetWidth();
+			float trackLength = m_orientation == engine::gui::Orientation::Horizontal ? GetWidth() : GetHeight();
+			float thickness = m_orientation == engine::gui::Orientation::Horizontal ? GetHeight() : GetWidth();
 
 			// get ratio between viewport and content length. this is basically the normalized length of the thumb. 
 			// this can be > 1 if content is smaller than viewport
@@ -709,8 +693,8 @@ namespace engine
 			); // clamp min size
 
 			SizeF thumbSize{
-				m_horizontal ? length : thickness,
-				m_horizontal ? thickness : length
+				m_orientation == engine::gui::Orientation::Horizontal ? length : thickness,
+				m_orientation == engine::gui::Orientation::Horizontal ? thickness : length
 			};
 			m_thumb->SetSize(thumbSize);
 		}	
@@ -718,7 +702,8 @@ namespace engine
 		float ScrollBar::LogicalToPhysicalPosition(float logicalPos) const
 		{
 			// trackLength is the physical range the thumb can move within the scrollbar. this must be length of scrollbar minus length of thumb. 
-			float trackLength = (m_horizontal ? GetSize().width : GetSize().height) - (m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height);
+			float trackLength = (m_orientation == engine::gui::Orientation::Horizontal ? GetSize().width : GetSize().height) 
+				- (m_orientation == engine::gui::Orientation::Horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height);
 
 			// this is the logical range in which viewport can move. 
 			float logicalRange = m_contentLength - m_viewportLength;
@@ -738,7 +723,8 @@ namespace engine
 		float ScrollBar::PhysicalToLogicalPosition(float physicalPos) const
 		{
 			// trackLength is the physical range the thumb can move within the scrollbar. this must be length of scrollbar minus length of thumb. 
-			float trackLength = (m_horizontal ? GetSize().width : GetSize().height) - (m_horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height);
+			float trackLength = (m_orientation == engine::gui::Orientation::Horizontal ? GetSize().width : GetSize().height) 
+				- (m_orientation == engine::gui::Orientation::Horizontal ? m_thumb->GetSize().width : m_thumb->GetSize().height);
 
 			// this is the logical range in which viewport can move. 
 			float logicalRange = m_contentLength - m_viewportLength;
@@ -803,16 +789,16 @@ namespace engine
 						m_ignoreThumbMove = false;
 					});
 
-				m_thumb->SetPosition(m_horizontal ? PositionF{ thumbPhysicalPos, 0 } : PositionF{ 0, thumbPhysicalPos });
+				m_thumb->SetPosition(m_orientation == engine::gui::Orientation::Horizontal ? PositionF{ thumbPhysicalPos, 0 } : PositionF{ 0, thumbPhysicalPos });
 			}
 		}
 
 		// constructor
-		ScrollBar::ScrollBar(float contentLength, float viewportLength, bool isHorizontal, float minThumLength, float stepSize, ScrollBar::ScrollMode mode)
+		ScrollBar::ScrollBar(float contentLength, float viewportLength, engine::gui::Orientation orientation, float minThumLength, float stepSize, ScrollBar::ScrollMode mode)
 			: m_contentLength(contentLength)
 			, m_viewportLength(viewportLength)
 			, m_offset(0)
-			, m_horizontal(isHorizontal)
+			, m_orientation(orientation)
 			, m_isDragging(false)
 			, m_minThumbLength(minThumLength)
 			, m_stepSize(stepSize)
@@ -822,7 +808,7 @@ namespace engine
 			m_moveBehavior = MoveBehavior::None;
 
 			// create thumb and add it as child. we will use this thumb to handle dragging and scrolling
-			std::unique_ptr<Thumb> thumb = std::make_unique<Thumb>(m_horizontal);
+			std::unique_ptr<ScrollThumb> thumb = std::make_unique<ScrollThumb>(m_orientation);
 			m_thumb = thumb.get();
 			AddChild(std::move(thumb));
 
@@ -834,7 +820,7 @@ namespace engine
 					if (m_ignoreThumbMove) return;
 
 					// get the thumb's physical position
-					float thumbPhysicalPos = m_horizontal ? newPos.x : newPos.y;
+					float thumbPhysicalPos = m_orientation == engine::gui::Orientation::Horizontal ? newPos.x : newPos.y;
 
 					// convert thumb's physical position to logical position. this will be clamped to logical range
 					float thumbLogicalPos = PhysicalToLogicalPosition(thumbPhysicalPos);
@@ -872,7 +858,7 @@ namespace engine
 								m_ignoreThumbMove = false;
 							});
 
-						m_thumb->SetPosition(m_horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
+						m_thumb->SetPosition(m_orientation == engine::gui::Orientation::Horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
 					}
 
 					// if logical position is not same as current offset, set logical position as new offset. then raise Scroll event
@@ -935,7 +921,7 @@ namespace engine
 						m_ignoreThumbMove = false;
 					});
 
-				m_thumb->SetPosition(m_horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
+				m_thumb->SetPosition(m_orientation == engine::gui::Orientation::Horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
 			}
 
 			// finally, if the resulting new offset is not same as old offset, we raise Scroll event
@@ -1002,7 +988,7 @@ namespace engine
 						m_ignoreThumbMove = false;
 					});
 
-				m_thumb->SetPosition(m_horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
+				m_thumb->SetPosition(m_orientation == engine::gui::Orientation::Horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
 			}
 
 			// if the new logical position is not same as previous offset, set logical position as new offset. then raise Scroll event
@@ -1052,7 +1038,7 @@ namespace engine
 						m_ignoreThumbMove = false;
 					});
 
-				m_thumb->SetPosition(m_horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
+				m_thumb->SetPosition(m_orientation == engine::gui::Orientation::Horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
 			}
 
 			// if the new logical position is not same as previous offset, set logical position as new offset. then raise Scroll event
@@ -1119,7 +1105,7 @@ namespace engine
 						m_ignoreThumbMove = false;
 					});
 
-				m_thumb->SetPosition(m_horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
+				m_thumb->SetPosition(m_orientation == engine::gui::Orientation::Horizontal ? PositionF{ newThumbPhysicalPos, 0 } : PositionF{ 0, newThumbPhysicalPos });
 			}
 
 			// finally, if the resulting new offset is not same as old offset, we raise Scroll event
@@ -2038,13 +2024,13 @@ namespace engine
 			AddChild(std::move(viewport));
 
 			// create horizontal scrollbar widget component
-			std::unique_ptr<ScrollBar> hScrollBar = std::make_unique<ScrollBar>(0.0f, 0.0f, true);
+			std::unique_ptr<ScrollBar> hScrollBar = std::make_unique<ScrollBar>(0.0f, 0.0f, engine::gui::Orientation::Horizontal);
 			hScrollBar->SetName("hscrollbar");
 			m_hScrollBar = hScrollBar.get();
 			AddChild(std::move(hScrollBar));
 
 			// create vertical scrollbar widget component
-			std::unique_ptr<ScrollBar> vScrollBar = std::make_unique<ScrollBar>(0.f, 0.0f, false);
+			std::unique_ptr<ScrollBar> vScrollBar = std::make_unique<ScrollBar>(0.f, 0.0f, engine::gui::Orientation::Vertical);
 			vScrollBar->SetName("vscrollbar");
 			m_vScrollBar = vScrollBar.get();
 			AddChild(std::move(vScrollBar));
@@ -2147,6 +2133,12 @@ namespace engine
 					ContentChanged(content);
 				};
 
+			m_viewport->Resized += [&](const SizeF& oldSize, const SizeF& newSize)
+				{
+					// we don't really care for this event since we own viewport object and full control of its size
+					// but we can raise event when it resizes so if application needs to handle when viewport resizes, they can be notified
+					ViewPortResized(oldSize, newSize);
+				};
 
 			// handler for when horizontal scrollbar scrolls. only viewport's content position changes here. layout remains the same.
 			m_hScrollBar->Scroll += [&](float offset)
@@ -2252,6 +2244,14 @@ namespace engine
 
 			return m_viewport->GetOffset();
 		}
+
+		void ScrollView::SetOffset(const VecF& offset)
+		{
+			LOG_FUNCTION();
+
+			m_viewport->SetOffset(offset);
+		}
+
 
 		void ScrollView::Draw(const UIDrawContext& context) const
 		{

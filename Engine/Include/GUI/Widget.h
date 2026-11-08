@@ -22,6 +22,24 @@ namespace engine
 		struct UIDrawContext;
 #pragma endregion
 
+#pragma region
+		enum class SelectionMode
+		{
+			Single,
+			Multiple,
+			Extended,
+			None
+		};
+#pragma endregion
+
+#pragma region // Orientation - parameter that determines the orientation of the widget's layout. it can be horizontal or vertical
+		enum class Orientation
+		{
+			Horizontal,
+			Vertical
+		};
+#pragma endregion
+
 #pragma region // Anchor - parameter that determines the horizontal and vertical anchor of the widget's position relative to its parent
 		enum class HorizontalAnchor
 		{

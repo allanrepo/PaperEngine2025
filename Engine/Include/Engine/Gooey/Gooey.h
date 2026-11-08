@@ -139,15 +139,7 @@ namespace engine
 			}
 
 		public:
-			//void EnableStretch(bool stretch)
-			//{
-			//	m_image->EnableStretch(stretch);
-			//}
 
-			//bool IsStretched() const
-			//{
-			//	return m_image->IsStretched();
-			//}
 
 			// absolute position of image's top-left corner
 			PositionF GetImageAbsolutePosition() const
@@ -161,11 +153,6 @@ namespace engine
 				return m_image->Get();
 			}
 
-			//// set alignment
-			//void SetAlignment(VerticalAlignment vAlign, HorizontalAlignment hAlign)
-			//{
-			//	m_image->SetAlignment(vAlign, hAlign);
-			//}
 		};
 #pragma endregion
 
@@ -221,18 +208,6 @@ namespace engine
 				return m_slider->Change;
 			}
 
-			// Sets whether the slider is horizontal or vertical.
-			void Horizontal(bool enable)
-			{
-				m_slider->Horizontal(enable);
-			}
-
-			// Returns true if the slider is horizontal, false if it is vertical.
-			bool Horizontal() const
-			{
-				return m_slider->Horizontal();
-			}
-
 			// Sets the length of the thumb along the slider's direction.
 			void SetThumbLength(float length)
 			{
@@ -275,16 +250,10 @@ namespace engine
 				return m_slider->Value();
 			}
 
-			// Sets the step size of the slider.
-			void SetStepSize(float size)
-			{
-				m_slider->SetStepSize(size);
-			}
-
 			// Sets the number of steps of the slider.
-			void SetStepCount(int count)
+			void SetRange(int range)
 			{
-				m_slider->SetStepCount(count);
+				m_slider->SetRange(range);
 			}
 		};
 #pragma endregion
@@ -318,7 +287,10 @@ namespace engine
 			}
 
 			// constructor
-			ScrollBar(float contentLength, float viewportLength, bool isHorizontal);
+			ScrollBar(float contentLength, float viewportLength, bool isHorizontal)
+			{
+
+			}
 
 			// set the offset of the scrollbar. this will update the thumb position and fire the scroll event if the offset is changed.
 			void SetOffset(float offset)
@@ -394,7 +366,7 @@ namespace engine
 			virtual Image MakeImage(Animated animated) = 0;
 			virtual Image MakeImage(Renderable renderable) = 0;
 			virtual Button MakeButton() = 0;
-			virtual Slider MakeSlider(float min, float max, float thumbLength) = 0;
+			virtual Slider MakeSlider(float min, float max, float thumbLength, int range, engine::gui::Orientation orientation = engine::gui::Orientation::Horizontal) = 0;
 			virtual ScrollBar MakeScrollBar(float contentLength, float viewportLength, bool isHorizontal) = 0;
 			virtual ResizeableFrame MakeResizeableFrame(float borderSize = 20.0f, const SizeF& minSize = { 200, 200 }) = 0;
 		};
@@ -437,9 +409,9 @@ namespace engine
 				return button;
 			}
 
-			Slider MakeSlider(float min, float max, float thumbLength) override final
+			Slider MakeSlider(float min, float max, float thumbLength, int range, engine::gui::Orientation orientation = engine::gui::Orientation::Horizontal) override final
 			{
-				std::unique_ptr<engine::gui::Slider> sliderWidget = std::make_unique<engine::gui::Slider>(min, max, thumbLength);
+				std::unique_ptr<engine::gui::Slider> sliderWidget = std::make_unique<engine::gui::Slider>(min, max, thumbLength, range, orientation);
 				Slider slider(sliderWidget.get());
 				AddWidget(std::move(sliderWidget));
 				return slider;
@@ -447,7 +419,8 @@ namespace engine
 
 			ScrollBar MakeScrollBar(float contentLength, float viewportLength, bool isHorizontal) override final
 			{
-				std::unique_ptr<engine::gui::ScrollBar> scrollBarWidget = std::make_unique<engine::gui::ScrollBar>(contentLength, viewportLength, isHorizontal);
+				engine::gui::Orientation orientation = isHorizontal ? engine::gui::Orientation::Horizontal : engine::gui::Orientation::Vertical;
+				std::unique_ptr<engine::gui::ScrollBar> scrollBarWidget = std::make_unique<engine::gui::ScrollBar>(contentLength, viewportLength, orientation);
 				ScrollBar scrollBar(scrollBarWidget.get());
 				AddWidget(std::move(scrollBarWidget));
 				return scrollBar;

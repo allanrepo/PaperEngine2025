@@ -356,6 +356,7 @@ namespace engine
         class TextListBox;
         class TextList;
         class ResizeableFrame;
+        class TextItem;
 #pragma endregion
 
 #pragma region // UISkin
@@ -391,6 +392,11 @@ namespace engine
             virtual void DrawStack(const Stack& stack, const UIDrawContext& context) const = 0;
             virtual void DrawTextListBox(const TextListBox& box, const UIDrawContext& context) const = 0;
             virtual void DrawTextList(const TextList& text, const UIDrawContext& context) const = 0;
+            virtual void DrawSliderThumb(const Thumb& thumb, const UIDrawContext& context) const = 0;
+            virtual void DrawScrollThumb(const Thumb& thumb, const UIDrawContext& context) const = 0;
+            virtual void DrawTextItem(const TextItem& text, const UIDrawContext& context) const = 0;
+
+
         };
 #pragma endregion
 
