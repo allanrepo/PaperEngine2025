@@ -77,9 +77,9 @@ void engine::Engine::Initialize()
 	m_window->Create(wsTitle, 1400, 900);
 }
 
-void engine::Engine::ProcessWin32Message(UINT msg, WPARAM wParam, LPARAM lParam)
+void engine::Engine::ProcessWin32Message(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	ProcessWin32MessageEvent(msg, wParam, lParam);
+	ProcessWin32MessageEvent(hWnd, msg, wParam, lParam);
 }
 
 void engine::Engine::WindowCreate(void* hWnd)

@@ -288,9 +288,6 @@ namespace engine
 			// Returns the current value of the slider.
 			float Value() const;
 
-			// Sets the step size of the slider.
-			//void SetStepSize(float size);
-
 			// Sets the number of steps of the slider.
 			void SetRange(int range);
 
@@ -389,6 +386,8 @@ namespace engine
 			float m_stepSize = 1.5f;
 
 			engine::gui::Orientation m_orientation = engine::gui::Orientation::Horizontal;
+
+			float m_mouseWheelScrollFactor = 0.2f;
 
 		protected:
 			// checks if the scrollbar can scroll. if content is smaller than viewport, it cannot scroll
@@ -698,6 +697,7 @@ namespace engine
 				// callback when content change position. 
 				void OnContentMove(const PositionF& oldPos, const PositionF& newPos);
 
+
 			public:
 				// event invoked when content changes position
 				engine::event::Event<const VecF&> Scroll;
@@ -731,6 +731,8 @@ namespace engine
 			bool m_ignoreScrollBarScroll = false;
 			bool m_ignoreViewPortScroll = false;
 
+			float m_mouseWheelScrollFactor = 0.2f;
+
 		protected:
 			// components
 			ViewPort* m_viewport;
@@ -759,6 +761,9 @@ namespace engine
 			void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override;
 
 			void UpdateComponentLayout();
+
+			bool OnMouseWheel(const PositionF& screenPos, float delta) override;
+			bool OnMouseHWheel(const PositionF& screenPos, float delta) override;
 
 		public:
 
@@ -1096,15 +1101,17 @@ namespace engine
 						break;
 					case SelectionMode::Single:
 					{
+						// clear selected indices then insert our newly selected item index
 						m_selectedIndices.clear();
 						m_selectedIndices.insert(modelIndex);
 
-						// not scalable. but realized item list should never be that big so i think this is fine??
+						// unselect all realized items first. since realized item list is expected to never be big, iterating here is ok
 						for (TextItem* item : m_realizedItems)
 						{
 							item->Unselect();
 						}
 
+						// now we set the clicked item as selected
 						m_realizedItems[realizedIndex]->Select();
 
 						break;
@@ -1158,6 +1165,7 @@ namespace engine
 				while (m_realizedItems.size() < numVisible)
 				{
 					std::unique_ptr<TextItem> textItem = std::make_unique<TextItem>("", m_fontType);
+					textItem->SetName("TextList.TextItem");
 
 					m_realizedItems.push_back(textItem.get());
 
@@ -1543,6 +1551,7 @@ namespace engine
 				// create a scroll view and add it as a child
 				std::unique_ptr<ScrollView> scrollview = std::make_unique<ScrollView>();
 				scrollview->SetPosition({ 0, 0 });
+				scrollview->SetName("TextListBox.ScrollView");
 				m_scrollView = scrollview.get();
 				AddChild(std::move(scrollview));
 
@@ -1569,6 +1578,7 @@ namespace engine
 				// NOTE: we create textlist object and add its content to scrollview here AFTER we subscribe to scrollview's events so we trigger ScrollView's ContentChanged event
 				std::unique_ptr<TextList> textList = std::make_unique<TextList>(itemHeight, fontType);
 				textList->SetPosition({ 0, 0 });
+				textList->SetName("TextListBox.TextList");
 				m_textList = textList.get();
 				m_scrollView->SetContent(std::move(textList));
 

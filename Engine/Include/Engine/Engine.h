@@ -55,7 +55,7 @@ namespace engine
 		void WindowClose();
 		void WindowSize(size_t nWidth, size_t nHeight);
 		void WindowCreate(void* hWnd);
-		void ProcessWin32Message(UINT msg, WPARAM wParam, LPARAM lParam);
+		void ProcessWin32Message(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 		void Lap(double delta);
 
@@ -82,7 +82,7 @@ namespace engine
 		engine::event::Event<> StartEvent;
 		engine::event::Event<> EndEvent;
 		engine::event::Event<size_t, size_t> ResizeEvent;
-		engine::event::Event<UINT, WPARAM, LPARAM> ProcessWin32MessageEvent;
+		engine::event::Event<HWND, UINT, WPARAM, LPARAM> ProcessWin32MessageEvent;
 
 		engine::timer::StopWatch& Timer()
 		{

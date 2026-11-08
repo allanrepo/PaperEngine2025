@@ -1,4 +1,5 @@
 #include <GUI/Widget.h>
+#include <Utilities/Logger.h>
 
 
 #pragma region // Widget
@@ -170,6 +171,16 @@ namespace engine
 
 		void Widget::OnVerbose(bool enable)
 		{
+		}
+
+		bool Widget::OnMouseWheel(const PositionF& screenPos, float delta)
+		{
+			return false;
+		}
+
+		bool Widget::OnMouseHWheel(const PositionF& screenPos, float delta)
+		{
+			return false;
 		}
 
 #pragma endregion
@@ -764,6 +775,25 @@ namespace engine
 		{
 			OnKeyUp(key);
 		}
+
+		void Widget::MouseWheel(const PositionF& screenPos, float delta)
+		{
+			// if callback returns true, it processed this event and does not wish to propagate to its ancestor
+			if (OnMouseWheel(screenPos, delta)) return;
+
+			// propagate to parent if can
+			if (m_parent) m_parent->MouseWheel(screenPos, delta);
+		}
+
+		void Widget::MouseHWheel(const PositionF& screenPos, float delta)
+		{
+			// if callback returns true, it processed this event and does not wish to propagate to its ancestor
+			if (OnMouseHWheel(screenPos, delta)) return;
+
+			// propagate to parent if can
+			if (m_parent) m_parent->MouseHWheel(screenPos, delta);
+		}
+
 #pragma endregion
 
 #pragma region // tooltip support

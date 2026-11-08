@@ -6414,7 +6414,7 @@ namespace TestMapEditor
 			}
 
 			// [TESTER] ScrollView widget tester
-			if (false)
+			if (true)
 			{
 				static ResizeableFrame* s_resizeable = nullptr;
 				static engine::gui::Slider* s_hImageSizeSlider = nullptr;
@@ -7817,6 +7817,18 @@ namespace TestMapEditor
 			m_ux.MouseUp(m_mousePos);
 		}
 
+		void OnMouseWheel(int x, int y, float delta) override
+		{
+			PositionF screenPos = PositionF((float)x, (float)y);
+			m_ux.MouseWheel(screenPos, delta);
+		}
+
+		void OnMouseHWheel(int x, int y, float delta) override
+		{
+			PositionF screenPos = PositionF((float)x, (float)y);
+			m_ux.MouseHWheel(screenPos, delta);
+		}
+
 		void OnKeyDown(int key) override
 		{
 			m_ux.KeyDown(key);
@@ -8622,6 +8634,8 @@ namespace TestMapEditor
 			Input::Instance().MouseDownEvent += event::Handler(&m_sceneManager, &SceneManager::OnMouseDown);
 			Input::Instance().MouseUpEvent += event::Handler(&m_sceneManager, &SceneManager::OnMouseUp);
 			Input::Instance().MouseMoveEvent += event::Handler(&m_sceneManager, &SceneManager::OnMouseMove);
+			Input::Instance().MouseWheelEvent += event::Handler(&m_sceneManager, &SceneManager::OnMouseWheel);
+			Input::Instance().MouseHWheelEvent += event::Handler(&m_sceneManager, &SceneManager::OnMouseHWheel);
 
 			// hide cursor
 			window.ShowCursor(true);
@@ -8883,6 +8897,10 @@ namespace TestMapEditor
 		void OnMouseMove(int x, int y)
 		{
 			//	m_sceneManager.OnMouseMove(x, y);
+		}
+
+		void OnMouseWheel(int x, int y, int delta)
+		{
 		}
 
 		// this method is fired up whenever the OnLap event is triggered from stopwatch

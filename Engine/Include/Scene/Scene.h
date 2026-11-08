@@ -31,6 +31,8 @@ namespace engine
 			virtual void OnMouseDown(int btn, int x, int y) {}
 			virtual void OnMouseUp(int btn, int x, int y) {}
 			virtual void OnMouseMove(int x, int y) {}
+			virtual void OnMouseWheel(int x, int y, float delta) {}
+			virtual void OnMouseHWheel(int x, int y, float delta) {}
 
 			virtual void OnInputEvent(const engine::input::InputEvent& inputEvent) {}
 			virtual void OnResize(size_t width, size_t height) {}
@@ -152,6 +154,22 @@ namespace engine
 				if (m_activeScene)
 				{
 					m_activeScene->OnResize(width, height);
+				}
+			}
+
+			void OnMouseWheel(int x, int y, float delta)
+			{
+				if (m_activeScene)
+				{
+					m_activeScene->OnMouseWheel(x, y, delta);
+				}
+			}
+
+			void OnMouseHWheel(int x, int y, float delta)
+			{
+				if (m_activeScene)
+				{
+					m_activeScene->OnMouseHWheel(x, y, delta);
 				}
 			}
 

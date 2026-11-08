@@ -1,5 +1,6 @@
 #include <Win32/Window.h>
 #include <windowsx.h>
+#include <Utilities/Logger.h>
 
 std::unordered_map<std::wstring, int> engine::win32::Window::WindowClassManager::s_mapRefCount;
 
@@ -64,7 +65,7 @@ void engine::win32::Window::WindowClassManager::Unregister(HINSTANCE hInstance, 
 
 LRESULT engine::win32::Window::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	OnWindowMessage(uMsg, wParam, lParam);
+	OnWindowMessage(hWnd, uMsg, wParam, lParam);
 
 	switch (uMsg)
 	{
@@ -151,6 +152,41 @@ LRESULT engine::win32::Window::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 		OnKeyDown(LOWORD(wParam));
 		break;
 	}
+	case WM_MOUSEWHEEL:
+	{
+		POINT pt
+		{
+			GET_X_LPARAM(lParam),
+			GET_Y_LPARAM(lParam)
+		};
+
+		ScreenToClient(hWnd, &pt);
+
+		MouseWheel(
+			pt.x,
+			pt.y,
+			GET_WHEEL_DELTA_WPARAM(wParam)
+		);
+		break;
+	}
+	case WM_MOUSEHWHEEL:
+	{
+		POINT pt
+		{
+			GET_X_LPARAM(lParam),
+			GET_Y_LPARAM(lParam)
+		};
+
+		ScreenToClient(hWnd, &pt);
+
+		MouseHWheel(
+			pt.x,
+			pt.y,
+			GET_WHEEL_DELTA_WPARAM(wParam)
+		);
+		break;
+	}
+
 	default: return DefWindowProc(hWnd, uMsg, wParam, lParam);
 	}
 

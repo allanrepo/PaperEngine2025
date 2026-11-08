@@ -22,7 +22,7 @@ namespace engine
 		struct UIDrawContext;
 #pragma endregion
 
-#pragma region
+#pragma region // SelectionMode
 		enum class SelectionMode
 		{
 			Single,
@@ -208,7 +208,8 @@ namespace engine
 			virtual UISystem* GetSystem() const;
 #pragma endregion
 
-#pragma region // hooks/callbacks for all actions that widget performs
+#pragma region // hooks/callbacks for all actions that widget performs. returns true if widget processed the callback and does not wish to bubble it up to its ancestor
+			// TODO: make all return true and handle bubbling up if needed
 			virtual bool OnRegisterToSystem();
 			virtual bool OnUnregisterToSystem();
 			virtual void OnPositionChanged(const PositionF& oldPos, const PositionF& newPos);
@@ -224,6 +225,8 @@ namespace engine
 			virtual void OnGotFocus();
 			virtual void OnLostFocus();
 			virtual void OnVerbose(bool enable);
+			virtual bool OnMouseWheel(const PositionF& screenPos, float delta);
+			virtual bool OnMouseHWheel(const PositionF& screenPos, float delta);
 
 #pragma endregion
 
@@ -283,6 +286,8 @@ namespace engine
 			void MouseLeave();
 			void KeyDown(int key);
 			void KeyUp(int key);
+			void MouseWheel(const PositionF& screenPos, float delta);
+			void MouseHWheel(const PositionF& screenPos, float delta);
 #pragma endregion
 
 #pragma region // tooltip manager access for building tooltip

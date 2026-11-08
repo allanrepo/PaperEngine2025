@@ -1183,6 +1183,10 @@ namespace engine
 
             // keyboard keyup handler
             void KeyUp(int key);
+
+            // mouse wheel event handler
+            void MouseWheel(const PositionF& screenPos, float delta);
+            void MouseHWheel(const PositionF& screenPos, float delta);
 #pragma endregion
 
 #pragma region // widget operations API

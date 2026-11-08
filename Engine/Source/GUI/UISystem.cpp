@@ -2,7 +2,6 @@
 #include <Utilities/Logger.h>
 #include <GUI/UIRenderer.h>
 
-
 #pragma region // UISystem
 namespace engine
 {
@@ -393,6 +392,62 @@ namespace engine
 
 			// if you reach this point, then mouse hovers a widget that might have a tooltip. show it.
 			m_tooltipManager.Show(m_interactionStateTracker.GetMouseOver());
+		}
+
+		void UISystem::MouseWheel(const PositionF& p, float delta)
+		{
+			// check first if mouse hovers over a overlay
+			LayerStack::Route result = m_layerManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+
+			if (result.isBlockedByModal)
+			{
+				return;
+			}
+
+			// if there is no layer found yet we were not blocked by modal, something is wrong. this cannot happen
+			if (!result.layer)
+			{
+				throw std::runtime_error("impossible not to find a layer. why is this so???");
+			}
+
+			// find the top widget in this layer's tree that is hovered. we also include disabled widgets in hover check.
+			// reason is so that even disable widgets can still have tooltip shown if they have it
+			Widget* hover = result.layer->FindTopWidgetAt(p, Widget::SearchFlags::Visible);
+
+			if (!hover)
+			{
+				throw std::runtime_error("impossible not to find a hover widget. why is this so???");
+			}
+
+			hover->MouseWheel(p, delta);
+		}
+
+		void UISystem::MouseHWheel(const PositionF& p, float delta)
+		{
+			// check first if mouse hovers over a overlay
+			LayerStack::Route result = m_layerManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
+
+			if (result.isBlockedByModal)
+			{
+				return;
+			}
+
+			// if there is no layer found yet we were not blocked by modal, something is wrong. this cannot happen
+			if (!result.layer)
+			{
+				throw std::runtime_error("impossible not to find a layer. why is this so???");
+			}
+
+			// find the top widget in this layer's tree that is hovered. we also include disabled widgets in hover check.
+			// reason is so that even disable widgets can still have tooltip shown if they have it
+			Widget* hover = result.layer->FindTopWidgetAt(p, Widget::SearchFlags::Visible);
+
+			if (!hover)
+			{
+				throw std::runtime_error("impossible not to find a hover widget. why is this so???");
+			}
+
+			hover->MouseHWheel(p, delta);
 		}
 
 		// keyboard keydown handler

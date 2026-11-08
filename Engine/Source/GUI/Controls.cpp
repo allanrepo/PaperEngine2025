@@ -669,6 +669,36 @@ namespace engine
 			}
 		}
 
+		//bool ScrollBar::OnMouseWheel(const PositionF& screenPos, float delta)
+		//{
+		//	//LOG("ScrollBar::OnMouseWheel(" + m_name + "): " + std::to_string(screenPos.x) + ", " + std::to_string(screenPos.y) + ", " + std::to_string(delta));
+
+		//	// if this is not vertical scrollbar, return false to propagate this event
+		//	if (m_orientation != engine::gui::Orientation::Vertical) return false;
+
+		//	// scroll it!
+		//	float scrollAmount = m_viewportLength * m_mouseWheelScrollFactor;
+		//	SetOffset(GetOffset() - delta * scrollAmount);
+
+		//	// we processed this event and does not need to propagate it anymore
+		//	return true;
+		//}
+
+		//bool ScrollBar::OnMouseHWheel(const PositionF& screenPos, float delta)
+		//{
+		//	//LOG("ScrollBar::OnMouseHWheel(" + m_name + "): " + std::to_string(screenPos.x) + ", " + std::to_string(screenPos.y) + ", " + std::to_string(delta));
+
+		//	// if this is not horizontal scrollbar, return false to propagate this event
+		//	if (m_orientation != engine::gui::Orientation::Horizontal) return false;
+
+		//	// scroll it!
+		//	float scrollAmount = m_viewportLength * m_mouseWheelScrollFactor;
+		//	SetOffset(GetOffset() - delta * scrollAmount);
+
+		//	// we processed this event and does not need to propagate it anymore
+		//	return true;
+		//}
+
 		// internal method to update the size of the thumb based on the content length, viewport length, and scrollbar length. this is called when content or viewport changes.
 		void ScrollBar::UpdateThumbSize()
 		{
@@ -1954,6 +1984,30 @@ namespace engine
 
 			// we done here. it is not this method's responsibility to update components' logic states
 		}
+
+		bool ScrollView::OnMouseWheel(const PositionF& screenPos, float delta)
+		{
+			//LOG("ScrollBar::OnMouseWheel(" + m_name + "): " + std::to_string(screenPos.x) + ", " + std::to_string(screenPos.y) + ", " + std::to_string(delta));
+
+			float scrollAmount = m_vScrollBar->GetViewportLength() * m_mouseWheelScrollFactor;
+			m_vScrollBar->SetOffset(m_vScrollBar->GetOffset() - delta * scrollAmount);
+
+			// we processed this event and does not need to propagate it anymore
+			return true;
+		}
+
+		bool ScrollView::OnMouseHWheel(const PositionF& screenPos, float delta)
+		{
+			//LOG("ScrollBar::OnMouseHWheel(" + m_name + "): " + std::to_string(screenPos.x) + ", " + std::to_string(screenPos.y) + ", " + std::to_string(delta));
+
+			float scrollAmount = m_hScrollBar->GetViewportLength() * m_mouseWheelScrollFactor;
+			m_hScrollBar->SetOffset(m_hScrollBar->GetOffset() + delta * scrollAmount);
+
+			// we processed this event and does not need to propagate it anymore
+			return true;
+		}
+
+
 
 		void ScrollView::OnVerbose(bool enable)
 		{

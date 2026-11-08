@@ -32,7 +32,7 @@ namespace engine::win32
 	public:
 		Window(const std::wstring& wszClassName = L"WindowClass");
 
-		engine::event::Event<UINT, WPARAM, LPARAM> OnWindowMessage;
+		engine::event::Event<HWND, UINT, WPARAM, LPARAM> OnWindowMessage;
 		engine::event::Event<size_t, size_t> OnSize;
 		engine::event::Event<> OnClose;
 		engine::event::Event<> OnDestroy;
@@ -47,6 +47,8 @@ namespace engine::win32
 		engine::event::Event<int, int> OnRightMouseDown;
 		engine::event::Event<int, int> OnRightMouseUp;
 		engine::event::Event<> OnShow;
+		engine::event::Event<int, int, int> MouseWheel;
+		engine::event::Event<int, int, int> MouseHWheel;
 
 		static void Run();
 		static engine::event::Event<> OnInitialize;

@@ -18,7 +18,9 @@ namespace engine::input
 		MouseDown,
 		MouseUp,
 		MouseMove,
-		MouseHeld
+		MouseHeld,
+		MouseWheel,
+		MouseHWheel
 	};
 
 	// A universal event struct with minimal data
@@ -27,6 +29,7 @@ namespace engine::input
 		InputType		type;
 		unsigned int	code;        // VK_ code for keys, button index for mouse
 		int				x, y;        // mouse position (valid for move/down/up)
+		float			delta;		 // for mouse wheel delta
 	};
 
 	class Input: public core::Singleton<Input>
@@ -45,7 +48,8 @@ namespace engine::input
 		engine::event::Event<int, int, int> MouseDownEvent;
 		engine::event::Event<int, int, int> MouseUpEvent;
 		engine::event::Event<int, int> MouseMoveEvent;
-
+		engine::event::Event<int, int, float> MouseWheelEvent;
+		engine::event::Event<int, int, float> MouseHWheelEvent;
 
 		virtual void HandleMouseMove(int x, int y) noexcept
 		{
@@ -80,7 +84,27 @@ namespace engine::input
 			mouseState[evt.code] = evt.type == InputType::MouseDown? true : false;
 		}
 
-		virtual void ProcessWin32Message(UINT msg, WPARAM wParam, LPARAM lParam)
+		virtual void HandleMouseWheel(int x, int y, int delta) noexcept
+		{
+			InputEvent evt{};
+			evt.type = InputType::MouseWheel;
+			evt.x = x;
+			evt.y = y;
+			evt.delta = delta / static_cast<float>(WHEEL_DELTA);
+			events.push_back(evt);
+		}
+
+		virtual void HandleMouseHWheel(int x, int y, int delta) noexcept
+		{
+			InputEvent evt{};
+			evt.type = InputType::MouseHWheel;
+			evt.x = x;
+			evt.y = y;
+			evt.delta = delta / static_cast<float>(WHEEL_DELTA);
+			events.push_back(evt);
+		}
+
+		virtual void ProcessWin32Message(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		{
 			switch (msg)
 			{
@@ -111,6 +135,32 @@ namespace engine::input
 			case WM_MBUTTONUP:
 				HandleMouseClick(3, false, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 				break;
+			case WM_MOUSEWHEEL:
+			{
+				POINT pt
+				{
+					GET_X_LPARAM(lParam),
+					GET_Y_LPARAM(lParam)
+				};
+
+				ScreenToClient(hWnd, &pt);
+
+				HandleMouseWheel(pt.x, pt.y, GET_WHEEL_DELTA_WPARAM(wParam));
+				break;
+			}
+			case WM_MOUSEHWHEEL:
+			{
+				POINT pt
+				{
+					GET_X_LPARAM(lParam),
+					GET_Y_LPARAM(lParam)
+				};
+
+				ScreenToClient(hWnd, &pt);
+
+				HandleMouseHWheel(pt.x, pt.y, GET_WHEEL_DELTA_WPARAM(wParam));
+				break;
+			}
 			default:
 				break;
 			}
@@ -137,6 +187,12 @@ namespace engine::input
 					break;
 				case InputType::MouseMove:
 					MouseMoveEvent(evt.x, evt.y);
+					break;
+				case InputType::MouseWheel:
+					MouseWheelEvent(evt.x, evt.y, evt.delta);
+					break;
+				case InputType::MouseHWheel:
+					MouseHWheelEvent(evt.x, evt.y, evt.delta);
 					break;
 				default:
 					break;
