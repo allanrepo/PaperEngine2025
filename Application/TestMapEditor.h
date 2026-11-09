@@ -5713,7 +5713,7 @@ namespace TestMapEditor
 			std::unique_ptr<Label> label = std::make_unique<Label>(text);
 			label->SetPosition({0,0});
 			label->SetSize(size);
-			label->SetAlignment(Widget::VerticalAlignment::Center, Widget::HorizontalAlignment::Center);
+			label->SetAlignment(Widget::VerticalAnchor::Center, Widget::HorizontalAnchor::Center);
 			button->AddChild(std::move(label));
 
 			ButtonHandle buttonHandle(button.get());
@@ -5848,8 +5848,8 @@ namespace TestMapEditor
 			const PositionF& position, 
 			const SizeF& size, 
 			const std::string& text, 
-			HorizontalAlignment hAlign = HorizontalAlignment::Center, 
-			VerticalAlignment vAlign = VerticalAlignment::Center
+			HorizontalAnchor hAlign = HorizontalAnchor::Center, 
+			VerticalAnchor vAlign = VerticalAnchor::Center
 		)
 		{
 			std::unique_ptr<Label> label = std::make_unique<Label>(text);
@@ -6414,7 +6414,7 @@ namespace TestMapEditor
 			}
 
 			// [TESTER] ScrollView widget tester
-			if (true)
+			if (false)
 			{
 				static ResizeableFrame* s_resizeable = nullptr;
 				static engine::gui::Slider* s_hImageSizeSlider = nullptr;
@@ -6745,7 +6745,17 @@ namespace TestMapEditor
 				static engine::gui::Slider* s_vImageSizeSlider = nullptr;
 				static engine::gui::Panel* s_contentPanel = nullptr;
 				static Sprite s_spriteImage = engine::graphics::Sprite::MakeInvalidSprite();
+				static engine::gui::VectorTextListModel s_iTextListModel;
 
+				// load our text model
+				{
+					// add text to the textlistbox
+					for (size_t i = 0; i < 10000; i++)
+					{
+						int index = engine::utilities::Random<int>(0, (int)m_randomTexts.size() - 1);
+						s_iTextListModel.Append(m_randomTexts[index]);
+					}
+				}
 
 				// button to toggle render clipping
 				{
@@ -6918,9 +6928,28 @@ namespace TestMapEditor
 					m_ux.AddWidget(std::move(button));
 				}
 
+				// button to toggle using external or internal text model
+				{
+					std::unique_ptr<engine::gui::Button> button = std::make_unique<engine::gui::Button>();
+					button->SetPosition({ 255, 120 });
+					button->SetSize({ 240, 50 });
+					button->Click += [&]()
+						{
+							if (s_textListBox->IsBoundTo(&s_iTextListModel)) s_textListBox->Bind(nullptr);
+							else s_textListBox->Bind(&s_iTextListModel);
+						};
+					std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Toggle Text Model");
+					label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+					label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+					label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+					button->AddChild(std::move(label));
+
+					m_ux.AddWidget(std::move(button));
+				}
+
 				// create resizeable frame to house the scrollview
 				std::unique_ptr<engine::gui::ResizeableFrame> resizeable = std::make_unique<engine::gui::ResizeableFrame>(8.0f, SizeF{ 5.0f,5.0f });
-				resizeable->SetPosition({ 400, 125 });
+				resizeable->SetPosition({ 400, 225 });
 				resizeable->SetSize({ 400, 400 });
 				s_resizeable = resizeable.get();
 				m_ux.AddWidget(std::move(resizeable));
@@ -6933,9 +6962,9 @@ namespace TestMapEditor
 					textListBox->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
 					textListBox->SetMargin({ 0, 0, 0, 0 });
 					textListBox->Verbose(false);
-					textListBox->Clicked += [&](const std::string& text)
+					textListBox->Clicked += [&](int index, bool selected, const std::string& text)
 						{
-							LOG("Clicked: " + text);
+							LOG( text + " [" + (selected ? "Selected" : "Unselected") + ", " + std::to_string(index) + "]");
 						};
 					s_textListBox = textListBox.get();	
 					s_resizeable->AddContent(std::move(textListBox));
@@ -6948,47 +6977,6 @@ namespace TestMapEditor
 					}
 
 				}
-			}
-
-			// TextListBox in ResizeableFrame
-			if (false)
-			{
-				std::unique_ptr<ResizeableFrame> resizeableframe = std::make_unique<ResizeableFrame>();
-				resizeableframe->SetPosition({ 200,200 });
-				resizeableframe->SetSize({ 300, 300 });
-
-				std::unique_ptr<TextListBox> textListBox = std::make_unique<TextListBox>();
-				textListBox->SetPosition({ 0, 0 });
-				textListBox->SetSize(resizeableframe->GetContentsize());
-
-				for (int i = 0; i < 100; i++)
-				{
-					textListBox->Append("hello");
-					textListBox->Append("world");
-					textListBox->Append("hello");
-					textListBox->Append("world");
-					textListBox->Append("hello");
-					textListBox->Append("world");
-					textListBox->Append("hello");
-					textListBox->Append("world");
-					textListBox->Append("hello");
-					textListBox->Append("world");
-					textListBox->Append("hello");
-					textListBox->Append("world");
-					textListBox->Append("hello");
-					textListBox->Append("world");
-				}
-
-				m_textListBox = textListBox.get();
-				resizeableframe->ContentAreaSizeChanged += [&](const SizeF& size)
-					{
-						m_textListBox->SetPosition({ 0,0 });
-						m_textListBox->SetSize(size);
-					};
-				resizeableframe->AddContent(std::move(textListBox));
-
-
-				m_ux.AddWidget(std::move(resizeableframe));
 			}
 
 			// Stack
@@ -7223,7 +7211,7 @@ namespace TestMapEditor
 							std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("Hello Title Bar");
 							label->SetPosition({ 0,0 });
 							label->SetSize({ 0, 0 });
-							label->SetAlignment(VerticalAlignment::Center, HorizontalAlignment::Left);
+							label->SetAlignment(VerticalAnchor::Center, HorizontalAnchor::Left);
 							label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
 							label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
 							label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
@@ -7323,7 +7311,7 @@ namespace TestMapEditor
 							std::unique_ptr<engine::gui::Label> label = std::make_unique<engine::gui::Label>("TextListBox demo");
 							label->SetPosition({ 0,0 });
 							label->SetSize({ 0, 0 });
-							label->SetAlignment(VerticalAlignment::Center, HorizontalAlignment::Left);
+							label->SetAlignment(VerticalAnchor::Center, HorizontalAnchor::Left);
 							label->SetLayoutMode(engine::gui::LayoutMode::Anchor);
 							label->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
 							label->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
@@ -7450,7 +7438,7 @@ namespace TestMapEditor
 								std::unique_ptr<SubMenuButton> menuButton = std::make_unique<SubMenuButton>(cmd);
 								menuButton->SetPosition({ 5,5 });
 								menuButton->SetSize({ 190,40 });
-								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Load...", HorizontalAlignment::Left));
+								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Load...", HorizontalAnchor::Left));
 								parent->AddChild(std::move(menuButton));
 							}
 
@@ -7459,7 +7447,7 @@ namespace TestMapEditor
 								std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
 								menuItem->SetPosition({ 5, 50 });
 								menuItem->SetSize({ 190,40 });
-								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Save", HorizontalAlignment::Left));
+								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Save", HorizontalAnchor::Left));
 								parent->AddChild(std::move(menuItem));
 							}
 
@@ -7468,7 +7456,7 @@ namespace TestMapEditor
 								std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
 								menuItem->SetPosition({ 5, 95 });
 								menuItem->SetSize({ 190,40 });
-								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Clear", HorizontalAlignment::Left));
+								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Clear", HorizontalAnchor::Left));
 								parent->AddChild(std::move(menuItem));
 							}
 						};
@@ -7511,7 +7499,7 @@ namespace TestMapEditor
 											std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
 											menuItem->SetPosition({ 5, 5 });
 											menuItem->SetSize({ 190,40 });
-											menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Tile", HorizontalAlignment::Left));
+											menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Tile", HorizontalAnchor::Left));
 
 											std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
 											radioButton->SetPosition({ 10, 10 });
@@ -7533,7 +7521,7 @@ namespace TestMapEditor
 											std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
 											menuItem->SetPosition({ 5, 50 });
 											menuItem->SetSize({ 190,40 });
-											menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Fine", HorizontalAlignment::Left));
+											menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Fine", HorizontalAnchor::Left));
 
 											std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
 											radioButton->SetPosition({ 10, 10 });
@@ -7555,7 +7543,7 @@ namespace TestMapEditor
 								std::unique_ptr<SubMenuButton> menuButton = std::make_unique<SubMenuButton>(cmd);
 								menuButton->SetPosition({ 5,5 });
 								menuButton->SetSize({ 190,40 });
-								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Grids...", HorizontalAlignment::Left));
+								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Grids...", HorizontalAnchor::Left));
 								parent->AddChild(std::move(menuButton));
 							}
 
@@ -7564,7 +7552,7 @@ namespace TestMapEditor
 								std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
 								menuItem->SetPosition({ 5, 50 });
 								menuItem->SetSize({ 190,40 });
-								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Props", HorizontalAlignment::Left));
+								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Props", HorizontalAnchor::Left));
 
 								std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
 								radioButton->SetPosition({ 10, 10 });
@@ -7586,7 +7574,7 @@ namespace TestMapEditor
 								std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
 								menuItem->SetPosition({ 5, 95 });
 								menuItem->SetSize({ 190,40 });
-								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Terrain", HorizontalAlignment::Left));
+								menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Terrain", HorizontalAnchor::Left));
 
 								std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
 								radioButton->SetPosition({ 10, 10 });
@@ -7617,7 +7605,7 @@ namespace TestMapEditor
 								std::unique_ptr<SubMenuButton> menuButton = std::make_unique<SubMenuButton>(cmd);
 								menuButton->SetPosition({ 5, 140 });
 								menuButton->SetSize({ 190,40 });
-								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Overlays...", HorizontalAlignment::Left));
+								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Overlays...", HorizontalAnchor::Left));
 								parent->AddChild(std::move(menuButton));
 							}
 						};
@@ -7664,7 +7652,7 @@ namespace TestMapEditor
 											std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
 											menuItem->SetPosition({ 5, 5 });
 											menuItem->SetSize({ 225,40 });
-											menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Full Screen", HorizontalAlignment::Left));
+											menuItem->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Full Screen", HorizontalAnchor::Left));
 
 											std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
 											radioButton->SetPosition({ 10, 10 });
@@ -7696,7 +7684,7 @@ namespace TestMapEditor
 											std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
 											menuItem->SetPosition({ 5, 50 });
 											menuItem->SetSize({ 225,40 });
-											menuItem->AddChild(CreateLabel({ 50,0 }, { 180,40 }, "Borderless Window", HorizontalAlignment::Left));
+											menuItem->AddChild(CreateLabel({ 50,0 }, { 180,40 }, "Borderless Window", HorizontalAnchor::Left));
 
 											std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
 											radioButton->SetPosition({ 10, 10 });
@@ -7729,7 +7717,7 @@ namespace TestMapEditor
 											std::unique_ptr<MenuItem> menuItem = std::make_unique<MenuItem>();
 											menuItem->SetPosition({ 5, 95 });
 											menuItem->SetSize({ 225,40 });
-											menuItem->AddChild(CreateLabel({ 50,0 }, { 180,40 }, "Windowed", HorizontalAlignment::Left));
+											menuItem->AddChild(CreateLabel({ 50,0 }, { 180,40 }, "Windowed", HorizontalAnchor::Left));
 
 											std::unique_ptr<RadioButton> radioButton = std::make_unique<RadioButton>();
 											radioButton->SetPosition({ 10, 10 });
@@ -7761,7 +7749,7 @@ namespace TestMapEditor
 								std::unique_ptr<SubMenuButton> menuButton = std::make_unique<SubMenuButton>(cmd);
 								menuButton->SetPosition({ 5,5 });
 								menuButton->SetSize({ 190,40 });
-								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Display...", HorizontalAlignment::Left));
+								menuButton->AddChild(CreateLabel({ 50,0 }, { 130,40 }, "Display...", HorizontalAnchor::Left));
 								parent->AddChild(std::move(menuButton));
 							}
 						};
@@ -7942,47 +7930,47 @@ namespace TestMapEditor
 											//{
 											//case 0:
 											//	m_image->EnableStretch(false);
-											//	m_image->SetAlignment(VerticalAlignment::Top, HorizontalAlignment::Left);
+											//	m_image->SetAlignment(VerticalAnchor::Top, HorizontalAnchor::Left);
 											//	m_imageState = 1;
 											//	break;
 											//case 1:
 											//	m_image->EnableStretch(false);
-											//	m_image->SetAlignment(VerticalAlignment::Top, HorizontalAlignment::Center);
+											//	m_image->SetAlignment(VerticalAnchor::Top, HorizontalAnchor::Center);
 											//	m_imageState = 2;
 											//	break;
 											//case 2:
 											//	m_image->EnableStretch(false);
-											//	m_image->SetAlignment(VerticalAlignment::Top, HorizontalAlignment::Right);
+											//	m_image->SetAlignment(VerticalAnchor::Top, HorizontalAnchor::Right);
 											//	m_imageState = 3;
 											//	break;
 											//case 3:
 											//	m_image->EnableStretch(false);
-											//	m_image->SetAlignment(VerticalAlignment::Center, HorizontalAlignment::Left);
+											//	m_image->SetAlignment(VerticalAnchor::Center, HorizontalAnchor::Left);
 											//	m_imageState = 4;
 											//	break;
 											//case 4:
 											//	m_image->EnableStretch(false);
-											//	m_image->SetAlignment(VerticalAlignment::Center, HorizontalAlignment::Center);
+											//	m_image->SetAlignment(VerticalAnchor::Center, HorizontalAnchor::Center);
 											//	m_imageState = 5;
 											//	break;
 											//case 5:
 											//	m_image->EnableStretch(false);
-											//	m_image->SetAlignment(VerticalAlignment::Center, HorizontalAlignment::Right);
+											//	m_image->SetAlignment(VerticalAnchor::Center, HorizontalAnchor::Right);
 											//	m_imageState = 6;
 											//	break;
 											//case 6:
 											//	m_image->EnableStretch(false);
-											//	m_image->SetAlignment(VerticalAlignment::Bottom, HorizontalAlignment::Left);
+											//	m_image->SetAlignment(VerticalAnchor::Bottom, HorizontalAnchor::Left);
 											//	m_imageState = 7;
 											//	break;
 											//case 7:
 											//	m_image->EnableStretch(false);
-											//	m_image->SetAlignment(VerticalAlignment::Bottom, HorizontalAlignment::Center);
+											//	m_image->SetAlignment(VerticalAnchor::Bottom, HorizontalAnchor::Center);
 											//	m_imageState = 8;
 											//	break;
 											//case 8:
 											//	m_image->EnableStretch(false);
-											//	m_image->SetAlignment(VerticalAlignment::Bottom, HorizontalAlignment::Right);
+											//	m_image->SetAlignment(VerticalAnchor::Bottom, HorizontalAnchor::Right);
 											//	m_imageState = 9;
 											//	break;
 											//case 9:

@@ -33,8 +33,8 @@ namespace engine
 
 			// text alignment inside this widget's layout. 
 			// an alignment with both horizontal and vertical set to center means the text will be rendered at the center of the widget
-			VerticalAlignment m_vAlign;
-			HorizontalAlignment m_hAlign;
+			VerticalAnchor m_vAlign;
+			HorizontalAnchor m_hAlign;
 
 			// size of the text with respect to the current font
 			SizeF m_textSize;
@@ -92,7 +92,7 @@ namespace engine
 			void Set(const std::string& text);
 
 			// set alignment
-			void SetAlignment(VerticalAlignment vAlign, HorizontalAlignment hAlign);
+			void SetAlignment(VerticalAnchor vAlign, HorizontalAnchor hAlign);
 
 			// draw
 			void Draw(const UIDrawContext& context) const override;
@@ -300,24 +300,20 @@ namespace engine
 		// design principle:
 		// - thumb position and movement is always decided by logical position. only then it gets translated into physical position
 		// - offset must be able to set between 0 to max boundary or logical range, even if scrolling is discrete. 
-
-		// provides a visual and interactive mechanism for navigating content that is larger than its viewport.
-		// behavior is determined by three primary values:
-		//	- Content length — the length of the content being viewed.
-		//	- Viewport length — the length of the visible area.
-		//	- Scroll offset — the current logical position within the scrollable content.
-		// 
-		// Scrollbar and Thumb geometry:
-		//  - scrollbar has a physical length, which determines the available space in which the thumb can move. it represents the content's length
-		//  - thumb's length represents the visible area of the content. it represents the viewport's length
-		//  - when scrolling is possible, the thumb's physical length is calculated proportionally
-		//		- thumbLength = scrollbarLength * viewportLength / contentLength;
-		// 
-		// illustration of a scrollbar with physical length of 100.
-		// - content length is 4 and viewport length is 3. 
-		// - thumb represents the viewport hence the calculated thumb length is 75 (scrollbar length * viewport length / content length)
-		// - track length is the distance thumb can travel within the scrollbar. in our case, it is 25
-		// - this means that thumb's position (left position in our example) relative to scrollbar ranges from 0 to 25
+		// - behavior is determined by three primary values:
+		//		- Content length — the length of the content being viewed.
+		//		- Viewport length — the length of the visible area.
+		//		- Scroll offset — the current logical position within the scrollable content.
+		// - Scrollbar and Thumb geometry:
+		//		- scrollbar has a physical length, which determines the available space in which the thumb can move. it represents the content's length
+		//		- thumb's length represents the visible area of the content. it represents the viewport's length
+		//		- when scrolling is possible, the thumb's physical length is calculated proportionally
+		//			- thumbLength = scrollbarLength * viewportLength / contentLength;
+		// - illustration of a scrollbar with physical length of 100.
+		//		- content length is 40 and viewport length is 30. 
+		//		- thumb represents the viewport hence the calculated thumb length is 75 (scrollbar length * viewport length / content length)
+		//		- track length is the distance thumb can travel within the scrollbar. in our case, it is 25
+		//		- this means that thumb's position (left position in our example) relative to scrollbar ranges from 0 to 25
 		// 
 		//		Scrollbar (length = 100)
 		//		0                                                                   100
@@ -352,6 +348,7 @@ namespace engine
 		class ScrollBar : public Widget
 		{
 		public:
+			// scroll type. 
 			enum class ScrollMode
 			{
 				Smooth,
@@ -359,6 +356,7 @@ namespace engine
 			};
 
 		private:
+			// define our own version of thumb so we can implement our own draw method
 			class ScrollThumb : public Thumb
 			{
 			public:
@@ -373,21 +371,33 @@ namespace engine
 				}
 			};
 
+			// represents the logical range of the scrollbar. viewport represents the thumb length while content represents the scrollbar length
 			float m_contentLength;
 			float m_viewportLength;
-			float m_offset; // current scroll position
+
+			// logical position of viewport(thumb) within content length
+			float m_offset; 
+
+			// reference to thumb widget
 			Thumb* m_thumb;
-			bool m_isDragging;
+
+			// min thumb length. if content gets way too big compared to viewport, calculated thumb length can be too small. this caps its size
 			float m_minThumbLength;
 
+			// internal flag. is true when thumb is being dragged
+			bool m_isDragging;
+
+			// internal flag. when true, thumb's move event is ignored
 			bool m_ignoreThumbMove = false;
 
+			// scroll mode
 			ScrollMode m_scrollMode = ScrollMode::Discrete;
+
+			// step interval where viewport (thumb) is snapped into when moving. this is logical value (based on logical range)
 			float m_stepSize = 1.5f;
 
+			// scrollbar can be horizontal or vertical oriented
 			engine::gui::Orientation m_orientation = engine::gui::Orientation::Horizontal;
-
-			float m_mouseWheelScrollFactor = 0.2f;
 
 		protected:
 			// checks if the scrollbar can scroll. if content is smaller than viewport, it cannot scroll
@@ -404,20 +414,21 @@ namespace engine
 			// callback when mouse is moved on the scroll bar. this can happen on the thumb or on the track.
 			void OnMouseMove(const PositionF& pos) override;
 
-			// internal method to update the size of the thumb based on the content length, viewport length, and scrollbar length. this is called when content or viewport changes.
+			// internal method to update the size of the thumb based on the content length, viewport length, and scrollbar length. 
 			void UpdateThumbSize();
 
+			// internal method to convert logical position to physical position and vice versa
 			float LogicalToPhysicalPosition(float logicalPos) const;
 			float PhysicalToLogicalPosition(float physicalPos) const;
 
+			// internal method to round off the given value to nearest step size
 			float SnapToNearestStep(float value, float step) const;
 
 			// callback when the size of the scrollbar changes. this is called when the scrollbar is resized. we will update the thumb size and position based on new size
 			void OnSizeChanged(const SizeF&, const SizeF&) override;
 
 		public:
-			// event that is raised when internal offset changed. offset is the logical position of the thumb
-			// logical position is the position of viewport along the content
+			// event that is raised when internal offset changed. offset is the logical position of the thumb. logical position is the position of viewport along the content
 			engine::event::Event<float> Scroll;
 
 			// constructor
@@ -438,19 +449,21 @@ namespace engine
 
 			// set the content length of the scrollbar. this will update the thumb size and position based on new content length and offset.
 			void SetContentLength(float length);
+			float GetContentLength() const;
 
 			// set the viewport length of the scrollbar. this will update the thumb size and position based on new viewport length and offset.
 			void SetViewportLength(float length);
+			float GetViewportLength() const;
 
+			// set the step size 
 			void SetStepSize(float step);
 			float GetStepSize() const;
 
+			// set scroll mode
 			void SetScrollMode(ScrollMode mode);
 			ScrollMode GetScrollMode() const;
 
-			float GetContentLength() const;
-			float GetViewportLength() const;
-
+			// draw
 			void Draw(const UIDrawContext& context) const override;
 		};
 #pragma endregion
@@ -649,6 +662,7 @@ namespace engine
 		// - when resize happen, ScrollView fully manages the layout and behavior of its components to ensure all of them are in sync.
 		// - when scrollbars are scrolled, ScrollView handles its events and update the viewport's content position accordingly.
 		// - when viewport's content is scrolled, ScrollView handles its events and update the scrollbars' thumb position accordingly.
+		// - ScrollView orchestrates mouse wheel. all components propagates mouse wheel event notification to ScrollView. ScrollView scrolls all the components
 		class ScrollView : public Widget
 		{
 		public:
@@ -797,14 +811,6 @@ namespace engine
 {
 	namespace gui
 	{
-#pragma region // Namespaces
-		//using IRenderable = engine::graphics::IRenderable;
-		//using Sprite = engine::graphics::Sprite;
-		//using Renderable = engine::graphics::Renderable;
-		//using Animated = engine::graphics::Animated;
-		//using ColorF = engine::graphics::ColorF;
-#pragma endregion
-
 #pragma region // TextItem
 		// this widget is used to display a single line of text, just like a label but is focusable, clickable, selectable like a button.
 		// it is used as a single item in widgets like TextList 
@@ -814,83 +820,40 @@ namespace engine
 			// reference to the label widget that displays the text. this will be this widget's child
 			Label* m_label;
 
+			// flag that says if TextItem is selected or not
 			bool m_selected = false;
 
 			// when this widget resizes, we need to resize the label to fill the whole area of this widget
-			void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
-			{
-				m_label->SetPosition({ 0.0f, 0.0f });
-				m_label->SetSize(newSize);
-			}
+			void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override;
 
 			// raise click event when this item is selected
-			void OnMouseDown(const PositionF& pos) override
-			{
-				Clicked(this, m_label->Get());
-			}
+			void OnMouseDown(const PositionF& pos) override;
 
 		public:
+			// raised when TextItem is clicked. click happens on mouse down
 			event::Event<TextItem*, const std::string&> Clicked;
 
-			TextItem(const std::string& text, UIResources::FontType type = UIResources::FontType::Default)
-				: m_label(nullptr)
-				, m_selected(false)
-			{
-				// create a label widget to display the text. this label will be a child of this widget
-				std::unique_ptr<Label> label = std::make_unique<Label>(text, type);
-				m_label = label.get();
-				AddChild(std::move(label));
+			// constructor
+			TextItem(const std::string& text, UIResources::FontType type = UIResources::FontType::Default);
 
-				// this widget is focusable and selectable like a button, but it does not move like a button. it is just a static text item that can be selected
-				m_focusable = true;
-				m_moveBehavior = MoveBehavior::None;
-			}
+			void SetFontType(UIResources::FontType type);
 
-			void SetFontType(UIResources::FontType type)
-			{
-				m_label->SetFontType(type);
-			}
-
-			UIResources::FontType GetFontType() const
-			{
-				return m_label->GetFontType();
-			}
+			UIResources::FontType GetFontType() const;
 
 			// set the text
-			void Set(const std::string& text)
-			{
-				m_label->Set(text);
-			}
+			void Set(const std::string& text);
 
-			std::string Get() const
-			{
-				return m_label->Get();
-			}
+			std::string Get() const;
 
-			void Draw(const UIDrawContext& context) const override
-			{
-				context.skin.DrawTextItem(*this, context);
-			}
+			void Draw(const UIDrawContext& context) const override;
 
-			void SetSelected(bool selected)
-			{
-				m_selected = selected;
-			}
+			void SetSelected(bool selected);
 
-			void Select()
-			{
-				m_selected = true;
-			}
+			void Select();
 
-			void Unselect()
-			{
-				m_selected = false;
-			}
+			void Unselect();
 
-			bool IsSelected() const
-			{
-				return m_selected;
-			}
+			bool IsSelected() const;
 		};
 #pragma endregion
 
@@ -941,105 +904,79 @@ namespace engine
 
 		public:
 			// returns the number of text in the list
-			size_t Size() const override
-			{
-				return m_items.size();
-			}
+			size_t Size() const override;
 
 			// returns the text at the given index
-			const std::string& Get(size_t index) const override
-			{
-				return m_items[index];
-			}
+			const std::string& Get(size_t index) const override;
 
 			// removes the text at the given index and triggers the Changed event
-			void RemoveAt(size_t index) override
-			{
-				assert(index < m_items.size());
-
-				m_items.erase(m_items.begin() + index);
-				Changed();
-			}
+			void RemoveAt(size_t index) override;
 
 			// inserts text before the given index and triggers the Changed event
-			void Insert(size_t index, const std::string& text) override
-			{
-				index = std::min<size_t>(index, m_items.size());
-
-				m_items.insert(m_items.begin() + index, text);
-				Changed();
-			}
+			void Insert(size_t index, const std::string& text) override;
 
 			// appends multiple texts to the end of the list and triggers the Changed event
-			void Append(const std::vector<std::string>& texts) override
-			{
-				if (texts.empty())
-				{
-					return;
-				}
-
-				m_items.insert(m_items.end(), texts.begin(), texts.end());
-				Changed();
-			}
+			void Append(const std::vector<std::string>& texts) override;
 
 			// appends text to the end of the list and triggers the Changed event
-			void Append(const std::string& text) override
-			{
-				m_items.push_back(text);
-				Changed();
-			}
+			void Append(const std::string& text) override;
 
 			// replaces the text at the given index and triggers the Changed event
-			void Set(size_t index, const std::string& text) override
-			{
-				assert(index < m_items.size());
-
-				m_items[index] = text;
-				Changed();
-			}
+			void Set(size_t index, const std::string& text) override;
 
 			// clears the list of text and triggers the Changed event
-			void Clear() override
-			{
-				if (m_items.empty())
-				{
-					return;
-				}
-
-				m_items.clear();
-				Changed();
-			}
+			void Clear() override;
 
 			// remove the last text in the list and triggers the Changed event
-			void RemoveLast() override
-			{
-				if (m_items.empty())
-				{
-					return;
-				}
-
-				m_items.pop_back();
-				Changed();
-			}
+			void RemoveLast() override;
 
 			// remove the first text in the list and triggers the Changed event
-			void RemoveFirst() override
-			{
-				if (m_items.empty())
-				{
-					return;
-				}
-
-				m_items.erase(m_items.begin());
-				Changed();
-			}
+			void RemoveFirst() override;
 		};
 #pragma endregion
 
 #pragma region // TextList
-		// This is a widget that displays a list of text items.
-		// It can contain as many text items as needed, but only a subset of them are realized (i.e., created and displayed) based on the current min/max range of visible items.
-		// The widget uses a text list model (ITextListModel) to manage the underlying data, and it can be bound to any implementation of that interface.
+		// design principle:
+		//	- purpose
+		//		- widget used to manage which set of text among the given text list (model) is realized (e.g. displayed)
+		//		- this is made purposely to be content widget of TextListBox
+		// 
+		//	- realized items list for scalability
+		//		- the TextList can represent a very large sized text list (e.g. 10M+), but it does not have to make them all visible.
+		//		- only visible text items are realized. so it only stores a list of TextItems that represents the visible items
+		//		- this makes it scalable and performance capable regardless of the size of text list
+		//		- realized text items does not have fixed association with any texts. they only represent textss that are currently visible
+		//		- so when the range of visible text scrolls (min/max changes), realized text items are updated to match the correct texts
+		// 
+		//	- select/unselect indice list
+		//		- to be scalable, we store only a list of realized items, items that are visible. 
+		//		- but we can still select multiple items including not visible ones. we use a set container to store indices of selected items. 
+		//		- selecting or unselecting all clears selected/unselected list
+		// 
+		//	- select all mode
+		//		- if we select all items, this can be very expensive. imagine selecting all 10M text items. this will insert 10M indices in indice list. that's not scalable
+		//		- to make this work, "select all" mode is introduced. when this is enabled (m_allSelected = true), behavior of indice list is inverted
+		//		- in "select all" mode, indice list will contain indices that are NOT selected. so when you select all, indice list will be cleared instead.
+		//		- likewise, if you "unselect all", indice list behavior is inverted back to its default behavior. it will be cleared and now, any index it contains are selected.
+		//		- what if you are in "select all" mode with 10M text items and you keep selecting close to 10M items, you're indice list will now contain almost 10M...
+		//			- this is not an issue. selecting is one by one and won't throttle performance. only adding 10M items at once will. we're not doing that.
+		// 
+		// - using text model as data source
+		//		- this is not a container. the actual text data it represents reside somewhere else. 
+		//		- since it does not own the text data, it does not care about performance impact of storing large data set, as it only realizes what's visible
+		//		- setting or changing text model unselect all items
+		// 
+		// - deferred layout update 
+		//		- say you have 10M texts, and your visible range is 10 (min = 100, max = 109)
+		//		- then you scroll down and now range is still 10 but showing different set of text now (min = 20100, max = 20109).
+		//		- you first update max to 20109. now temporarily you have a range of 20,010 (min = 100, max - 20109). 
+		//		- when update layout is triggered, it will create 20,010 realized text items. THAT IS EXPENSIVE AND UNECESSARY!
+		//		- to prevent this, we introduce a deferred layout. this is how it works
+		//			- BeginUpdate()
+		//			- SetMin()
+		//			- SetMax()
+		//			- EndUpdate()
+		//		- BeginUpdate() will prevent SetMin() and SetMax() from triggering layout update. layout update only happens on EndUpdate()
 		class TextList : public Widget
 		{
 		private:
@@ -1059,638 +996,179 @@ namespace engine
 			int m_min;
 			int m_max;
 
+			// font type
 			UIResources::FontType m_fontType = UIResources::FontType::Default;
 
-			// flags used to manage layout updating 
+			// internal flags used to manage layout updating 
 			int m_updating = 0;
 			bool m_dirty = false;
 
-			std::unordered_set<int> m_selectedIndices;
+			// selection mode. if multiple, can select multiple items. if single, only one selection at a time
 			SelectionMode m_selectionMode = SelectionMode::Multiple;
+
+			// internal container storing selected (or unselected) indices of the text list 
+			std::unordered_set<int> m_selectedIndices;
+
+			// selection state. if true, selected indices contains index of items that are not selected. 
 			bool m_allSelected = false;
 
 		protected:
-			// update the layout of the realized items when the size of the TextList changes.
-			void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
-			{
-				m_dirty = true;
-				if (m_updating == 0) UpdateLayout();
-			}
+			// callback to update the layout of the realized items when the size of the TextList changes.
+			void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override;
 
-			void OnClickTextItem(TextItem* item, const std::string& text)
-			{
-				// do a linear search to find which item is the clicked one. this is fine. 
-				// i think realized items list will never be too big that doing this will cause performance issue
-				auto it = std::find(
-					m_realizedItems.begin(),
-					m_realizedItems.end(),
-					item);
-
-				if (it == m_realizedItems.end())
-					return;
-
-				int realizedIndex = static_cast<int>(std::distance(m_realizedItems.begin(), it));
-
-				int modelIndex = m_min + realizedIndex;
-
-				// resolve selection
-				{
-					switch (m_selectionMode)
-					{
-					case SelectionMode::None:
-						break;
-					case SelectionMode::Single:
-					{
-						// clear selected indices then insert our newly selected item index
-						m_selectedIndices.clear();
-						m_selectedIndices.insert(modelIndex);
-
-						// unselect all realized items first. since realized item list is expected to never be big, iterating here is ok
-						for (TextItem* item : m_realizedItems)
-						{
-							item->Unselect();
-						}
-
-						// now we set the clicked item as selected
-						m_realizedItems[realizedIndex]->Select();
-
-						break;
-					}
-					case SelectionMode::Multiple:
-					{
-						auto it = m_selectedIndices.find(modelIndex);
-						if (it != m_selectedIndices.end())
-						{
-							m_selectedIndices.erase(it);
-							m_allSelected ? m_realizedItems[realizedIndex]->Select() : m_realizedItems[realizedIndex]->Unselect();
-
-						}
-						else
-						{
-							m_selectedIndices.insert(modelIndex);
-							m_allSelected ? m_realizedItems[realizedIndex]->Unselect() : m_realizedItems[realizedIndex]->Select();
-						}
-						break;
-					}
-					default:
-						break;
-					}
-				}
-
-				Clicked(modelIndex, text);
-			}
+			// callback to handle event when a TextItem is clicked
+			void OnClickTextItem(TextItem* item, const std::string& text);
 
 			// synchronizes the size of realized items with the number of visible items based on the current min/max range.
 			// this does not refresh the text or position of the realized items, it only ensures that the number of realized items matches the number of visible items.
-			void UpdateRealizedItems()
-			{
-				// current min/max might be out of bounds of the list model. we need to clamp them to valid range
-				int size = static_cast<int>(m_textListModel->Size());
-				int max = std::min<int>(m_max, size - 1);
-				int min = std::min<int>(m_min, size);
-
-				// calculate number of visible items
-				int numVisible = max - min + 1;
-				numVisible = numVisible < 0 ? 0 : numVisible;
-
-				// do we have more visible labels than supposed to?
-				while (m_realizedItems.size() > numVisible)
-				{
-					m_realizedItems.back()->Clicked -= engine::event::Handler(this, &TextList::OnClickTextItem);
-					RemoveChild(m_realizedItems.back());
-					m_realizedItems.pop_back();
-				}
-
-				// or is our visible labels not enough?
-				while (m_realizedItems.size() < numVisible)
-				{
-					std::unique_ptr<TextItem> textItem = std::make_unique<TextItem>("", m_fontType);
-					textItem->SetName("TextList.TextItem");
-
-					m_realizedItems.push_back(textItem.get());
-
-					textItem->Clicked += engine::event::Handler(this, &TextList::OnClickTextItem);
-
-					AddChild(std::move(textItem));
-				}
-			}
+			void UpdateRealizedItems();
 
 			// updates the layout of the realized items, including their position, size, and text
-			void UpdateLayout()
-			{
-				// if we are currently updating the layout, we don't want to trigger another update. 
-				// instead, we mark the layout as dirty and return. this will ensure that the layout is updated after the current update is finished.
-				if (m_updating > 0
-					|| !m_dirty
-					)
-				{
-					return;
-				}
-
-				// first let's update the list of realized items to match the number of visible items
-				UpdateRealizedItems();
-
-				// now let's set the text for the visible items
-				int currItem = 0;
-				for (int i = m_min; i <= m_max; i++)
-				{
-					if (i >= m_textListModel->Size()) break;
-
-					// be assertive. if we are here, then we must have a realized item for this visible item
-					assert(currItem < m_realizedItems.size());
-
-					// set the text for this visible item
-					m_realizedItems[currItem]->Set(m_textListModel->Get(i));
-
-					// since we are here, we might as well set this visible label's position
-					m_realizedItems[currItem]->SetPosition(
-						{
-							0.0f,
-							m_itemHeight * i
-						});
-
-					// we set the size as well
-					m_realizedItems[currItem]->SetSize(
-						{
-							GetSize().width,
-							m_itemHeight
-						});
-
-					// resolve select state of realized items
-					{
-						if (m_allSelected)
-						{
-							m_selectedIndices.find(i) != m_selectedIndices.end() ? m_realizedItems[currItem]->Unselect() : m_realizedItems[currItem]->Select();
-						}
-						else
-						{
-							m_selectedIndices.find(i) != m_selectedIndices.end() ? m_realizedItems[currItem]->Select() : m_realizedItems[currItem]->Unselect();
-						}
-					}
-
-					// move to next visible item
-					currItem++;
-				}
-
-				// and finally we set the size of this widget. 
-				// this forces the this widget to have a height that can accommodate all the items in the list, even if they are not all visible at once.
-				SetSize(
-					{
-						GetSize().width,
-						m_itemHeight * m_textListModel->Size()
-					});
-
-				// since we have updated the layout, we can clear the dirty flag
-				m_dirty = false;
-			}
+			void UpdateLayout();
 
 			// handler for when the text list model changes. this will trigger an update of the layout to reflect the changes in the underlying data.
-			void OnChangeTextListModel()
-			{
-				m_dirty = true;
-				if (m_updating == 0) UpdateLayout();
-
-				// bubble up the event to notify that the text list has changed. this allows any observers (like a UI component) to react to changes in the data.
-				Changed();
-			}
+			void OnChangeTextListModel();
 
 		public:
-
-			engine::event::Event<int, const std::string&> Clicked;
+			// event raised when one of its TextItem is clicked. 
+			engine::event::Event<int, bool, const std::string&> Clicked;
 
 			// event that is triggered whenever the text list changes (e.g., when a text is added or removed)
 			engine::event::Event<> Changed;
 
-			TextList(float itemHeight = 40.0f, UIResources::FontType fontType = UIResources::FontType::Default)
-				: m_itemHeight(itemHeight)
-				, m_min(0)
-				, m_max(-1)
-				, m_textListModel(nullptr)
-				, m_fontType(fontType)
-			{
-				// it's ok for this widget to be movable. on its own it cannot be dragged because it resizes to fit its content which are the realized items. 
-				// realized items are TextItem widgets and they are not movable
-				m_moveBehavior = MoveBehavior::Free;
-
-				// by default, we will use the internal text list model. this allows the TextList to manage its own data if needed.
-				m_textListModel = &m_internalTextListModel;
-				m_textListModel->Changed += engine::event::Handler(this, &TextList::OnChangeTextListModel);
-			}
-
-			~TextList()
-			{
-				// unsubscribe from the text list model's OnChanged event to avoid dangling references and potential crashes when the TextList is destroyed.
-				if (m_textListModel)
-				{
-					m_textListModel->Changed -= engine::event::Handler(this, &TextList::OnChangeTextListModel);
-				}
-			}
+			// constructor
+			TextList(float itemHeight = 40.0f, UIResources::FontType fontType = UIResources::FontType::Default);
+			~TextList();
 
 			// bind this TextList to a new text list model. if no model is provided, it will use the internal model.
-			void Bind(ITextListModel* model = nullptr)
-			{
-				m_textListModel->Changed -= engine::event::Handler(this, &TextList::OnChangeTextListModel);
+			void Bind(ITextListModel* model = nullptr);
 
-				m_textListModel = model ? model : &m_internalTextListModel;
-
-				m_textListModel->Changed += engine::event::Handler(this, &TextList::OnChangeTextListModel);
-
-				// when we bind to a new model, we need to update the layout to reflect the changes in the underlying data.
-
-				m_dirty = true;
-				if (m_updating == 0) UpdateLayout();
-			}
+			bool IsBoundTo(ITextListModel* model) const;
 
 			// remove all items and clear the list
-			void Clear()
-			{
-				// set min/max to default values. this will ensure that no items are visible and the realized items will be cleared.
-				m_min = 0;
-				m_max = -1;
+			void Clear();
 
-				// remove all items from the list and clear the realized items as well as TextList is subscribed to the OnChanged event of the model 
-				// which will call UpdateLayout() to clear the realized items and reset the size of the TextList to accommodate the empty list.
-				m_textListModel->Clear();
+			// unselect all selected items in list if there's any
+			void UnselectAll();
 
-				UnselectAll();
-			}
+			// select all items in list if there's any
+			void SelectAll();
 
-			void UnselectAll()
-			{
-				m_allSelected = false;
+			// set font type
+			void SetFontType(UIResources::FontType type);
 
-				for (TextItem* item : m_realizedItems)
-				{
-					item->Unselect();
-				}
+			// getter for font type
+			UIResources::FontType GetFontType() const;
 
-				m_selectedIndices.clear();
-			}
+			// set item height
+			void SetItemHeight(float itemHeight);
 
-			void SelectAll()
-			{
-				if (m_selectionMode != SelectionMode::Multiple) return;
+			// getter for item height
+			float GetItemHeight() const;
 
-				m_allSelected = true;
-				m_selectedIndices.clear();
-				for (TextItem* item : m_realizedItems)
-				{
-					item->Select();
-				}
-			}
+			// in cases where layout update needs to be deferred, call this first. any calls that requires layout update will be scoped between BeginUpdate() and EndUpdate()
+			void BeginUpdate();
 
-			void SetFontType(UIResources::FontType type)
-			{
-				if (m_fontType == type) return;
-
-				m_fontType = type;
-				for (TextItem* item : m_realizedItems)
-				{
-					item->SetFontType(type);
-				}
-			}
-
-			UIResources::FontType GetFontType() const
-			{
-				return m_fontType;
-			}
-
-			void SetItemHeight(float itemHeight)
-			{
-				if (m_itemHeight == itemHeight) return;
-				m_itemHeight = itemHeight;
-
-				m_dirty = true;
-				if (m_updating == 0) UpdateLayout();
-			}
-
-			void BeginUpdate()
-			{
-				m_updating++;
-			}
-
-			void EndUpdate()
-			{
-				m_updating--;
-				if (m_updating < 0) m_updating = 0;
-
-				if (m_updating == 0) UpdateLayout();
-			}
-
-			float GetItemHeight() const
-			{
-				return m_itemHeight;
-			}
+			// closing scope of deferred layout update. call this once all calls requiring layout update are executed and we're ready to update the layout
+			void EndUpdate();
 
 			// min can be > max. it just means nothing is visible
-			void SetMin(int min)
-			{
-				if (m_min == min) return;
-
-				m_min = min;
-
-				m_dirty = true;
-				if (m_updating == 0) UpdateLayout();
-			}
+			void SetMin(int min);
 
 			// max can be < min. it just means nothing is visible
-			void SetMax(int max)
-			{
-				if (m_max == max) return;
+			void SetMax(int max);
 
-				m_max = max;
+			// max can be < min. it just means nothing is visible. min can be > max. it just means nothing is visible
+			void SetRange(int min, int max);
 
-				m_dirty = true;
-				if (m_updating == 0) UpdateLayout();
-			}
+			// getter for min
+			int GetMin() const;
 
-			// max can be < min. it just means nothing is visible
-			// min can be > max. it just means nothing is visible
-			void SetRange(int min, int max)
-			{
-				if (m_min == min && m_max == max) return;
+			// getter for max
+			int GetMax() const;
 
-				m_min = min;
-				m_max = max;
+			// add text at the bottom of the list
+			void Append(const std::string& text);
 
-				m_dirty = true;
-				if (m_updating == 0) UpdateLayout();
-			}
+			void RemoveLast();
 
-			int GetMin() const
-			{
-				return m_min;
-			}
+			void RemoveFirst();
 
-			int GetMax() const
-			{
-				return m_max;
-			}
+			void RemoveAt(size_t index);
 
-			void Append(const std::string& text)
-			{
-				// since we are subscribed to the OnChanged event of the model, adding an item will automatically trigger an update of the layout to reflect the changes in the underlying data.
-				m_textListModel->Append(text);
-			}
+			void Insert(size_t index, const std::string& text);
 
-			void RemoveLast()
-			{
-				m_textListModel->RemoveLast();
-			}
+			void Set(size_t index, const std::string& text);
 
-			void RemoveFirst()
-			{
-				m_textListModel->RemoveFirst();
-			}
+			// set selection mode. everytime selection mode changes, all selected items are unselected for safety purposes
+			void SetSelectionMode(SelectionMode mode);
 
-			void RemoveAt(size_t index)
-			{
-				m_textListModel->RemoveAt(index);
-			}
+			SelectionMode GetSelectionMode() const;
 
-			void Insert(size_t index, const std::string& text)
-			{
-				m_textListModel->Insert(index, text);
-			}
+			size_t Size() const;
 
-			void Set(size_t index, const std::string& text)
-			{
-				m_textListModel->Set(index, text);
-			}
-
-			void SetSelectionMode(SelectionMode mode)
-			{
-				if (m_selectionMode == mode) return;
-
-				m_selectionMode = mode;
-
-				// everytime selection mode changes, just safely clear currently selected items
-				UnselectAll();
-			}
-
-			SelectionMode GetSelectionMode() const
-			{
-				return m_selectionMode;
-			}
-
-			size_t Size() const
-			{
-				return m_textListModel->Size();
-			}
-
-			void Draw(const UIDrawContext& context) const override
-			{
-				context.skin.DrawTextList(*this, context);
-			}
+			void Draw(const UIDrawContext& context) const override;
 		};
 #pragma endregion
 
 #pragma region // TextListBox
+		// design principle:
+		//	- purpose
+		//		- widget that uses ScrollView to display TextList as its content
+		//	
+		//	- clicked TextItem will always be fully visible
+		//		- if a TextItem is partially visible e.g. top or bottom TextItem in visible range and is clicked, content will scroll so that clicked item becomes fully visible
+		//		- if viewport size < Text Item height, and an item is clicked, alignment at bottom of the text item takes precedence
 		class TextListBox : public Widget
 		{
 		protected:
 			ScrollView* m_scrollView;
 			TextList* m_textList;
 
-			// handle size changes of this widget.
-			void OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) override
-			{
-				// update the layout of all widgets dependent on this widget's size. 
-				UpdateLayout();
-			}
-
-			// updates the extents and positions of child widgets 
-			void UpdateLayout()
-			{
-				// the child scrollview will occupy the whole area of this widget so we always resize it to match our size
-
-				// it's guaranteed by design that we have a scrollview child. so we can safely assume m_scrollView is not null
-				m_scrollView->SetPosition({ 0.0f, 0.0f });
-				m_scrollView->SetSize(GetSize());
-			}
-
 			// updates the layout of the text list based on the current size of the scroll view's viewport.
 			// this will adjust the text list's width to match the scroll view's viewport width and 
 			// recalculate the min/max visible items based on the new viewport size, item height, and current viewport offset.
-			void UpdateTextListLayout()
-			{
-				// always adjust the textlist's width to match the scrollview's viewport width. height will be determined by content's own size
-				m_textList->SetSize({ m_scrollView->GetViewPortSize().width, m_textList->GetSize().height });
-
-				// recalculate the textlist's min/max visible items based on the new viewport size, item height, and current viewport offset
-				UpdateTextListMinMax();
-			}
+			void UpdateTextListLayout();
 
 			// recalculate the textlist's min/max visible items based on the new viewport size, item height, and current viewport offset
-			void UpdateTextListMinMax()
-			{
-				// find the min/max which are the indices of the text items that are currently visible in the viewport. 
-				float textListItemHeight = m_textList->GetItemHeight();
-				VecF offset = m_scrollView->GetViewPortOffset();
-				int min = static_cast<int>(offset.y / textListItemHeight);
-				int max = static_cast<int>((offset.y + m_scrollView->GetViewPortSize().height) / textListItemHeight);
+			void UpdateTextListMinMax();
 
-				// then update textlist with new min/max
-				m_textList->BeginUpdate();
-				m_textList->SetMax(max);
-				m_textList->SetMin(min);
-				m_textList->EndUpdate();
-			}
-
-			void OnVerbose(bool enable)
-			{
-				m_scrollView->Verbose(enable);
-				m_textList->Verbose(enable);
-			}
+			void OnVerbose(bool enable);
 
 		public:
-			TextListBox(float itemHeight = 40.0f, UIResources::FontType fontType = UIResources::FontType::Default)
-				: m_scrollView(nullptr)
-				, m_textList(nullptr)
-			{
-				// create a scroll view and add it as a child
-				std::unique_ptr<ScrollView> scrollview = std::make_unique<ScrollView>();
-				scrollview->SetPosition({ 0, 0 });
-				scrollview->SetName("TextListBox.ScrollView");
-				m_scrollView = scrollview.get();
-				AddChild(std::move(scrollview));
+			TextListBox(float itemHeight = 40.0f, UIResources::FontType fontType = UIResources::FontType::Default);
 
-				// subscribe to scrollview's viewport resize event. 
-				m_scrollView->ViewPortResized += [&](const SizeF& oldSize, const SizeF& size)
-					{
-						UpdateTextListLayout();
-					};
+			// raise this event when Text Item is clicked and its selected state is toggled
+			engine::event::Event<int, bool, const std::string&> Clicked;
 
-				// subscribe to scrollview's content change event
-				m_scrollView->ContentChanged += [&](Widget* content)
-					{
-						UpdateTextListLayout();
-					};
+			void Append(const std::string& text);
 
-				// when scrollview's content moves or scrolls, we need to update our textlist's min/max visible items based on the new viewport offset and item height
-				m_scrollView->Scroll += [&](const VecF& offset)
-					{
-						UpdateTextListMinMax();
-					};
+			void RemoveLast();
 
-				// create a textlist and add it as the content of the scrollview and add it as content of the scrollview. 
-				// this will allow the textlist to be scrolled within the scrollview.
-				// NOTE: we create textlist object and add its content to scrollview here AFTER we subscribe to scrollview's events so we trigger ScrollView's ContentChanged event
-				std::unique_ptr<TextList> textList = std::make_unique<TextList>(itemHeight, fontType);
-				textList->SetPosition({ 0, 0 });
-				textList->SetName("TextListBox.TextList");
-				m_textList = textList.get();
-				m_scrollView->SetContent(std::move(textList));
+			void SetItemHeight(float itemHeight);
 
-				// subscribe to textlist's change event. when a text is added or removed, 
-				// we need to recalculate the textlist's min/max visible items based on the new viewport size, item height, and current viewport offset
-				m_textList->Changed += [&]()
-					{
-						UpdateTextListMinMax();
-					};
+			float GetItemHeight() const;
 
-				// handle event when a text item is clicked
-				m_textList->Clicked += [&](int index, const std::string& text)
-					{
-						// if selected item is partially visible, reposition so that it is fully visible
-						{
-							// scenario > offset: 24, itemHeight = 10, selected index (selIndex) = 2
-							//		- selected position (selPos) = index * itemHeight = 20
-							//		- if selPos < offset, selected text item is at least partially not visible at the top of viewport. need to adjust
-							//			- offset(new) = selPos
-							// scenario > offset: 24, itemHeight = 10, viewportSize = 23, selected index (selIndex) = 5
-							//		- selected position (selPos) = index * itemHeight = 50
-							//		- if selPos + itemHeight > offset + viewportSize, selected text item is at least partially not visiable at the bottom of viewport, need to adjust
-							//		- offset(new) = offset + (selPos + itemHeight) - (offset + viewportSize)
-							//		- offset(new) = 24 + 60 - 57 = 27
-							// scenario > itemHeight > viewportSize
-							//		- resolving at bottom of viewport takes precedence
+			void Draw(const UIDrawContext& context) const override;
 
-							VecF offset = m_scrollView->GetViewPortOffset();
-							float itemHeight = m_textList->GetItemHeight();
-							SizeF viewportSize = m_scrollView->GetViewPortSize();
-							float selPos = index * itemHeight;
+			void Clear();
 
-							if (selPos < offset.y)
-							{
-								offset.y = selPos;
-								m_scrollView->SetOffset(offset);
-							}
+			void UnselectAll();
 
-							if (selPos + itemHeight > offset.y + viewportSize.height)
-							{
-								offset.y += (selPos + itemHeight) - (offset.y + viewportSize.height);
+			void SelectAll();
 
-								m_scrollView->SetOffset(offset);
-							}
-						}
+			void SetSelectionMode(SelectionMode mode);
 
-						Clicked(text);
-					};
-			}
+			SelectionMode GetSelectionMode() const;
 
-			engine::event::Event<const std::string&> Clicked;
+			void SetFontType(UIResources::FontType type);
 
-			void Append(const std::string& text)
-			{
-				m_textList->Append(text);
-			}
+			UIResources::FontType GetFontType() const;
 
-			void RemoveLast()
-			{
-				m_textList->RemoveLast();
-			}
+			// bind this TextList to a new text list model. if no model is provided, it will use the internal model.
+			void Bind(ITextListModel* model = nullptr);
 
-			void SetItemHeight(float itemHeight)
-			{
-				m_textList->SetItemHeight(itemHeight);
-				UpdateTextListLayout();
-			}
-
-			float GetItemHeight() const
-			{
-				return m_textList->GetItemHeight();
-			}
-
-			void Draw(const UIDrawContext& context) const override
-			{
-				context.skin.DrawTextListBox(*this, context);
-			}
-
-			void Clear()
-			{
-				m_textList->Clear();
-			}
-
-			void UnselectAll()
-			{
-				m_textList->UnselectAll();
-			}
-
-			void SelectAll()
-			{
-				m_textList->SelectAll();
-			}
-
-			void SetSelectionMode(SelectionMode mode)
-			{
-				m_textList->SetSelectionMode(mode);
-			}
-
-			SelectionMode GetSelectionMode() const
-			{
-				return m_textList->GetSelectionMode();
-			}
-
-			void SetFontType(UIResources::FontType type)
-			{
-				m_textList->SetFontType(type);
-			}
-
-			UIResources::FontType GetFontType() const
-			{
-				return m_textList->GetFontType();
-			}
+			bool IsBoundTo(ITextListModel* model) const;
 		};
 #pragma endregion
 	}

@@ -113,7 +113,7 @@ namespace engine
 			}
 
 			// set alignment
-			void SetAlignment(VerticalAlignment vAlign, HorizontalAlignment hAlign)
+			void SetAlignment(VerticalAnchor vAlign, HorizontalAnchor hAlign)
 			{
 				m_label->SetAlignment(vAlign, hAlign);
 			}

@@ -72,13 +72,13 @@ namespace engine
 
 			switch (m_vAlign)
 			{
-			case VerticalAlignment::Center:
+			case VerticalAnchor::Center:
 				m_textPosition.y = (GetSize().height - m_textSize.height) / 2.0f;
 				break;
-			case VerticalAlignment::Top:
+			case VerticalAnchor::Top:
 				m_textPosition.y = 0;
 				break;
-			case VerticalAlignment::Bottom:
+			case VerticalAnchor::Bottom:
 				m_textPosition.y = GetSize().height - m_textSize.height;
 				break;
 			default:
@@ -87,13 +87,13 @@ namespace engine
 
 			switch (m_hAlign)
 			{
-			case HorizontalAlignment::Center:
+			case HorizontalAnchor::Center:
 				m_textPosition.x = (GetSize().width - m_textSize.width) / 2.0f;
 				break;
-			case HorizontalAlignment::Left:
+			case HorizontalAnchor::Left:
 				m_textPosition.x = 0;
 				break;
-			case HorizontalAlignment::Right:
+			case HorizontalAnchor::Right:
 				m_textPosition.x = GetSize().width - m_textSize.width;
 				break;
 			default:
@@ -107,8 +107,8 @@ namespace engine
 		Label::Label(const std::string& text, UIResources::FontType fontType) 
 			: m_text(text)
 			, m_fontType(fontType)
-			, m_vAlign(VerticalAlignment::Center)
-			, m_hAlign(HorizontalAlignment::Center)
+			, m_vAlign(VerticalAnchor::Center)
+			, m_hAlign(HorizontalAnchor::Center)
 			, m_textSize({ 0,0 })
 			, m_textPosition({ 0,0 })
 			, m_color({ 1,1,1,1 })
@@ -163,7 +163,7 @@ namespace engine
 		}
 
 		// set alignment
-		void Label::SetAlignment(VerticalAlignment vAlign, HorizontalAlignment hAlign)
+		void Label::SetAlignment(VerticalAnchor vAlign, HorizontalAnchor hAlign)
 		{
 			m_vAlign = vAlign;
 			m_hAlign = hAlign;
@@ -643,61 +643,15 @@ namespace engine
 		}
 
 		// callback when mouse is moved on the scroll bar. this can happen on the thumb or on the track.
-		// thumb moves when this happen
-		//	- thumb moves just a normal widget would.no checking if it's position is outside scrollbar's scroll range
-		//	- scrollbar handles thumb move event.without checking if position is valid or not, it forces it to be inside scrollbar's scroll range
-		//	- translate current thumb physical pos into logical pos
-		//	- if logical pos is outside logical range, clamp it
-		//	- translate logical pos back to physical thumb pos
-		//	- now compare this translated physical thumb pos with thumb's current physical pos
-		//		- if it's different, it means the thumb need to be nudged so it's really inside scrollbar's scroll range
-		//		- set thumb physical position to the newly translated physical pos
-		//		- setting thumb physical position will trigger thumb move event.
-		//		- this must be ignored
-		//		- the handler's purpose is to correct the thumb's position to ensure it's inside scrollbar's scroll range
-		//		- we already guaranteed that this position puts thumb inside scrollbar's scroll range. so no need to correct it again
-		//		- we also should skip raising Scroll event because we're doing that already
-		//	- if logical pos != offset
-		//		- offset = logical pos
-		//		- raise Scroll event
 		void ScrollBar::OnMouseMove(const PositionF& pos)
 		{
 			// if we're dragging, let the thumb handle the mouse move event so it can update its position and fire its moved event
 			if (m_isDragging)
 			{
+				// thumb is intentionally non-interactive. so to make it move, we have to do it ourselves by calling its mouse move
 				m_thumb->MouseMove(pos);
 			}
 		}
-
-		//bool ScrollBar::OnMouseWheel(const PositionF& screenPos, float delta)
-		//{
-		//	//LOG("ScrollBar::OnMouseWheel(" + m_name + "): " + std::to_string(screenPos.x) + ", " + std::to_string(screenPos.y) + ", " + std::to_string(delta));
-
-		//	// if this is not vertical scrollbar, return false to propagate this event
-		//	if (m_orientation != engine::gui::Orientation::Vertical) return false;
-
-		//	// scroll it!
-		//	float scrollAmount = m_viewportLength * m_mouseWheelScrollFactor;
-		//	SetOffset(GetOffset() - delta * scrollAmount);
-
-		//	// we processed this event and does not need to propagate it anymore
-		//	return true;
-		//}
-
-		//bool ScrollBar::OnMouseHWheel(const PositionF& screenPos, float delta)
-		//{
-		//	//LOG("ScrollBar::OnMouseHWheel(" + m_name + "): " + std::to_string(screenPos.x) + ", " + std::to_string(screenPos.y) + ", " + std::to_string(delta));
-
-		//	// if this is not horizontal scrollbar, return false to propagate this event
-		//	if (m_orientation != engine::gui::Orientation::Horizontal) return false;
-
-		//	// scroll it!
-		//	float scrollAmount = m_viewportLength * m_mouseWheelScrollFactor;
-		//	SetOffset(GetOffset() - delta * scrollAmount);
-
-		//	// we processed this event and does not need to propagate it anymore
-		//	return true;
-		//}
 
 		// internal method to update the size of the thumb based on the content length, viewport length, and scrollbar length. this is called when content or viewport changes.
 		void ScrollBar::UpdateThumbSize()
@@ -729,6 +683,7 @@ namespace engine
 			m_thumb->SetSize(thumbSize);
 		}	
 
+		// internal method to convert logical position to physical position
 		float ScrollBar::LogicalToPhysicalPosition(float logicalPos) const
 		{
 			// trackLength is the physical range the thumb can move within the scrollbar. this must be length of scrollbar minus length of thumb. 
@@ -750,6 +705,7 @@ namespace engine
 			return logicalRange == 0 ? 0.0f : logicalPos * trackLength / logicalRange;
 		}
 
+		// internal method to convert physical position to logical position
 		float ScrollBar::PhysicalToLogicalPosition(float physicalPos) const
 		{
 			// trackLength is the physical range the thumb can move within the scrollbar. this must be length of scrollbar minus length of thumb. 
@@ -771,6 +727,7 @@ namespace engine
 			return trackLength == 0 ? 0.0f : physicalPos * logicalRange / trackLength;
 		}
 
+		// internal method to round off the given value to nearest step size
 		float ScrollBar::SnapToNearestStep(float value, float step) const
 		{
 			// sanity check. if step is invalid, just return the value
@@ -783,32 +740,20 @@ namespace engine
 			return std::floor(value / step + 0.5f) * step;
 		}
 
-		// callback when the size of the scrollbar changes. this is called when the scrollbar is resized. we will update the thumb size and position based on new size
-		//	note: offset, viewport length, and content length does not change when scrollbar resize
-		//	- scrollbar length represents content length while thumb length represents viewport length
-		//		- if scrollbar length is 100, content length is 4, and viewport length is 3, then thumb length is 75
-		//		- if scrollbar length changes, then thumb length must change to maintain its proportion with content and viewport length
-		//	- likewise, thumb's physical position represents offset value (logical position)
-		//		- if scrollbar length and thumb length changes, thumb's physical position needs to be updated too in order to maintain its proportion with offset value 
-		//			- repositioning thumb will trigger thumb move.
-		//				- it's possible that thumb moves in physical position where its corresponding logical position is not same with current offset value
-		//				- e.g.scrollbar length is too small and thumb length is already at minimum length
-		//					- thumb length will be resized to fill the scrollbar.its physical position will be set to 0, 0
-		//					- physical position of 0, 0 means logical position of 0. offset must not be changed to 0 if it's value is not 0.
-		//				- since we're not supposed to change offset value, thumb's move handler must not change offset and must not raise Scroll event
+		// callback when the size of the scrollbar changes. 
+		// note that logical parameters (offset, viewport/content length) does not change. only physical size change
 		void ScrollBar::OnSizeChanged(const SizeF&, const SizeF&)
 		{
 			LOG_FUNCTION();
 
-			// update thumb size12
+			// logical parameters did not changed but scrollbar size did. 
+			// to maintain proportion between logical (content/viewport length) and physical (scrollbar/thumb size), we need to update thumb size
 			UpdateThumbSize();
 
-			// offset value has not changed. content and viewport lengths did not change too. so logically nothing has changed. offset value is valid. no need to validate
-
-			// convert current offset to physical position.
+			// offset did not changed. but since thumb and scrollbar size changed, thumb might have a different position now to match offset. convert offset to physical position.
 			float thumbPhysicalPos = LogicalToPhysicalPosition(m_offset);
 
-			// we then set thumb to new physical position. we ignore the move event handler since we guaranteed that the new thumb position is valid, no need for correction
+			// we then set thumb to new physical position. we ignore the move event handler since it's guaranteed that the new thumb position is valid
 			{
 				// since the physical thumb position we are now setting thumb to is guaranteed to be valid, we can disable listening to thumb's Moved event when set the position again
 				m_ignoreThumbMove = true;
@@ -899,15 +844,7 @@ namespace engine
 				};
 		}
 
-		// set the offset of the scrollbar. this will update the thumb position and fire the scroll event if the offset is changed.
-		// since we're changing offset, we can immediately check offset if valid and clamp it if it's not.then if resulting offset is same as current, can bail out now
-		//	- at this point, our new offset is guaranteed valid, meaning if translated to thumb physical position, thumb will be inside scrollbar's scroll range
-		//	- also if we reach this point, new offset is different from current offset so we need to change its value
-		//	- changing offset value means we need to update thumb physical position
-		//		- but resulting physical position guarantees thumb is inside scrollbar's scroll range so we don't need to check for recorrecting.
-		//		- this will ignore thumb's move event
-		//	- since we're ignoring thumb's move event, we need to raise Scroll event ourselves.
-		//	- Scroll event needs to be raised because offset value changed
+		// set the offset of the scrollbar. this will update the thumb position and fire the scroll event if the offset actually changed.
 		void ScrollBar::SetOffset(float offset)
 		{
 			LOG_FUNCTION();
@@ -967,18 +904,6 @@ namespace engine
 		}
 
 		// set the content length of the scrollbar. this will update the thumb size and position based on new content length and offset.
-		// change content length
-		//	- because content changes, logical range changes too.This needs to check if offset needs clamping.
-		//	- since content length changes, proportion with thumb and scrollbar length changes.
-		//		- we need to update thumb size since scrollbar length did not change, so we can maintain proportion
-		//	- when content length changes, ratio between content and viewport changes.
-		//		- it's possible that offset changes too. current offset that is within logical range might be outside of it already and needs clamping
-		//			- e.g.current offset = 5, vp = 1, content = 8. now content changes to 4. offset needs to be clamped to 4
-		//			- this needs thumb position to be updated
-		//		- offset may not need to change but still needs thumb position to change.
-		//			- e.g.offset = 2, vp = 1, content = 8. scrollbar length = 800, so thumb length = 100 and thumb position = 200
-		//			- but content changes to 5. vp is still 1 and offset remains 2 (still within logical range after content changes to 5).
-		//			- scrollbar length is still 800 but thumb length now changes to 160. even though offset remains at 2, thumb position now needs to change to 320
 		void ScrollBar::SetContentLength(float length)
 		{
 			LOG_FUNCTION();
@@ -1078,6 +1003,7 @@ namespace engine
 			Scroll(m_offset);
 		}
 
+		// set step size. if curren scrollmode is discrete, this will snap the thumb into nearest step
 		void ScrollBar::SetStepSize(float step)
 		{
 			LOG_FUNCTION();
@@ -1149,6 +1075,7 @@ namespace engine
 			return m_stepSize;
 		}
 
+		// set scroll mode. if mode is now discrete, this will update the offset to snap to nearest step
 		void ScrollBar::SetScrollMode(ScrollBar::ScrollMode mode)
 		{
 			LOG_FUNCTION();
@@ -1180,6 +1107,7 @@ namespace engine
 		{
 			return m_contentLength;
 		}
+
 		float ScrollBar::GetViewportLength() const
 		{
 			return m_viewportLength;
@@ -2314,4 +2242,846 @@ namespace engine
 #pragma endregion
 	}
 
+}
+
+namespace engine
+{
+	namespace gui
+	{
+#pragma region // TextItem
+		// when this widget resizes, we need to resize the label to fill the whole area of this widget
+		void TextItem::OnSizeChanged(const SizeF& oldSize, const SizeF& newSize)
+		{
+			m_label->SetPosition({ 0.0f, 0.0f });
+			m_label->SetSize(newSize);
+		}
+
+		// raise click event when this item is selected
+		void TextItem::OnMouseDown(const PositionF& pos) 
+		{
+			Clicked(this, m_label->Get());
+		}
+
+		// constructor
+		TextItem::TextItem(const std::string& text, UIResources::FontType type)
+			: m_label(nullptr)
+			, m_selected(false)
+		{
+			// create a label widget to display the text. this label will be a child of this widget
+			std::unique_ptr<Label> label = std::make_unique<Label>(text, type);
+			m_label = label.get();
+			AddChild(std::move(label));
+
+			// this widget is focusable and selectable like a button, but it does not move like a button. it is just a static text item that can be selected
+			m_focusable = true;
+			m_moveBehavior = MoveBehavior::None;
+		}
+
+		void TextItem::SetFontType(UIResources::FontType type)
+		{
+			m_label->SetFontType(type);
+		}
+
+		UIResources::FontType TextItem::GetFontType() const
+		{
+			return m_label->GetFontType();
+		}
+
+		// set the text
+		void TextItem::Set(const std::string& text)
+		{
+			m_label->Set(text);
+		}
+
+		std::string TextItem::Get() const
+		{
+			return m_label->Get();
+		}
+
+		void TextItem::Draw(const UIDrawContext& context) const 
+		{
+			context.skin.DrawTextItem(*this, context);
+		}
+
+		void TextItem::SetSelected(bool selected)
+		{
+			m_selected = selected;
+		}
+
+		void TextItem::Select()
+		{
+			m_selected = true;
+		}
+
+		void TextItem::Unselect()
+		{
+			m_selected = false;
+		}
+
+		bool TextItem::IsSelected() const
+		{
+			return m_selected;
+		}
+#pragma endregion
+
+#pragma region // VectorTextListModel
+		// returns the number of text in the list
+		size_t VectorTextListModel::Size() const 
+		{
+			return m_items.size();
+		}
+
+		// returns the text at the given index
+		const std::string& VectorTextListModel::Get(size_t index) const
+		{
+			return m_items[index];
+		}
+
+		// removes the text at the given index and triggers the Changed event
+		void VectorTextListModel::RemoveAt(size_t index)
+		{
+			assert(index < m_items.size());
+
+			m_items.erase(m_items.begin() + index);
+			Changed();
+		}
+
+		// inserts text before the given index and triggers the Changed event
+		void VectorTextListModel::Insert(size_t index, const std::string& text)
+		{
+			index = std::min<size_t>(index, m_items.size());
+
+			m_items.insert(m_items.begin() + index, text);
+			Changed();
+		}
+
+		// appends multiple texts to the end of the list and triggers the Changed event
+		void VectorTextListModel::Append(const std::vector<std::string>& texts)
+		{
+			if (texts.empty())
+			{
+				return;
+			}
+
+			m_items.insert(m_items.end(), texts.begin(), texts.end());
+			Changed();
+		}
+
+		// appends text to the end of the list and triggers the Changed event
+		void VectorTextListModel::Append(const std::string& text) 
+		{
+			m_items.push_back(text);
+			Changed();
+		}
+
+		// replaces the text at the given index and triggers the Changed event
+		void VectorTextListModel::Set(size_t index, const std::string& text) 
+		{
+			assert(index < m_items.size());
+
+			m_items[index] = text;
+			Changed();
+		}
+
+		// clears the list of text and triggers the Changed event
+		void VectorTextListModel::Clear() 
+		{
+			if (m_items.empty())
+			{
+				return;
+			}
+
+			m_items.clear();
+			Changed();
+		}
+
+		// remove the last text in the list and triggers the Changed event
+		void VectorTextListModel::RemoveLast() 
+		{
+			if (m_items.empty())
+			{
+				return;
+			}
+
+			m_items.pop_back();
+			Changed();
+		}
+
+		// remove the first text in the list and triggers the Changed event
+		void VectorTextListModel::RemoveFirst() 
+		{
+			if (m_items.empty())
+			{
+				return;
+			}
+
+			m_items.erase(m_items.begin());
+			Changed();
+		}
+#pragma endregion
+
+#pragma region // TextList
+		// callback to update the layout of the realized items when the size of the TextList changes.
+		void TextList::OnSizeChanged(const SizeF& oldSize, const SizeF& newSize) 
+		{
+			m_dirty = true;
+			if (m_updating == 0) UpdateLayout();
+		}
+
+		// callback to handle event when a TextItem is clicked
+		void TextList::OnClickTextItem(TextItem* item, const std::string& text)
+		{
+			// do a linear search to find which item is the clicked one. this is fine.
+			// realized items list will never be too big that doing this will cause performance issue
+			auto it = std::find(
+				m_realizedItems.begin(),
+				m_realizedItems.end(),
+				item);
+
+			// if in case the given TextItem does not exist in our realizedItem list, bail out
+			if (it == m_realizedItems.end())
+				return;
+
+			// determine the index in the realized item list that is clicked
+			int realizedIndex = static_cast<int>(std::distance(m_realizedItems.begin(), it));
+
+			// translate that index into actual text list index
+			int modelIndex = m_min + realizedIndex;
+
+			// resolve selection
+			{
+				switch (m_selectionMode)
+				{
+				case SelectionMode::None:
+					break;
+				case SelectionMode::Single:
+				{
+					// clear selected indices then insert our newly selected item index
+					m_selectedIndices.clear();
+					m_selectedIndices.insert(modelIndex);
+
+					// unselect all realized items first. since realized item list is expected to never be big, iterating here is ok
+					for (TextItem* item : m_realizedItems)
+					{
+						item->Unselect();
+					}
+
+					// now we set the clicked item as selected
+					m_realizedItems[realizedIndex]->Select();
+
+					break;
+				}
+				case SelectionMode::Multiple:
+				{
+					auto it = m_selectedIndices.find(modelIndex);
+
+					//if the index is found in the list...
+					if (it != m_selectedIndices.end())
+					{
+						// remove it from the index list
+						m_selectedIndices.erase(it);
+
+						// if TextList is in "all selected" mode, whatever index is in the list, means it is unselected. 
+						// so if it's in the list and we are removing it, it means we are selecting it.
+						// but if it's in "not selected" mode, behavior is opposite. if it's in the list and we're removing it,
+						// it means its selected and we're unselecting it.
+						m_allSelected ? m_realizedItems[realizedIndex]->Select() : m_realizedItems[realizedIndex]->Unselect();
+					}
+					// if index is not in list...
+					else
+					{
+						// add the index int the list
+						m_selectedIndices.insert(modelIndex);
+
+						// if TextList is in "all selected" mode, if index is not in the list, means it is selected. 
+						// so if we are adding it to our list, it means we are unselecting it.
+						// but if it's in "not selected" mode, behavior is opposite. if it's not in the list and we're adding it,
+						// it means its unselected and we're selecting it.
+						m_allSelected ? m_realizedItems[realizedIndex]->Unselect() : m_realizedItems[realizedIndex]->Select();
+					}
+					break;
+				}
+				default:
+					break;
+				}
+			}
+
+			// raise clicked event
+			Clicked(modelIndex, m_realizedItems[realizedIndex]->IsSelected(), text);
+		}
+
+		// synchronizes the size of realized items with the number of visible items based on the current min/max range.
+		// this does not refresh the text or position of the realized items, it only ensures that the number of realized items matches the number of visible items.
+		void TextList::UpdateRealizedItems()
+		{
+			// current min/max might be out of bounds of the list model. we need to clamp them to valid range
+			int size = static_cast<int>(m_textListModel->Size());
+			int max = std::min<int>(m_max, size - 1);
+			int min = std::min<int>(m_min, size);
+
+			// calculate number of visible items
+			int numVisible = max - min + 1;
+			numVisible = numVisible < 0 ? 0 : numVisible;
+
+			// do we have more visible labels than supposed to?
+			while (m_realizedItems.size() > numVisible)
+			{
+				// remove the last realized item until our list have same number of items as our visible range
+				m_realizedItems.back()->Clicked -= engine::event::Handler(this, &TextList::OnClickTextItem);
+				RemoveChild(m_realizedItems.back());
+				m_realizedItems.pop_back();
+			}
+
+			// or is our visible labels not enough?
+			while (m_realizedItems.size() < numVisible)
+			{
+				// create new realized item and add to our realized items list. listen to its click event so we update its select state when it's clicked
+				std::unique_ptr<TextItem> textItem = std::make_unique<TextItem>("", m_fontType);
+				textItem->SetName("TextList.TextItem");
+				m_realizedItems.push_back(textItem.get());
+				textItem->Clicked += engine::event::Handler(this, &TextList::OnClickTextItem);
+				AddChild(std::move(textItem));
+			}
+		}
+
+		// updates the layout of the realized items, including their position, size, and text
+		void TextList::UpdateLayout()
+		{
+			// if we are currently updating the layout, we don't want to trigger another update. 
+			// instead, we mark the layout as dirty and return. this will ensure that the layout is updated after the current update is finished.
+			if (m_updating > 0 || !m_dirty) return;
+
+			// first let's update the list of realized items to match the number of visible items
+			UpdateRealizedItems();
+
+			// now let's set the text for the visible items
+			int currItem = 0;
+			for (int i = m_min; i <= m_max; i++)
+			{
+				if (i >= m_textListModel->Size()) break;
+
+				// be assertive. if we are here, then we must have a realized item for this visible item
+				assert(currItem < m_realizedItems.size());
+
+				// set the text for this visible item
+				m_realizedItems[currItem]->Set(m_textListModel->Get(i));
+
+				// since we are here, we might as well set this visible label's position
+				m_realizedItems[currItem]->SetPosition(
+					{
+						0.0f,
+						m_itemHeight * i
+					});
+
+				// we set the size as well
+				m_realizedItems[currItem]->SetSize(
+					{
+						GetSize().width,
+						m_itemHeight
+					});
+
+				// resolve select state of realized items
+				{
+					if (m_allSelected)
+					{
+						m_selectedIndices.find(i) != m_selectedIndices.end() ? m_realizedItems[currItem]->Unselect() : m_realizedItems[currItem]->Select();
+					}
+					else
+					{
+						m_selectedIndices.find(i) != m_selectedIndices.end() ? m_realizedItems[currItem]->Select() : m_realizedItems[currItem]->Unselect();
+					}
+				}
+
+				// move to next visible item
+				currItem++;
+			}
+
+			// and finally we set the size of this widget. 
+			// this forces the this widget to have a height that can accommodate all the items in the list, even if they are not all visible at once.
+			SetSize(
+				{
+					GetSize().width,
+					m_itemHeight * m_textListModel->Size()
+				});
+
+			// since we have updated the layout, we can clear the dirty flag
+			m_dirty = false;
+		}
+
+		// handler for when the text list model changes. this will trigger an update of the layout to reflect the changes in the underlying data.
+		void TextList::OnChangeTextListModel()
+		{
+			m_dirty = true;
+			if (m_updating == 0) UpdateLayout();
+
+			// bubble up the event to notify that the text list has changed. this allows any observers (like a UI component) to react to changes in the data.
+			Changed();
+		}
+
+		TextList::TextList(float itemHeight, UIResources::FontType fontType)
+			: m_itemHeight(itemHeight)
+			, m_min(0)
+			, m_max(-1)
+			, m_textListModel(nullptr)
+			, m_fontType(fontType)
+			, m_allSelected(false)
+			, m_updating(0)
+			, m_dirty(false)
+		{
+			// it's ok for this widget to be movable. on its own it cannot be dragged because it resizes to fit its content which are the realized items. 
+			// realized items are TextItem widgets and they are not movable
+			m_moveBehavior = MoveBehavior::Free;
+
+			// by default, we will use the internal text list model. this allows the TextList to manage its own data if needed.
+			m_textListModel = &m_internalTextListModel;
+			m_textListModel->Changed += engine::event::Handler(this, &TextList::OnChangeTextListModel);
+		}
+
+		TextList::~TextList()
+		{
+			// unsubscribe from the text list model's OnChanged event to avoid dangling references and potential crashes when the TextList is destroyed.
+			if (m_textListModel)
+			{
+				m_textListModel->Changed -= engine::event::Handler(this, &TextList::OnChangeTextListModel);
+			}
+		}
+
+		// bind this TextList to a new text list model. if no model is provided, it will use the internal model.
+		void TextList::Bind(ITextListModel* model)
+		{
+			m_textListModel->Changed -= engine::event::Handler(this, &TextList::OnChangeTextListModel);
+
+			m_textListModel = model ? model : &m_internalTextListModel;
+
+			m_textListModel->Changed += engine::event::Handler(this, &TextList::OnChangeTextListModel);
+
+			// unselect all to be safe since we're changing text data source
+			UnselectAll();
+
+			// when we bind to a new model, we need to update the layout to reflect the changes in the underlying data.
+
+			// if we're not deferring layout update, do it now. otherwise, layout update will happen only when called for
+			m_dirty = true;
+			if (m_updating == 0) UpdateLayout();
+		}
+
+		bool TextList::IsBoundTo(ITextListModel* model) const
+		{
+			return m_textListModel == model;
+		}
+
+		// remove all items and clear the list
+		void TextList::Clear()
+		{
+			// set min/max to default values. this will ensure that no items are visible and the realized items will be cleared.
+			m_min = 0;
+			m_max = -1;
+
+			// remove all items from the list and clear the realized items as well as TextList is subscribed to the OnChanged event of the model 
+			// which will call UpdateLayout() to clear the realized items and reset the size of the TextList to accommodate the empty list.
+			m_textListModel->Clear();
+
+			// clear selection list since we will contain no more items
+			UnselectAll();
+		}
+
+		// unselect all selected items in list if there's any
+		void TextList::UnselectAll()
+		{
+			// set to "not selected' mode
+			m_allSelected = false;
+
+			// set selected state of all TextItems to unselected
+			for (TextItem* item : m_realizedItems)
+			{
+				item->Unselect();
+			}
+
+			// since we're now in "not selected" mode and we're unselecting everything, let's clear our selected indices list
+			m_selectedIndices.clear();
+		}
+
+		// select all items in list if there's any
+		void TextList::SelectAll()
+		{
+			// we do this only if we're in multiple selection mode
+			if (m_selectionMode != SelectionMode::Multiple) return;
+
+			// set to "all selected" mode
+			m_allSelected = true;
+
+			// since we are in "all selected mode", we are selecting everything. so clearing our selected indices list means all items are selected
+			m_selectedIndices.clear();
+
+			// set selected state of all TextItems to selected
+			for (TextItem* item : m_realizedItems)
+			{
+				item->Select();
+			}
+		}
+
+		// set font type
+		void TextList::SetFontType(UIResources::FontType type)
+		{
+			if (m_fontType == type) return;
+
+			m_fontType = type;
+
+			// of course we need to set font type of each realized items we have
+			for (TextItem* item : m_realizedItems)
+			{
+				item->SetFontType(type);
+			}
+		}
+
+		// getter for font type
+		UIResources::FontType TextList::GetFontType() const
+		{
+			return m_fontType;
+		}
+
+		// set item height
+		void TextList::SetItemHeight(float itemHeight)
+		{
+			if (m_itemHeight == itemHeight) return;
+			m_itemHeight = itemHeight;
+
+			// if we're not deferring layout update, do it now. otherwise, layout update will happen only when called for
+			m_dirty = true;
+			if (m_updating == 0) UpdateLayout();
+		}
+
+		// getter for item height
+		float TextList::GetItemHeight() const
+		{
+			return m_itemHeight;
+		}
+
+		// in cases where layout update needs to be deferred, call this first. any calls that requires layout update will be scoped between BeginUpdate() and EndUpdate()
+		void TextList::BeginUpdate()
+		{
+			m_updating++;
+		}
+
+		// closing scope of deferred layout update. call this once all calls requiring layout update are executed and we're ready to update the layout
+		void TextList::EndUpdate()
+		{
+			m_updating--;
+			if (m_updating < 0) m_updating = 0;
+
+			// for nested Begin/End update, we only execute layout update when last scope closes
+			if (m_updating == 0) UpdateLayout();
+		}
+
+		// min can be > max. it just means nothing is visible
+		void TextList::SetMin(int min)
+		{
+			if (m_min == min) return;
+
+			m_min = min;
+
+			m_dirty = true;
+			if (m_updating == 0) UpdateLayout();
+		}
+
+		// max can be < min. it just means nothing is visible
+		void TextList::SetMax(int max)
+		{
+			if (m_max == max) return;
+
+			m_max = max;
+
+			m_dirty = true;
+			if (m_updating == 0) UpdateLayout();
+		}
+
+		// max can be < min. it just means nothing is visible. min can be > max. it just means nothing is visible
+		void TextList::SetRange(int min, int max)
+		{
+			if (m_min == min && m_max == max) return;
+
+			m_min = min;
+			m_max = max;
+
+			m_dirty = true;
+			if (m_updating == 0) UpdateLayout();
+		}
+
+		// getter for min
+		int TextList::GetMin() const
+		{
+			return m_min;
+		}
+
+		// getter for max
+		int TextList::GetMax() const
+		{
+			return m_max;
+		}
+
+		// add text at the bottom of the list
+		void TextList::Append(const std::string& text)
+		{
+			// adding item to text model will trigger change event which we are subscribed to. our handler will trigger layout update to reflect changes in underlying data
+			m_textListModel->Append(text);
+		}
+
+		void TextList::RemoveLast()
+		{
+			m_textListModel->RemoveLast();
+		}
+
+		void TextList::RemoveFirst()
+		{
+			m_textListModel->RemoveFirst();
+		}
+
+		void TextList::RemoveAt(size_t index)
+		{
+			m_textListModel->RemoveAt(index);
+		}
+
+		void TextList::Insert(size_t index, const std::string& text)
+		{
+			m_textListModel->Insert(index, text);
+		}
+
+		void TextList::Set(size_t index, const std::string& text)
+		{
+			m_textListModel->Set(index, text);
+		}
+
+		// set selection mode. everytime selection mode changes, all selected items are unselected for safety purposes
+		void TextList::SetSelectionMode(SelectionMode mode)
+		{
+			if (m_selectionMode == mode) return;
+
+			m_selectionMode = mode;
+
+			// everytime selection mode changes, just safely clear currently selected items
+			UnselectAll();
+		}
+
+		SelectionMode TextList::GetSelectionMode() const
+		{
+			return m_selectionMode;
+		}
+
+		size_t TextList::Size() const
+		{
+			return m_textListModel->Size();
+		}
+
+		void TextList::Draw(const UIDrawContext& context) const 
+		{
+			context.skin.DrawTextList(*this, context);
+		}
+#pragma endregion
+
+#pragma region // TextListBox
+		// updates the layout of the text list based on the current size of the scroll view's viewport.
+		// this will adjust the text list's width to match the scroll view's viewport width and 
+		// recalculate the min/max visible items based on the new viewport size, item height, and current viewport offset.
+		void TextListBox::UpdateTextListLayout()
+		{
+			// always adjust the textlist's width to match the scrollview's viewport width. height will be determined by content's own size
+			m_textList->SetSize({ m_scrollView->GetViewPortSize().width, m_textList->GetSize().height });
+
+			// recalculate the textlist's min/max visible items based on the new viewport size, item height, and current viewport offset
+			UpdateTextListMinMax();
+		}
+
+		// recalculate the textlist's min/max visible items based on the new viewport size, item height, and current viewport offset
+		void TextListBox::UpdateTextListMinMax()
+		{
+			// find the min/max which are the indices of the text items that are currently visible in the viewport. 
+			float textListItemHeight = m_textList->GetItemHeight();
+			VecF offset = m_scrollView->GetViewPortOffset();
+			int min = static_cast<int>(offset.y / textListItemHeight);
+			int max = static_cast<int>((offset.y + m_scrollView->GetViewPortSize().height) / textListItemHeight);
+
+			// then update textlist with new min/max
+			m_textList->BeginUpdate();
+			m_textList->SetMax(max);
+			m_textList->SetMin(min);
+			m_textList->EndUpdate();
+		}
+
+		void TextListBox::OnVerbose(bool enable)
+		{
+			m_scrollView->Verbose(enable);
+			m_textList->Verbose(enable);
+		}
+
+		TextListBox::TextListBox(float itemHeight, UIResources::FontType fontType)
+			: m_scrollView(nullptr)
+			, m_textList(nullptr)
+		{
+			// create a scroll view and add it as a child. make it always fit into this widget
+			std::unique_ptr<ScrollView> scrollview = std::make_unique<ScrollView>();
+			scrollview->SetLayoutMode(engine::gui::LayoutMode::Anchor);
+			scrollview->SetHorizontalAnchor(engine::gui::HorizontalAnchor::Fill);
+			scrollview->SetVerticalAnchor(engine::gui::VerticalAnchor::Fill);
+			scrollview->SetMargin({ 0,0,0,0 });
+			scrollview->SetName("TextListBox.ScrollView");
+			m_scrollView = scrollview.get();
+			AddChild(std::move(scrollview));
+
+			// subscribe to scrollview's viewport resize event. 
+			m_scrollView->ViewPortResized += [&](const SizeF& oldSize, const SizeF& size)
+				{
+					UpdateTextListLayout();
+				};
+
+			// subscribe to scrollview's content change event
+			m_scrollView->ContentChanged += [&](Widget* content)
+				{
+					UpdateTextListLayout();
+				};
+
+			// when scrollview's content moves or scrolls, we need to update our textlist's min/max visible items based on the new viewport offset and item height
+			m_scrollView->Scroll += [&](const VecF& offset)
+				{
+					UpdateTextListMinMax();
+				};
+
+			// create a textlist and add it as the content of the scrollview and add it as content of the scrollview. 
+			// this will allow the textlist to be scrolled within the scrollview.
+			// NOTE: we create textlist object and add its content to scrollview here AFTER we subscribe to scrollview's events so we trigger ScrollView's ContentChanged event
+			std::unique_ptr<TextList> textList = std::make_unique<TextList>(itemHeight, fontType);
+			textList->SetPosition({ 0, 0 });
+			textList->SetName("TextListBox.TextList");
+			m_textList = textList.get();
+			m_scrollView->SetContent(std::move(textList));
+
+			// subscribe to textlist's change event. when a text is added or removed, 
+			// we need to recalculate the textlist's min/max visible items based on the new viewport size, item height, and current viewport offset
+			m_textList->Changed += [&]()
+				{
+					UpdateTextListMinMax();
+				};
+
+			// handle event when a text item is clicked
+			m_textList->Clicked += [&](int index, bool selected, const std::string& text)
+				{
+					// if selected item is partially visible, reposition so that it is fully visible
+					{
+						// explanation on how a clicked item that is partially visible becomes fully visible
+						// scenario > offset: 24, itemHeight = 10, selected index (selIndex) = 2
+						//		- selected position (selPos) = index * itemHeight = 20
+						//		- if selPos < offset, selected text item is at least partially not visible at the top of viewport. need to adjust
+						//			- offset(new) = selPos
+						// scenario > offset: 24, itemHeight = 10, viewportSize = 23, selected index (selIndex) = 5
+						//		- selected position (selPos) = index * itemHeight = 50
+						//		- if selPos + itemHeight > offset + viewportSize, selected text item is at least partially not visiable at the bottom of viewport, need to adjust
+						//		- offset(new) = offset + (selPos + itemHeight) - (offset + viewportSize)
+						//		- offset(new) = 24 + 60 - 57 = 27
+						// scenario > itemHeight > viewportSize
+						//		- resolving at bottom of viewport takes precedence
+
+						// get all necessary parameters we will use
+						VecF offset = m_scrollView->GetViewPortOffset();
+						float itemHeight = m_textList->GetItemHeight();
+						SizeF viewportSize = m_scrollView->GetViewPortSize();
+						float selPos = index * itemHeight;
+
+						// if clicked item is partially visible and at the top side of the realized items, scroll content to make it fully visible
+						if (selPos < offset.y)
+						{
+							offset.y = selPos;
+							m_scrollView->SetOffset(offset);
+						}
+
+						// if clicked item is partially visible and at the bottom side of the realized items, scroll content to make it fully visible
+						if (selPos + itemHeight > offset.y + viewportSize.height)
+						{
+							offset.y += (selPos + itemHeight) - (offset.y + viewportSize.height);
+
+							m_scrollView->SetOffset(offset);
+						}
+					}
+
+					// raise click event
+					Clicked(index, selected, text);
+				};
+		}
+
+		// raise this event when Text Item is clicked and its selected state is toggled
+		engine::event::Event<int, bool, const std::string&> Clicked;
+
+		void TextListBox::Append(const std::string& text)
+		{
+			m_textList->Append(text);
+		}
+
+		void TextListBox::RemoveLast()
+		{
+			m_textList->RemoveLast();
+		}
+
+		void TextListBox::SetItemHeight(float itemHeight)
+		{
+			m_textList->SetItemHeight(itemHeight);
+			UpdateTextListLayout();
+		}
+
+		float TextListBox::GetItemHeight() const
+		{
+			return m_textList->GetItemHeight();
+		}
+
+		void TextListBox::Draw(const UIDrawContext& context) const 
+		{
+			context.skin.DrawTextListBox(*this, context);
+		}
+
+		void TextListBox::Clear()
+		{
+			m_textList->Clear();
+		}
+
+		void TextListBox::UnselectAll()
+		{
+			m_textList->UnselectAll();
+		}
+
+		void TextListBox::SelectAll()
+		{
+			m_textList->SelectAll();
+		}
+
+		void TextListBox::SetSelectionMode(SelectionMode mode)
+		{
+			m_textList->SetSelectionMode(mode);
+		}
+
+		SelectionMode TextListBox::GetSelectionMode() const
+		{
+			return m_textList->GetSelectionMode();
+		}
+
+		void TextListBox::SetFontType(UIResources::FontType type)
+		{
+			m_textList->SetFontType(type);
+		}
+
+		UIResources::FontType TextListBox::GetFontType() const
+		{
+			return m_textList->GetFontType();
+		}
+
+
+		// bind this TextList to a new text list model. if no model is provided, it will use the internal model.
+		void TextListBox::Bind(ITextListModel* model)
+		{
+			m_textList->Bind(model);
+		}
+
+		bool TextListBox::IsBoundTo(ITextListModel* model) const
+		{
+			return m_textList->IsBoundTo(model);
+		}
+
+#pragma endregion
+	}
 }

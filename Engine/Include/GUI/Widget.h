@@ -27,7 +27,6 @@ namespace engine
 		{
 			Single,
 			Multiple,
-			Extended,
 			None
 		};
 #pragma endregion
@@ -63,22 +62,6 @@ namespace engine
 		{
 			Free,
 			Anchor,
-		};
-#pragma endregion
-
-#pragma region // parameter that determines the horizontal and vertical alignment of the widget's content within its extent
-		enum class HorizontalAlignment
-		{
-			Left,
-			Right,
-			Center,
-		};
-
-		enum class VerticalAlignment
-		{
-			Top,
-			Bottom,
-			Center,
 		};
 #pragma endregion
 
@@ -227,7 +210,6 @@ namespace engine
 			virtual void OnVerbose(bool enable);
 			virtual bool OnMouseWheel(const PositionF& screenPos, float delta);
 			virtual bool OnMouseHWheel(const PositionF& screenPos, float delta);
-
 #pragma endregion
 
 #pragma region // internal methods for tree traversal and z order

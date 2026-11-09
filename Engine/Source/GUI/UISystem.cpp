@@ -242,7 +242,6 @@ namespace engine
 				target = result.layer->FindAndResolveZOrderAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 			}
 
-
 			// 2. pass that widget to dragdrop layer so it will attemp to drop the widget being drag into it
 			m_dragDropLayer.End(draggable, target);
 		}
@@ -347,8 +346,6 @@ namespace engine
 				{
 					m_interactionStateTracker.GetMouseOver()->MouseLeave();
 					m_interactionStateTracker.SetMouseOver(nullptr);
-					//m_mouseOver->MouseLeave();
-					//SetMouseOver(nullptr);
 				}
 
 				// make sure to hide any active tooltip as well
@@ -399,6 +396,7 @@ namespace engine
 			// check first if mouse hovers over a overlay
 			LayerStack::Route result = m_layerManager.FindRouteFromTopAt(p, Widget::SearchFlags::Visible | Widget::SearchFlags::Enabled);
 
+			// if we're hovering on a layer behind a modal layer, we can ignore this event.
 			if (result.isBlockedByModal)
 			{
 				return;
@@ -414,10 +412,12 @@ namespace engine
 			// reason is so that even disable widgets can still have tooltip shown if they have it
 			Widget* hover = result.layer->FindTopWidgetAt(p, Widget::SearchFlags::Visible);
 
+			// there has to be widget the mouse hovers to, we have layer.
 			if (!hover)
 			{
 				throw std::runtime_error("impossible not to find a hover widget. why is this so???");
 			}
+
 
 			hover->MouseWheel(p, delta);
 		}
@@ -442,6 +442,7 @@ namespace engine
 			// reason is so that even disable widgets can still have tooltip shown if they have it
 			Widget* hover = result.layer->FindTopWidgetAt(p, Widget::SearchFlags::Visible);
 
+			// there has to be widget the mouse hovers to, we have layer.
 			if (!hover)
 			{
 				throw std::runtime_error("impossible not to find a hover widget. why is this so???");

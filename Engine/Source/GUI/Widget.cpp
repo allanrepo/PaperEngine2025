@@ -173,11 +173,13 @@ namespace engine
 		{
 		}
 
+		// callback for when widget receives mouse wheel. returns false to propagate the event to its ancestor
 		bool Widget::OnMouseWheel(const PositionF& screenPos, float delta)
 		{
 			return false;
 		}
 
+		// callback for when widget receives horizontal mouse wheel. returns false to propagate the event to its ancestor
 		bool Widget::OnMouseHWheel(const PositionF& screenPos, float delta)
 		{
 			return false;
